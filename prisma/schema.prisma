@@ -1,0 +1,369 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MachineStatus {
+  ACTIVE
+  MAINTENANCE
+  REPAIRING
+  INACTIVE
+}
+
+enum MachineInventoryStatus {
+  IN_STOCK
+  ACCESSORY_SPLIT
+  INSTALLED
+  RESERVED
+  RETURNED
+  SOLD
+}
+
+enum InventoryMovementType {
+  IMPORT
+  SPLIT_ACCESSORY
+  RESERVE
+  INSTALL
+  RETURN
+  SELL
+  ADJUST_STATUS
+}
+
+enum BusinessLineStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MachineProductCategory {
+  ULTRASOUND
+  LAB_TESTING
+  BIOCHEMISTRY
+  IMMUNOLOGY
+  HEMATOLOGY
+  X_RAY
+  ENDOSCOPY
+  OTHER
+}
+
+enum RepairStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  WAITING_PARTS
+  COMPLETED
+  CANCELLED
+}
+
+enum RepairPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum CustomerType {
+  HOSPITAL
+  CLINIC
+  LAB
+  DISTRIBUTOR
+  UNIVERSITY
+  COMPANY
+  OTHER
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  POTENTIAL
+  BLACKLISTED
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum MaintenanceType {
+  PERIODIC
+  WARRANTY
+  CONTRACT
+  INTERNAL
+  OTHER
+}
+
+model Region {
+  id          String   @id @default(cuid())
+
+  name        String
+  code        String   @unique
+
+  users       User[]
+
+  customers   Customer[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Role {
+  id          String   @id @default(cuid())
+
+  name        String   @unique
+
+  users       User[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id          String      @id @default(cuid())
+
+  email       String      @unique
+  password    String
+
+  fullName    String
+  phone       String?
+
+  status      UserStatus  @default(ACTIVE)
+
+  roleId      String
+  role        Role        @relation(fields: [roleId], references: [id])
+
+  regionId    String
+  region      Region      @relation(fields: [regionId], references: [id])
+
+  repairs     Repair[]
+  maintenances Maintenance[]
+  installedMachines Machine[] @relation("MachineInstalledBy")
+  responsibleMachines Machine[] @relation("MachinePrimaryEngineer")
+  inventoryMovements MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
+  managedBusinessLines BusinessLine[] @relation("BusinessLineManager")
+  engineerProfile EngineerProfile?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EngineerProfile {
+  id              String   @id @default(cuid())
+
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+
+  employeeCode    String?  @unique
+  dateOfBirth     DateTime?
+  position        String?
+  department      String?
+  workStartDate   DateTime?
+  specialties     String[]
+  certificateNo   String?
+  note            String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Customer {
+  id            String   @id @default(cuid())
+
+  customerCode  String?  @unique
+
+  name          String
+  shortName     String?
+
+  hospitalName  String?
+  customerType  CustomerType @default(HOSPITAL)
+  status        CustomerStatus @default(ACTIVE)
+
+  taxCode       String?
+  email         String?
+  website       String?
+
+  phone         String?
+
+  contactPerson   String?
+  contactPosition String?
+  contactPhone    String?
+  contactEmail    String?
+
+  province      String?
+  district      String?
+  ward          String?
+  address       String?
+  fullAddress   String?
+
+  note          String?
+
+  regionId      String
+  region        Region   @relation(fields: [regionId], references: [id])
+
+  machines      Machine[]
+  inventoryMovements MachineInventoryMovement[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model BusinessLine {
+  id            String   @id @default(cuid())
+
+  code          String   @unique
+  name          String
+  status        BusinessLineStatus @default(ACTIVE)
+  manufacturer String?
+  productCategory MachineProductCategory @default(OTHER)
+  countryOfOrigin String?
+  website       String?
+  contactPerson String?
+  contactPhone  String?
+  contactEmail  String?
+  description  String?
+  note          String?
+
+  managerId     String?
+  manager       User? @relation("BusinessLineManager", fields: [managerId], references: [id], onDelete: SetNull)
+
+  machines      Machine[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Machine {
+  id              String   @id @default(cuid())
+
+  machineCode     String?  @unique
+  serialNumber    String   @unique
+
+  name            String?
+  modelName       String
+  version         String?
+  manufacturer    String
+  productCategory MachineProductCategory @default(OTHER)
+  productLine     String?
+
+  status          MachineStatus @default(ACTIVE)
+  inventoryStatus MachineInventoryStatus @default(IN_STOCK)
+
+  manufacturingDate DateTime?
+  warehouseImportDate DateTime?
+  installDate     DateTime?
+  warrantyStartDate DateTime?
+  warrantyEndDate DateTime?
+
+  businessLineId  String?
+  businessLine    BusinessLine? @relation(fields: [businessLineId], references: [id])
+
+  customerId       String?
+  customer         Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  installedById    String?
+  installedBy      User? @relation("MachineInstalledBy", fields: [installedById], references: [id])
+
+  primaryEngineerId String?
+  primaryEngineer   User? @relation("MachinePrimaryEngineer", fields: [primaryEngineerId], references: [id])
+
+  repairs          Repair[]
+  maintenances     Maintenance[]
+  inventoryMovements MachineInventoryMovement[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model MachineInventoryMovement {
+  id              String   @id @default(cuid())
+
+  code            String   @unique
+  type            InventoryMovementType
+
+  machineId       String
+  machine         Machine @relation(fields: [machineId], references: [id])
+
+  fromStatus      MachineInventoryStatus?
+  toStatus        MachineInventoryStatus
+
+  occurredAt      DateTime @default(now())
+  note            String?
+
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  createdById     String?
+  createdBy       User? @relation("InventoryMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Maintenance {
+  id              String   @id @default(cuid())
+
+  code            String   @unique
+  title           String
+  description     String?
+
+  type            MaintenanceType @default(PERIODIC)
+  status          MaintenanceStatus @default(SCHEDULED)
+
+  machineId       String
+  machine         Machine @relation(fields: [machineId], references: [id])
+
+  engineerId      String?
+  engineer        User? @relation(fields: [engineerId], references: [id])
+
+  scheduledDate   DateTime
+  assignedAt      DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  checklist       String[]
+  resultNote      String?
+  nextDueDate     DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Repair {
+  id              String   @id @default(cuid())
+
+  code            String   @unique
+
+  title           String
+  description     String?
+
+  status          RepairStatus   @default(PENDING)
+  priority        RepairPriority @default(NORMAL)
+
+  machineId        String
+  machine          Machine @relation(fields: [machineId], references: [id])
+
+  engineerId       String?
+  engineer         User? @relation(fields: [engineerId], references: [id])
+
+  reportedAt       DateTime @default(now())
+  assignedAt       DateTime?
+  startedAt        DateTime?
+  completedAt      DateTime?
+
+  resultNote       String?
+  customerFeedback String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
