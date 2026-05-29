@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AuthModule } from './auth/auth.module';
 import { BusinessLinesModule } from './business-lines/business-lines.module';
 import { CustomersModule } from './customers/customers.module';
@@ -16,6 +17,7 @@ import { UsersModule } from './users/users.module';
 @Module({
   imports: [
     PrismaModule,
+    AuditLogsModule,
     AuthModule,
     BusinessLinesModule,
     UsersModule,

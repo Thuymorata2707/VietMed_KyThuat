@@ -7,9 +7,11 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequestUser } from '../common/request-user.type';
 import { AssignRepairDto } from './dto/assign-repair.dto';
 import { CreateRepairDto } from './dto/create-repair.dto';
 import { UpdateRepairStatusDto } from './dto/update-repair-status.dto';
@@ -23,8 +25,8 @@ export class RepairsController {
 
   @Roles('admin')
   @Post()
-  create(@Body() dto: CreateRepairDto) {
-    return this.repairsService.create(dto);
+  create(@Body() dto: CreateRepairDto, @CurrentUser() user: RequestUser) {
+    return this.repairsService.create(dto, user);
   }
 
   @Get()
@@ -49,18 +51,30 @@ export class RepairsController {
 
   @Roles('admin')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateRepairDto) {
-    return this.repairsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateRepairDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.repairsService.update(id, dto, user);
   }
 
   @Roles('admin')
   @Patch(':id/assign')
-  assign(@Param('id') id: string, @Body() dto: AssignRepairDto) {
-    return this.repairsService.assign(id, dto);
+  assign(
+    @Param('id') id: string,
+    @Body() dto: AssignRepairDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.repairsService.assign(id, dto, user);
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateRepairStatusDto) {
-    return this.repairsService.updateStatus(id, dto);
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateRepairStatusDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.repairsService.updateStatus(id, dto, user);
   }
 }

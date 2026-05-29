@@ -8,6 +8,8 @@ import {
   MaintenanceStatus,
   MaintenanceType,
 } from '@prisma/client';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignMaintenanceDto } from './dto/assign-maintenance.dto';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
@@ -16,9 +18,12 @@ import { UpdateMaintenanceDto } from './dto/update-maintenance.dto';
 
 @Injectable()
 export class MaintenanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
-  async create(dto: CreateMaintenanceDto) {
+  async create(dto: CreateMaintenanceDto, actor: RequestUser) {
     this.validateCreateMaintenance(dto);
     await this.ensureMachineExists(dto.machineId);
 
@@ -26,26 +31,46 @@ export class MaintenanceService {
       await this.ensureEngineerExists(dto.engineerId);
     }
 
-    return this.prisma.maintenance.create({
-      data: {
-        code: await this.generateMaintenanceCode(),
-        title: dto.title.trim(),
-        description: dto.description?.trim() || null,
-        type: dto.type ?? MaintenanceType.PERIODIC,
-        status: dto.engineerId
-          ? MaintenanceStatus.ASSIGNED
-          : MaintenanceStatus.SCHEDULED,
-        machineId: dto.machineId,
-        engineerId: dto.engineerId || null,
-        scheduledDate: this.parseRequiredDate(
-          dto.scheduledDate,
-          'scheduledDate',
-        ),
-        assignedAt: dto.engineerId ? new Date() : null,
-        checklist: this.normalizeChecklist(dto.checklist),
-        nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
-      },
-      include: this.defaultInclude(),
+    return this.prisma.$transaction(async (tx) => {
+      const maintenance = await tx.maintenance.create({
+        data: {
+          code: await this.generateMaintenanceCode(),
+          title: dto.title.trim(),
+          description: dto.description?.trim() || null,
+          type: dto.type ?? MaintenanceType.PERIODIC,
+          status: dto.engineerId
+            ? MaintenanceStatus.ASSIGNED
+            : MaintenanceStatus.SCHEDULED,
+          machineId: dto.machineId,
+          engineerId: dto.engineerId || null,
+          scheduledDate: this.parseRequiredDate(
+            dto.scheduledDate,
+            'scheduledDate',
+          ),
+          assignedAt: dto.engineerId ? new Date() : null,
+          checklist: this.normalizeChecklist(dto.checklist),
+          nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
+        },
+        include: this.defaultInclude(),
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: 'CREATE',
+          entityType: 'Maintenance',
+          entityId: maintenance.id,
+          actor,
+          metadata: {
+            code: maintenance.code,
+            machineId: maintenance.machineId,
+            engineerId: maintenance.engineerId,
+            status: maintenance.status,
+          },
+        },
+        tx,
+      );
+
+      return maintenance;
     });
   }
 
@@ -71,64 +96,125 @@ export class MaintenanceService {
     return maintenance;
   }
 
-  async update(id: string, dto: UpdateMaintenanceDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateMaintenanceDto, actor: RequestUser) {
+    const maintenance = await this.findOne(id);
 
-    return this.prisma.maintenance.update({
-      where: { id },
-      data: {
-        title: dto.title?.trim(),
-        description:
-          dto.description === undefined
-            ? undefined
-            : dto.description?.trim() || null,
-        type: dto.type,
-        scheduledDate: dto.scheduledDate
-          ? this.parseRequiredDate(dto.scheduledDate, 'scheduledDate')
-          : undefined,
-        checklist:
-          dto.checklist === undefined
-            ? undefined
-            : this.normalizeChecklist(dto.checklist),
-        resultNote:
-          dto.resultNote === undefined
-            ? undefined
-            : dto.resultNote?.trim() || null,
-        nextDueDate:
-          dto.nextDueDate === undefined
-            ? undefined
-            : this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
-      },
-      include: this.defaultInclude(),
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.maintenance.update({
+        where: { id },
+        data: {
+          title: dto.title?.trim(),
+          description:
+            dto.description === undefined
+              ? undefined
+              : dto.description?.trim() || null,
+          type: dto.type,
+          scheduledDate: dto.scheduledDate
+            ? this.parseRequiredDate(dto.scheduledDate, 'scheduledDate')
+            : undefined,
+          checklist:
+            dto.checklist === undefined
+              ? undefined
+              : this.normalizeChecklist(dto.checklist),
+          resultNote:
+            dto.resultNote === undefined
+              ? undefined
+              : dto.resultNote?.trim() || null,
+          nextDueDate:
+            dto.nextDueDate === undefined
+              ? undefined
+              : this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
+        },
+        include: this.defaultInclude(),
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: 'UPDATE',
+          entityType: 'Maintenance',
+          entityId: id,
+          actor,
+          changes: this.pickChangedFields(maintenance, updated, [
+            'title',
+            'description',
+            'type',
+            'scheduledDate',
+            'checklist',
+            'resultNote',
+            'nextDueDate',
+          ]),
+        },
+        tx,
+      );
+
+      return updated;
     });
   }
 
-  async assign(id: string, dto: AssignMaintenanceDto) {
+  async assign(id: string, dto: AssignMaintenanceDto, actor: RequestUser) {
     if (!dto.engineerId) {
       throw new BadRequestException('engineerId is required');
     }
 
-    await this.findOne(id);
+    const maintenance = await this.findOne(id);
     await this.ensureEngineerExists(dto.engineerId);
 
-    return this.prisma.maintenance.update({
-      where: { id },
-      data: {
-        engineerId: dto.engineerId,
-        status: MaintenanceStatus.ASSIGNED,
-        assignedAt: new Date(),
-      },
-      include: this.defaultInclude(),
+    if (this.isTerminalStatus(maintenance.status)) {
+      throw new BadRequestException('Cannot assign a closed maintenance job');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.maintenance.update({
+        where: { id },
+        data: {
+          engineerId: dto.engineerId,
+          status:
+            maintenance.status === MaintenanceStatus.SCHEDULED ||
+            maintenance.status === MaintenanceStatus.OVERDUE
+              ? MaintenanceStatus.ASSIGNED
+              : maintenance.status,
+          assignedAt: maintenance.assignedAt ?? new Date(),
+        },
+        include: this.defaultInclude(),
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: 'ASSIGN',
+          entityType: 'Maintenance',
+          entityId: id,
+          actor,
+          changes: {
+            engineerId: {
+              from: maintenance.engineerId,
+              to: updated.engineerId,
+            },
+            status: {
+              from: maintenance.status,
+              to: updated.status,
+            },
+          },
+        },
+        tx,
+      );
+
+      return updated;
     });
   }
 
-  async updateStatus(id: string, dto: UpdateMaintenanceStatusDto) {
+  async updateStatus(
+    id: string,
+    dto: UpdateMaintenanceStatusDto,
+    actor: RequestUser,
+  ) {
     if (!dto.status) {
       throw new BadRequestException('status is required');
     }
 
     const maintenance = await this.findOne(id);
     const now = new Date();
+
+    this.ensureStatusTransitionIsAllowed(maintenance.status, dto.status);
 
     if (this.statusRequiresEngineer(dto.status) && !maintenance.engineerId) {
       throw new BadRequestException(
@@ -166,6 +252,33 @@ export class MaintenanceService {
           },
         });
       }
+
+      await this.auditLogsService.create(
+        {
+          action: 'STATUS_CHANGE',
+          entityType: 'Maintenance',
+          entityId: id,
+          actor,
+          changes: {
+            status: {
+              from: maintenance.status,
+              to: updated.status,
+            },
+            resultNote: {
+              from: maintenance.resultNote,
+              to: updated.resultNote,
+            },
+            nextDueDate: {
+              from: maintenance.nextDueDate,
+              to: updated.nextDueDate,
+            },
+          },
+          metadata: {
+            machineStatus,
+          },
+        },
+        tx,
+      );
 
       return updated;
     });
@@ -285,6 +398,72 @@ export class MaintenanceService {
     }
 
     return null;
+  }
+
+  private ensureStatusTransitionIsAllowed(
+    currentStatus: MaintenanceStatus,
+    nextStatus: MaintenanceStatus,
+  ) {
+    if (currentStatus === nextStatus) {
+      return;
+    }
+
+    const allowedTransitions: Record<MaintenanceStatus, MaintenanceStatus[]> = {
+      [MaintenanceStatus.SCHEDULED]: [
+        MaintenanceStatus.ASSIGNED,
+        MaintenanceStatus.OVERDUE,
+        MaintenanceStatus.CANCELLED,
+      ],
+      [MaintenanceStatus.ASSIGNED]: [
+        MaintenanceStatus.IN_PROGRESS,
+        MaintenanceStatus.OVERDUE,
+        MaintenanceStatus.CANCELLED,
+      ],
+      [MaintenanceStatus.IN_PROGRESS]: [
+        MaintenanceStatus.COMPLETED,
+        MaintenanceStatus.CANCELLED,
+      ],
+      [MaintenanceStatus.OVERDUE]: [
+        MaintenanceStatus.ASSIGNED,
+        MaintenanceStatus.IN_PROGRESS,
+        MaintenanceStatus.CANCELLED,
+      ],
+      [MaintenanceStatus.COMPLETED]: [],
+      [MaintenanceStatus.CANCELLED]: [],
+    };
+
+    if (!allowedTransitions[currentStatus].includes(nextStatus)) {
+      throw new BadRequestException(
+        `Invalid maintenance status transition: ${currentStatus} -> ${nextStatus}`,
+      );
+    }
+  }
+
+  private isTerminalStatus(status: MaintenanceStatus): boolean {
+    return (
+      status === MaintenanceStatus.COMPLETED ||
+      status === MaintenanceStatus.CANCELLED
+    );
+  }
+
+  private pickChangedFields<T extends Record<string, unknown>>(
+    before: T,
+    after: T,
+    fields: string[],
+  ) {
+    return fields.reduce<Record<string, { from: unknown; to: unknown }>>(
+      (changes, field) => {
+        if (before[field] !== after[field]) {
+          changes[field] = {
+            from: before[field],
+            to: after[field],
+          };
+        }
+
+        return changes;
+      },
+      {},
+    );
   }
 
   private defaultInclude() {
