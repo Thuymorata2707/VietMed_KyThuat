@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 import { AuthModule } from './auth/auth.module';
 import { BusinessLinesModule } from './business-lines/business-lines.module';
 import { CustomersModule } from './customers/customers.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { EngineerProfilesModule } from './engineer-profiles/engineer-profiles.module';
 import { InventoryMovementsModule } from './inventory-movements/inventory-movements.module';
+import { InstallationsModule } from './installations/installations.module';
+import { MachineModelsModule } from './machine-models/machine-models.module';
 import { MachinesModule } from './machines/machines.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -18,6 +21,7 @@ import { UsersModule } from './users/users.module';
   imports: [
     PrismaModule,
     AuditLogsModule,
+    AttachmentsModule,
     AuthModule,
     BusinessLinesModule,
     UsersModule,
@@ -30,6 +34,8 @@ import { UsersModule } from './users/users.module';
     EngineerProfilesModule,
     MaintenanceModule,
     InventoryMovementsModule,
+    InstallationsModule,
+    MachineModelsModule,
   ],
 })
 export class AppModule {}

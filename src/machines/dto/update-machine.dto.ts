@@ -3,25 +3,90 @@ import {
   MachineProductCategory,
   MachineStatus,
 } from '@prisma/client';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class UpdateMachineDto {
+  @IsOptional()
+  @IsString()
   machineCode?: string | null;
+
+  @IsOptional()
+  @IsString()
   serialNumber?: string;
+
+  @IsOptional()
+  @IsString()
   name?: string | null;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
   modelName?: string;
+
+  @IsOptional()
+  @IsString()
   version?: string | null;
+
+  @IsOptional()
+  @IsString()
   manufacturer?: string;
+
+  @IsOptional()
+  @IsEnum(MachineProductCategory)
   productCategory?: MachineProductCategory;
+
+  @IsOptional()
+  @IsString()
   productLine?: string | null;
+
+  @IsOptional()
+  @IsEnum(MachineStatus)
   status?: MachineStatus;
+
+  @IsOptional()
+  @IsEnum(MachineInventoryStatus)
   inventoryStatus?: MachineInventoryStatus;
+
+  @IsOptional()
+  @IsDateString()
   manufacturingDate?: string | null;
+
+  @IsOptional()
+  @IsDateString()
   warehouseImportDate?: string | null;
+
+  @IsOptional()
+  @IsDateString()
   installDate?: string | null;
+
+  @IsOptional()
+  @IsDateString()
   warrantyStartDate?: string | null;
+
+  @IsOptional()
+  @IsDateString()
   warrantyEndDate?: string | null;
+
+  @IsOptional()
+  @IsString()
   businessLineId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  machineModelId?: string | null;
+
+  @IsOptional()
+  @IsString()
   customerId?: string;
+
+  @IsOptional()
+  @IsString()
   installedById?: string | null;
+
+  @IsOptional()
+  @IsString()
   primaryEngineerId?: string | null;
 }

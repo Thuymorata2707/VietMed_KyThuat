@@ -6,9 +6,13 @@ import {
 import {
   InventoryMovementType,
   MachineInventoryStatus,
-  MachineStatus,
 } from '@prisma/client';
+import { inventoryMovementAccessWhere } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
+import {
+  getMachineStatusForInventoryStatus,
+  validateInventoryMovement,
+} from '../machines/machine-state.rules';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInventoryMovementDto } from './dto/create-inventory-movement.dto';
 
@@ -31,7 +35,12 @@ export class InventoryMovementsService {
       await this.ensureCustomerExists(dto.customerId);
     }
 
-    this.validateMovementBusinessRule(dto);
+    validateInventoryMovement(
+      dto.type,
+      machine.inventoryStatus,
+      dto.toStatus,
+      dto.customerId || machine.customerId,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const movement = await tx.machineInventoryMovement.create({
@@ -61,10 +70,7 @@ export class InventoryMovementsService {
             dto.toStatus === MachineInventoryStatus.INSTALLED
               ? movement.occurredAt
               : undefined,
-          status:
-            dto.toStatus === MachineInventoryStatus.INSTALLED
-              ? MachineStatus.ACTIVE
-              : undefined,
+          status: getMachineStatusForInventoryStatus(dto.toStatus),
         },
       });
 
@@ -72,8 +78,9 @@ export class InventoryMovementsService {
     });
   }
 
-  findAll() {
+  findAll(user?: RequestUser) {
     return this.prisma.machineInventoryMovement.findMany({
+      where: inventoryMovementAccessWhere(user),
       include: this.defaultInclude(),
       orderBy: {
         occurredAt: 'desc',
@@ -81,9 +88,11 @@ export class InventoryMovementsService {
     });
   }
 
-  async findOne(id: string) {
-    const movement = await this.prisma.machineInventoryMovement.findUnique({
-      where: { id },
+  async findOne(id: string, user?: RequestUser) {
+    const movement = await this.prisma.machineInventoryMovement.findFirst({
+      where: {
+        AND: [{ id }, inventoryMovementAccessWhere(user)],
+      },
       include: this.defaultInclude(),
     });
 
@@ -103,55 +112,6 @@ export class InventoryMovementsService {
       throw new BadRequestException(
         'machineId, type and toStatus are required',
       );
-    }
-  }
-
-  private validateMovementBusinessRule(dto: CreateInventoryMovementDto) {
-    if (dto.type === InventoryMovementType.IMPORT) {
-      this.requireToStatus(dto.toStatus, MachineInventoryStatus.IN_STOCK);
-    }
-
-    if (dto.type === InventoryMovementType.SPLIT_ACCESSORY) {
-      this.requireToStatus(
-        dto.toStatus,
-        MachineInventoryStatus.ACCESSORY_SPLIT,
-      );
-    }
-
-    if (dto.type === InventoryMovementType.RESERVE) {
-      this.requireToStatus(dto.toStatus, MachineInventoryStatus.RESERVED);
-    }
-
-    if (dto.type === InventoryMovementType.RETURN) {
-      this.requireToStatus(dto.toStatus, MachineInventoryStatus.RETURNED);
-    }
-
-    if (dto.type === InventoryMovementType.SELL) {
-      this.requireToStatus(dto.toStatus, MachineInventoryStatus.SOLD);
-    }
-
-    if (
-      dto.type === InventoryMovementType.INSTALL &&
-      dto.toStatus !== MachineInventoryStatus.INSTALLED
-    ) {
-      throw new BadRequestException(
-        'INSTALL movement must set status to INSTALLED',
-      );
-    }
-
-    if (dto.toStatus === MachineInventoryStatus.INSTALLED && !dto.customerId) {
-      throw new BadRequestException(
-        'customerId is required when inventory status is INSTALLED',
-      );
-    }
-  }
-
-  private requireToStatus(
-    actual: MachineInventoryStatus,
-    expected: MachineInventoryStatus,
-  ) {
-    if (actual !== expected) {
-      throw new BadRequestException(`Movement must set status to ${expected}`);
     }
   }
 
@@ -202,6 +162,7 @@ export class InventoryMovementsService {
       machine: {
         include: {
           businessLine: true,
+          machineModel: true,
           customer: true,
         },
       },

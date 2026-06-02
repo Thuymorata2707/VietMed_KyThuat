@@ -104,76 +104,133 @@ enum MaintenanceType {
   OTHER
 }
 
+enum InstallationStatus {
+  INSTALLED
+  CANCELLED
+}
+
+enum WarrantyStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum AttachmentType {
+  ENGINEER_PHOTO
+  MACHINE_PHOTO
+  BUSINESS_LINE_IMAGE
+  ERROR_PHOTO
+  HANDOVER_MINUTES
+  MAINTENANCE_FORM
+  PART_INVOICE
+  ACCEPTANCE_PDF
+  OTHER
+}
+
 model Region {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  name        String
-  code        String   @unique
+  name String
+  code String @unique
 
-  users       User[]
+  users User[]
 
-  customers   Customer[]
+  customers Customer[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Role {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  name        String   @unique
+  name String @unique
 
-  users       User[]
+  users User[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model User {
-  id          String      @id @default(cuid())
+  id String @id @default(cuid())
 
-  email       String      @unique
-  password    String
+  email    String @unique
+  password String
 
-  fullName    String
-  phone       String?
+  fullName String
+  phone    String?
 
-  status      UserStatus  @default(ACTIVE)
+  status UserStatus @default(ACTIVE)
 
-  roleId      String
-  role        Role        @relation(fields: [roleId], references: [id])
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
 
-  regionId    String
-  region      Region      @relation(fields: [regionId], references: [id])
+  regionId String
+  region   Region @relation(fields: [regionId], references: [id])
 
-  repairs     Repair[]
-  maintenances Maintenance[]
-  installedMachines Machine[] @relation("MachineInstalledBy")
-  responsibleMachines Machine[] @relation("MachinePrimaryEngineer")
-  inventoryMovements MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
-  managedBusinessLines BusinessLine[] @relation("BusinessLineManager")
-  auditLogs   AuditLog[] @relation("AuditLogActor")
-  engineerProfile EngineerProfile?
+  repairs              Repair[]
+  maintenances         Maintenance[]
+  installedMachines    Machine[]                  @relation("MachineInstalledBy")
+  machineInstallations MachineInstallation[]      @relation("MachineInstallationEngineer")
+  issuedWarrantyCards  WarrantyCard[]             @relation("WarrantyCardIssuedBy")
+  responsibleMachines  Machine[]                  @relation("MachinePrimaryEngineer")
+  inventoryMovements   MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
+  managedBusinessLines BusinessLine[]             @relation("BusinessLineManager")
+  auditLogs            AuditLog[]                 @relation("AuditLogActor")
+  uploadedAttachments  Attachment[]               @relation("AttachmentUploadedBy")
+  engineerProfile      EngineerProfile?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attachment {
+  id String @id @default(cuid())
+
+  entityType String
+  entityId   String
+  type       AttachmentType @default(OTHER)
+
+  originalName String
+  storedName   String
+  mimeType     String
+  size         Int
+  path         String
+  url          String
+
+  title       String?
+  description String?
+
+  uploadedById    String?
+  uploadedBy      User?   @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedByEmail String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([type])
+  @@index([uploadedById])
+  @@index([createdAt])
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  action      String
-  entityType  String
-  entityId    String
+  action     String
+  entityType String
+  entityId   String
 
-  actorId     String?
-  actor       User?    @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
-  actorEmail  String?
+  actorId    String?
+  actor      User?   @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorEmail String?
 
-  changes     Json?
-  metadata    Json?
+  changes  Json?
+  metadata Json?
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([entityType, entityId])
   @@index([actorId])
@@ -181,211 +238,319 @@ model AuditLog {
 }
 
 model EngineerProfile {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id])
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
 
-  employeeCode    String?  @unique
-  dateOfBirth     DateTime?
-  position        String?
-  department      String?
-  workStartDate   DateTime?
-  specialties     String[]
-  certificateNo   String?
-  note            String?
+  employeeCode  String?   @unique
+  dateOfBirth   DateTime?
+  position      String?
+  department    String?
+  workStartDate DateTime?
+  specialties   String[]
+  certificateNo String?
+  photoUrl      String?
+  note          String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Customer {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  customerCode  String?  @unique
+  customerCode String? @unique
 
-  name          String
-  shortName     String?
+  name      String
+  shortName String?
 
-  hospitalName  String?
-  customerType  CustomerType @default(HOSPITAL)
-  status        CustomerStatus @default(ACTIVE)
+  hospitalName String?
+  customerType CustomerType   @default(HOSPITAL)
+  status       CustomerStatus @default(ACTIVE)
 
-  taxCode       String?
-  email         String?
-  website       String?
+  taxCode String?
+  email   String?
+  website String?
 
-  phone         String?
+  phone String?
 
   contactPerson   String?
   contactPosition String?
   contactPhone    String?
   contactEmail    String?
 
-  province      String?
-  district      String?
-  ward          String?
-  address       String?
-  fullAddress   String?
+  province    String?
+  district    String?
+  ward        String?
+  address     String?
+  fullAddress String?
 
-  note          String?
+  note String?
 
-  regionId      String
-  region        Region   @relation(fields: [regionId], references: [id])
+  regionId String
+  region   Region @relation(fields: [regionId], references: [id])
 
-  machines      Machine[]
-  inventoryMovements MachineInventoryMovement[]
+  machines             Machine[]
+  inventoryMovements   MachineInventoryMovement[]
+  machineInstallations MachineInstallation[]
+  warrantyCards        WarrantyCard[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model BusinessLine {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  code          String   @unique
-  name          String
-  status        BusinessLineStatus @default(ACTIVE)
-  manufacturer String?
+  code            String                 @unique
+  name            String
+  status          BusinessLineStatus     @default(ACTIVE)
+  manufacturer    String?
+  imageUrl        String?
   productCategory MachineProductCategory @default(OTHER)
   countryOfOrigin String?
-  website       String?
-  contactPerson String?
-  contactPhone  String?
-  contactEmail  String?
-  description  String?
-  note          String?
+  website         String?
+  contactPerson   String?
+  contactPhone    String?
+  contactEmail    String?
+  description     String?
+  note            String?
 
-  managerId     String?
-  manager       User? @relation("BusinessLineManager", fields: [managerId], references: [id], onDelete: SetNull)
+  managerId String?
+  manager   User?   @relation("BusinessLineManager", fields: [managerId], references: [id], onDelete: SetNull)
 
-  machines      Machine[]
+  machines             Machine[]
+  machineModels        MachineModel[]
+  machineInstallations MachineInstallation[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MachineModel {
+  id String @id @default(cuid())
+
+  code        String
+  name        String
+  displayName String?
+  status      BusinessLineStatus @default(ACTIVE)
+
+  businessLineId String
+  businessLine   BusinessLine @relation(fields: [businessLineId], references: [id])
+
+  manufacturer    String?
+  productCategory MachineProductCategory @default(OTHER)
+  productLine     String?
+  description     String?
+  note            String?
+
+  machines Machine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessLineId, code])
+  @@index([businessLineId])
+  @@index([status])
 }
 
 model Machine {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  machineCode     String?  @unique
-  serialNumber    String   @unique
+  machineCode  String? @unique
+  serialNumber String  @unique
 
   name            String?
+  imageUrl        String?
   modelName       String
   version         String?
   manufacturer    String
   productCategory MachineProductCategory @default(OTHER)
   productLine     String?
 
-  status          MachineStatus @default(ACTIVE)
+  status          MachineStatus          @default(ACTIVE)
   inventoryStatus MachineInventoryStatus @default(IN_STOCK)
 
-  manufacturingDate DateTime?
+  manufacturingDate   DateTime?
   warehouseImportDate DateTime?
-  installDate     DateTime?
-  warrantyStartDate DateTime?
-  warrantyEndDate DateTime?
+  installDate         DateTime?
+  warrantyStartDate   DateTime?
+  warrantyEndDate     DateTime?
 
-  businessLineId  String?
-  businessLine    BusinessLine? @relation(fields: [businessLineId], references: [id])
+  businessLineId String?
+  businessLine   BusinessLine? @relation(fields: [businessLineId], references: [id])
 
-  customerId       String?
-  customer         Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  machineModelId String?
+  machineModel   MachineModel? @relation(fields: [machineModelId], references: [id], onDelete: SetNull)
 
-  installedById    String?
-  installedBy      User? @relation("MachineInstalledBy", fields: [installedById], references: [id])
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  installedById String?
+  installedBy   User?   @relation("MachineInstalledBy", fields: [installedById], references: [id])
 
   primaryEngineerId String?
-  primaryEngineer   User? @relation("MachinePrimaryEngineer", fields: [primaryEngineerId], references: [id])
+  primaryEngineer   User?   @relation("MachinePrimaryEngineer", fields: [primaryEngineerId], references: [id])
 
-  repairs          Repair[]
-  maintenances     Maintenance[]
+  repairs            Repair[]
+  maintenances       Maintenance[]
   inventoryMovements MachineInventoryMovement[]
+  installations      MachineInstallation[]
+  warrantyCards      WarrantyCard[]
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MachineInstallation {
+  id String @id @default(cuid())
+
+  code   String             @unique
+  status InstallationStatus @default(INSTALLED)
+
+  machineId String
+  machine   Machine @relation(fields: [machineId], references: [id])
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  businessLineId String?
+  businessLine   BusinessLine? @relation(fields: [businessLineId], references: [id], onDelete: SetNull)
+
+  installedById String
+  installedBy   User   @relation("MachineInstallationEngineer", fields: [installedById], references: [id])
+
+  installedAt DateTime
+  accessories String[]
+  note        String?
+
+  warrantyCard WarrantyCard?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([machineId])
+  @@index([customerId])
+  @@index([businessLineId])
+  @@index([installedById])
+  @@index([installedAt])
+  @@index([status])
+}
+
+model WarrantyCard {
+  id String @id @default(cuid())
+
+  code   String         @unique
+  status WarrantyStatus @default(ACTIVE)
+
+  installationId String              @unique
+  installation   MachineInstallation @relation(fields: [installationId], references: [id])
+
+  machineId String
+  machine   Machine @relation(fields: [machineId], references: [id])
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  issuedAt  DateTime @default(now())
+  startDate DateTime
+  endDate   DateTime
+  note      String?
+
+  issuedById    String?
+  issuedBy      User?   @relation("WarrantyCardIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  issuedByEmail String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([machineId])
+  @@index([customerId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
 }
 
 model MachineInventoryMovement {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  code            String   @unique
-  type            InventoryMovementType
+  code String                @unique
+  type InventoryMovementType
 
-  machineId       String
-  machine         Machine @relation(fields: [machineId], references: [id])
+  machineId String
+  machine   Machine @relation(fields: [machineId], references: [id])
 
-  fromStatus      MachineInventoryStatus?
-  toStatus        MachineInventoryStatus
+  fromStatus MachineInventoryStatus?
+  toStatus   MachineInventoryStatus
 
-  occurredAt      DateTime @default(now())
-  note            String?
+  occurredAt DateTime @default(now())
+  note       String?
 
-  customerId      String?
-  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
-  createdById     String?
-  createdBy       User? @relation("InventoryMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String?
+  createdBy   User?   @relation("InventoryMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Maintenance {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  code            String   @unique
-  title           String
-  description     String?
+  code        String  @unique
+  title       String
+  description String?
 
-  type            MaintenanceType @default(PERIODIC)
-  status          MaintenanceStatus @default(SCHEDULED)
+  type   MaintenanceType   @default(PERIODIC)
+  status MaintenanceStatus @default(SCHEDULED)
 
-  machineId       String
-  machine         Machine @relation(fields: [machineId], references: [id])
+  machineId String
+  machine   Machine @relation(fields: [machineId], references: [id])
 
-  engineerId      String?
-  engineer        User? @relation(fields: [engineerId], references: [id])
+  engineerId String?
+  engineer   User?   @relation(fields: [engineerId], references: [id])
 
-  scheduledDate   DateTime
-  assignedAt      DateTime?
-  startedAt       DateTime?
-  completedAt     DateTime?
+  scheduledDate DateTime
+  assignedAt    DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
 
-  checklist       String[]
-  resultNote      String?
-  nextDueDate     DateTime?
+  checklist   String[]
+  resultNote  String?
+  nextDueDate DateTime?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Repair {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  code            String   @unique
+  code String @unique
 
-  title           String
-  description     String?
+  title       String
+  description String?
 
-  status          RepairStatus   @default(PENDING)
-  priority        RepairPriority @default(NORMAL)
+  status   RepairStatus   @default(PENDING)
+  priority RepairPriority @default(NORMAL)
 
-  machineId        String
-  machine          Machine @relation(fields: [machineId], references: [id])
+  machineId String
+  machine   Machine @relation(fields: [machineId], references: [id])
 
-  engineerId       String?
-  engineer         User? @relation(fields: [engineerId], references: [id])
+  engineerId String?
+  engineer   User?   @relation(fields: [engineerId], references: [id])
 
-  reportedAt       DateTime @default(now())
-  assignedAt       DateTime?
-  startedAt        DateTime?
-  completedAt      DateTime?
+  reportedAt  DateTime  @default(now())
+  assignedAt  DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
 
   resultNote       String?
   customerFeedback String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

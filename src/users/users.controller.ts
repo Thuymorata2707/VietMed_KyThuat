@@ -8,9 +8,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequestUser } from '../common/request-user.type';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
@@ -22,8 +24,8 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  create(@Body() dto: CreateUserDto, @CurrentUser() user: RequestUser) {
+    return this.usersService.create(dto, user);
   }
 
   @Get()
@@ -37,17 +39,21 @@ export class UsersController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.usersService.update(id, dto, user);
   }
 
   @Patch(':id/activate')
-  activate(@Param('id') id: string) {
-    return this.usersService.setStatus(id, UserStatus.ACTIVE);
+  activate(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.usersService.setStatus(id, UserStatus.ACTIVE, user);
   }
 
   @Patch(':id/deactivate')
-  deactivate(@Param('id') id: string) {
-    return this.usersService.setStatus(id, UserStatus.INACTIVE);
+  deactivate(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.usersService.setStatus(id, UserStatus.INACTIVE, user);
   }
 }

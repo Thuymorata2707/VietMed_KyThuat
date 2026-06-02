@@ -3,12 +3,21 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MachineStatus, RepairPriority, RepairStatus } from '@prisma/client';
+import {
+  MachineStatus,
+  Prisma,
+  RepairPriority,
+  RepairStatus,
+} from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { repairAccessWhere } from '../auth/access-scope';
+import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
+import { validateMachineState } from '../machines/machine-state.rules';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignRepairDto } from './dto/assign-repair.dto';
 import { CreateRepairDto } from './dto/create-repair.dto';
+import { ListRepairsQueryDto } from './dto/list-repairs-query.dto';
 import { UpdateRepairStatusDto } from './dto/update-repair-status.dto';
 import { UpdateRepairDto } from './dto/update-repair.dto';
 
@@ -37,9 +46,7 @@ export class RepairsService {
           machineId: dto.machineId,
           engineerId: dto.engineerId || null,
           priority: dto.priority ?? RepairPriority.NORMAL,
-          status: dto.engineerId
-            ? RepairStatus.ASSIGNED
-            : RepairStatus.PENDING,
+          status: dto.engineerId ? RepairStatus.ASSIGNED : RepairStatus.PENDING,
           reportedAt: this.parseOptionalDate(dto.reportedAt) ?? new Date(),
           assignedAt: dto.engineerId ? new Date() : null,
         },
@@ -66,18 +73,33 @@ export class RepairsService {
     });
   }
 
-  findAll() {
-    return this.prisma.repair.findMany({
-      include: this.defaultInclude(),
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async findAll(
+    query: ListRepairsQueryDto,
+    user?: RequestUser,
+  ): Promise<PaginatedResult<unknown>> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const where = this.withAccessScope(this.buildFindAllWhere(query), user);
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.repair.findMany({
+        where,
+        include: this.defaultInclude(),
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.repair.count({ where }),
+    ]);
+
+    return this.toPaginatedResult(data, page, limit, total);
   }
 
-  async findOne(id: string) {
-    const repair = await this.prisma.repair.findUnique({
-      where: { id },
+  async findOne(id: string, user?: RequestUser) {
+    const repair = await this.prisma.repair.findFirst({
+      where: this.withAccessScope({ id }, user),
       include: this.defaultInclude(),
     });
 
@@ -184,7 +206,11 @@ export class RepairsService {
     });
   }
 
-  async updateStatus(id: string, dto: UpdateRepairStatusDto, actor: RequestUser) {
+  async updateStatus(
+    id: string,
+    dto: UpdateRepairStatusDto,
+    actor: RequestUser,
+  ) {
     if (!dto.status) {
       throw new BadRequestException('status is required');
     }
@@ -219,6 +245,11 @@ export class RepairsService {
       const machineStatus = this.getMachineStatusForRepairStatus(dto.status);
 
       if (machineStatus) {
+        validateMachineState(
+          machineStatus,
+          repair.machine.inventoryStatus,
+          repair.machine.customerId,
+        );
         await tx.machine.update({
           where: { id: repair.machineId },
           data: {
@@ -333,6 +364,74 @@ export class RepairsService {
     return date;
   }
 
+  private buildFindAllWhere(
+    query: ListRepairsQueryDto,
+  ): Prisma.RepairWhereInput {
+    const search = query.search?.trim();
+
+    return {
+      status: query.status,
+      priority: query.priority,
+      machineId: query.machineId,
+      engineerId: query.engineerId,
+      machine: query.customerId
+        ? {
+            customerId: query.customerId,
+          }
+        : undefined,
+      OR: search
+        ? [
+            { code: { contains: search, mode: 'insensitive' } },
+            { title: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+            {
+              machine: {
+                serialNumber: { contains: search, mode: 'insensitive' },
+              },
+            },
+            {
+              machine: {
+                machineCode: { contains: search, mode: 'insensitive' },
+              },
+            },
+            {
+              machine: {
+                customer: {
+                  name: { contains: search, mode: 'insensitive' },
+                },
+              },
+            },
+          ]
+        : undefined,
+    };
+  }
+
+  private withAccessScope(
+    where: Prisma.RepairWhereInput,
+    user?: RequestUser,
+  ): Prisma.RepairWhereInput {
+    return {
+      AND: [where, repairAccessWhere(user)],
+    };
+  }
+
+  private toPaginatedResult<T>(
+    data: T[],
+    page: number,
+    limit: number,
+    total: number,
+  ): PaginatedResult<T> {
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   private getMachineStatusForRepairStatus(
     status: RepairStatus,
   ): MachineStatus | null {
@@ -396,7 +495,9 @@ export class RepairsService {
   }
 
   private isTerminalStatus(status: RepairStatus): boolean {
-    return status === RepairStatus.COMPLETED || status === RepairStatus.CANCELLED;
+    return (
+      status === RepairStatus.COMPLETED || status === RepairStatus.CANCELLED
+    );
   }
 
   private pickChangedFields<T extends Record<string, unknown>>(

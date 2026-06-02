@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -14,6 +15,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequestUser } from '../common/request-user.type';
 import { AssignRepairDto } from './dto/assign-repair.dto';
 import { CreateRepairDto } from './dto/create-repair.dto';
+import { ListRepairsQueryDto } from './dto/list-repairs-query.dto';
 import { UpdateRepairStatusDto } from './dto/update-repair-status.dto';
 import { UpdateRepairDto } from './dto/update-repair.dto';
 import { RepairsService } from './repairs.service';
@@ -30,8 +32,8 @@ export class RepairsController {
   }
 
   @Get()
-  findAll() {
-    return this.repairsService.findAll();
+  findAll(@Query() query: ListRepairsQueryDto, @CurrentUser() user: RequestUser) {
+    return this.repairsService.findAll(query, user);
   }
 
   @Get('statuses')
@@ -45,8 +47,8 @@ export class RepairsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.repairsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.repairsService.findOne(id, user);
   }
 
   @Roles('admin')

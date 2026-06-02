@@ -62,7 +62,9 @@ export class AuditLogsService {
     });
   }
 
-  private toJson(value: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  private toJson(
+    value: unknown,
+  ): Prisma.InputJsonValue | typeof Prisma.JsonNull {
     if (value === undefined || value === null) {
       return Prisma.JsonNull;
     }

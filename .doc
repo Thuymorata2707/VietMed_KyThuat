@@ -1,0 +1,152 @@
+Cảm giác đó đúng. Backend của bạn hiện có các bảng và CRUD
+  chính, nhưng còn thiếu một lớp rất quan trọng: luồng nghiệp
+  vụ vận hành thật.
+
+  Nói ngắn gọn: hiện tại backend đang giống “hệ thống quản lý
+  dữ liệu”, chưa hẳn là “hệ thống điều hành công việc kỹ
+  thuật”.
+
+  Những phần đang thiếu rõ nhất:
+
+  1. Phân quyền chi tiết
+
+  Hiện có role, nhưng chưa thấy ma trận quyền rõ kiểu:
+
+  - Admin được làm gì
+  - Điều phối được giao việc gì
+  - Kỹ sư chỉ thấy việc của mình hay thấy toàn bộ
+  - Kế toán/kho có được sửa máy không
+  - Ai được đổi trạng thái sửa chữa/bảo trì
+
+  Bạn cần một bảng quyền hoặc ít nhất quy ước role rõ ràng.
+
+  2. Luồng công việc sửa chữa/bảo trì
+
+  Có RepairStatus, MaintenanceStatus, nhưng backend chưa thật
+  sự ép quy trình.
+
+  Ví dụ phiếu sửa chữa nên có luồng:
+
+  PENDING -> ASSIGNED -> IN_PROGRESS -> WAITING_PARTS ->
+  COMPLETED
+
+  Và phải chặn các bước sai, ví dụ không được:
+
+  PENDING -> COMPLETED
+
+  Cũng nên tự set thời gian:
+
+  - assign thì set assignedAt
+  - start thì set startedAt
+  - complete thì set completedAt
+
+  3. Lịch sử thao tác / audit log
+
+  Hệ thống kỹ thuật rất cần biết:
+
+  - Ai đổi trạng thái máy
+  - Ai giao việc cho kỹ sư
+  - Ai sửa thông tin khách hàng
+  - Trước đó giá trị là gì, sau đó là gì
+  - Thời điểm nào
+
+  Hiện có createdAt, updatedAt, nhưng chưa đủ. Nên thêm bảng
+  kiểu ActivityLog hoặc AuditLog.
+
+  4. File đính kèm / hình ảnh / biên bản
+
+  Thực tế kỹ thuật sẽ cần:
+
+  - Ảnh máy
+  - Ảnh lỗi
+  - Biên bản bàn giao
+  - Phiếu bảo trì
+  - Hóa đơn linh kiện
+  - File PDF nghiệm thu
+
+  Hiện schema chưa thấy phần Attachment/File.
+
+  5. Linh kiện và vật tư
+
+  Bạn có tồn kho máy, nhưng sửa chữa thường cần linh kiện:
+
+  - Linh kiện thay thế
+  - Vật tư tiêu hao
+  - Số lượng dùng
+  - Kho nào xuất
+  - Chi phí sửa chữa
+  - Chờ linh kiện thì chờ món gì
+
+  Nếu hệ thống phục vụ đội kỹ thuật thật, phần này gần như chắc
+  chắn cần.
+
+  6. Hợp đồng, bảo hành, gói bảo trì
+
+  Máy y tế thường liên quan:
+
+  - Thời hạn bảo hành
+  - Gói bảo trì định kỳ
+  - Hợp đồng dịch vụ
+  - SLA phản hồi
+  - Số lần bảo trì/năm
+  - Ngày đến hạn tiếp theo
+  Hiện có ngày bảo hành và maintenance, nhưng chưa có
+  ServiceContract hoặc logic sinh lịch bảo trì tự động.
+
+  Cần có:
+
+  - Việc mới giao cho kỹ sư
+  - Bảo trì sắp đến hạn
+  - Phiếu sửa chữa quá hạn
+  8. Dashboard nghiệp vụ
+
+  Hiện có module dashboard, nhưng backend nên trả được các chỉ
+  số như:
+
+  - Tổng số máy theo trạng thái
+  - Máy đang bảo trì/sửa chữa
+  - Bảo trì trong 7/30 ngày tới
+
+  Kết luận
+
+  Bạn không sai hướng. Phần đang thiếu là business workflow
+  layer: quy trình, lịch sử, file, linh kiện, hợp đồng, thông
+  báo, phân quyền chi tiết.
+
+  Thứ tự mình khuyên làm tiếp:
+
+  1. Vẽ lại quy trình thật của công ty: nhập máy, lắp máy, bảo
+     trì, sửa chữa, thu hồi.
+
+  2. Thêm AuditLog.
+  3. Siết state transition cho Repair và Maintenance.
+  4. Thêm Attachment.
+  5. Thêm quản lý linh kiện/vật tư.
+  6. Thêm hợp đồng/bảo hành/bảo trì định kỳ.
+  7. Sau đó mới làm frontend admin nghiêm túc.
+
+  Nếu chọn một việc ngay bây giờ, mình sẽ làm AuditLog + chuẩn
+  hóa workflow sửa chữa/bảo trì trước. Đây là phần biến backend
+  từ CRUD thành hệ thống quản lý thật.
+
+
+› OK. bạn làm luôn giúp tôi nhé, code luôn cho tô
+
+
+• Tôi sẽ triển khai phần nền trước: audit log dùng chung, siết
+  luồng trạng thái cho sửa chữa/bảo trì, và ghi log khi các
+  hành động quan trọng xảy ra. Trước khi sửa tôi đọc service/
+  controller hiện tại để khớp API đang có.
+
+• Explored
+  └ Read repairs.controller.ts, repairs.service.ts,
+         maintenance.controller.ts, maintenance.service.ts,
+         app.module.ts, current-user.decorator.ts, request-
+         user.type.ts
+
+───────────────────────────────────────────────────────────────
+
+• Tôi sẽ sửa theo phạm vi kiểm soát được: thêm AuditLog vào
+  Prisma, tạo module API xem audit log, rồi cập nhật repair/
+  maintenance để nhận CurrentUser, kiểm tra transition hợp lệ
+  và ghi lịch sử thao tác trong transaction.

@@ -374,6 +374,115 @@ async function main() {
     ),
   );
 
+  const requestedBusinessLines = await Promise.all(
+    [
+      {
+        code: 'ALPINION-ULTRASOUND',
+        name: 'Siêu Âm Alpinion',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'Alpinion',
+        productCategory: MachineProductCategory.ULTRASOUND,
+        countryOfOrigin: 'Korea',
+        description: 'Danh mục máy siêu âm Alpinion',
+        managerId: users[1].id,
+      },
+      {
+        code: 'FUJIREBIO',
+        name: 'Fujirebio',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'Fujirebio',
+        productCategory: MachineProductCategory.IMMUNOLOGY,
+        countryOfOrigin: 'Japan',
+        description: 'Danh mục máy xét nghiệm Fujirebio',
+        managerId: users[2].id,
+      },
+      {
+        code: 'MINDRAY',
+        name: 'Mindray',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'Mindray',
+        productCategory: MachineProductCategory.OTHER,
+        countryOfOrigin: 'China',
+        description: 'Danh mục máy Mindray',
+        managerId: users[3].id,
+      },
+      {
+        code: 'MINATO',
+        name: 'Minato',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'Minato',
+        productCategory: MachineProductCategory.OTHER,
+        countryOfOrigin: 'Japan',
+        description: 'Danh mục máy Minato',
+        managerId: users[4].id,
+      },
+    ].map((businessLine) =>
+      prisma.businessLine.upsert({
+        where: { code: businessLine.code },
+        update: businessLine,
+        create: businessLine,
+      }),
+    ),
+  );
+
+  await Promise.all(
+    [
+      {
+        businessLineId: requestedBusinessLines[0].id,
+        models: ['XCube 50', 'XCube 60', 'XCube 70', 'XCube 90'],
+        productCategory: MachineProductCategory.ULTRASOUND,
+        productLine: 'XCube',
+        manufacturer: 'Alpinion',
+      },
+      {
+        businessLineId: requestedBusinessLines[1].id,
+        models: ['Lumipulse G600II', 'Lumipulse G1200', 'Lumipulse G3000'],
+        productCategory: MachineProductCategory.IMMUNOLOGY,
+        productLine: 'Lumipulse',
+        manufacturer: 'Fujirebio',
+      },
+      {
+        businessLineId: requestedBusinessLines[2].id,
+        models: ['BC-30s', 'BC-60s', 'BS-240', 'BS-430', 'CL-900i'],
+        productCategory: MachineProductCategory.OTHER,
+        manufacturer: 'Mindray',
+      },
+      {
+        businessLineId: requestedBusinessLines[3].id,
+        models: ['Autospiro AS-507', 'Autospiro AS-407', 'Minato AE-310S'],
+        productCategory: MachineProductCategory.OTHER,
+        manufacturer: 'Minato',
+      },
+    ]
+      .flatMap((group) =>
+        group.models.map((model) => ({
+          businessLineId: group.businessLineId,
+          code: model
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, '-')
+            .replace(/^-|-$/g, ''),
+          name: model,
+          displayName: model,
+          status: BusinessLineStatus.ACTIVE,
+          manufacturer: group.manufacturer,
+          productCategory: group.productCategory,
+          productLine: group.productLine ?? null,
+        })),
+      )
+      .map((machineModel) =>
+        prisma.machineModel.upsert({
+          where: {
+            businessLineId_code: {
+              businessLineId: machineModel.businessLineId,
+              code: machineModel.code,
+            },
+          },
+          update: machineModel,
+          create: machineModel,
+        }),
+      ),
+  );
+
   const machines = await Promise.all(
     [
       {
@@ -693,7 +802,11 @@ async function main() {
         assignedAt: date('2026-05-10'),
         startedAt: date('2026-05-12'),
         completedAt: date('2026-05-12'),
-        checklist: ['Kiem tra detector', 'Kiem tra workstation', 'Backup cau hinh'],
+        checklist: [
+          'Kiem tra detector',
+          'Kiem tra workstation',
+          'Backup cau hinh',
+        ],
         resultNote: 'Bao tri hoan thanh',
         nextDueDate: date('2026-11-12'),
       },

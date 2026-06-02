@@ -24,8 +24,8 @@ export class InventoryMovementsController {
   }
 
   @Get()
-  findAll() {
-    return this.inventoryMovementsService.findAll();
+  findAll(@CurrentUser() user: RequestUser) {
+    return this.inventoryMovementsService.findAll(user);
   }
 
   @Get('types')
@@ -34,7 +34,7 @@ export class InventoryMovementsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.inventoryMovementsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.inventoryMovementsService.findOne(id, user);
   }
 }

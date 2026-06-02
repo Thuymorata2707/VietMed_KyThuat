@@ -1,10 +1,40 @@
+import { IsArray, IsDateString, IsOptional, IsString } from 'class-validator';
+
 export class UpsertEngineerProfileDto {
+  @IsOptional()
+  @IsString()
   employeeCode?: string | null;
+
+  @IsOptional()
+  @IsDateString()
   dateOfBirth?: string | null;
+
+  @IsOptional()
+  @IsString()
   position?: string | null;
+
+  @IsOptional()
+  @IsString()
   department?: string | null;
+
+  @IsOptional()
+  @IsDateString()
   workStartDate?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   specialties?: string[];
+
+  @IsOptional()
+  @IsString()
   certificateNo?: string | null;
+
+  @IsOptional()
+  @IsString()
+  photoUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
   note?: string | null;
 }

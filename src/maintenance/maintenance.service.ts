@@ -7,12 +7,17 @@ import {
   MachineStatus,
   MaintenanceStatus,
   MaintenanceType,
+  Prisma,
 } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { maintenanceAccessWhere } from '../auth/access-scope';
+import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
+import { validateMachineState } from '../machines/machine-state.rules';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignMaintenanceDto } from './dto/assign-maintenance.dto';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
+import { ListMaintenanceQueryDto } from './dto/list-maintenance-query.dto';
 import { UpdateMaintenanceStatusDto } from './dto/update-maintenance-status.dto';
 import { UpdateMaintenanceDto } from './dto/update-maintenance.dto';
 
@@ -74,18 +79,33 @@ export class MaintenanceService {
     });
   }
 
-  findAll() {
-    return this.prisma.maintenance.findMany({
-      include: this.defaultInclude(),
-      orderBy: {
-        scheduledDate: 'asc',
-      },
-    });
+  async findAll(
+    query: ListMaintenanceQueryDto,
+    user?: RequestUser,
+  ): Promise<PaginatedResult<unknown>> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const where = this.withAccessScope(this.buildFindAllWhere(query), user);
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.maintenance.findMany({
+        where,
+        include: this.defaultInclude(),
+        orderBy: {
+          scheduledDate: 'asc',
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.maintenance.count({ where }),
+    ]);
+
+    return this.toPaginatedResult(data, page, limit, total);
   }
 
-  async findOne(id: string) {
-    const maintenance = await this.prisma.maintenance.findUnique({
-      where: { id },
+  async findOne(id: string, user?: RequestUser) {
+    const maintenance = await this.prisma.maintenance.findFirst({
+      where: this.withAccessScope({ id }, user),
       include: this.defaultInclude(),
     });
 
@@ -245,6 +265,11 @@ export class MaintenanceService {
       );
 
       if (machineStatus) {
+        validateMachineState(
+          machineStatus,
+          maintenance.machine.inventoryStatus,
+          maintenance.machine.customerId,
+        );
         await tx.machine.update({
           where: { id: maintenance.machineId },
           data: {
@@ -374,6 +399,85 @@ export class MaintenanceService {
     return checklist
       .map((item) => item.trim())
       .filter((item) => item.length > 0);
+  }
+
+  private buildFindAllWhere(
+    query: ListMaintenanceQueryDto,
+  ): Prisma.MaintenanceWhereInput {
+    const search = query.search?.trim();
+
+    return {
+      status: query.status,
+      type: query.type,
+      machineId: query.machineId,
+      engineerId: query.engineerId,
+      machine: query.customerId
+        ? {
+            customerId: query.customerId,
+          }
+        : undefined,
+      scheduledDate:
+        query.scheduledFrom || query.scheduledTo
+          ? {
+              gte: query.scheduledFrom
+                ? this.parseRequiredDate(query.scheduledFrom, 'scheduledFrom')
+                : undefined,
+              lte: query.scheduledTo
+                ? this.parseRequiredDate(query.scheduledTo, 'scheduledTo')
+                : undefined,
+            }
+          : undefined,
+      OR: search
+        ? [
+            { code: { contains: search, mode: 'insensitive' } },
+            { title: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+            {
+              machine: {
+                serialNumber: { contains: search, mode: 'insensitive' },
+              },
+            },
+            {
+              machine: {
+                machineCode: { contains: search, mode: 'insensitive' },
+              },
+            },
+            {
+              machine: {
+                customer: {
+                  name: { contains: search, mode: 'insensitive' },
+                },
+              },
+            },
+          ]
+        : undefined,
+    };
+  }
+
+  private withAccessScope(
+    where: Prisma.MaintenanceWhereInput,
+    user?: RequestUser,
+  ): Prisma.MaintenanceWhereInput {
+    return {
+      AND: [where, maintenanceAccessWhere(user)],
+    };
+  }
+
+  private toPaginatedResult<T>(
+    data: T[],
+    page: number,
+    limit: number,
+    total: number,
+  ): PaginatedResult<T> {
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   private statusRequiresEngineer(status: MaintenanceStatus): boolean {

@@ -56,6 +56,7 @@ export class EngineerProfilesService {
         ),
         specialties: this.normalizeSpecialties(dto.specialties),
         certificateNo: dto.certificateNo?.trim() || null,
+        photoUrl: dto.photoUrl?.trim() || null,
         note: dto.note?.trim() || null,
       },
       update: {
@@ -85,6 +86,8 @@ export class EngineerProfilesService {
           dto.certificateNo === undefined
             ? undefined
             : dto.certificateNo?.trim() || null,
+        photoUrl:
+          dto.photoUrl === undefined ? undefined : dto.photoUrl?.trim() || null,
         note: dto.note === undefined ? undefined : dto.note?.trim() || null,
       },
       include: this.defaultInclude(),

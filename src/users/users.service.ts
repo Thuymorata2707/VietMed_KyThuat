@@ -6,6 +6,9 @@ import {
 } from '@nestjs/common';
 import { EngineerProfile, User, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { pickChangedFields } from '../common/audit-changes';
+import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -25,9 +28,15 @@ type UserWithoutPassword = Omit<User, 'password'> & {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
-  async create(dto: CreateUserDto): Promise<UserWithoutPassword> {
+  async create(
+    dto: CreateUserDto,
+    actor?: RequestUser,
+  ): Promise<UserWithoutPassword> {
     this.validateCreateUser(dto);
 
     const existingUser = await this.prisma.user.findUnique({
@@ -40,21 +49,41 @@ export class UsersService {
 
     await this.ensureRoleAndRegionExist(dto.roleId, dto.regionId);
 
-    const user = await this.prisma.user.create({
-      data: {
-        email: this.normalizeEmail(dto.email),
-        password: await bcrypt.hash(dto.password, 10),
-        fullName: dto.fullName.trim(),
-        phone: dto.phone?.trim() || null,
-        roleId: dto.roleId,
-        regionId: dto.regionId,
-        status: dto.status ?? UserStatus.ACTIVE,
-      },
-      include: {
-        role: true,
-        region: true,
-        engineerProfile: true,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: this.normalizeEmail(dto.email),
+          password: await bcrypt.hash(dto.password, 10),
+          fullName: dto.fullName.trim(),
+          phone: dto.phone?.trim() || null,
+          roleId: dto.roleId,
+          regionId: dto.regionId,
+          status: dto.status ?? UserStatus.ACTIVE,
+        },
+        include: {
+          role: true,
+          region: true,
+          engineerProfile: true,
+        },
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: 'CREATE',
+          entityType: 'User',
+          entityId: created.id,
+          actor,
+          metadata: {
+            email: created.email,
+            roleId: created.roleId,
+            regionId: created.regionId,
+            status: created.status,
+          },
+        },
+        tx,
+      );
+
+      return created;
     });
 
     return this.withoutPassword(user);
@@ -92,8 +121,12 @@ export class UsersService {
     return this.withoutPassword(user);
   }
 
-  async update(id: string, dto: UpdateUserDto): Promise<UserWithoutPassword> {
-    await this.findOne(id);
+  async update(
+    id: string,
+    dto: UpdateUserDto,
+    actor?: RequestUser,
+  ): Promise<UserWithoutPassword> {
+    const current = await this.findOne(id);
 
     if (dto.email) {
       const existingUser = await this.prisma.user.findUnique({
@@ -116,24 +149,50 @@ export class UsersService {
       );
     }
 
-    const user = await this.prisma.user.update({
-      where: { id },
-      data: {
-        email: dto.email ? this.normalizeEmail(dto.email) : undefined,
-        password: dto.password
-          ? await bcrypt.hash(dto.password, 10)
-          : undefined,
-        fullName: dto.fullName?.trim(),
-        phone: dto.phone === undefined ? undefined : dto.phone?.trim() || null,
-        roleId: dto.roleId,
-        regionId: dto.regionId,
-        status: dto.status,
-      },
-      include: {
-        role: true,
-        region: true,
-        engineerProfile: true,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: {
+          email: dto.email ? this.normalizeEmail(dto.email) : undefined,
+          password: dto.password
+            ? await bcrypt.hash(dto.password, 10)
+            : undefined,
+          fullName: dto.fullName?.trim(),
+          phone:
+            dto.phone === undefined ? undefined : dto.phone?.trim() || null,
+          roleId: dto.roleId,
+          regionId: dto.regionId,
+          status: dto.status,
+        },
+        include: {
+          role: true,
+          region: true,
+          engineerProfile: true,
+        },
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: 'UPDATE',
+          entityType: 'User',
+          entityId: id,
+          actor,
+          changes: pickChangedFields(current, this.withoutPassword(updated), [
+            'email',
+            'fullName',
+            'phone',
+            'roleId',
+            'regionId',
+            'status',
+          ]),
+          metadata: {
+            passwordChanged: Boolean(dto.password),
+          },
+        },
+        tx,
+      );
+
+      return updated;
     });
 
     return this.withoutPassword(user);
@@ -142,17 +201,38 @@ export class UsersService {
   async setStatus(
     id: string,
     status: UserStatus,
+    actor?: RequestUser,
   ): Promise<UserWithoutPassword> {
-    await this.findOne(id);
+    const current = await this.findOne(id);
 
-    const user = await this.prisma.user.update({
-      where: { id },
-      data: { status },
-      include: {
-        role: true,
-        region: true,
-        engineerProfile: true,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: { status },
+        include: {
+          role: true,
+          region: true,
+          engineerProfile: true,
+        },
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: 'STATUS_CHANGE',
+          entityType: 'User',
+          entityId: id,
+          actor,
+          changes: {
+            status: {
+              from: current.status,
+              to: updated.status,
+            },
+          },
+        },
+        tx,
+      );
+
+      return updated;
     });
 
     return this.withoutPassword(user);

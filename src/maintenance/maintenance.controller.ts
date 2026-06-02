@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -14,6 +15,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequestUser } from '../common/request-user.type';
 import { AssignMaintenanceDto } from './dto/assign-maintenance.dto';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
+import { ListMaintenanceQueryDto } from './dto/list-maintenance-query.dto';
 import { UpdateMaintenanceStatusDto } from './dto/update-maintenance-status.dto';
 import { UpdateMaintenanceDto } from './dto/update-maintenance.dto';
 import { MaintenanceService } from './maintenance.service';
@@ -25,16 +27,16 @@ export class MaintenanceController {
 
   @Roles('admin')
   @Post()
-  create(
-    @Body() dto: CreateMaintenanceDto,
-    @CurrentUser() user: RequestUser,
-  ) {
+  create(@Body() dto: CreateMaintenanceDto, @CurrentUser() user: RequestUser) {
     return this.maintenanceService.create(dto, user);
   }
 
   @Get()
-  findAll() {
-    return this.maintenanceService.findAll();
+  findAll(
+    @Query() query: ListMaintenanceQueryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.maintenanceService.findAll(query, user);
   }
 
   @Get('statuses')
@@ -48,8 +50,8 @@ export class MaintenanceController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.maintenanceService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.maintenanceService.findOne(id, user);
   }
 
   @Roles('admin')
