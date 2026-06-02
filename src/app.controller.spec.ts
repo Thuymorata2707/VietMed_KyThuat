@@ -15,8 +15,21 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return service info', () => {
+      expect(appController.getServiceInfo()).toEqual({
+        name: 'VietMed Ky Thuat API',
+        status: 'ok',
+      });
+    });
+
+    it('should return health status', () => {
+      expect(appController.getHealth()).toEqual(
+        expect.objectContaining({
+          status: 'ok',
+          uptime: expect.any(Number),
+          timestamp: expect.any(String),
+        }),
+      );
     });
   });
 });

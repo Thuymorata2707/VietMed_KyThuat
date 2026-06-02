@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { RequestUser } from '../common/request-user.type';
+import { AppConfigService } from '../config/app-config.service';
 
 type JwtPayload = RequestUser & {
   iat: number;
@@ -9,17 +10,14 @@ type JwtPayload = RequestUser & {
 
 @Injectable()
 export class JwtService {
-  private readonly secret = process.env.JWT_SECRET ?? 'vietmed-dev-secret';
-  private readonly expiresInSeconds = Number(
-    process.env.JWT_EXPIRES_IN ?? 86400,
-  );
+  constructor(private readonly config: AppConfigService) {}
 
   sign(user: RequestUser): string {
     const now = Math.floor(Date.now() / 1000);
     const payload: JwtPayload = {
       ...user,
       iat: now,
-      exp: now + this.expiresInSeconds,
+      exp: now + this.config.jwtExpiresInSeconds,
     };
 
     const encodedHeader = this.base64UrlEncode(
@@ -60,7 +58,9 @@ export class JwtService {
   }
 
   private createSignature(value: string): string {
-    return createHmac('sha256', this.secret).update(value).digest('base64url');
+    return createHmac('sha256', this.config.jwtSecret)
+      .update(value)
+      .digest('base64url');
   }
 
   private base64UrlEncode(value: string): string {

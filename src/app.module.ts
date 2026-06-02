@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { AuthModule } from './auth/auth.module';
 import { BusinessLinesModule } from './business-lines/business-lines.module';
 import { CustomersModule } from './customers/customers.module';
+import { AppConfigModule } from './config/app-config.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { EngineerProfilesModule } from './engineer-profiles/engineer-profiles.module';
 import { InventoryMovementsModule } from './inventory-movements/inventory-movements.module';
@@ -20,6 +23,7 @@ import { UsersModule } from './users/users.module';
 @Module({
   imports: [
     PrismaModule,
+    AppConfigModule,
     AuditLogsModule,
     AttachmentsModule,
     AuthModule,
@@ -37,5 +41,7 @@ import { UsersModule } from './users/users.module';
     InstallationsModule,
     MachineModelsModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
