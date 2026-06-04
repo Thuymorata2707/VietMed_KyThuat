@@ -1,0 +1,11 @@
+.splash {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(37, 99, 235, 0.08)),
+    #f4f7fb;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}

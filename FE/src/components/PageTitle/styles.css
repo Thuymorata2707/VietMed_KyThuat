@@ -1,0 +1,31 @@
+.page-title {
+  max-width: 760px;
+}
+
+.eyebrow {
+  color: #657384;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.page-title h1 {
+  color: #111827;
+  font-size: 32px;
+  line-height: 1.15;
+  margin: 6px 0 0;
+}
+
+.page-title p {
+  color: #657384;
+  line-height: 1.6;
+  margin: 10px 0 0;
+}
+
+@media (max-width: 640px) {
+  .page-title h1 {
+    font-size: 26px;
+  }
+}
