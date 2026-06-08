@@ -1,10 +1,41 @@
 import {
   IsArray,
   IsDateString,
+  IsIn,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
+  Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class InstallationDeviceItemDto {
+  @IsString()
+  @IsNotEmpty()
+  itemName!: string;
+
+  @IsOptional()
+  @IsString()
+  model?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNumber?: string;
+
+  @IsOptional()
+  @IsDateString()
+  manufactureDate?: string;
+
+  @IsNumber()
+  @Min(1)
+  quantity!: number;
+
+  @IsOptional()
+  @IsString()
+  warrantyPeriod?: string;
+}
 
 export class CreateInstallationDto {
   @IsString()
@@ -45,4 +76,50 @@ export class CreateInstallationDto {
   @IsOptional()
   @IsString()
   warrantyNote?: string;
+
+  @IsOptional()
+  @IsString()
+  handoverInstallerName?: string;
+
+  @IsOptional()
+  @IsString()
+  handoverInstallerPosition?: string;
+
+  @IsOptional()
+  @IsString()
+  handoverVehicle?: string;
+
+  @IsOptional()
+  @IsDateString()
+  handoverDepartureDate?: string;
+
+  @IsOptional()
+  @IsString()
+  receiverInstallAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  receiverRepresentative?: string;
+
+  @IsOptional()
+  @IsString()
+  receiverPosition?: string;
+
+  @IsOptional()
+  @IsString()
+  receiverPhone?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => InstallationDeviceItemDto)
+  installedDeviceItems?: InstallationDeviceItemDto[];
+
+  @IsOptional()
+  @IsIn(['NEW_100', 'OTHER'])
+  deviceCondition?: string;
+
+  @IsOptional()
+  @IsString()
+  deviceConditionNote?: string;
 }

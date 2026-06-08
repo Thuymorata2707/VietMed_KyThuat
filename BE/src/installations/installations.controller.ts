@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -14,6 +15,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequestUser } from '../common/request-user.type';
 import { CreateInstallationDto } from './dto/create-installation.dto';
 import { ListInstallationsQueryDto } from './dto/list-installations-query.dto';
+import { UpdateInstallationStatusDto } from './dto/update-installation-status.dto';
 import { InstallationsService } from './installations.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -21,7 +23,7 @@ import { InstallationsService } from './installations.service';
 export class InstallationsController {
   constructor(private readonly installationsService: InstallationsService) {}
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Post()
   create(@Body() dto: CreateInstallationDto, @CurrentUser() user: RequestUser) {
     return this.installationsService.create(dto, user);
@@ -43,5 +45,14 @@ export class InstallationsController {
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.installationsService.findOne(id, user);
+  }
+
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateInstallationStatusDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.installationsService.updateStatus(id, dto, user);
   }
 }

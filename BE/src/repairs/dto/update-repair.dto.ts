@@ -21,4 +21,44 @@ export class UpdateRepairDto {
   @IsOptional()
   @IsString()
   customerFeedback?: string | null;
+
+  @IsOptional()
+  @IsString()
+  usingDepartment?: string | null;
+
+  @IsOptional()
+  @IsString()
+  representative?: string | null;
+
+  @IsOptional()
+  @IsString()
+  address?: string | null;
+
+  @IsOptional()
+  @IsString()
+  contactPhone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  deviceName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  modelName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  serialNumber?: string | null;
+
+  @IsOptional()
+  @IsString()
+  warrantyStatus?: string | null;
+
+  @IsOptional()
+  @IsString()
+  conditionAssessment?: string | null;
+
+  @IsOptional()
+  @IsString()
+  repairMethod?: string | null;
 }

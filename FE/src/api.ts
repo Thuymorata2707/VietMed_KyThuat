@@ -9,6 +9,9 @@ export type ApiUser = {
   status?: string;
   role?: { id: string; name: string };
   region?: { id: string; name: string; code: string };
+  engineerProfile?: {
+    expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
+  } | null;
   roleName?: string;
   regionId?: string;
 };

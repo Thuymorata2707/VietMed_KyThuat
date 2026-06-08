@@ -305,23 +305,43 @@
 }
 
 .panel-badge {
+  align-items: center;
+  border: 1px solid transparent;
   border-radius: 8px;
   display: inline-flex;
   font-size: 13px;
   font-weight: 600;
+  gap: 7px;
   min-height: 30px;
   padding: 7px 9px;
   white-space: nowrap;
 }
 
+.panel-badge::before {
+  border-radius: 999px;
+  content: "";
+  height: 7px;
+  width: 7px;
+}
+
 .panel-badge.good {
   background: #ecfdf3;
+  border-color: #abefc6;
   color: #027a48;
+}
+
+.panel-badge.good::before {
+  background: #12b76a;
 }
 
 .panel-badge.warn {
   background: #fff7ed;
+  border-color: #fedf89;
   color: #b54708;
+}
+
+.panel-badge.warn::before {
+  background: #f79009;
 }
 
 .attention-list {

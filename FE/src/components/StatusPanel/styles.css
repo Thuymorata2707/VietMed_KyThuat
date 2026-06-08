@@ -24,10 +24,32 @@
 
 .status-row {
   align-items: center;
-  background: #f6f9fc;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+  border: 1px solid #e5ebf2;
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
   min-height: 44px;
-  padding: 0 12px;
+  padding: 0 13px;
+}
+
+.status-row span {
+  color: #657384;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-row strong {
+  align-items: center;
+  background: #fff1ef;
+  border: 1px solid #f0b7b1;
+  border-radius: 999px;
+  color: #c92a1f;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 28px;
+  min-width: 34px;
+  padding: 6px 10px;
 }

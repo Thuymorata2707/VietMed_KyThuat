@@ -1,0 +1,42 @@
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { CreateProductIndustryDto } from './dto/create-product-industry.dto';
+import { UpdateProductIndustryDto } from './dto/update-product-industry.dto';
+import { ProductIndustriesService } from './product-industries.service';
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('product-industries')
+export class ProductIndustriesController {
+  constructor(private readonly service: ProductIndustriesService) {}
+
+  @Roles('admin')
+  @Post()
+  create(@Body() dto: CreateProductIndustryDto) {
+    return this.service.create(dto);
+  }
+
+  @Get()
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.service.findAll(query);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
+  }
+
+  @Roles('admin')
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateProductIndustryDto) {
+    return this.service.update(id, dto);
+  }
+
+  @Roles('admin')
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.service.remove(id);
+  }
+}

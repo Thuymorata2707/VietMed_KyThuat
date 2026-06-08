@@ -55,6 +55,7 @@ export class EngineerProfilesService {
           'workStartDate',
         ),
         specialties: this.normalizeSpecialties(dto.specialties),
+        expertiseGroup: dto.expertiseGroup ?? null,
         certificateNo: dto.certificateNo?.trim() || null,
         photoUrl: dto.photoUrl?.trim() || null,
         note: dto.note?.trim() || null,
@@ -82,6 +83,8 @@ export class EngineerProfilesService {
           dto.specialties === undefined
             ? undefined
             : this.normalizeSpecialties(dto.specialties),
+        expertiseGroup:
+          dto.expertiseGroup === undefined ? undefined : dto.expertiseGroup,
         certificateNo:
           dto.certificateNo === undefined
             ? undefined

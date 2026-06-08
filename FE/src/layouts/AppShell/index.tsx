@@ -5,7 +5,7 @@ import { ApiUser, clearToken, getApiBaseUrl } from '../../api';
 import { getRoleName, roleLabel } from '../../auth/roles';
 import { Brand } from '../../components/Brand';
 import { RequireRole } from '../../components/RequireRole';
-import { navItemsForRole } from '../../config/navigation';
+import { navGroupsForRole, navItemsForRole } from '../../config/navigation';
 import { resources } from '../../config/resources';
 import { adminCrudConfigs } from '../../config/adminCrud';
 import { AccessDeniedPage } from '../../pages/AccessDeniedPage';
@@ -13,8 +13,12 @@ import { AdminCrudPage } from '../../pages/AdminCrudPage';
 import { AdminRegionsPage } from '../../pages/AdminRegionsPage';
 import { AdminRolesPage } from '../../pages/AdminRolesPage';
 import { AdminUsersPage } from '../../pages/AdminUsersPage';
+import { AdminWorkAssignmentPage } from '../../pages/AdminWorkAssignmentPage';
 import { DashboardPage } from '../../pages/DashboardPage';
+import { EngineerTasksPage } from '../../pages/EngineerTasksPage';
+import { ProductCatalogPage } from '../../pages/ProductCatalogPage';
 import { ResourcePage } from '../../pages/ResourcePage';
+import { ServiceTicketsPage } from '../../pages/ServiceTicketsPage';
 import { initials } from '../../utils/format';
 import './styles.css';
 
@@ -29,6 +33,7 @@ export function AppShell({ user, onLogout }: AppShellProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const role = getRoleName(user);
   const visibleNavItems = navItemsForRole(role);
+  const visibleNavGroups = navGroupsForRole(role);
   const activeNavItem = visibleNavItems.find((item) =>
     item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path),
   );
@@ -56,15 +61,22 @@ export function AppShell({ user, onLogout }: AppShellProps) {
         </div>
 
         <nav className="nav-list">
-          {visibleNavItems.map((item) => {
-            const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
-            return (
-              <Link className={isActive ? 'nav-item active' : 'nav-item'} key={item.path} title={item.label} to={item.path}>
-                {item.icon}
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+          {visibleNavGroups.map((group) => (
+            <div className="nav-group" key={group.label}>
+              <span className="nav-group-label">{group.label}</span>
+              <div className="nav-group-items">
+                {group.items.map((item) => {
+                  const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+                  return (
+                    <Link className={isActive ? 'nav-item active' : 'nav-item'} key={item.path} title={item.label} to={item.path}>
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="sidebar-footer">
@@ -101,6 +113,7 @@ export function AppShell({ user, onLogout }: AppShellProps) {
 
         <Routes>
           <Route path="/" element={<DashboardPage role={role} />} />
+          <Route path="/my-tasks" element={role === 'admin' ? <AdminWorkAssignmentPage /> : <EngineerTasksPage user={user} />} />
           <Route
             path="/users"
             element={
@@ -137,8 +150,34 @@ export function AppShell({ user, onLogout }: AppShellProps) {
               </RequireRole>
             }
           />
+          <Route
+            path="/business-lines/manage"
+            element={
+              <RequireRole
+                allowedRoles={['admin']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminCrudPage config={adminCrudConfigs['business-lines']} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/service-tickets"
+            element={
+              <RequireRole
+                allowedRoles={resources.repairs.roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <ServiceTicketsPage user={user} />
+              </RequireRole>
+            }
+          />
+          <Route path="/repairs" element={<Navigate to="/service-tickets" replace />} />
+          <Route path="/maintenance" element={<Navigate to="/service-tickets" replace />} />
           {Object.keys(resources).map((key) => (
-            ['users', 'roles', 'regions'].includes(key) ? null :
+            ['users', 'roles', 'regions', 'repairs', 'maintenance'].includes(key) ? null :
             <Route
               key={key}
               path={`/${key}`}
@@ -148,7 +187,9 @@ export function AppShell({ user, onLogout }: AppShellProps) {
                   currentRole={role}
                   renderDenied={(message) => <AccessDeniedPage message={message} />}
                 >
-                  {role === 'admin' && adminCrudConfigs[key] ? (
+                  {key === 'business-lines' ? (
+                    <ProductCatalogPage user={user} />
+                  ) : role === 'admin' && adminCrudConfigs[key] ? (
                     <AdminCrudPage config={adminCrudConfigs[key]} />
                   ) : (
                     <ResourcePage config={resources[key]} />

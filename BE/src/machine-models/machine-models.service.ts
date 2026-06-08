@@ -50,6 +50,33 @@ export class MachineModelsService {
         include: this.defaultInclude(),
       });
 
+      for (const [componentIndex, component] of (dto.components ?? []).entries()) {
+        const createdComponent = await tx.machineComponent.create({
+          data: {
+            machineModelId: created.id,
+            code: this.normalizeCode(component.code),
+            name: component.name.trim(),
+            description: component.description?.trim() || null,
+            sortOrder: componentIndex,
+            status: BusinessLineStatus.ACTIVE,
+          },
+        });
+
+        for (const [accessoryIndex, accessory] of (component.accessories ?? []).entries()) {
+          await tx.componentAccessory.create({
+            data: {
+              componentId: createdComponent.id,
+              code: this.normalizeCode(accessory.code),
+              name: accessory.name.trim(),
+              description: accessory.description?.trim() || null,
+              requiresSerial: accessory.requiresSerial ?? true,
+              sortOrder: accessoryIndex,
+              status: BusinessLineStatus.ACTIVE,
+            },
+          });
+        }
+      }
+
       await this.auditLogsService.create(
         {
           action: 'CREATE',
@@ -65,7 +92,10 @@ export class MachineModelsService {
         tx,
       );
 
-      return created;
+      return tx.machineModel.findUnique({
+        where: { id: created.id },
+        include: this.defaultInclude(),
+      });
     });
   }
 
@@ -106,6 +136,11 @@ export class MachineModelsService {
         machines: {
           include: {
             customer: true,
+            _count: {
+              select: {
+                accessories: true,
+              },
+            },
           },
           orderBy: {
             createdAt: 'desc',
@@ -118,7 +153,19 @@ export class MachineModelsService {
       throw new NotFoundException('Machine model not found');
     }
 
-    return machineModel;
+    const inventorySummary = machineModel.machines.reduce<
+      Record<string, number>
+    >((summary, machine) => {
+      summary[machine.inventoryStatus] =
+        (summary[machine.inventoryStatus] ?? 0) + 1;
+      return summary;
+    }, {});
+
+    return {
+      ...machineModel,
+      inventorySummary,
+      warehouseQuantity: inventorySummary.IN_STOCK ?? 0,
+    };
   }
 
   async update(id: string, dto: UpdateMachineModelDto, actor?: RequestUser) {
@@ -242,6 +289,18 @@ export class MachineModelsService {
         'businessLineId, code and name are required',
       );
     }
+
+    for (const component of dto.components ?? []) {
+      if (!component.code?.trim() || !component.name?.trim()) {
+        throw new BadRequestException('component code and name are required');
+      }
+
+      for (const accessory of component.accessories ?? []) {
+        if (!accessory.code?.trim() || !accessory.name?.trim()) {
+          throw new BadRequestException('accessory code and name are required');
+        }
+      }
+    }
   }
 
   private async ensureBusinessLineExists(id: string) {
@@ -306,7 +365,19 @@ export class MachineModelsService {
 
   private defaultInclude() {
     return {
-      businessLine: true,
+      businessLine: {
+        include: {
+          productIndustry: true,
+        },
+      },
+      components: {
+        include: {
+          accessories: {
+            orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }],
+          },
+        },
+        orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }],
+      },
       _count: {
         select: {
           machines: true,

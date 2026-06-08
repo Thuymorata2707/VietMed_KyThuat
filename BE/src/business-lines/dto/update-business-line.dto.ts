@@ -1,4 +1,4 @@
-import { BusinessLineStatus, MachineProductCategory } from '@prisma/client';
+import { BusinessLineStatus, ExpertiseGroup, MachineProductCategory } from '@prisma/client';
 import { IsEmail, IsEnum, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class UpdateBusinessLineDto {
@@ -25,6 +25,14 @@ export class UpdateBusinessLineDto {
   @IsOptional()
   @IsEnum(MachineProductCategory)
   productCategory?: MachineProductCategory;
+
+  @IsOptional()
+  @IsEnum(ExpertiseGroup)
+  expertiseGroup?: ExpertiseGroup;
+
+  @IsOptional()
+  @IsString()
+  productIndustryId?: string | null;
 
   @IsOptional()
   @IsString()

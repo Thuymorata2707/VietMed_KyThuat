@@ -11,6 +11,7 @@ import './styles.css';
 type SelectOption = { label: string; value: string };
 type OptionMap = Record<string, SelectOption[]>;
 type FormState = Record<string, string>;
+type FilterState = Record<string, string>;
 type PaginationState = {
   limit: number;
   page: number;
@@ -19,12 +20,14 @@ type PaginationState = {
 };
 
 const pageSizeOptions = [10, 20, 50, 100];
+const quickFilterKeys = ['status', 'priority', 'type', 'engineer.fullName', 'installedBy.fullName', 'primaryEngineer.fullName'];
 
-export function AdminCrudPage({ config }: { config: AdminCrudConfig }) {
+export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConfig; headerControl?: ReactNode }) {
   const [rows, setRows] = useState<TableRow[]>([]);
   const [options, setOptions] = useState<OptionMap>({});
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [filters, setFilters] = useState<FilterState>({});
   const [form, setForm] = useState<FormState>({});
   const [selectedRow, setSelectedRow] = useState<TableRow | null>(null);
   const [editingRow, setEditingRow] = useState<TableRow | null>(null);
@@ -44,7 +47,10 @@ export function AdminCrudPage({ config }: { config: AdminCrudConfig }) {
 
   useEffect(() => {
     setPage(1);
+    setQuery('');
+    setDebouncedQuery('');
     setSelectedRow(null);
+    setFilters({});
   }, [config.endpoint]);
 
   useEffect(() => {
@@ -55,7 +61,9 @@ export function AdminCrudPage({ config }: { config: AdminCrudConfig }) {
     return () => window.clearTimeout(timeout);
   }, [query]);
 
-  const filteredRows = useMemo(() => (pagination ? rows : filterRows(rows, query)), [pagination, query, rows]);
+  const searchableRows = useMemo(() => (pagination ? rows : filterRows(rows, query)), [pagination, query, rows]);
+  const filteredRows = useMemo(() => applyColumnFilters(searchableRows, filters), [filters, searchableRows]);
+  const quickFilters = useMemo(() => buildQuickFilters(config, rows), [config, rows]);
 
   useEffect(() => {
     if (!pagination) return;
@@ -83,7 +91,7 @@ export function AdminCrudPage({ config }: { config: AdminCrudConfig }) {
 
   function startCreate() {
     setEditingRow(null);
-    setForm(buildInitialForm(visibleFields(config.fields, false), null, options));
+    setForm(buildInitialForm(visibleFields(config.fields, false), null, options, config.endpoint));
     setSuccess('');
     setError('');
     setIsModalOpen(true);
@@ -102,7 +110,7 @@ export function AdminCrudPage({ config }: { config: AdminCrudConfig }) {
   function startEdit(row: TableRow) {
     setSelectedRow(null);
     setEditingRow(row);
-    setForm(buildInitialForm(visibleFields(config.fields, true), row, options));
+    setForm(buildInitialForm(visibleFields(config.fields, true), row, options, config.endpoint));
     setSuccess('');
     setError('');
     setIsModalOpen(true);
@@ -121,7 +129,8 @@ export function AdminCrudPage({ config }: { config: AdminCrudConfig }) {
     setSuccess('');
 
     try {
-      const payload = buildPayload(visibleFields(config.fields, Boolean(editingRow)), form);
+      const fields = visibleFields(config.fields, Boolean(editingRow));
+      const payload = isMachinesEndpoint(config.endpoint) ? buildMachinePayload(fields, form, editingRow) : buildPayload(fields, form);
       if (editingRow) {
         await apiFetch(`${config.endpoint}/${String(editingRow.id)}`, {
           method: 'PATCH',
@@ -179,10 +188,13 @@ export function AdminCrudPage({ config }: { config: AdminCrudConfig }) {
     <PageFrame>
       <div className="admin-crud-heading">
         <PageTitle eyebrow="Admin" title={config.title} description={config.description} />
-        <button className="secondary-button" disabled={loading} onClick={loadPage} type="button">
-          {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-          {loading ? 'Đang tải' : 'Tải lại'}
-        </button>
+        <div className="admin-crud-heading-actions">
+          {headerControl}
+          <button className="secondary-button" disabled={loading} onClick={loadPage} type="button">
+            {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
+            {loading ? 'Đang tải' : 'Tải lại'}
+          </button>
+        </div>
       </div>
 
       {error ? <Notice message={error} /> : null}
@@ -191,10 +203,32 @@ export function AdminCrudPage({ config }: { config: AdminCrudConfig }) {
       <section className="admin-crud-list">
         <div className="list-toolbar">
           <input onChange={(event) => handleSearchChange(event.target.value)} placeholder={config.searchPlaceholder} value={query} />
-          <button className="primary-button compact" onClick={startCreate} type="button">
-            <Plus size={17} />
-            Tạo mới
-          </button>
+          {quickFilters.length ? (
+            <div className="quick-filters">
+              {quickFilters.map((filter) => (
+                <label key={filter.key}>
+                  <span>{filter.label}</span>
+                  <select
+                    onChange={(event) => setFilters((current) => ({ ...current, [filter.key]: event.target.value }))}
+                    value={filters[filter.key] || ''}
+                  >
+                    <option value="">{filter.label}: Tất cả</option>
+                    {filter.options.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+          ) : null}
+          {config.canCreate !== false ? (
+            <button className="primary-button compact" onClick={startCreate} type="button">
+              <Plus size={17} />
+              Tạo mới
+            </button>
+          ) : null}
         </div>
 
         <div className="crud-table-wrap">
@@ -433,9 +467,9 @@ function FieldControl({
     return (
       <label className="wide-field">
         {field.label}
-        <textarea
+      <textarea
           onChange={(event) => onChange(event.target.value)}
-          placeholder={field.type === 'tags' ? 'Mỗi dòng là một mục' : undefined}
+          placeholder={textareaPlaceholder(field)}
           required={field.required}
           value={value}
         />
@@ -445,7 +479,7 @@ function FieldControl({
 
   if (field.type === 'select') {
     return (
-      <label>
+      <label className={field.wide ? 'wide-field' : undefined}>
         {field.label}
         <select onChange={(event) => onChange(event.target.value)} required={field.required} value={value}>
           {!field.required ? <option value="">Không chọn</option> : null}
@@ -460,7 +494,7 @@ function FieldControl({
   }
 
   return (
-    <label>
+    <label className={field.wide ? 'wide-field' : undefined}>
       {field.label}
       <input onChange={(event) => onChange(event.target.value)} required={field.required} type={inputType(field)} value={value} />
       {field.type === 'image' && value ? (
@@ -475,17 +509,21 @@ function FieldControl({
 function buildDetailItems(config: AdminCrudConfig, row: TableRow, options: OptionMap) {
   const items: Array<{ label: string; value: ReactNode }> = [];
   const usedLabels = new Set<string>();
+  const usedKeys = new Set<string>();
 
   config.columns.forEach((column) => {
     const value = renderDetailValue(readPath(row, column.key), column.key);
     items.push({ label: column.label, value });
     usedLabels.add(column.label);
+    usedKeys.add(column.key);
   });
 
   config.fields.forEach((field) => {
-    if (usedLabels.has(field.label)) return;
+    const key = field.valuePath || field.name;
+    if (usedLabels.has(field.label) || usedKeys.has(key)) return;
     items.push({ label: field.label, value: formatFieldDetailValue(field, row, options) });
     usedLabels.add(field.label);
+    usedKeys.add(key);
   });
 
   return items;
@@ -501,33 +539,31 @@ function formatFieldDetailValue(field: CrudField, row: TableRow, options: Option
   if (field.type === 'select') {
     const value = rawValue == null ? '' : String(rawValue);
     const matchedOption = [...(options[field.name] || []), ...(field.options || [])].find((option) => option.value === value);
-    return matchedOption?.label || formatValue(rawValue);
+    return matchedOption?.label || formatDisplayValue(rawValue);
   }
 
   if (Array.isArray(rawValue)) {
-    return rawValue.length ? rawValue.map((item) => formatValue(item)).join(', ') : '-';
+    return rawValue.length ? rawValue.map((item) => formatDisplayValue(item)).join(', ') : '-';
   }
 
-  return formatValue(rawValue);
+  return formatDisplayValue(rawValue);
 }
 
 function renderTableValue(value: unknown, key: string) {
-  if (!isImageKey(key)) return formatValue(value);
+  if (isStatusKey(key)) return renderStatusBadge(value);
+  if (!isImageKey(key)) return formatDisplayValue(value);
   if (!value || typeof value !== 'string') return '-';
-
-  return (
-    <ImagePreview className="table-image" src={value} />
-  );
+  return <ImagePreview className="table-image" src={value} />;
 }
 
 function renderDetailValue(value: unknown, key: string) {
-  if (!isImageKey(key)) return formatValue(value);
+  if (isStatusKey(key)) return renderStatusBadge(value);
+  if (!isImageKey(key)) return formatDisplayValue(value);
   if (!value || typeof value !== 'string') return '-';
 
   return (
     <span className="detail-image">
       <ImagePreview className="detail-image-frame" src={value} />
-      <span>{value}</span>
     </span>
   );
 }
@@ -552,6 +588,142 @@ function ImagePreview({ className, src }: { className?: string; src: string }) {
 
 function isImageKey(key: string) {
   return /(^|\.)(imageUrl|photoUrl|avatarUrl|logoUrl)$/i.test(key);
+}
+
+function isStatusKey(key: string) {
+  return /(^|\.)(status|state|priority)$/i.test(key);
+}
+
+function renderStatusBadge(value: unknown) {
+  const label = formatDisplayValue(value);
+  if (label === '-') return label;
+  const tone = statusTone(label);
+
+  return <span className={`status-badge ${tone}`}>{label}</span>;
+}
+
+function statusTone(label: string) {
+  const normalized = label.toLowerCase();
+
+  if (/active|done|complete|completed|success|approved|resolved|đang hoạt động|hoàn thành|đã duyệt|đã xử lý/.test(normalized)) {
+    return 'good';
+  }
+
+  if (/inactive|locked|cancel|cancelled|rejected|failed|error|urgent|khẩn|tạm ngưng|tạm khóa|hủy|từ chối|lỗi|thất bại/.test(normalized)) {
+    return 'danger';
+  }
+
+  if (/pending|progress|processing|assigned|scheduled|waiting|maintenance|repairing|high|chờ|đang|sắp|bảo trì|sửa|đã phân công|cao/.test(normalized)) {
+    return 'warn';
+  }
+
+  return 'neutral';
+}
+
+function buildQuickFilters(config: AdminCrudConfig, rows: TableRow[]) {
+  return config.columns
+    .filter((column) => quickFilterKeys.includes(column.key) || isStatusKey(column.key))
+    .map((column) => ({
+      key: column.key,
+      label: column.label,
+      options: uniqueOptionsForColumn(column.key, rows),
+    }))
+    .filter((filter) => filter.options.length > 0);
+}
+
+function uniqueOptionsForColumn(key: string, rows: TableRow[]) {
+  const options = new Map<string, string>();
+
+  rows.forEach((row) => {
+    const rawValue = readPath(row, key);
+    if (rawValue === null || rawValue === undefined || rawValue === '') return;
+    const value = String(rawValue);
+    options.set(value, formatDisplayValue(rawValue));
+  });
+
+  return Array.from(options.entries()).map(([value, label]) => ({ value, label }));
+}
+
+function applyColumnFilters(rows: TableRow[], filters: FilterState) {
+  const activeFilters = Object.entries(filters).filter(([, value]) => value);
+  if (!activeFilters.length) return rows;
+
+  return rows.filter((row) =>
+    activeFilters.every(([key, value]) => {
+      const rawValue = readPath(row, key);
+      return rawValue !== null && rawValue !== undefined && String(rawValue) === value;
+    }),
+  );
+}
+
+function formatDisplayValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    if (!value.length) return '-';
+    return value.map((item) => formatDisplayValue(item)).join(', ');
+  }
+
+  if (value && typeof value === 'object') {
+    return formatObjectValue(value as Record<string, unknown>);
+  }
+
+  const formatted = formatValue(value);
+  const normalized = typeof value === 'string' ? value.toUpperCase() : formatted.toUpperCase();
+  const labels: Record<string, string> = {
+    ACTIVE: 'Đang hoạt động',
+    INACTIVE: 'Tạm ngưng',
+    POTENTIAL: 'Tiềm năng',
+    BLACKLISTED: 'Không hợp tác',
+    MAINTENANCE: 'Đang bảo trì',
+    REPAIRING: 'Đang sửa',
+    IN_STOCK: 'Trong kho',
+    ACCESSORY_SPLIT: 'Đã tách phụ kiện',
+    INSTALLED: 'Đã lắp đặt',
+    RESERVED: 'Đã giữ hàng',
+    RETURNED: 'Đã trả về',
+    SOLD: 'Đã bán',
+    LOW: 'Thấp',
+    NORMAL: 'Bình thường',
+    HIGH: 'Cao',
+    URGENT: 'Khẩn cấp',
+    PENDING: 'Chờ xử lý',
+    ASSIGNED: 'Đã phân công',
+    IN_PROGRESS: 'Đang xử lý',
+    COMPLETED: 'Hoàn thành',
+    CANCELLED: 'Đã hủy',
+    PERIODIC: 'Định kỳ',
+    WARRANTY: 'Bảo hành',
+    CONTRACT: 'Hợp đồng',
+    INTERNAL: 'Nội bộ',
+    OTHER: 'Khác',
+    IMPORT: 'Nhập kho',
+    SPLIT_ACCESSORY: 'Tách phụ kiện',
+    RESERVE: 'Giữ hàng',
+    INSTALL: 'Lắp đặt',
+    RETURN: 'Trả về',
+    SELL: 'Bán',
+    ADJUST_STATUS: 'Điều chỉnh trạng thái',
+    IN_WARRANTY: 'Còn bảo hành',
+    OUT_OF_WARRANTY: 'Hết bảo hành',
+    NEW_100: 'Mới 100%',
+    IMAGING: 'Chẩn đoán hình ảnh',
+    LAB_TESTING: 'Xét nghiệm',
+    TRUE: 'Có',
+    FALSE: 'Không',
+  };
+
+  return labels[normalized] || formatted;
+}
+
+function formatObjectValue(value: Record<string, unknown>): string {
+  const itemName = value.itemName || value.name || value.title;
+  const model = value.model ? `Model ${String(value.model)}` : '';
+  const serialNumber = value.serialNumber ? `S/N ${String(value.serialNumber)}` : '';
+  const quantity = value.quantity ? `SL ${String(value.quantity)}` : '';
+  const warrantyPeriod = value.warrantyPeriod ? `BH ${String(value.warrantyPeriod)}` : '';
+  const manufactureDate = value.manufactureDate ? `NSX ${formatValue(value.manufactureDate)}` : '';
+  const summary = [itemName, model, serialNumber, manufactureDate, quantity, warrantyPeriod].filter(Boolean).join(' - ');
+
+  return summary || JSON.stringify(value);
 }
 
 function inputType(field: CrudField) {
@@ -584,13 +756,13 @@ async function loadOptions(fields: CrudField[]) {
       .map(async (field) => {
         const source = field.optionSource!;
         const result = await apiFetch<Paginated<TableRow> | TableRow[]>(source.endpoint);
-        const rows = Array.isArray(result) ? result : result.data;
+        const rows = filterOptionRows(Array.isArray(result) ? result : result.data, source.filterPath, source.filterValues);
         return [
           field.name,
           rows.map((row) => ({
-            label: String(readPath(row, source.labelPath) ?? ''),
+            label: buildOptionLabel(row, source.labelPaths, source.labelPath),
             value: String(readPath(row, source.valuePath) ?? ''),
-          })),
+          })).filter((option) => option.label && option.value),
         ] as const;
       }),
   );
@@ -598,11 +770,37 @@ async function loadOptions(fields: CrudField[]) {
   return Object.fromEntries(entries);
 }
 
-function buildInitialForm(fields: CrudField[], row: TableRow | null, options: OptionMap) {
+function buildOptionLabel(row: TableRow, labelPaths: string[] | undefined, fallbackPath: string) {
+  const values = (labelPaths?.length ? labelPaths : [fallbackPath])
+    .map((path) => readPath(row, path))
+    .filter((value) => value !== null && value !== undefined && value !== '')
+    .map((value) => String(value));
+
+  return values.length ? values.join(' - ') : String(readPath(row, 'email') ?? '');
+}
+
+function filterOptionRows(rows: TableRow[], filterPath?: string, filterValues?: string[]) {
+  if (!filterPath || !filterValues?.length) return rows;
+  const allowedValues = filterValues.map(normalizeText);
+
+  return rows.filter((row) => allowedValues.includes(normalizeText(readPath(row, filterPath))));
+}
+
+function normalizeText(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase();
+}
+
+function buildInitialForm(fields: CrudField[], row: TableRow | null, options: OptionMap, endpoint?: string) {
   return Object.fromEntries(
     fields.map((field) => {
       if (!row) {
         return [field.name, field.required ? (options[field.name]?.[0]?.value || field.options?.[0]?.value || '') : ''];
+      }
+
+      if (isMachinesEndpoint(endpoint) && field.name === 'accessories') {
+        return [field.name, formatMachineAccessoriesForForm(readPath(row, 'accessories'))];
       }
 
       const rawValue = readPath(row, field.valuePath || field.name);
@@ -619,7 +817,7 @@ function buildInitialForm(fields: CrudField[], row: TableRow | null, options: Op
 }
 
 function buildPayload(fields: CrudField[], form: FormState) {
-  const payload: Record<string, string | string[]> = {};
+  const payload: Record<string, unknown> = {};
 
   fields.forEach((field) => {
     const value = form[field.name]?.trim() ?? '';
@@ -630,8 +828,69 @@ function buildPayload(fields: CrudField[], form: FormState) {
   return payload;
 }
 
+function buildMachinePayload(fields: CrudField[], form: FormState, editingRow: TableRow | null) {
+  const payload = buildPayload(
+    fields.filter((field) => field.name !== 'accessories'),
+    form,
+  );
+
+  payload.accessories = parseMachineAccessoriesForm(
+    form.accessories ?? '',
+    Array.isArray(editingRow?.accessories) ? editingRow.accessories : [],
+  );
+
+  return payload;
+}
+
+function formatMachineAccessoriesForForm(value: unknown) {
+  if (!Array.isArray(value)) return '';
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return '';
+      const accessory = item as Record<string, unknown>;
+      const name = String(accessory.name ?? '').trim();
+      const serialNumber = String(accessory.serialNumber ?? '').trim();
+      return [name, serialNumber].filter(Boolean).join(' | ');
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+function parseMachineAccessoriesForm(value: string, existingAccessories: unknown[]) {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => {
+      const [name = '', serialNumber = '', code = ''] = line.split('|').map((part) => part.trim());
+      const existing = existingAccessories[index] && typeof existingAccessories[index] === 'object'
+        ? (existingAccessories[index] as Record<string, unknown>)
+        : null;
+
+      return {
+        id: typeof existing?.id === 'string' ? existing.id : undefined,
+        name: name || (typeof existing?.name === 'string' ? existing.name : undefined),
+        serialNumber: serialNumber || undefined,
+        code: code || undefined,
+      };
+    })
+    .filter((accessory) => accessory.name);
+}
+
+function textareaPlaceholder(field: CrudField) {
+  if (field.name === 'accessories') return 'Mỗi dòng: Tên phụ kiện | S/N';
+  if (field.type === 'tags') return 'Mỗi dòng là một mục';
+  return undefined;
+}
+
+function isMachinesEndpoint(endpoint?: string) {
+  return endpoint === '/machines';
+}
+
 function visibleFields(fields: CrudField[], isEditing: boolean) {
   return fields.filter((field) => {
+    if (field.detailOnly) return false;
     if (isEditing && field.createOnly) return false;
     if (!isEditing && field.updateOnly) return false;
     return true;

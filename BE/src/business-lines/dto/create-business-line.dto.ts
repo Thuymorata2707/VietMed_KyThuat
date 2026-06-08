@@ -1,4 +1,4 @@
-import { BusinessLineStatus, MachineProductCategory } from '@prisma/client';
+import { BusinessLineStatus, ExpertiseGroup, MachineProductCategory } from '@prisma/client';
 import {
   IsEmail,
   IsEnum,
@@ -32,6 +32,14 @@ export class CreateBusinessLineDto {
   @IsOptional()
   @IsEnum(MachineProductCategory)
   productCategory?: MachineProductCategory;
+
+  @IsOptional()
+  @IsEnum(ExpertiseGroup)
+  expertiseGroup?: ExpertiseGroup;
+
+  @IsOptional()
+  @IsString()
+  productIndustryId?: string;
 
   @IsOptional()
   @IsString()

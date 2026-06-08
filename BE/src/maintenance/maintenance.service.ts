@@ -35,8 +35,10 @@ export class MaintenanceService {
     this.validateCreateMaintenance(dto);
     await this.ensureMachineExists(dto.machineId);
 
-    if (dto.engineerId) {
-      await this.ensureEngineerExists(dto.engineerId);
+    const engineerId = actor.roleName === 'engineer' ? actor.id : dto.engineerId;
+
+    if (engineerId) {
+      await this.ensureEngineerExists(engineerId);
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -46,16 +48,16 @@ export class MaintenanceService {
           title: dto.title.trim(),
           description: dto.description?.trim() || null,
           type: dto.type ?? MaintenanceType.PERIODIC,
-          status: dto.engineerId
+          status: engineerId
             ? MaintenanceStatus.ASSIGNED
             : MaintenanceStatus.SCHEDULED,
           machineId: dto.machineId,
-          engineerId: dto.engineerId || null,
+          engineerId: engineerId || null,
           scheduledDate: this.parseRequiredDate(
             dto.scheduledDate,
             'scheduledDate',
           ),
-          assignedAt: dto.engineerId ? new Date() : null,
+          assignedAt: engineerId ? new Date() : null,
           checklist: this.normalizeChecklist(dto.checklist),
           nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
         },

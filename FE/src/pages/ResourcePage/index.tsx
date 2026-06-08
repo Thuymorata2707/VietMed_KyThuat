@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -8,7 +8,7 @@ import { ResourceConfig } from '../../config/resources';
 import { TableRow, filterRows, formatValue, readPath } from '../../utils/format';
 import './styles.css';
 
-export function ResourcePage({ config }: { config: ResourceConfig }) {
+export function ResourcePage({ config, toolbarControl }: { config: ResourceConfig; toolbarControl?: ReactNode }) {
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<TableRow[]>([]);
   const [meta, setMeta] = useState<Paginated<TableRow>['meta'] | null>(null);
@@ -57,6 +57,7 @@ export function ResourcePage({ config }: { config: ResourceConfig }) {
             value={query}
           />
         </div>
+        {toolbarControl}
         <div className="result-count">
           {loading ? 'Đang tải' : `${meta?.total ?? rows.length} bản ghi`}
         </div>

@@ -1,5 +1,52 @@
 import { BusinessLineStatus, MachineProductCategory } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+
+export class CreateMachineModelAccessoryDto {
+  @IsString()
+  @IsNotEmpty()
+  code!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresSerial?: boolean;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class CreateMachineModelComponentDto {
+  @IsString()
+  @IsNotEmpty()
+  code!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateMachineModelAccessoryDto)
+  accessories?: CreateMachineModelAccessoryDto[];
+}
 
 export class CreateMachineModelDto {
   @IsString()
@@ -41,4 +88,10 @@ export class CreateMachineModelDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateMachineModelComponentDto)
+  components?: CreateMachineModelComponentDto[];
 }

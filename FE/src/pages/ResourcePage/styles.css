@@ -32,6 +32,44 @@
   white-space: nowrap;
 }
 
+.service-kind-select {
+  color: #405064;
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  min-width: 190px;
+}
+
+.service-kind-select select {
+  appearance: none;
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #405064 50%),
+    linear-gradient(135deg, #405064 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 17px,
+    calc(100% - 12px) 17px;
+  background-repeat: no-repeat;
+  background-size:
+    6px 6px,
+    6px 6px;
+  border: 1px solid #ced8e3;
+  border-radius: 8px;
+  color: #17202a;
+  cursor: pointer;
+  height: 40px;
+  min-width: 0;
+  outline: none;
+  padding: 0 40px 0 12px;
+  width: 100%;
+}
+
+.service-kind-select select:focus {
+  border-color: #c92a1f;
+  box-shadow: 0 0 0 3px rgba(201, 42, 31, 0.1);
+}
+
 .table-wrap {
   background: #ffffff;
   border: 1px solid #dfe7ef;

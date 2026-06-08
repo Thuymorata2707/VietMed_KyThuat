@@ -43,6 +43,30 @@ enum BusinessLineStatus {
   INACTIVE
 }
 
+enum ExpertiseGroup {
+  IMAGING
+  LAB_TESTING
+}
+
+model ProductIndustry {
+  id String @id @default(cuid())
+
+  code           String @unique
+  name           String
+  description    String?
+  expertiseGroup ExpertiseGroup
+  status         BusinessLineStatus @default(ACTIVE)
+  sortOrder      Int @default(0)
+
+  businessLines BusinessLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expertiseGroup])
+  @@index([status])
+}
+
 enum MachineProductCategory {
   ULTRASOUND
   LAB_TESTING
@@ -169,7 +193,8 @@ model User {
   regionId String
   region   Region @relation(fields: [regionId], references: [id])
 
-  repairs              Repair[]
+  assignedRepairs      Repair[]                  @relation("RepairEngineer")
+  createdRepairs       Repair[]                  @relation("RepairCreatedBy")
   maintenances         Maintenance[]
   installedMachines    Machine[]                  @relation("MachineInstalledBy")
   machineInstallations MachineInstallation[]      @relation("MachineInstallationEngineer")
@@ -249,6 +274,7 @@ model EngineerProfile {
   department    String?
   workStartDate DateTime?
   specialties   String[]
+  expertiseGroup ExpertiseGroup?
   certificateNo String?
   photoUrl      String?
   note          String?
@@ -316,6 +342,10 @@ model BusinessLine {
   contactEmail    String?
   description     String?
   note            String?
+  expertiseGroup  ExpertiseGroup @default(IMAGING)
+
+  productIndustryId String?
+  productIndustry   ProductIndustry? @relation(fields: [productIndustryId], references: [id], onDelete: SetNull)
 
   managerId String?
   manager   User?   @relation("BusinessLineManager", fields: [managerId], references: [id], onDelete: SetNull)
@@ -346,12 +376,58 @@ model MachineModel {
   note            String?
 
   machines Machine[]
+  components MachineComponent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([businessLineId, code])
   @@index([businessLineId])
+  @@index([status])
+}
+
+model MachineComponent {
+  id String @id @default(cuid())
+
+  code        String
+  name        String
+  description String?
+  sortOrder   Int    @default(0)
+  status      BusinessLineStatus @default(ACTIVE)
+
+  machineModelId String
+  machineModel   MachineModel @relation(fields: [machineModelId], references: [id], onDelete: Cascade)
+
+  accessories ComponentAccessory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([machineModelId, code])
+  @@index([machineModelId])
+  @@index([status])
+}
+
+model ComponentAccessory {
+  id String @id @default(cuid())
+
+  code             String
+  name             String
+  description      String?
+  requiresSerial   Boolean @default(true)
+  sortOrder        Int     @default(0)
+  status           BusinessLineStatus @default(ACTIVE)
+
+  componentId String
+  component   MachineComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  machineAccessories MachineAccessory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([componentId, code])
+  @@index([componentId])
   @@index([status])
 }
 
@@ -398,9 +474,33 @@ model Machine {
   inventoryMovements MachineInventoryMovement[]
   installations      MachineInstallation[]
   warrantyCards      WarrantyCard[]
+  accessories        MachineAccessory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model MachineAccessory {
+  id String @id @default(cuid())
+
+  machineId String
+  machine   Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  componentAccessoryId String?
+  componentAccessory   ComponentAccessory? @relation(fields: [componentAccessoryId], references: [id], onDelete: SetNull)
+
+  code         String?
+  name         String
+  serialNumber String? @unique
+  description  String?
+  note         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([machineId])
+  @@index([componentAccessoryId])
+  @@index([name])
 }
 
 model MachineInstallation {
@@ -424,6 +524,18 @@ model MachineInstallation {
   installedAt DateTime
   accessories String[]
   note        String?
+
+  handoverInstallerName     String?
+  handoverInstallerPosition String?
+  handoverVehicle           String?
+  handoverDepartureDate     DateTime?
+  receiverInstallAddress    String?
+  receiverRepresentative    String?
+  receiverPosition          String?
+  receiverPhone             String?
+  installedDeviceItems      Json?
+  deviceCondition           String?
+  deviceConditionNote       String?
 
   warrantyCard WarrantyCard?
 
@@ -541,7 +653,10 @@ model Repair {
   machine   Machine @relation(fields: [machineId], references: [id])
 
   engineerId String?
-  engineer   User?   @relation(fields: [engineerId], references: [id])
+  engineer   User?   @relation("RepairEngineer", fields: [engineerId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation("RepairCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   reportedAt  DateTime  @default(now())
   assignedAt  DateTime?
@@ -551,6 +666,19 @@ model Repair {
   resultNote       String?
   customerFeedback String?
 
+  usingDepartment      String?
+  representative       String?
+  address              String?
+  contactPhone         String?
+  deviceName           String?
+  modelName            String?
+  serialNumber         String?
+  warrantyStatus       String?
+  conditionAssessment  String?
+  repairMethod         String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([createdById])
 }

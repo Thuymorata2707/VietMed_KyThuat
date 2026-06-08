@@ -17,6 +17,10 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequestUser } from '../common/request-user.type';
 import { CreateMachineDto } from './dto/create-machine.dto';
 import { ListMachinesQueryDto } from './dto/list-machines-query.dto';
+import {
+  CreateMachineAccessoryDto,
+  UpdateMachineAccessoryDto,
+} from './dto/machine-accessory.dto';
 import { UpdateMachineDto } from './dto/update-machine.dto';
 import { MachinesService } from './machines.service';
 
@@ -25,7 +29,7 @@ import { MachinesService } from './machines.service';
 export class MachinesController {
   constructor(private readonly machinesService: MachinesService) {}
 
-  @Roles('admin')
+  @Roles('admin', 'manager', 'engineer')
   @Post()
   create(@Body() dto: CreateMachineDto, @CurrentUser() user: RequestUser) {
     return this.machinesService.create(dto, user);
@@ -62,6 +66,42 @@ export class MachinesController {
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.machinesService.findOne(id, user);
+  }
+
+  @Get(':id/accessories')
+  findAccessories(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.machinesService.findAccessories(id, user);
+  }
+
+  @Roles('admin')
+  @Post(':id/accessories')
+  createAccessory(
+    @Param('id') id: string,
+    @Body() dto: CreateMachineAccessoryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.machinesService.createAccessory(id, dto, user);
+  }
+
+  @Roles('admin')
+  @Patch(':id/accessories/:accessoryId')
+  updateAccessory(
+    @Param('id') id: string,
+    @Param('accessoryId') accessoryId: string,
+    @Body() dto: UpdateMachineAccessoryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.machinesService.updateAccessory(id, accessoryId, dto, user);
+  }
+
+  @Roles('admin')
+  @Delete(':id/accessories/:accessoryId')
+  removeAccessory(
+    @Param('id') id: string,
+    @Param('accessoryId') accessoryId: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.machinesService.removeAccessory(id, accessoryId, user);
   }
 
   @Roles('admin')

@@ -12,9 +12,11 @@ import { EngineerProfilesModule } from './engineer-profiles/engineer-profiles.mo
 import { InventoryMovementsModule } from './inventory-movements/inventory-movements.module';
 import { InstallationsModule } from './installations/installations.module';
 import { MachineModelsModule } from './machine-models/machine-models.module';
+import { MachineComponentsModule } from './machine-components/machine-components.module';
 import { MachinesModule } from './machines/machines.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProductIndustriesModule } from './product-industries/product-industries.module';
 import { RegionsModule } from './regions/regions.module';
 import { RepairsModule } from './repairs/repairs.module';
 import { RolesModule } from './roles/roles.module';
@@ -40,6 +42,8 @@ import { UsersModule } from './users/users.module';
     InventoryMovementsModule,
     InstallationsModule,
     MachineModelsModule,
+    MachineComponentsModule,
+    ProductIndustriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -21,6 +21,7 @@ export class AuthService {
       include: {
         role: true,
         region: true,
+        engineerProfile: true,
       },
     });
 
@@ -52,6 +53,7 @@ export class AuthService {
         status: user.status,
         role: user.role,
         region: user.region,
+        engineerProfile: user.engineerProfile,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },

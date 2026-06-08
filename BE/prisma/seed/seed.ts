@@ -2,6 +2,7 @@ import {
   CustomerStatus,
   CustomerType,
   BusinessLineStatus,
+  ExpertiseGroup,
   InventoryMovementType,
   MachineInventoryStatus,
   MachineProductCategory,
@@ -101,8 +102,7 @@ async function main() {
     ),
   );
 
-  await Promise.all(
-    [
+  const engineerProfiles = [
       {
         userId: users[0].id,
         employeeCode: 'VT-ADMIN-001',
@@ -111,6 +111,7 @@ async function main() {
         department: 'Technical',
         workStartDate: date('2020-01-01'),
         specialties: ['SYSTEM', 'ADMIN'],
+        expertiseGroup: ExpertiseGroup.IMAGING,
         certificateNo: 'CERT-ADMIN-001',
       },
       {
@@ -121,6 +122,7 @@ async function main() {
         department: 'Phong ky thuat',
         workStartDate: date('2018-06-01'),
         specialties: ['ULTRASOUND', 'ENDOSCOPY'],
+        expertiseGroup: ExpertiseGroup.IMAGING,
         certificateNo: 'CERT-US-001',
       },
       {
@@ -131,6 +133,7 @@ async function main() {
         department: 'Phong ky thuat',
         workStartDate: date('2019-09-15'),
         specialties: ['LAB_TESTING', 'IMMUNOLOGY'],
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
         certificateNo: 'CERT-LAB-002',
       },
       {
@@ -141,6 +144,7 @@ async function main() {
         department: 'Phong ky thuat',
         workStartDate: date('2017-04-20'),
         specialties: ['BIOCHEMISTRY', 'HEMATOLOGY'],
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
         certificateNo: 'CERT-BIO-003',
       },
       {
@@ -151,9 +155,21 @@ async function main() {
         department: 'Phong ky thuat',
         workStartDate: date('2016-01-10'),
         specialties: ['MANAGEMENT', 'FIELD_SERVICE'],
+        expertiseGroup: ExpertiseGroup.IMAGING,
         certificateNo: 'CERT-MGR-001',
       },
-    ].map((profile) =>
+    ];
+
+  await prisma.engineerProfile.deleteMany({
+    where: {
+      employeeCode: {
+        in: engineerProfiles.map((profile) => profile.employeeCode),
+      },
+    },
+  });
+
+  await Promise.all(
+    engineerProfiles.map((profile) =>
       prisma.engineerProfile.upsert({
         where: { userId: profile.userId },
         update: profile,
@@ -296,6 +312,7 @@ async function main() {
         status: BusinessLineStatus.ACTIVE,
         manufacturer: 'SonoTech',
         productCategory: MachineProductCategory.ULTRASOUND,
+        expertiseGroup: ExpertiseGroup.IMAGING,
         countryOfOrigin: 'Japan',
         website: 'https://sonotech.example',
         contactPerson: 'Mr. Sato',
@@ -311,6 +328,7 @@ async function main() {
         status: BusinessLineStatus.ACTIVE,
         manufacturer: 'BioLab',
         productCategory: MachineProductCategory.BIOCHEMISTRY,
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
         countryOfOrigin: 'Germany',
         website: 'https://biolab.example',
         contactPerson: 'Ms. Anna',
@@ -326,6 +344,7 @@ async function main() {
         status: BusinessLineStatus.ACTIVE,
         manufacturer: 'ImmuMed',
         productCategory: MachineProductCategory.IMMUNOLOGY,
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
         countryOfOrigin: 'USA',
         website: 'https://immumed.example',
         contactPerson: 'Mr. John',
@@ -341,6 +360,7 @@ async function main() {
         status: BusinessLineStatus.ACTIVE,
         manufacturer: 'HemaCare',
         productCategory: MachineProductCategory.HEMATOLOGY,
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
         countryOfOrigin: 'Korea',
         website: 'https://hemacare.example',
         contactPerson: 'Ms. Kim',
@@ -356,6 +376,7 @@ async function main() {
         status: BusinessLineStatus.INACTIVE,
         manufacturer: 'RadVision',
         productCategory: MachineProductCategory.X_RAY,
+        expertiseGroup: ExpertiseGroup.IMAGING,
         countryOfOrigin: 'China',
         website: 'https://radvision.example',
         contactPerson: 'Mr. Li',
@@ -382,6 +403,7 @@ async function main() {
         status: BusinessLineStatus.ACTIVE,
         manufacturer: 'Alpinion',
         productCategory: MachineProductCategory.ULTRASOUND,
+        expertiseGroup: ExpertiseGroup.IMAGING,
         countryOfOrigin: 'Korea',
         description: 'Danh mục máy siêu âm Alpinion',
         managerId: users[1].id,
@@ -392,6 +414,7 @@ async function main() {
         status: BusinessLineStatus.ACTIVE,
         manufacturer: 'Fujirebio',
         productCategory: MachineProductCategory.IMMUNOLOGY,
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
         countryOfOrigin: 'Japan',
         description: 'Danh mục máy xét nghiệm Fujirebio',
         managerId: users[2].id,
@@ -402,6 +425,7 @@ async function main() {
         status: BusinessLineStatus.ACTIVE,
         manufacturer: 'Mindray',
         productCategory: MachineProductCategory.OTHER,
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
         countryOfOrigin: 'China',
         description: 'Danh mục máy Mindray',
         managerId: users[3].id,
@@ -412,6 +436,7 @@ async function main() {
         status: BusinessLineStatus.ACTIVE,
         manufacturer: 'Minato',
         productCategory: MachineProductCategory.OTHER,
+        expertiseGroup: ExpertiseGroup.IMAGING,
         countryOfOrigin: 'Japan',
         description: 'Danh mục máy Minato',
         managerId: users[4].id,
@@ -425,8 +450,150 @@ async function main() {
     ),
   );
 
+  const productIndustries = await Promise.all(
+    [
+      {
+        code: 'IMAGING',
+        name: 'Chẩn đoán hình ảnh',
+        expertiseGroup: ExpertiseGroup.IMAGING,
+        status: BusinessLineStatus.ACTIVE,
+        sortOrder: 1,
+        description: 'Ngành hàng chẩn đoán hình ảnh',
+      },
+      {
+        code: 'LAB_TESTING',
+        name: 'Xét nghiệm',
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
+        status: BusinessLineStatus.ACTIVE,
+        sortOrder: 2,
+        description: 'Ngành hàng xét nghiệm',
+      },
+      {
+        code: 'PHYSIOTHERAPY',
+        name: 'VLTL',
+        expertiseGroup: ExpertiseGroup.IMAGING,
+        status: BusinessLineStatus.ACTIVE,
+        sortOrder: 3,
+        description: 'Ngành hàng vật lý trị liệu do kỹ sư chẩn đoán hình ảnh quản lý',
+      },
+      {
+        code: 'ICU',
+        name: 'ICU',
+        expertiseGroup: ExpertiseGroup.IMAGING,
+        status: BusinessLineStatus.ACTIVE,
+        sortOrder: 4,
+        description: 'Ngành hàng ICU do kỹ sư chẩn đoán hình ảnh quản lý',
+      },
+    ].map((industry) =>
+      prisma.productIndustry.upsert({
+        where: { code: industry.code },
+        update: industry,
+        create: industry,
+      }),
+    ),
+  );
+
+  const industryByCode = Object.fromEntries(
+    productIndustries.map((industry) => [industry.code, industry]),
+  );
+
+  const productBusinessLines = await Promise.all(
+    [
+      {
+        code: 'PRODUCT-ULTRASOUND',
+        name: 'Máy siêu âm',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'Alpinion',
+        productCategory: MachineProductCategory.ULTRASOUND,
+        expertiseGroup: ExpertiseGroup.IMAGING,
+        productIndustryId: industryByCode.IMAGING.id,
+        description: 'Sản phẩm chẩn đoán hình ảnh - máy siêu âm',
+        managerId: users[1].id,
+      },
+      {
+        code: 'PRODUCT-XRAY',
+        name: 'Máy X-Quang',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'RadVision',
+        productCategory: MachineProductCategory.X_RAY,
+        expertiseGroup: ExpertiseGroup.IMAGING,
+        productIndustryId: industryByCode.IMAGING.id,
+        description: 'Sản phẩm chẩn đoán hình ảnh - X-Quang',
+        managerId: users[1].id,
+      },
+      {
+        code: 'PRODUCT-MONITOR',
+        name: 'Monitor',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'VietMed',
+        productCategory: MachineProductCategory.OTHER,
+        expertiseGroup: ExpertiseGroup.IMAGING,
+        productIndustryId: industryByCode.IMAGING.id,
+        description: 'Sản phẩm chẩn đoán hình ảnh - monitor theo dõi',
+        managerId: users[1].id,
+      },
+      {
+        code: 'PRODUCT-ICU',
+        name: 'ICU',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'VietMed',
+        productCategory: MachineProductCategory.OTHER,
+        expertiseGroup: ExpertiseGroup.IMAGING,
+        productIndustryId: industryByCode.ICU.id,
+        description: 'Sản phẩm chẩn đoán hình ảnh - thiết bị ICU',
+        managerId: users[1].id,
+      },
+      {
+        code: 'PRODUCT-BIOCHEMISTRY',
+        name: 'Máy xét nghiệm sinh hóa',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'Mindray',
+        productCategory: MachineProductCategory.BIOCHEMISTRY,
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
+        productIndustryId: industryByCode.LAB_TESTING.id,
+        description: 'Sản phẩm xét nghiệm - máy sinh hóa',
+        managerId: users[3].id,
+      },
+      {
+        code: 'PRODUCT-HEMATOLOGY',
+        name: 'Máy xét nghiệm huyết học',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'Mindray',
+        productCategory: MachineProductCategory.HEMATOLOGY,
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
+        productIndustryId: industryByCode.LAB_TESTING.id,
+        description: 'Sản phẩm xét nghiệm - máy huyết học',
+        managerId: users[3].id,
+      },
+      {
+        code: 'PRODUCT-IMMUNOLOGY',
+        name: 'Máy miễn dịch',
+        status: BusinessLineStatus.ACTIVE,
+        manufacturer: 'Fujirebio',
+        productCategory: MachineProductCategory.IMMUNOLOGY,
+        expertiseGroup: ExpertiseGroup.LAB_TESTING,
+        productIndustryId: industryByCode.LAB_TESTING.id,
+        description: 'Sản phẩm xét nghiệm - máy miễn dịch',
+        managerId: users[2].id,
+      },
+    ].map((businessLine) =>
+      prisma.businessLine.upsert({
+        where: { code: businessLine.code },
+        update: businessLine,
+        create: businessLine,
+      }),
+    ),
+  );
+
   await Promise.all(
     [
+      {
+        businessLineId: productBusinessLines[0].id,
+        models: ['X-CUBE 60', 'X-CUBE 70', 'X-CUBE 90'],
+        productCategory: MachineProductCategory.ULTRASOUND,
+        productLine: 'X-CUBE',
+        manufacturer: 'Alpinion',
+      },
       {
         businessLineId: requestedBusinessLines[0].id,
         models: ['XCube 50', 'XCube 60', 'XCube 70', 'XCube 90'],
@@ -482,6 +649,75 @@ async function main() {
         }),
       ),
   );
+
+  const xCube90 = await prisma.machineModel.findUnique({
+    where: {
+      businessLineId_code: {
+        businessLineId: productBusinessLines[0].id,
+        code: 'X-CUBE-90',
+      },
+    },
+  });
+
+  if (xCube90) {
+    const xCube90Components = await Promise.all(
+      [
+        { code: 'MAINBOARD', name: 'Mainboard', sortOrder: 1 },
+        { code: 'MONITOR', name: 'Monitor', sortOrder: 2 },
+        { code: 'KEYBOARD', name: 'Keyboard', sortOrder: 3 },
+        { code: 'POWER-SUPPLY', name: 'Power Supply', sortOrder: 4 },
+        { code: 'PROBE-PORT', name: 'Probe Port', sortOrder: 5 },
+      ].map((component) =>
+        prisma.machineComponent.upsert({
+          where: {
+            machineModelId_code: {
+              machineModelId: xCube90.id,
+              code: component.code,
+            },
+          },
+          update: component,
+          create: {
+            ...component,
+            machineModelId: xCube90.id,
+            status: BusinessLineStatus.ACTIVE,
+          },
+        }),
+      ),
+    );
+
+    const probePort = xCube90Components.find(
+      (component) => component.code === 'PROBE-PORT',
+    );
+
+    if (probePort) {
+      await Promise.all(
+        [
+          { code: 'CONVEX-PROBE', name: 'Convex Probe', sortOrder: 1 },
+          { code: 'LINEAR-PROBE', name: 'Linear Probe', sortOrder: 2 },
+          { code: 'CARDIAC-PROBE', name: 'Cardiac Probe', sortOrder: 3 },
+          { code: 'ENDOCAVITY-PROBE', name: 'Endocavity Probe', sortOrder: 4 },
+          { code: 'MICRO-CONVEX-PROBE', name: 'Micro Convex Probe', sortOrder: 5 },
+          { code: 'VOLUME-PROBE', name: 'Volume Probe', sortOrder: 6 },
+        ].map((accessory) =>
+          prisma.componentAccessory.upsert({
+            where: {
+              componentId_code: {
+                componentId: probePort.id,
+                code: accessory.code,
+              },
+            },
+            update: accessory,
+            create: {
+              ...accessory,
+              componentId: probePort.id,
+              requiresSerial: true,
+              status: BusinessLineStatus.ACTIVE,
+            },
+          }),
+        ),
+      );
+    }
+  }
 
   const machines = await Promise.all(
     [

@@ -7,17 +7,23 @@ export type CrudField = {
   required?: boolean;
   createOnly?: boolean;
   updateOnly?: boolean;
+  detailOnly?: boolean;
   valuePath?: string;
   options?: Array<{ label: string; value: string }>;
   optionSource?: {
     endpoint: string;
     labelPath: string;
+    labelPaths?: string[];
     valuePath: string;
+    filterPath?: string;
+    filterValues?: string[];
   };
+  wide?: boolean;
 };
 
 export type AdminCrudConfig = ResourceConfig & {
   entityLabel: string;
+  canCreate?: boolean;
   canUpdate?: boolean;
   canDelete?: boolean;
   fields: CrudField[];
@@ -54,6 +60,16 @@ const productCategories = [
   'OTHER',
 ].map((value) => ({ label: value.replaceAll('_', ' '), value }));
 
+const expertiseGroups = [
+  { label: 'Chẩn đoán hình ảnh', value: 'IMAGING' },
+  { label: 'Xét nghiệm', value: 'LAB_TESTING' },
+];
+
+const yesNoOptions = [
+  { label: 'Có', value: 'true' },
+  { label: 'Không', value: 'false' },
+];
+
 const machineStatuses = ['ACTIVE', 'MAINTENANCE', 'REPAIRING', 'INACTIVE'].map((value) => ({
   label: value.replaceAll('_', ' '),
   value,
@@ -69,10 +85,23 @@ const repairPriorities = ['LOW', 'NORMAL', 'HIGH', 'URGENT'].map((value) => ({
   value,
 }));
 
+const taskStatuses = ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].map((value) => ({
+  label: value.replaceAll('_', ' '),
+  value,
+}));
+
 const maintenanceTypes = ['PERIODIC', 'WARRANTY', 'CONTRACT', 'INTERNAL', 'OTHER'].map((value) => ({
   label: value.replaceAll('_', ' '),
   value,
 }));
+
+const engineerOptionSource = {
+  endpoint: '/users?limit=100',
+  labelPath: 'fullName',
+  valuePath: 'id',
+  filterPath: 'role.name',
+  filterValues: ['engineer', 'kỹ sư', 'ky su'],
+};
 
 const inventoryMovementTypes = ['IMPORT', 'SPLIT_ACCESSORY', 'RESERVE', 'INSTALL', 'RETURN', 'SELL', 'ADJUST_STATUS'].map((value) => ({
   label: value.replaceAll('_', ' '),
@@ -121,28 +150,39 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
     ],
   },
   'business-lines': {
-    title: 'Ngành hàng',
-    entityLabel: 'ngành hàng',
-    description: 'Tạo, cập nhật và xóa ngành hàng, hãng sản xuất và người quản lý.',
+    title: 'Nhóm sản phẩm',
+    entityLabel: 'nhóm sản phẩm',
+    description: 'Tạo và cập nhật nhóm sản phẩm trong từng ngành lớn. Hãng sản xuất nằm ở từng model máy.',
     endpoint: '/business-lines',
     icon: null,
-    searchPlaceholder: 'Tìm ngành hàng hoặc mã',
+    searchPlaceholder: 'Tìm sản phẩm hoặc mã',
     roles: ['admin'],
     columns: [
       { key: 'imageUrl', label: 'Ảnh' },
-      { key: 'name', label: 'Ngành hàng' },
+      { key: 'name', label: 'Nhóm sản phẩm' },
       { key: 'code', label: 'Mã' },
-      { key: 'productCategory', label: 'Nhóm sản phẩm' },
+      { key: 'productIndustry.name', label: 'Ngành hàng' },
+      { key: 'expertiseGroup', label: 'Nhóm chuyên môn' },
+      { key: 'productCategory', label: 'Loại thiết bị' },
       { key: 'status', label: 'Trạng thái' },
       { key: 'manager.fullName', label: 'Quản lý' },
     ],
     fields: [
-      { name: 'code', label: 'Mã ngành hàng', required: true },
-      { name: 'name', label: 'Tên ngành hàng', required: true },
+      { name: 'code', label: 'Mã nhóm', required: true },
+      { name: 'name', label: 'Tên nhóm sản phẩm', required: true },
+      {
+        name: 'productIndustryId',
+        label: 'Ngành hàng',
+        type: 'select',
+        required: true,
+        wide: true,
+        valuePath: 'productIndustry.id',
+        optionSource: { endpoint: '/product-industries?limit=100', labelPath: 'name', valuePath: 'id' },
+      },
       { name: 'status', label: 'Trạng thái', type: 'select', options: activeInactiveStatuses },
-      { name: 'manufacturer', label: 'Hãng sản xuất' },
-      { name: 'imageUrl', label: 'Hình ảnh', type: 'image' },
-      { name: 'productCategory', label: 'Nhóm sản phẩm', type: 'select', options: productCategories },
+      { name: 'expertiseGroup', label: 'Nhóm chuyên môn', type: 'select', required: true, options: expertiseGroups },
+      { name: 'imageUrl', label: 'Hình ảnh nhóm', type: 'image' },
+      { name: 'productCategory', label: 'Loại thiết bị', type: 'select', options: productCategories },
       {
         name: 'managerId',
         label: 'Quản lý',
@@ -150,54 +190,143 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         valuePath: 'manager.id',
         optionSource: { endpoint: '/users', labelPath: 'fullName', valuePath: 'id' },
       },
-      { name: 'countryOfOrigin', label: 'Xuất xứ' },
-      { name: 'website', label: 'Website', type: 'url' },
-      { name: 'contactPerson', label: 'Người liên hệ' },
-      { name: 'contactPhone', label: 'SĐT liên hệ' },
-      { name: 'contactEmail', label: 'Email liên hệ', type: 'email' },
       { name: 'description', label: 'Mô tả', type: 'textarea' },
       { name: 'note', label: 'Ghi chú', type: 'textarea' },
     ],
   },
+  'product-industries': {
+    title: 'Ngành hàng',
+    entityLabel: 'ngành hàng',
+    description: '4 ngành hàng lớn của hệ thống. Đây là tầng cố định, chỉ nên sửa tên/thứ tự khi thật sự cần.',
+    endpoint: '/product-industries',
+    icon: null,
+    searchPlaceholder: 'Tìm ngành hàng',
+    roles: ['admin'],
+    canCreate: false,
+    canDelete: false,
+    columns: [
+      { key: 'name', label: 'Ngành hàng' },
+      { key: 'code', label: 'Mã' },
+      { key: 'expertiseGroup', label: 'Nhóm kỹ sư quản lý' },
+      { key: 'sortOrder', label: 'Thứ tự' },
+      { key: 'status', label: 'Trạng thái' },
+    ],
+    fields: [
+      { name: 'code', label: 'Mã ngành hàng', required: true },
+      { name: 'name', label: 'Tên ngành hàng', required: true },
+      { name: 'expertiseGroup', label: 'Nhóm kỹ sư quản lý', type: 'select', required: true, options: expertiseGroups },
+      { name: 'sortOrder', label: 'Thứ tự' },
+      { name: 'status', label: 'Trạng thái', type: 'select', options: activeInactiveStatuses },
+      { name: 'description', label: 'Mô tả', type: 'textarea' },
+    ],
+  },
   'machine-models': {
-    title: 'Model máy',
-    entityLabel: 'model máy',
-    description: 'Tạo, cập nhật và xóa model máy theo từng ngành hàng.',
+    title: 'Sản phẩm / Model máy',
+    entityLabel: 'sản phẩm/model máy',
+    description: 'Danh mục model cố định của công ty. Máy nhập kho có S/N và phụ kiện riêng sẽ nằm ở bảng Thiết bị.',
     endpoint: '/machine-models',
     icon: null,
     searchPlaceholder: 'Tìm model hoặc mã',
     roles: ['admin'],
+    canCreate: false,
+    canUpdate: false,
+    canDelete: false,
     columns: [
-      { key: 'name', label: 'Model' },
       { key: 'code', label: 'Mã' },
+      { key: 'name', label: 'Tên sản phẩm/model' },
       { key: 'manufacturer', label: 'Hãng' },
-      { key: 'productCategory', label: 'Nhóm sản phẩm' },
-      { key: 'businessLine.name', label: 'Ngành hàng' },
+      { key: 'productCategory', label: 'Loại thiết bị' },
+      { key: 'businessLine.name', label: 'Nhóm sản phẩm' },
     ],
     fields: [
       {
         name: 'businessLineId',
-        label: 'Ngành hàng',
+        label: 'Nhóm sản phẩm',
         type: 'select',
         required: true,
+        wide: true,
         valuePath: 'businessLine.id',
-        optionSource: { endpoint: '/business-lines', labelPath: 'name', valuePath: 'id' },
+        optionSource: { endpoint: '/business-lines', labelPath: 'name', labelPaths: ['productIndustry.name', 'name'], valuePath: 'id' },
       },
-      { name: 'code', label: 'Mã model', required: true },
-      { name: 'name', label: 'Tên model', required: true },
+      { name: 'code', label: 'Mã sản phẩm/model', required: true },
+      { name: 'name', label: 'Tên sản phẩm/model', required: true },
       { name: 'displayName', label: 'Tên hiển thị' },
       { name: 'status', label: 'Trạng thái', type: 'select', options: activeInactiveStatuses },
-      { name: 'manufacturer', label: 'Hãng sản xuất' },
-      { name: 'productCategory', label: 'Nhóm sản phẩm', type: 'select', options: productCategories },
+      { name: 'manufacturer', label: 'Hãng sản xuất', required: true },
+      { name: 'productCategory', label: 'Loại thiết bị', type: 'select', options: productCategories },
       { name: 'productLine', label: 'Dòng sản phẩm' },
       { name: 'description', label: 'Mô tả', type: 'textarea' },
       { name: 'note', label: 'Ghi chú', type: 'textarea' },
     ],
   },
+  'machine-components': {
+    title: 'Thành phần máy',
+    entityLabel: 'thành phần máy',
+    description: 'Khai báo thành phần chuẩn thuộc từng model sản phẩm để dùng khi nhập/lắp đặt.',
+    endpoint: '/machine-components',
+    icon: null,
+    searchPlaceholder: 'Tìm thành phần, model hoặc mã',
+    roles: ['admin'],
+    columns: [
+      { key: 'name', label: 'Thành phần' },
+      { key: 'code', label: 'Mã' },
+      { key: 'machineModel.code', label: 'Model' },
+      { key: 'machineModel.businessLine.name', label: 'Nhóm sản phẩm' },
+      { key: 'status', label: 'Trạng thái' },
+    ],
+    fields: [
+      {
+        name: 'machineModelId',
+        label: 'Model',
+        type: 'select',
+        required: true,
+        valuePath: 'machineModel.id',
+        optionSource: { endpoint: '/machine-models?limit=100', labelPath: 'code', labelPaths: ['code', 'name'], valuePath: 'id' },
+      },
+      { name: 'code', label: 'Mã thành phần', required: true },
+      { name: 'name', label: 'Tên thành phần', required: true },
+      { name: 'sortOrder', label: 'Thứ tự' },
+      { name: 'status', label: 'Trạng thái', type: 'select', options: activeInactiveStatuses },
+      { name: 'description', label: 'Mô tả', type: 'textarea' },
+    ],
+  },
+  'component-accessories': {
+    title: 'Phụ kiện',
+    entityLabel: 'phụ kiện',
+    description: 'Khai báo phụ kiện thuộc thành phần máy và yêu cầu nhập serial khi bàn giao.',
+    endpoint: '/component-accessories',
+    icon: null,
+    searchPlaceholder: 'Tìm phụ kiện, thành phần hoặc mã',
+    roles: ['admin'],
+    columns: [
+      { key: 'name', label: 'Phụ kiện' },
+      { key: 'code', label: 'Mã' },
+      { key: 'component.name', label: 'Thành phần' },
+      { key: 'component.machineModel.code', label: 'Model' },
+      { key: 'requiresSerial', label: 'Cần S/N' },
+      { key: 'status', label: 'Trạng thái' },
+    ],
+    fields: [
+      {
+        name: 'componentId',
+        label: 'Thành phần máy',
+        type: 'select',
+        required: true,
+        valuePath: 'component.id',
+        optionSource: { endpoint: '/machine-components?limit=100', labelPath: 'name', labelPaths: ['machineModel.code', 'name'], valuePath: 'id' },
+      },
+      { name: 'code', label: 'Mã phụ kiện', required: true },
+      { name: 'name', label: 'Tên phụ kiện', required: true },
+      { name: 'requiresSerial', label: 'Cần nhập Serial Number', type: 'select', options: yesNoOptions },
+      { name: 'sortOrder', label: 'Thứ tự' },
+      { name: 'status', label: 'Trạng thái', type: 'select', options: activeInactiveStatuses },
+      { name: 'description', label: 'Mô tả', type: 'textarea' },
+    ],
+  },
   machines: {
     title: 'Thiết bị',
     entityLabel: 'thiết bị',
-    description: 'Tạo, cập nhật và xóa thiết bị theo serial, model, khách hàng và kỹ sư phụ trách.',
+    description: 'Tạo, cập nhật và xóa từng máy thực tế theo model, serial và phụ kiện đi kèm.',
     endpoint: '/machines',
     icon: null,
     searchPlaceholder: 'Tìm mã máy, serial, model',
@@ -217,8 +346,14 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         label: 'Model máy',
         type: 'select',
         required: true,
+        wide: true,
         valuePath: 'machineModel.id',
-        optionSource: { endpoint: '/machine-models?limit=100', labelPath: 'name', valuePath: 'id' },
+        optionSource: {
+          endpoint: '/machine-models?limit=100',
+          labelPath: 'code',
+          labelPaths: ['code', 'name'],
+          valuePath: 'id',
+        },
       },
       { name: 'name', label: 'Tên máy' },
       { name: 'status', label: 'Trạng thái vận hành', type: 'select', options: machineStatuses },
@@ -235,18 +370,24 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         label: 'Kỹ sư lắp đặt',
         type: 'select',
         valuePath: 'installedBy.id',
-        optionSource: { endpoint: '/users', labelPath: 'fullName', valuePath: 'id' },
+        optionSource: engineerOptionSource,
       },
       {
         name: 'primaryEngineerId',
         label: 'Kỹ sư phụ trách',
         type: 'select',
         valuePath: 'primaryEngineer.id',
-        optionSource: { endpoint: '/users', labelPath: 'fullName', valuePath: 'id' },
+        optionSource: engineerOptionSource,
       },
       { name: 'installDate', label: 'Ngày lắp', type: 'date' },
       { name: 'warrantyStartDate', label: 'Bắt đầu bảo hành', type: 'date' },
       { name: 'warrantyEndDate', label: 'Kết thúc bảo hành', type: 'date' },
+      {
+        name: 'accessories',
+        label: 'Phụ kiện đi kèm',
+        type: 'textarea',
+        wide: true,
+      },
     ],
   },
   repairs: {
@@ -263,11 +404,30 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { key: 'machine.machineCode', label: 'Mã máy' },
       { key: 'priority', label: 'Ưu tiên' },
       { key: 'status', label: 'Trạng thái' },
-      { key: 'engineer.fullName', label: 'Kỹ sư' },
+      { key: 'createdBy.fullName', label: 'Người tạo' },
+      { key: 'engineer.fullName', label: 'Kỹ sư xử lý' },
     ],
     fields: [
       { name: 'title', label: 'Tiêu đề', required: true },
       { name: 'description', label: 'Mô tả', type: 'textarea' },
+      { name: 'usingDepartment', label: 'Đơn vị sử dụng thiết bị' },
+      { name: 'representative', label: 'Người đại diện' },
+      { name: 'address', label: 'Địa chỉ', wide: true },
+      { name: 'contactPhone', label: 'Số điện thoại' },
+      { name: 'deviceName', label: 'Tên thiết bị' },
+      { name: 'modelName', label: 'Model' },
+      { name: 'serialNumber', label: 'S/N' },
+      {
+        name: 'warrantyStatus',
+        label: 'Thời hạn bảo hành',
+        type: 'select',
+        options: [
+          { label: 'Còn bảo hành', value: 'IN_WARRANTY' },
+          { label: 'Hết bảo hành', value: 'OUT_OF_WARRANTY' },
+        ],
+      },
+      { name: 'conditionAssessment', label: 'Kiểm tra tình trạng thiết bị', type: 'textarea' },
+      { name: 'repairMethod', label: 'Phương pháp sửa chữa', type: 'textarea' },
       {
         name: 'machineId',
         label: 'Thiết bị',
@@ -279,13 +439,13 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       },
       {
         name: 'engineerId',
-        label: 'Kỹ sư',
+        label: 'Kỹ sư xử lý',
         type: 'select',
-        createOnly: true,
         valuePath: 'engineer.id',
-        optionSource: { endpoint: '/users', labelPath: 'fullName', valuePath: 'id' },
+        optionSource: engineerOptionSource,
       },
       { name: 'priority', label: 'Ưu tiên', type: 'select', options: repairPriorities },
+      { name: 'status', label: 'Trạng thái xử lý', type: 'select', options: taskStatuses, updateOnly: true },
       { name: 'reportedAt', label: 'Ngày báo lỗi', type: 'date', createOnly: true },
       { name: 'resultNote', label: 'Kết quả xử lý', type: 'textarea', updateOnly: true },
       { name: 'customerFeedback', label: 'Phản hồi khách hàng', type: 'textarea', updateOnly: true },
@@ -306,6 +466,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { key: 'type', label: 'Loại' },
       { key: 'status', label: 'Trạng thái' },
       { key: 'scheduledDate', label: 'Lịch hẹn' },
+      { key: 'engineer.fullName', label: 'Kỹ sư' },
     ],
     fields: [
       { name: 'title', label: 'Tiêu đề', required: true },
@@ -324,13 +485,13 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         name: 'engineerId',
         label: 'Kỹ sư',
         type: 'select',
-        createOnly: true,
         valuePath: 'engineer.id',
-        optionSource: { endpoint: '/users', labelPath: 'fullName', valuePath: 'id' },
+        optionSource: engineerOptionSource,
       },
       { name: 'scheduledDate', label: 'Ngày bảo trì', type: 'date', required: true },
       { name: 'nextDueDate', label: 'Lịch tiếp theo', type: 'date' },
       { name: 'checklist', label: 'Checklist', type: 'tags' },
+      { name: 'status', label: 'Trạng thái xử lý', type: 'select', options: taskStatuses, updateOnly: true },
       { name: 'resultNote', label: 'Kết quả bảo trì', type: 'textarea', updateOnly: true },
     ],
   },
@@ -374,7 +535,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         type: 'select',
         required: true,
         valuePath: 'installedBy.id',
-        optionSource: { endpoint: '/users', labelPath: 'fullName', valuePath: 'id' },
+        optionSource: engineerOptionSource,
       },
       {
         name: 'businessLineId',
@@ -389,6 +550,17 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'accessories', label: 'Phụ kiện', type: 'tags' },
       { name: 'note', label: 'Ghi chú', type: 'textarea' },
       { name: 'warrantyNote', label: 'Ghi chú bảo hành', type: 'textarea' },
+      { name: 'handoverInstallerName', label: 'Người lắp đặt', detailOnly: true },
+      { name: 'handoverInstallerPosition', label: 'Chức vụ bên bàn giao', detailOnly: true },
+      { name: 'handoverVehicle', label: 'Phương tiện đi', detailOnly: true },
+      { name: 'handoverDepartureDate', label: 'Ngày đi', type: 'date', detailOnly: true },
+      { name: 'receiverInstallAddress', label: 'Địa chỉ lắp đặt', detailOnly: true },
+      { name: 'receiverRepresentative', label: 'Người đại diện bên nhận', detailOnly: true },
+      { name: 'receiverPosition', label: 'Chức vụ bên nhận', detailOnly: true },
+      { name: 'receiverPhone', label: 'SĐT bên nhận', detailOnly: true },
+      { name: 'installedDeviceItems', label: 'Danh mục thiết bị lắp đặt', detailOnly: true },
+      { name: 'deviceCondition', label: 'Tình trạng thiết bị', detailOnly: true },
+      { name: 'deviceConditionNote', label: 'Ghi chú tình trạng', detailOnly: true },
     ],
   },
   'inventory-movements': {

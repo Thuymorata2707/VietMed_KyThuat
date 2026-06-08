@@ -6,39 +6,10 @@
 }
 
 .admin-roles-list {
-  background: #ffffff;
-  border: 1px solid #dfe7ef;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   overflow: hidden;
-}
-
-.list-toolbar {
-  align-items: center;
-  border-bottom: 1px solid #edf1f6;
-  display: flex;
-  gap: 12px;
-  padding: 14px;
-}
-
-.list-toolbar input,
-.admin-role-form input {
-  border: 1px solid #ced8e3;
-  border-radius: 8px;
-  color: #17202a;
-  min-height: 40px;
-  outline: none;
-  padding: 0 12px;
-}
-
-.list-toolbar input {
-  flex: 1;
-  min-width: 0;
-}
-
-.list-toolbar input:focus,
-.admin-role-form input:focus {
-  border-color: #c92a1f;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
 
 .roles-table-wrap {
@@ -53,13 +24,13 @@
 
 .roles-table-wrap th,
 .roles-table-wrap td {
-  border-bottom: 1px solid #edf1f6;
+  border-bottom: 1px solid var(--color-border-soft);
   padding: 13px 14px;
   text-align: left;
 }
 
 .roles-table-wrap th {
-  color: #657384;
+  color: var(--color-muted);
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
@@ -67,102 +38,9 @@
 
 .role-name {
   align-items: center;
-  color: #17202a;
+  color: var(--color-text);
   display: flex;
   gap: 8px;
-}
-
-.icon-button,
-.secondary-button,
-.primary-button {
-  align-items: center;
-  border: 0;
-  cursor: pointer;
-  display: inline-flex;
-  justify-content: center;
-}
-
-.icon-button {
-  background: #f4f7fb;
-  border: 1px solid #dfe7ef;
-  border-radius: 8px;
-  color: #405064;
-  height: 34px;
-  width: 34px;
-}
-
-.secondary-button,
-.primary-button {
-  border-radius: 8px;
-  font-weight: 500;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 13px;
-  white-space: nowrap;
-}
-
-.secondary-button:disabled,
-.primary-button:disabled {
-  cursor: wait;
-  opacity: 0.68;
-}
-
-.secondary-button {
-  background: #ffffff;
-  border: 1px solid #dfe7ef;
-  color: #405064;
-}
-
-.primary-button {
-  background: #c92a1f;
-  color: #ffffff;
-}
-
-.primary-button:disabled {
-  cursor: wait;
-  opacity: 0.68;
-}
-
-.crud-modal-backdrop {
-  align-items: center;
-  background: rgba(15, 23, 42, 0.42);
-  display: flex;
-  inset: 0;
-  justify-content: center;
-  padding: 24px;
-  position: fixed;
-  z-index: 30;
-}
-
-.crud-modal {
-  background: #ffffff;
-  border: 1px solid #dfe7ef;
-  border-radius: 8px;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
-  display: grid;
-  gap: 18px;
-  max-width: 520px;
-  padding: 20px;
-  width: 100%;
-}
-
-.form-panel-heading {
-  align-items: flex-start;
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-}
-
-.form-panel-heading span {
-  color: #657384;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.form-panel-heading h2 {
-  font-size: 20px;
-  margin-top: 4px;
 }
 
 .admin-role-form {
@@ -171,81 +49,21 @@
 }
 
 .admin-role-form label {
-  color: #405064;
+  color: var(--color-muted-strong);
   display: grid;
   font-weight: 500;
   gap: 7px;
 }
 
-.modal-actions {
-  border-top: 1px solid #edf1f6;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  padding-top: 16px;
-}
-
-.spin-icon {
-  animation: spin 900ms linear infinite;
-}
-
-.table-state {
-  align-items: center;
-  color: #657384;
-  display: flex;
-  gap: 9px;
-  justify-content: center;
-  min-height: 94px;
-  text-align: center;
-}
-
-.empty-state {
-  display: grid;
-  gap: 6px;
-}
-
-.empty-state strong {
-  color: #405064;
-  font-weight: 600;
-}
-
-.empty-state span {
-  color: #657384;
-}
-
-.success-notice {
-  align-items: center;
-  background: #ecfdf3;
-  border: 1px solid #abefc6;
-  border-radius: 8px;
-  color: #027a48;
-  display: flex;
-  font-weight: 500;
-  min-height: 44px;
-  padding: 0 14px;
-}
-
 .empty-roles {
-  color: #657384;
+  color: var(--color-muted);
   padding: 34px;
   text-align: center;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @media (max-width: 640px) {
-  .admin-roles-heading,
-  .list-toolbar {
+  .admin-roles-heading {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .secondary-button,
-  .primary-button {
-    width: 100%;
   }
 }

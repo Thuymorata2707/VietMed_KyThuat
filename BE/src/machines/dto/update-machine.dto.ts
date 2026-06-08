@@ -3,7 +3,16 @@ import {
   MachineProductCategory,
   MachineStatus,
 } from '@prisma/client';
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { UpdateMachineAccessoryDto } from './machine-accessory.dto';
 
 export class UpdateMachineDto {
   @IsOptional()
@@ -89,4 +98,16 @@ export class UpdateMachineDto {
   @IsOptional()
   @IsString()
   primaryEngineerId?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateMachineAccessoryItemDto)
+  accessories?: UpdateMachineAccessoryItemDto[];
+}
+
+export class UpdateMachineAccessoryItemDto extends UpdateMachineAccessoryDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
 }

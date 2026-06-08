@@ -5,11 +5,15 @@ import {
 } from '@prisma/client';
 import {
   IsDateString,
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreateMachineAccessoryDto } from './machine-accessory.dto';
 
 export class CreateMachineDto {
   @IsOptional()
@@ -95,4 +99,10 @@ export class CreateMachineDto {
   @IsOptional()
   @IsString()
   primaryEngineerId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateMachineAccessoryDto)
+  accessories?: CreateMachineAccessoryDto[];
 }

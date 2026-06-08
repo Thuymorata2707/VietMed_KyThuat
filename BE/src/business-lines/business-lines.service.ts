@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { BusinessLineStatus, MachineProductCategory } from '@prisma/client';
+import { BusinessLineStatus, ExpertiseGroup, MachineProductCategory } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { pickChangedFields } from '../common/audit-changes';
 import { RequestUser } from '../common/request-user.type';
@@ -23,6 +23,7 @@ export class BusinessLinesService {
     this.validateCreate(dto);
     await this.ensureCodeIsAvailable(dto.code);
     await this.ensureManagerExists(dto.managerId);
+    const productIndustry = await this.ensureProductIndustryExists(dto.productIndustryId);
 
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.businessLine.create({
@@ -33,6 +34,8 @@ export class BusinessLinesService {
           manufacturer: dto.manufacturer?.trim() || null,
           imageUrl: dto.imageUrl?.trim() || null,
           productCategory: dto.productCategory ?? MachineProductCategory.OTHER,
+          expertiseGroup: dto.expertiseGroup ?? productIndustry?.expertiseGroup ?? ExpertiseGroup.IMAGING,
+          productIndustryId: productIndustry?.id ?? null,
           countryOfOrigin: dto.countryOfOrigin?.trim() || null,
           website: dto.website?.trim() || null,
           contactPerson: dto.contactPerson?.trim() || null,
@@ -142,6 +145,10 @@ export class BusinessLinesService {
     if (dto.managerId) {
       await this.ensureManagerExists(dto.managerId);
     }
+    const productIndustry =
+      dto.productIndustryId === undefined
+        ? undefined
+        : await this.ensureProductIndustryExists(dto.productIndustryId);
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.businessLine.update({
@@ -159,6 +166,8 @@ export class BusinessLinesService {
               ? undefined
               : dto.imageUrl?.trim() || null,
           productCategory: dto.productCategory,
+          expertiseGroup: dto.expertiseGroup ?? productIndustry?.expertiseGroup,
+          productIndustryId: dto.productIndustryId === undefined ? undefined : productIndustry?.id ?? null,
           countryOfOrigin:
             dto.countryOfOrigin === undefined
               ? undefined
@@ -201,6 +210,8 @@ export class BusinessLinesService {
             'manufacturer',
             'imageUrl',
             'productCategory',
+            'expertiseGroup',
+            'productIndustryId',
             'countryOfOrigin',
             'website',
             'contactPerson',
@@ -306,6 +317,22 @@ export class BusinessLinesService {
     }
   }
 
+  private async ensureProductIndustryExists(productIndustryId?: string | null) {
+    if (!productIndustryId) {
+      return null;
+    }
+
+    const productIndustry = await this.prisma.productIndustry.findUnique({
+      where: { id: productIndustryId },
+    });
+
+    if (!productIndustry) {
+      throw new BadRequestException('Product industry does not exist');
+    }
+
+    return productIndustry;
+  }
+
   private normalizeCode(code: string): string {
     return code.toUpperCase().trim();
   }
@@ -317,6 +344,7 @@ export class BusinessLinesService {
   private defaultInclude() {
     return {
       manager: this.managerSelect(),
+      productIndustry: true,
       _count: {
         select: {
           machines: true,

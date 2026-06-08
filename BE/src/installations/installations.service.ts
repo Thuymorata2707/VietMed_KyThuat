@@ -20,6 +20,7 @@ import { validateInventoryMovement } from '../machines/machine-state.rules';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInstallationDto } from './dto/create-installation.dto';
 import { ListInstallationsQueryDto } from './dto/list-installations-query.dto';
+import { UpdateInstallationStatusDto } from './dto/update-installation-status.dto';
 
 @Injectable()
 export class InstallationsService {
@@ -32,10 +33,13 @@ export class InstallationsService {
     assertPermission(actor, PERMISSIONS.INSTALLATION_CREATE);
     this.validateCreate(dto);
 
+    const installedById =
+      actor.roleName === 'engineer' ? actor.id : dto.installedById;
+
     const [machine, customer, engineer, businessLine] = await Promise.all([
       this.findMachine(dto.machineId),
       this.findCustomer(dto.customerId),
-      this.findEngineer(dto.installedById),
+      this.findEngineer(installedById),
       this.findBusinessLine(dto.businessLineId),
     ]);
 
@@ -80,6 +84,32 @@ export class InstallationsService {
           installedAt,
           accessories: this.normalizeAccessories(dto.accessories),
           note: dto.note?.trim() || null,
+          handoverInstallerName: this.cleanOptionalString(
+            dto.handoverInstallerName,
+          ),
+          handoverInstallerPosition: this.cleanOptionalString(
+            dto.handoverInstallerPosition,
+          ),
+          handoverVehicle: this.cleanOptionalString(dto.handoverVehicle),
+          handoverDepartureDate: this.parseOptionalDate(
+            dto.handoverDepartureDate,
+            'handoverDepartureDate',
+          ),
+          receiverInstallAddress: this.cleanOptionalString(
+            dto.receiverInstallAddress,
+          ),
+          receiverRepresentative: this.cleanOptionalString(
+            dto.receiverRepresentative,
+          ),
+          receiverPosition: this.cleanOptionalString(dto.receiverPosition),
+          receiverPhone: this.cleanOptionalString(dto.receiverPhone),
+          installedDeviceItems: this.normalizeDeviceItems(
+            dto.installedDeviceItems,
+          ),
+          deviceCondition: dto.deviceCondition || 'NEW_100',
+          deviceConditionNote: this.cleanOptionalString(
+            dto.deviceConditionNote,
+          ),
         },
       });
 
@@ -191,6 +221,67 @@ export class InstallationsService {
     return installation;
   }
 
+  async updateStatus(
+    id: string,
+    dto: UpdateInstallationStatusDto,
+    actor: RequestUser,
+  ) {
+    if (!dto.status) {
+      throw new BadRequestException('status is required');
+    }
+
+    assertPermission(actor, PERMISSIONS.INSTALLATION_STATUS_UPDATE);
+    const installation = await this.findOne(id, actor);
+    const installedAt = this.parseOptionalDate(dto.installedAt, 'installedAt');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.machineInstallation.update({
+        where: { id },
+        data: {
+          status: dto.status,
+          installedAt: installedAt ?? undefined,
+          note: dto.note?.trim(),
+        },
+        include: this.defaultInclude(),
+      });
+
+      if (installedAt) {
+        await tx.machine.update({
+          where: { id: installation.machineId },
+          data: {
+            installDate: installedAt,
+          },
+        });
+      }
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.STATUS_CHANGE,
+          entityType: 'MachineInstallation',
+          entityId: id,
+          actor,
+          changes: {
+            status: {
+              from: installation.status,
+              to: updated.status,
+            },
+            installedAt: {
+              from: installation.installedAt,
+              to: updated.installedAt,
+            },
+            note: {
+              from: installation.note,
+              to: updated.note,
+            },
+          },
+        },
+        tx,
+      );
+
+      return updated;
+    });
+  }
+
   getStatuses() {
     return Object.values(InstallationStatus);
   }
@@ -205,6 +296,12 @@ export class InstallationsService {
     ) {
       throw new BadRequestException(
         'machineId, customerId, installedAt, installedById and warrantyEndDate are required',
+      );
+    }
+
+    if (dto.deviceCondition === 'OTHER' && !dto.deviceConditionNote?.trim()) {
+      throw new BadRequestException(
+        'deviceConditionNote is required when deviceCondition is OTHER',
       );
     }
   }
@@ -279,6 +376,29 @@ export class InstallationsService {
     return accessories
       .map((accessory) => accessory.trim())
       .filter((accessory) => accessory.length > 0);
+  }
+
+  private normalizeDeviceItems(
+    items?: CreateInstallationDto['installedDeviceItems'],
+  ): Prisma.InputJsonValue {
+    if (!items?.length) {
+      return [];
+    }
+
+    return items
+      .map((item) => ({
+        itemName: item.itemName?.trim(),
+        model: item.model?.trim() || null,
+        serialNumber: item.serialNumber?.trim() || null,
+        manufactureDate: item.manufactureDate || null,
+        quantity: Number(item.quantity) || 1,
+        warrantyPeriod: item.warrantyPeriod?.trim() || null,
+      }))
+      .filter((item) => item.itemName);
+  }
+
+  private cleanOptionalString(value?: string | null) {
+    return value?.trim() || null;
   }
 
   private parseRequiredDate(value: string, fieldName: string): Date {

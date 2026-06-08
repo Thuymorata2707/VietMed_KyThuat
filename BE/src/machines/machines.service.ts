@@ -18,7 +18,14 @@ import { pickChangedFields } from '../common/audit-changes';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMachineDto } from './dto/create-machine.dto';
 import { ListMachinesQueryDto } from './dto/list-machines-query.dto';
-import { UpdateMachineDto } from './dto/update-machine.dto';
+import {
+  CreateMachineAccessoryDto,
+  UpdateMachineAccessoryDto,
+} from './dto/machine-accessory.dto';
+import {
+  UpdateMachineAccessoryItemDto,
+  UpdateMachineDto,
+} from './dto/update-machine.dto';
 import { validateMachineState } from './machine-state.rules';
 
 @Injectable()
@@ -29,59 +36,73 @@ export class MachinesService {
   ) {}
 
   async create(dto: CreateMachineDto, actor?: RequestUser) {
-    this.validateCreateMachine(dto);
+    const input = this.applyCreateDefaults(dto, actor);
+    this.validateCreateMachine(input);
     const machineModel = await this.ensureMachineModelExists(
-      dto.machineModelId,
+      input.machineModelId,
     );
-    await this.ensureCustomerExists(dto.customerId);
-    await this.ensureSerialNumberIsAvailable(dto.serialNumber);
-    await this.ensureMachineCodeIsAvailable(dto.machineCode);
-    await this.ensureEngineerExists(dto.installedById);
-    await this.ensureEngineerExists(dto.primaryEngineerId);
+    await this.ensureCustomerExists(input.customerId);
+    await this.ensureSerialNumberIsAvailable(input.serialNumber);
+    await this.ensureMachineCodeIsAvailable(input.machineCode);
+    await this.ensureEngineerExists(input.installedById);
+    await this.ensureEngineerExists(input.primaryEngineerId);
     await this.ensureBusinessLineExists(
-      machineModel?.businessLineId ?? dto.businessLineId,
+      machineModel?.businessLineId ?? input.businessLineId,
+    );
+    const accessoryInputs = await this.prepareAccessoryInputs(
+      input.accessories ?? [],
+      machineModel?.id ?? null,
     );
 
-    const status = dto.status ?? MachineStatus.ACTIVE;
+    const status = input.status ?? MachineStatus.ACTIVE;
     const inventoryStatus =
-      dto.inventoryStatus ?? MachineInventoryStatus.IN_STOCK;
-    const customerId = dto.customerId || null;
+      input.inventoryStatus ?? MachineInventoryStatus.IN_STOCK;
+    const customerId = input.customerId || null;
 
     validateMachineState(status, inventoryStatus, customerId);
 
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.machine.create({
         data: {
-          machineCode: dto.machineCode?.trim() || null,
-          serialNumber: this.normalizeSerialNumber(dto.serialNumber),
-          name: dto.name?.trim() || null,
-          imageUrl: dto.imageUrl?.trim() || null,
-          modelName: machineModel?.name ?? dto.modelName.trim(),
-          version: dto.version?.trim() || null,
+          machineCode: input.machineCode?.trim() || null,
+          serialNumber: this.normalizeSerialNumber(input.serialNumber),
+          name: input.name?.trim() || null,
+          imageUrl: input.imageUrl?.trim() || null,
+          modelName: machineModel?.name ?? input.modelName?.trim() ?? input.name?.trim() ?? 'Chưa xác định',
+          version: input.version?.trim() || null,
           manufacturer:
-            machineModel?.manufacturer ?? dto.manufacturer?.trim() ?? '',
+            machineModel?.manufacturer ?? input.manufacturer?.trim() ?? '',
           productCategory:
             machineModel?.productCategory ??
-            dto.productCategory ??
+            input.productCategory ??
             MachineProductCategory.OTHER,
           productLine:
-            machineModel?.productLine ?? dto.productLine?.trim() ?? null,
+            machineModel?.productLine ?? input.productLine?.trim() ?? null,
           status,
           inventoryStatus,
-          manufacturingDate: this.parseOptionalDate(dto.manufacturingDate),
-          warehouseImportDate: this.parseOptionalDate(dto.warehouseImportDate),
-          installDate: this.parseOptionalDate(dto.installDate),
-          warrantyStartDate: this.parseOptionalDate(dto.warrantyStartDate),
-          warrantyEndDate: this.parseOptionalDate(dto.warrantyEndDate),
+          manufacturingDate: this.parseOptionalDate(input.manufacturingDate),
+          warehouseImportDate: this.parseOptionalDate(input.warehouseImportDate),
+          installDate: this.parseOptionalDate(input.installDate),
+          warrantyStartDate: this.parseOptionalDate(input.warrantyStartDate),
+          warrantyEndDate: this.parseOptionalDate(input.warrantyEndDate),
           businessLineId:
-            machineModel?.businessLineId ?? dto.businessLineId ?? null,
+            machineModel?.businessLineId ?? input.businessLineId ?? null,
           machineModelId: machineModel?.id ?? null,
           customerId,
-          installedById: dto.installedById || null,
-          primaryEngineerId: dto.primaryEngineerId || null,
+          installedById: input.installedById || null,
+          primaryEngineerId: input.primaryEngineerId || null,
         },
         include: this.defaultInclude(),
       });
+
+      if (accessoryInputs.length) {
+        await tx.machineAccessory.createMany({
+          data: accessoryInputs.map((accessory) => ({
+            ...accessory,
+            machineId: created.id,
+          })),
+        });
+      }
 
       await this.auditLogsService.create(
         {
@@ -100,7 +121,13 @@ export class MachinesService {
         tx,
       );
 
-      return created;
+      return tx.machine.findUnique({
+        where: { id: created.id },
+        include: {
+          ...this.defaultInclude(),
+          accessories: this.machineAccessoriesRelationInclude(),
+        },
+      });
     });
   }
 
@@ -115,7 +142,10 @@ export class MachinesService {
     const [data, total] = await this.prisma.$transaction([
       this.prisma.machine.findMany({
         where,
-        include: this.defaultInclude(),
+        include: {
+          ...this.defaultInclude(),
+          accessories: this.machineAccessoriesRelationInclude(),
+        },
         orderBy: {
           createdAt: 'desc',
         },
@@ -186,6 +216,7 @@ export class MachinesService {
             createdAt: 'desc',
           },
         },
+        accessories: this.machineAccessoriesRelationInclude(),
       },
     });
 
@@ -274,6 +305,7 @@ export class MachinesService {
             createdAt: 'desc',
           },
         },
+        accessories: this.machineAccessoriesRelationInclude(),
       },
     });
 
@@ -282,6 +314,180 @@ export class MachinesService {
     }
 
     return machine;
+  }
+
+  async findAccessories(machineId: string, user?: RequestUser) {
+    await this.ensureMachineCanBeRead(machineId, user);
+
+    return this.prisma.machineAccessory.findMany({
+      where: { machineId },
+      include: this.machineAccessoriesInclude(),
+      orderBy: [{ name: 'asc' }, { serialNumber: 'asc' }],
+    });
+  }
+
+  async createAccessory(
+    machineId: string,
+    dto: CreateMachineAccessoryDto,
+    actor?: RequestUser,
+  ) {
+    const machine = await this.ensureMachineCanBeRead(machineId);
+    const [accessoryInput] = await this.prepareAccessoryInputs(
+      [dto],
+      machine.machineModelId,
+    );
+
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.machineAccessory.create({
+        data: {
+          ...accessoryInput,
+          machineId,
+        },
+        include: this.machineAccessoriesInclude(),
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: 'ADD_ACCESSORY',
+          entityType: 'Machine',
+          entityId: machineId,
+          actor,
+          metadata: {
+            accessoryId: created.id,
+            name: created.name,
+            serialNumber: created.serialNumber,
+          },
+        },
+        tx,
+      );
+
+      return created;
+    });
+  }
+
+  async updateAccessory(
+    machineId: string,
+    accessoryId: string,
+    dto: UpdateMachineAccessoryDto,
+    actor?: RequestUser,
+  ) {
+    const machine = await this.ensureMachineCanBeRead(machineId);
+    const current = await this.prisma.machineAccessory.findFirst({
+      where: { id: accessoryId, machineId },
+      include: this.machineAccessoriesInclude(),
+    });
+
+    if (!current) {
+      throw new NotFoundException('Machine accessory not found');
+    }
+
+    const componentAccessory =
+      dto.componentAccessoryId === undefined
+        ? undefined
+        : await this.ensureComponentAccessoryBelongsToModel(
+            dto.componentAccessoryId,
+            machine.machineModelId,
+          );
+
+    const nextSerialNumber =
+      dto.serialNumber === undefined
+        ? undefined
+        : this.normalizeOptionalSerialNumber(dto.serialNumber);
+
+    if (nextSerialNumber) {
+      await this.ensureAccessorySerialNumberIsAvailable(
+        nextSerialNumber,
+        accessoryId,
+      );
+    }
+
+    const nextName =
+      dto.name?.trim() ||
+      componentAccessory?.name ||
+      (dto.componentAccessoryId === null ? current.name : undefined);
+
+    if (dto.componentAccessoryId === null && !nextName?.trim()) {
+      throw new BadRequestException('Accessory name is required');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.machineAccessory.update({
+        where: { id: accessoryId },
+        data: {
+          componentAccessoryId:
+            dto.componentAccessoryId === undefined
+              ? undefined
+              : componentAccessory?.id ?? null,
+          code:
+            dto.code === undefined
+              ? componentAccessory?.code
+              : dto.code?.trim() || null,
+          name: nextName,
+          serialNumber: nextSerialNumber,
+          description:
+            dto.description === undefined
+              ? undefined
+              : dto.description?.trim() || null,
+          note: dto.note === undefined ? undefined : dto.note?.trim() || null,
+        },
+        include: this.machineAccessoriesInclude(),
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: 'UPDATE_ACCESSORY',
+          entityType: 'Machine',
+          entityId: machineId,
+          actor,
+          changes: pickChangedFields(current, updated, [
+            'componentAccessoryId',
+            'code',
+            'name',
+            'serialNumber',
+            'description',
+            'note',
+          ]),
+        },
+        tx,
+      );
+
+      return updated;
+    });
+  }
+
+  async removeAccessory(
+    machineId: string,
+    accessoryId: string,
+    actor?: RequestUser,
+  ) {
+    const accessory = await this.prisma.machineAccessory.findFirst({
+      where: { id: accessoryId, machineId },
+    });
+
+    if (!accessory) {
+      throw new NotFoundException('Machine accessory not found');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.machineAccessory.delete({ where: { id: accessoryId } });
+
+      await this.auditLogsService.create(
+        {
+          action: 'REMOVE_ACCESSORY',
+          entityType: 'Machine',
+          entityId: machineId,
+          actor,
+          metadata: {
+            accessoryId,
+            name: accessory.name,
+            serialNumber: accessory.serialNumber,
+          },
+        },
+        tx,
+      );
+    });
+
+    return { deleted: true };
   }
 
   async update(id: string, dto: UpdateMachineDto, actor?: RequestUser) {
@@ -394,6 +600,15 @@ export class MachinesService {
         include: this.defaultInclude(),
       });
 
+      if (dto.accessories !== undefined) {
+        await this.syncMachineAccessories(
+          tx,
+          id,
+          updated.machineModelId,
+          dto.accessories,
+        );
+      }
+
       await this.auditLogsService.create(
         {
           action: 'UPDATE',
@@ -421,11 +636,23 @@ export class MachinesService {
             'warrantyStartDate',
             'warrantyEndDate',
           ]),
+          metadata:
+            dto.accessories === undefined
+              ? undefined
+              : {
+                  accessoriesCount: dto.accessories.length,
+                },
         },
         tx,
       );
 
-      return updated;
+      return tx.machine.findUnique({
+        where: { id },
+        include: {
+          ...this.defaultInclude(),
+          accessories: this.machineAccessoriesRelationInclude(),
+        },
+      });
     });
   }
 
@@ -518,14 +745,12 @@ export class MachinesService {
   private validateCreateMachine(dto: CreateMachineDto) {
     if (
       !dto.serialNumber?.trim() ||
-      (!dto.machineModelId && !dto.modelName?.trim()) ||
-      (!dto.machineModelId && !dto.manufacturer?.trim())
+      (!dto.machineModelId && !dto.modelName?.trim() && !dto.name?.trim())
     ) {
       throw new BadRequestException(
-        'serialNumber, modelName and manufacturer are required unless machineModelId is provided',
+        'serialNumber and modelName are required unless machineModelId is provided',
       );
     }
-
   }
 
   private async ensureCustomerExists(customerId?: string | null) {
@@ -634,8 +859,239 @@ export class MachinesService {
     return machineModel;
   }
 
+  private async ensureMachineCanBeRead(id: string, user?: RequestUser) {
+    const machine = await this.prisma.machine.findFirst({
+      where: this.withAccessScope({ id }, user),
+      select: {
+        id: true,
+        machineModelId: true,
+      },
+    });
+
+    if (!machine) {
+      throw new NotFoundException('Machine not found');
+    }
+
+    return machine;
+  }
+
+  private async prepareAccessoryInputs(
+    accessories: CreateMachineAccessoryDto[],
+    machineModelId: string | null,
+  ): Promise<Array<Omit<Prisma.MachineAccessoryCreateManyInput, 'machineId'>>> {
+    const prepared: Array<
+      Omit<Prisma.MachineAccessoryCreateManyInput, 'machineId'>
+    > = [];
+
+    for (const accessory of accessories) {
+      const componentAccessory =
+        await this.ensureComponentAccessoryBelongsToModel(
+          accessory.componentAccessoryId,
+          machineModelId,
+        );
+      const serialNumber = this.normalizeOptionalSerialNumber(
+        accessory.serialNumber,
+      );
+
+      if (serialNumber) {
+        await this.ensureAccessorySerialNumberIsAvailable(serialNumber);
+      }
+
+      const name = accessory.name?.trim() || componentAccessory?.name;
+
+      if (!name) {
+        throw new BadRequestException('Accessory name is required');
+      }
+
+      prepared.push({
+        componentAccessoryId: componentAccessory?.id ?? null,
+        code: accessory.code?.trim() || componentAccessory?.code || null,
+        name,
+        serialNumber,
+        description: accessory.description?.trim() || null,
+        note: accessory.note?.trim() || null,
+      });
+    }
+
+    return prepared;
+  }
+
+  private async syncMachineAccessories(
+    tx: Prisma.TransactionClient,
+    machineId: string,
+    machineModelId: string | null,
+    accessories: UpdateMachineAccessoryItemDto[],
+  ) {
+    const currentAccessories = await tx.machineAccessory.findMany({
+      where: { machineId },
+    });
+    const currentById = new Map(
+      currentAccessories.map((accessory) => [accessory.id, accessory]),
+    );
+    const nextIds = new Set(
+      accessories
+        .map((accessory) => ('id' in accessory ? accessory.id : undefined))
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    const accessoriesToDelete = currentAccessories.filter(
+      (accessory) => !nextIds.has(accessory.id),
+    );
+
+    if (accessoriesToDelete.length) {
+      await tx.machineAccessory.deleteMany({
+        where: {
+          machineId,
+          id: {
+            in: accessoriesToDelete.map((accessory) => accessory.id),
+          },
+        },
+      });
+    }
+
+    for (const accessory of accessories) {
+      const accessoryId = 'id' in accessory ? accessory.id : undefined;
+
+      if (!accessoryId) {
+        const [preparedAccessory] = await this.prepareAccessoryInputs(
+          [accessory],
+          machineModelId,
+        );
+
+        await tx.machineAccessory.create({
+          data: {
+            ...preparedAccessory,
+            machineId,
+          },
+        });
+        continue;
+      }
+
+      const current = currentById.get(accessoryId);
+      if (!current) {
+        throw new BadRequestException('Machine accessory does not belong to this machine');
+      }
+
+      const componentAccessory =
+        accessory.componentAccessoryId === undefined
+          ? undefined
+          : await this.ensureComponentAccessoryBelongsToModel(
+              accessory.componentAccessoryId,
+              machineModelId,
+            );
+
+      const nextSerialNumber =
+        accessory.serialNumber === undefined
+          ? undefined
+          : this.normalizeOptionalSerialNumber(accessory.serialNumber);
+
+      if (nextSerialNumber) {
+        await this.ensureAccessorySerialNumberIsAvailable(
+          nextSerialNumber,
+          accessoryId,
+        );
+      }
+
+      const nextName =
+        accessory.name?.trim() ||
+        componentAccessory?.name ||
+        (accessory.componentAccessoryId === undefined ? current.name : undefined);
+
+      if (!nextName?.trim()) {
+        throw new BadRequestException('Accessory name is required');
+      }
+
+      await tx.machineAccessory.update({
+        where: { id: accessoryId },
+        data: {
+          componentAccessoryId:
+            accessory.componentAccessoryId === undefined
+              ? undefined
+              : componentAccessory?.id ?? null,
+          code:
+            accessory.code === undefined
+              ? componentAccessory?.code
+              : accessory.code?.trim() || null,
+          name: nextName,
+          serialNumber: nextSerialNumber,
+          description:
+            accessory.description === undefined
+              ? undefined
+              : accessory.description?.trim() || null,
+          note:
+            accessory.note === undefined ? undefined : accessory.note?.trim() || null,
+        },
+      });
+    }
+  }
+
+  private async ensureComponentAccessoryBelongsToModel(
+    componentAccessoryId?: string | null,
+    machineModelId?: string | null,
+  ) {
+    if (!componentAccessoryId) {
+      return null;
+    }
+
+    const componentAccessory = await this.prisma.componentAccessory.findUnique({
+      where: { id: componentAccessoryId },
+      include: {
+        component: true,
+      },
+    });
+
+    if (!componentAccessory) {
+      throw new BadRequestException('Component accessory does not exist');
+    }
+
+    if (
+      machineModelId &&
+      componentAccessory.component.machineModelId !== machineModelId
+    ) {
+      throw new BadRequestException(
+        'Component accessory does not belong to this machine model',
+      );
+    }
+
+    return componentAccessory;
+  }
+
+  private async ensureAccessorySerialNumberIsAvailable(
+    serialNumber: string,
+    currentAccessoryId?: string,
+  ) {
+    const accessory = await this.prisma.machineAccessory.findUnique({
+      where: { serialNumber },
+    });
+
+    if (accessory && accessory.id !== currentAccessoryId) {
+      throw new ConflictException('Accessory serial number already exists');
+    }
+  }
+
   private normalizeSerialNumber(serialNumber: string): string {
     return serialNumber.toUpperCase().trim();
+  }
+
+  private applyCreateDefaults(
+    dto: CreateMachineDto,
+    actor?: RequestUser,
+  ): CreateMachineDto {
+    if (actor?.roleName !== 'engineer') {
+      return dto;
+    }
+
+    return {
+      ...dto,
+      primaryEngineerId: dto.primaryEngineerId || actor.id,
+      installedById: dto.installedById || undefined,
+    };
+  }
+
+  private normalizeOptionalSerialNumber(serialNumber?: string | null) {
+    return serialNumber?.trim()
+      ? this.normalizeSerialNumber(serialNumber)
+      : null;
   }
 
   private buildFindAllWhere(
@@ -730,7 +1186,11 @@ export class MachinesService {
           region: true,
         },
       },
-      businessLine: true,
+      businessLine: {
+        include: {
+          productIndustry: true,
+        },
+      },
       machineModel: true,
       installedBy: {
         select: {
@@ -756,6 +1216,32 @@ export class MachinesService {
           engineerProfile: true,
         },
       },
+      _count: {
+        select: {
+          accessories: true,
+        },
+      },
+    };
+  }
+
+  private machineAccessoriesInclude() {
+    return {
+      componentAccessory: {
+        include: {
+          component: {
+            include: {
+              machineModel: true,
+            },
+          },
+        },
+      },
+    };
+  }
+
+  private machineAccessoriesRelationInclude() {
+    return {
+      include: this.machineAccessoriesInclude(),
+      orderBy: [{ name: 'asc' as const }, { serialNumber: 'asc' as const }],
     };
   }
 }

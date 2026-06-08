@@ -36,8 +36,10 @@ export class RepairsService {
 
     await this.ensureMachineExists(dto.machineId);
 
-    if (dto.engineerId) {
-      await this.ensureEngineerExists(dto.engineerId);
+    const engineerId = actor.roleName === 'engineer' ? actor.id : dto.engineerId;
+
+    if (engineerId) {
+      await this.ensureEngineerExists(engineerId);
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -47,11 +49,24 @@ export class RepairsService {
           title: dto.title.trim(),
           description: dto.description?.trim() || null,
           machineId: dto.machineId,
-          engineerId: dto.engineerId || null,
+          engineerId: engineerId || null,
+          createdById: actor.id,
           priority: dto.priority ?? RepairPriority.NORMAL,
-          status: dto.engineerId ? RepairStatus.ASSIGNED : RepairStatus.PENDING,
+          status: engineerId ? RepairStatus.ASSIGNED : RepairStatus.PENDING,
           reportedAt: this.parseOptionalDate(dto.reportedAt) ?? new Date(),
-          assignedAt: dto.engineerId ? new Date() : null,
+          assignedAt: engineerId ? new Date() : null,
+          usingDepartment: this.cleanOptionalString(dto.usingDepartment),
+          representative: this.cleanOptionalString(dto.representative),
+          address: this.cleanOptionalString(dto.address),
+          contactPhone: this.cleanOptionalString(dto.contactPhone),
+          deviceName: this.cleanOptionalString(dto.deviceName),
+          modelName: this.cleanOptionalString(dto.modelName),
+          serialNumber: this.cleanOptionalString(dto.serialNumber),
+          warrantyStatus: this.cleanOptionalString(dto.warrantyStatus),
+          conditionAssessment: this.cleanOptionalString(
+            dto.conditionAssessment,
+          ),
+          repairMethod: this.cleanOptionalString(dto.repairMethod),
         },
         include: this.defaultInclude(),
       });
@@ -65,6 +80,7 @@ export class RepairsService {
           metadata: {
             code: repair.code,
             machineId: repair.machineId,
+            createdById: repair.createdById,
             engineerId: repair.engineerId,
             status: repair.status,
           },
@@ -135,6 +151,20 @@ export class RepairsService {
             dto.customerFeedback === undefined
               ? undefined
               : dto.customerFeedback?.trim() || null,
+          usingDepartment: this.cleanOptionalUpdateString(
+            dto.usingDepartment,
+          ),
+          representative: this.cleanOptionalUpdateString(dto.representative),
+          address: this.cleanOptionalUpdateString(dto.address),
+          contactPhone: this.cleanOptionalUpdateString(dto.contactPhone),
+          deviceName: this.cleanOptionalUpdateString(dto.deviceName),
+          modelName: this.cleanOptionalUpdateString(dto.modelName),
+          serialNumber: this.cleanOptionalUpdateString(dto.serialNumber),
+          warrantyStatus: this.cleanOptionalUpdateString(dto.warrantyStatus),
+          conditionAssessment: this.cleanOptionalUpdateString(
+            dto.conditionAssessment,
+          ),
+          repairMethod: this.cleanOptionalUpdateString(dto.repairMethod),
         },
         include: this.defaultInclude(),
       });
@@ -151,6 +181,16 @@ export class RepairsService {
             'priority',
             'resultNote',
             'customerFeedback',
+            'usingDepartment',
+            'representative',
+            'address',
+            'contactPhone',
+            'deviceName',
+            'modelName',
+            'serialNumber',
+            'warrantyStatus',
+            'conditionAssessment',
+            'repairMethod',
           ]),
         },
         tx,
@@ -309,6 +349,14 @@ export class RepairsService {
     if (!dto.title?.trim() || !dto.machineId) {
       throw new BadRequestException('title and machineId are required');
     }
+  }
+
+  private cleanOptionalString(value?: string | null) {
+    return value?.trim() || null;
+  }
+
+  private cleanOptionalUpdateString(value?: string | null) {
+    return value === undefined ? undefined : this.cleanOptionalString(value);
   }
 
   private async ensureMachineExists(machineId: string) {
@@ -538,6 +586,17 @@ export class RepairsService {
         },
       },
       engineer: {
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          status: true,
+          role: true,
+          region: true,
+        },
+      },
+      createdBy: {
         select: {
           id: true,
           email: true,
