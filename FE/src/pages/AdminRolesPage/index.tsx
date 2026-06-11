@@ -4,7 +4,6 @@ import { apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
-import './styles.css';
 
 type Role = {
   id: string;
@@ -81,7 +80,7 @@ export function AdminRolesPage() {
 
   return (
     <PageFrame>
-      <div className="admin-roles-heading">
+      <div className="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
         <PageTitle
           eyebrow="Admin"
           title="Vai trò"
@@ -96,7 +95,7 @@ export function AdminRolesPage() {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="admin-roles-list">
+      <section className="overflow-hidden rounded-lg border border-[#e3eaf2] bg-white">
         <div className="list-toolbar">
           <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm vai trò" value={query} />
           <button className="primary-button compact" onClick={openCreateModal} type="button">
@@ -105,26 +104,26 @@ export function AdminRolesPage() {
           </button>
         </div>
 
-        <div className="roles-table-wrap">
-          <table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] border-collapse">
             <thead>
               <tr>
-                <th>Vai trò</th>
-                <th>Ngày tạo</th>
-                <th>Cập nhật</th>
+                <th className="border-b border-[#eef2f7] px-3.5 py-[13px] text-left text-xs font-semibold uppercase text-[#657384]">Vai trò</th>
+                <th className="border-b border-[#eef2f7] px-3.5 py-[13px] text-left text-xs font-semibold uppercase text-[#657384]">Ngày tạo</th>
+                <th className="border-b border-[#eef2f7] px-3.5 py-[13px] text-left text-xs font-semibold uppercase text-[#657384]">Cập nhật</th>
               </tr>
             </thead>
             <tbody>
               {filteredRoles.map((role) => (
                 <tr key={role.id}>
-                  <td>
-                    <div className="role-name">
+                  <td className="border-b border-[#eef2f7] px-3.5 py-[13px]">
+                    <div className="flex items-center gap-2 text-[#17202a]">
                       <ShieldCheck size={17} />
                       <strong>{role.name}</strong>
                     </div>
                   </td>
-                  <td>{formatDate(role.createdAt)}</td>
-                  <td>{formatDate(role.updatedAt)}</td>
+                  <td className="border-b border-[#eef2f7] px-3.5 py-[13px]">{formatDate(role.createdAt)}</td>
+                  <td className="border-b border-[#eef2f7] px-3.5 py-[13px]">{formatDate(role.updatedAt)}</td>
                 </tr>
               ))}
               {loading ? (

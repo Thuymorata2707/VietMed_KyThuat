@@ -1,7 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import './styles.css';
 
 type AdminShortcutProps = {
   to: string;
@@ -12,13 +11,13 @@ type AdminShortcutProps = {
 
 export function AdminShortcut({ to, icon, title, detail }: AdminShortcutProps) {
   return (
-    <Link className="admin-shortcut" to={to}>
+    <Link className="group grid min-h-24 grid-cols-[40px_minmax(0,1fr)_18px] items-center gap-3 rounded-lg border border-[#e3eaf2] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-px hover:border-[#f3c3be] hover:shadow-[0_12px_30px_rgba(15,23,42,0.06)]" to={to}>
       <div className="metric-icon">{icon}</div>
       <div>
-        <strong>{title}</strong>
-        <span>{detail}</span>
+        <strong className="block text-sm text-[#17202a]">{title}</strong>
+        <span className="mt-1 block text-[13px] leading-snug text-[#657384]">{detail}</span>
       </div>
-      <ChevronRight size={18} />
+      <ChevronRight className="text-[#657384] transition group-hover:translate-x-0.5 group-hover:text-[#c92a1f]" size={18} />
     </Link>
   );
 }

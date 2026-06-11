@@ -12,7 +12,7 @@ import {
 } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
-import { installationAccessWhere } from '../auth/access-scope';
+import { installationAccessWhere, isEngineer } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
@@ -34,8 +34,7 @@ export class InstallationsService {
     assertPermission(actor, PERMISSIONS.INSTALLATION_CREATE);
     this.validateCreate(dto);
 
-    const installedById =
-      actor.roleName === 'engineer' ? actor.id : dto.installedById;
+    const installedById = isEngineer(actor) ? actor.id : dto.installedById;
 
     const [machine, customer, engineer, businessLine] = await Promise.all([
       this.findMachine(dto.machineId),

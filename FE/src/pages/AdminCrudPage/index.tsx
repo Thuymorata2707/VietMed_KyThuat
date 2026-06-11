@@ -198,6 +198,26 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
     action();
   }
 
+  function handleFieldChange(field: CrudField, value: string, optionRow?: TableRow) {
+    setForm((current) => {
+      const next = { ...current, [field.name]: value };
+
+      if (field.name === 'machineId' && optionRow) {
+        const customerId = readPath(optionRow, 'customer.id');
+        const serialNumber = readPath(optionRow, 'serialNumber');
+        const modelName = readPath(optionRow, 'modelName');
+        const deviceName = readPath(optionRow, 'name');
+
+        if (customerId && 'customerId' in current && !current.customerId) next.customerId = String(customerId);
+        if (serialNumber && 'serialNumber' in current && !current.serialNumber) next.serialNumber = String(serialNumber);
+        if (modelName && 'modelName' in current && !current.modelName) next.modelName = String(modelName);
+        if (deviceName && 'deviceName' in current && !current.deviceName) next.deviceName = String(deviceName);
+      }
+
+      return next;
+    });
+  }
+
   return (
     <PageFrame>
       <div className="admin-crud-heading">
@@ -406,7 +426,7 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
 
       {isModalOpen ? (
         <div className="crud-modal-backdrop" role="presentation">
-          <section aria-modal="true" className="crud-modal" role="dialog">
+          <section aria-modal="true" className="crud-modal expanded-crud-modal" role="dialog">
             <div className="form-panel-heading">
               <div>
                 <span>{editingRow ? 'Cập nhật' : 'Tạo mới'}</span>
@@ -428,8 +448,9 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
                     }
                     field={field}
                     key={field.name}
-                    onChange={(value) => setForm((current) => ({ ...current, [field.name]: value }))}
+                    onChange={(value, optionRow) => handleFieldChange(field, value, optionRow)}
                     options={options[field.name] || field.options || []}
+                    row={editingRow}
                     value={form[field.name] ?? ''}
                   />
                 ))}
@@ -476,13 +497,15 @@ function FieldControl({
   field,
   value,
   options,
+  row,
   onChange,
 }: {
   accessoryMode?: 'probe' | 'generic';
   field: CrudField;
   value: string;
   options: SelectOption[];
-  onChange: (value: string) => void;
+  row?: TableRow | null;
+  onChange: (value: string, optionRow?: TableRow) => void;
 }) {
   if (field.type === 'textarea' || field.type === 'tags') {
     return (
@@ -521,6 +544,18 @@ function FieldControl({
   }
 
   if (field.type === 'select') {
+    if (field.optionSource?.searchable) {
+      return (
+        <SearchableSelect
+          field={field}
+          onChange={onChange}
+          options={options}
+          row={row}
+          value={value}
+        />
+      );
+    }
+
     return (
       <label className={field.wide ? 'wide-field' : undefined}>
         {field.label}
@@ -546,6 +581,135 @@ function FieldControl({
         </span>
       ) : null}
     </label>
+  );
+}
+
+function SearchableSelect({
+  field,
+  value,
+  options,
+  row,
+  onChange,
+}: {
+  field: CrudField;
+  value: string;
+  options: SelectOption[];
+  row?: TableRow | null;
+  onChange: (value: string, optionRow?: TableRow) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [remoteOptions, setRemoteOptions] = useState<SelectOption[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+  const source = field.optionSource!;
+  const selectedOption =
+    [...remoteOptions, ...options].find((option) => option.value === value) || optionFromRow(field, row);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const timeout = window.setTimeout(() => {
+      loadRemoteOptions();
+    }, 220);
+
+    return () => window.clearTimeout(timeout);
+  }, [isOpen, search, source.endpoint]);
+
+  async function loadRemoteOptions() {
+    setLoadingOptions(true);
+
+    try {
+      const endpoint = withQueryParams(source.endpoint, {
+        limit: '20',
+        search: search.trim(),
+      });
+      const result = await apiFetch<Paginated<TableRow> | TableRow[]>(endpoint);
+      const rows = filterOptionRows(Array.isArray(result) ? result : result.data, source.filterPath, source.filterValues);
+      const nextOptions = rows
+        .map((item) => ({
+          label: buildOptionLabel(item, source.labelPaths, source.labelPath),
+          row: item,
+          value: String(readPath(item, source.valuePath) ?? ''),
+        }))
+        .filter((option) => option.label && option.value);
+
+      setRemoteOptions(mergeOptions(selectedOption ? [selectedOption, ...nextOptions] : nextOptions));
+    } catch {
+      setRemoteOptions(selectedOption ? [selectedOption] : []);
+    } finally {
+      setLoadingOptions(false);
+    }
+  }
+
+  function chooseOption(option: SelectOption) {
+    onChange(option.value, option.row);
+    setSearch(option.label);
+    setIsOpen(false);
+  }
+
+  function clearValue() {
+    onChange('');
+    setSearch('');
+    setIsOpen(false);
+  }
+
+  const visibleOptions = mergeOptions(selectedOption ? [selectedOption, ...remoteOptions] : remoteOptions);
+  const inputValue = isOpen ? search : selectedOption?.label || '';
+
+  return (
+    <div className={field.wide ? 'searchable-field wide-field' : 'searchable-field'}>
+      <span className="field-label">{field.label}</span>
+      <div className="searchable-select">
+        <div className="searchable-input-row">
+          <input
+            onBlur={() => {
+              window.setTimeout(() => {
+                setSearch('');
+                setIsOpen(false);
+              }, 160);
+            }}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setIsOpen(true);
+            }}
+            onFocus={() => {
+              setSearch('');
+              setIsOpen(true);
+            }}
+            placeholder={`Tìm ${field.label.toLowerCase()}...`}
+            value={inputValue}
+          />
+          {value && !field.required ? (
+            <button className="secondary-button searchable-clear" onClick={clearValue} type="button">
+              Bỏ chọn
+            </button>
+          ) : null}
+        </div>
+        {field.required && !value ? <input className="searchable-required-proxy" required value="" onChange={() => null} /> : null}
+        {isOpen ? (
+          <div className="searchable-menu">
+            {loadingOptions ? <div className="searchable-state">Đang tìm...</div> : null}
+            {!loadingOptions && visibleOptions.length === 0 ? (
+              <div className="searchable-state">Không có kết quả. Hãy gõ mã, tên, S/N hoặc khách hàng.</div>
+            ) : null}
+            {!loadingOptions
+              ? visibleOptions.map((option) => (
+                  <button
+                    className={option.value === value ? 'active' : ''}
+                    key={option.value}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => chooseOption(option)}
+                    type="button"
+                  >
+                    <strong>{option.label}</strong>
+                    {option.row ? <span>{optionContext(option.row)}</span> : null}
+                  </button>
+                ))
+              : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -582,7 +746,7 @@ function formatFieldDetailValue(field: CrudField, row: TableRow, options: Option
   if (field.type === 'select') {
     const value = rawValue == null ? '' : String(rawValue);
     const matchedOption = [...(options[field.name] || []), ...(field.options || [])].find((option) => option.value === value);
-    return matchedOption?.label || formatDisplayValue(rawValue);
+    return matchedOption?.label || optionFromRow(field, row)?.label || formatDisplayValue(rawValue);
   }
 
   if (Array.isArray(rawValue)) {
@@ -751,7 +915,7 @@ async function loadRows(endpoint: string, page: number, limit: number, search: s
 async function loadOptions(fields: CrudField[]) {
   const entries = await Promise.all(
     fields
-      .filter((field) => field.optionSource)
+      .filter((field) => field.optionSource && !field.optionSource.searchable)
       .map(async (field) => {
         const source = field.optionSource!;
         const result = await apiFetch<Paginated<TableRow> | TableRow[]>(source.endpoint);
@@ -777,6 +941,47 @@ function buildOptionLabel(row: TableRow, labelPaths: string[] | undefined, fallb
     .map((value) => String(value));
 
   return values.length ? values.join(' - ') : String(readPath(row, 'email') ?? '');
+}
+
+function optionFromRow(field: CrudField, row?: TableRow | null): SelectOption | undefined {
+  if (!row || !field.optionSource || !field.valuePath) return undefined;
+
+  const value = readPath(row, field.valuePath);
+  if (value === null || value === undefined || value === '') return undefined;
+
+  const relationPath = field.valuePath.split('.').slice(0, -1).join('.');
+  const relationRow = relationPath ? readPath(row, relationPath) : row;
+  const labelRow = relationRow && typeof relationRow === 'object' ? (relationRow as TableRow) : row;
+
+  return {
+    label: buildOptionLabel(labelRow, field.optionSource.labelPaths, field.optionSource.labelPath),
+    row: labelRow,
+    value: String(value),
+  };
+}
+
+function mergeOptions(options: SelectOption[]) {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    if (!option.value || seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
+  });
+}
+
+function optionContext(row: TableRow) {
+  const values = [
+    readPath(row, 'customer.name'),
+    readPath(row, 'region.name'),
+    readPath(row, 'province'),
+    readPath(row, 'inventoryStatus'),
+    readPath(row, 'status'),
+    readPath(row, 'productCategory'),
+  ]
+    .filter((value) => value !== null && value !== undefined && value !== '')
+    .map((value) => displayLabel(String(value)));
+
+  return values.length ? values.join(' / ') : '';
 }
 
 function filterOptionRows(rows: TableRow[], filterPath?: string, filterValues?: string[]) {

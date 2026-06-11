@@ -58,6 +58,7 @@ export const ROLE_PERMISSION_MATRIX: Record<RoleName, Permission[]> = {
     PERMISSIONS.DASHBOARD_READ,
     PERMISSIONS.MACHINE_READ,
     PERMISSIONS.CUSTOMER_READ,
+    PERMISSIONS.CUSTOMER_CREATE,
     PERMISSIONS.INVENTORY_READ,
     PERMISSIONS.INSTALLATION_READ,
     PERMISSIONS.INSTALLATION_STATUS_UPDATE,
@@ -91,9 +92,9 @@ export function hasPermission(
   user: RequestUser | undefined,
   permission: Permission,
 ): boolean {
-  const roleName = user?.roleName as RoleName | undefined;
+  const roleName = normalizeRoleName(user?.roleName);
 
-  if (!roleName || !(roleName in ROLE_PERMISSION_MATRIX)) {
+  if (!roleName) {
     return false;
   }
 
@@ -107,4 +108,14 @@ export function assertPermission(
   if (!hasPermission(user, permission)) {
     throw new ForbiddenException('You do not have permission for this action');
   }
+}
+
+export function normalizeRoleName(roleName?: string): RoleName | undefined {
+  const normalized = roleName?.trim().toLowerCase();
+
+  if (normalized === 'admin' || normalized === 'quản trị viên' || normalized === 'quan tri vien') return 'admin';
+  if (normalized === 'manager' || normalized === 'quản lý' || normalized === 'quan ly') return 'manager';
+  if (normalized === 'engineer' || normalized === 'kỹ sư' || normalized === 'ky su') return 'engineer';
+
+  return undefined;
 }

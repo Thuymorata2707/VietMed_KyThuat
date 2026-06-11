@@ -1,11 +1,10 @@
 import { Edit3, ImageOff, Loader2, Power, PowerOff, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { apiFetch } from '../../api';
+import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { initials } from '../../utils/format';
-import './styles.css';
 
 type UserStatus = 'ACTIVE' | 'INACTIVE';
 
@@ -26,8 +25,8 @@ type AdminUser = {
   fullName: string;
   phone?: string | null;
   status: UserStatus;
-  role: Role;
-  region: Region;
+  role?: Role | null;
+  region?: Region | null;
   engineerProfile?: {
     employeeCode?: string | null;
     dateOfBirth?: string | null;
@@ -111,8 +110,8 @@ export function AdminUsersPage() {
         user.fullName,
         user.email,
         user.phone,
-        user.role.name,
-        user.region.name,
+        user.role?.name,
+        user.region?.name,
         user.status,
         user.engineerProfile?.employeeCode,
         user.engineerProfile?.position,
@@ -141,12 +140,12 @@ export function AdminUsersPage() {
 
     try {
       const [usersResult, rolesResult, regionsResult] = await Promise.all([
-        apiFetch<AdminUser[]>('/users'),
+        apiFetch<Paginated<AdminUser> | AdminUser[]>('/users?limit=100'),
         apiFetch<Role[]>('/roles'),
         apiFetch<Region[]>('/regions'),
       ]);
 
-      setUsers(usersResult);
+      setUsers(unpack(usersResult));
       setRoles(rolesResult);
       setRegions(regionsResult);
       setForm((current) => ({
@@ -200,8 +199,8 @@ export function AdminUsersPage() {
       certificateNo: profile?.certificateNo || '',
       photoUrl: profile?.photoUrl || '',
       profileNote: profile?.note || '',
-      roleId: user.role.id,
-      regionId: user.region.id,
+      roleId: user.role?.id ?? roles[0]?.id ?? '',
+      regionId: user.region?.id ?? regions[0]?.id ?? '',
       status: user.status,
     });
     setIsFormOpen(true);
@@ -298,7 +297,7 @@ export function AdminUsersPage() {
 
   return (
     <PageFrame>
-      <div className="admin-users-heading">
+      <div className="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
         <PageTitle
           eyebrow="Admin"
           title="Quản lý nhân sự"
@@ -313,7 +312,7 @@ export function AdminUsersPage() {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="admin-users-list">
+      <section className="min-w-0 overflow-hidden rounded-lg border border-[#dfe7ef] bg-white">
           <div className="list-toolbar">
             <input
               onChange={(event) => handleSearchChange(event.target.value)}
@@ -326,38 +325,42 @@ export function AdminUsersPage() {
             </button>
           </div>
 
-          <div className="users-table-wrap">
-            <table>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[780px] border-collapse">
               <thead>
                 <tr>
-                  <th>Nhân sự</th>
-                  <th>Vai trò</th>
-                  <th>Khu vực</th>
-                  <th>Trạng thái</th>
-                  <th className="actions-column"></th>
+                  <th className="border-b border-[#edf1f6] px-3.5 py-[13px] text-left text-xs font-semibold uppercase text-[#657384]">Nhân sự</th>
+                  <th className="border-b border-[#edf1f6] px-3.5 py-[13px] text-left text-xs font-semibold uppercase text-[#657384]">Vai trò</th>
+                  <th className="border-b border-[#edf1f6] px-3.5 py-[13px] text-left text-xs font-semibold uppercase text-[#657384]">Khu vực</th>
+                  <th className="border-b border-[#edf1f6] px-3.5 py-[13px] text-left text-xs font-semibold uppercase text-[#657384]">Trạng thái</th>
+                  <th className="sticky right-0 z-[2] border-b border-[#edf1f6] bg-white px-3.5 py-[13px] text-left text-xs font-semibold uppercase text-[#657384]"></th>
                 </tr>
               </thead>
               <tbody>
                 {visibleUsers.map((user) => (
                   <tr key={user.id}>
-                    <td>
-                      <div className="person-cell">
+                    <td className="border-b border-[#edf1f6] px-3.5 py-[13px]">
+                      <div className="flex min-w-0 items-center gap-[11px]">
                         <UserPhoto name={user.fullName || user.email} photoUrl={user.engineerProfile?.photoUrl} />
-                        <div>
-                          <strong>{user.fullName}</strong>
-                          <span>{user.email}</span>
+                        <div className="min-w-0">
+                          <strong className="block font-semibold">{user.fullName}</strong>
+                          <span className="mt-1 block text-[#657384]">{user.email}</span>
                         </div>
                       </div>
                     </td>
-                    <td>{user.role.name}</td>
-                    <td>{user.region.name}</td>
-                    <td>
-                      <span className={user.status === 'ACTIVE' ? 'status-pill active' : 'status-pill inactive'}>
+                    <td className="border-b border-[#edf1f6] px-3.5 py-[13px]">{user.role?.name ?? 'Chưa gán'}</td>
+                    <td className="border-b border-[#edf1f6] px-3.5 py-[13px]">{user.region?.name ?? 'Chưa gán'}</td>
+                    <td className="border-b border-[#edf1f6] px-3.5 py-[13px]">
+                      <span className={`inline-flex min-h-7 items-center gap-[7px] whitespace-nowrap rounded-full border px-2.5 py-[7px] text-xs font-semibold leading-none before:h-[7px] before:w-[7px] before:rounded-full before:content-[''] ${
+                        user.status === 'ACTIVE'
+                          ? 'border-[#abefc6] bg-[#ecfdf3] text-[#027a48] before:bg-[#12b76a]'
+                          : 'border-[#fecdd3] bg-[#fff1f3] text-[#b42318] before:bg-[#f04438]'
+                      }`}>
                         {user.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm khóa'}
                       </span>
                     </td>
-                    <td className="actions-cell">
-                      <div className="row-actions">
+                    <td className="sticky right-0 z-[1] border-b border-[#edf1f6] bg-white px-3.5 py-[13px]">
+                      <div className="flex justify-end gap-1.5">
                         <button className="icon-button" onClick={() => startEdit(user)} title="Sửa" type="button">
                           <Edit3 size={16} />
                         </button>
@@ -467,7 +470,7 @@ export function AdminUsersPage() {
               </button>
             </div>
 
-            <form className="admin-user-form" onSubmit={handleSubmit}>
+            <form className="grid gap-[18px] [&_input]:min-h-10 [&_input]:rounded-lg [&_input]:border [&_input]:border-[#ced8e3] [&_input]:px-3 [&_input]:text-[#17202a] [&_input]:outline-none [&_input:focus]:border-[#c92a1f] [&_input:focus]:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] [&_label]:grid [&_label]:gap-[7px] [&_label]:font-medium [&_label]:text-[#405064] [&_select]:min-h-10 [&_select]:rounded-lg [&_select]:border [&_select]:border-[#ced8e3] [&_select]:bg-white [&_select]:px-3 [&_select]:text-[#17202a] [&_select]:outline-none [&_select:focus]:border-[#c92a1f] [&_select:focus]:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] [&_textarea]:min-h-[86px] [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#ced8e3] [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#17202a] [&_textarea]:outline-none [&_textarea:focus]:border-[#c92a1f] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]" onSubmit={handleSubmit}>
               <div className="form-grid">
                 <label>
                   Họ tên
@@ -552,10 +555,10 @@ export function AdminUsersPage() {
                 </label>
 
                 {shouldShowEngineerProfile ? (
-                  <div className="engineer-profile-panel">
-                    <div className="profile-section-heading">
-                      <span>Hồ sơ kỹ sư</span>
-                      <p>Thông tin chuyên môn dùng cho phân công lắp đặt, bảo trì và sửa chữa.</p>
+                  <div className="col-span-full grid gap-3.5 rounded-lg border border-[#edf1f6] bg-[#f8fbfd] p-3.5">
+                    <div className="grid gap-1">
+                      <span className="text-sm font-semibold text-[#17202a]">Hồ sơ kỹ sư</span>
+                      <p className="leading-snug text-[#657384]">Thông tin chuyên môn dùng cho phân công lắp đặt, bảo trì và sửa chữa.</p>
                     </div>
 
                     <div className="form-grid compact-grid">
@@ -618,8 +621,8 @@ export function AdminUsersPage() {
                           value={form.photoUrl}
                         />
                         {form.photoUrl ? (
-                          <span className="user-photo-preview">
-                            <img alt="" src={form.photoUrl} />
+                          <span className="mt-0.5 block overflow-hidden rounded-lg border border-[#dfe7ef] bg-[#f4f7fb]">
+                            <img alt="" className="aspect-video w-full object-cover" src={form.photoUrl} />
                           </span>
                         ) : null}
                       </label>
@@ -714,6 +717,10 @@ function buildPayload(form: UserFormState, isEditing: boolean) {
   return payload;
 }
 
+function unpack<T>(result: Paginated<T> | T[]) {
+  return Array.isArray(result) ? result : result.data ?? [];
+}
+
 function buildEngineerProfilePayload(form: UserFormState) {
   return {
     employeeCode: form.employeeCode.trim() || null,
@@ -746,11 +753,11 @@ function UserPhoto({ name, photoUrl }: { name: string; photoUrl?: string | null 
 
   if (photoUrl) {
     return (
-      <span className="user-photo">
-        {hasError ? <ImageOff size={18} /> : <img alt="" onError={() => setHasError(true)} src={photoUrl} />}
+      <span className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#dfe7ef] bg-[#f4f7fb] text-xs font-semibold text-[#c92a1f]">
+        {hasError ? <ImageOff size={18} /> : <img alt="" className="h-full w-full object-cover" onError={() => setHasError(true)} src={photoUrl} />}
       </span>
     );
   }
 
-  return <span className="user-photo fallback">{initials(name)}</span>;
+  return <span className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#dfe7ef] bg-[#f4f7fb] text-xs font-semibold text-[#c92a1f]">{initials(name)}</span>;
 }

@@ -6,7 +6,6 @@ import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { ResourceConfig } from '../../config/resources';
 import { TableRow, filterRows, formatValue, readPath } from '../../utils/format';
-import './styles.css';
 
 export function ResourcePage({ config, toolbarControl }: { config: ResourceConfig; toolbarControl?: ReactNode }) {
   const [query, setQuery] = useState('');
@@ -47,10 +46,11 @@ export function ResourcePage({ config, toolbarControl }: { config: ResourceConfi
     <PageFrame>
       <PageTitle eyebrow="Danh mục vận hành" title={config.title} description={config.description} />
 
-      <div className="toolbar">
-        <div className="search-box">
+      <div className="flex min-w-0 items-center justify-between gap-3.5 max-sm:flex-col max-sm:items-stretch">
+        <div className="flex min-h-11 max-w-[520px] flex-1 items-center gap-2.5 rounded-lg border border-[#e3eaf2] bg-white px-3 text-[#657384] transition focus-within:-translate-y-px focus-within:border-[#c92a1f] focus-within:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] max-sm:max-w-none">
           <Search size={18} />
           <input
+            className="min-w-0 flex-1 border-0 text-[#17202a] outline-none"
             disabled={config.searchEnabled === false}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={config.searchPlaceholder}
@@ -58,27 +58,27 @@ export function ResourcePage({ config, toolbarControl }: { config: ResourceConfi
           />
         </div>
         {toolbarControl}
-        <div className="result-count">
+        <div className="inline-flex min-h-[34px] items-center whitespace-nowrap rounded-full border border-[#e3eaf2] bg-white px-3 text-[13px] font-bold text-[#657384]">
           {loading ? 'Đang tải' : `${meta?.total ?? rows.length} bản ghi`}
         </div>
       </div>
 
       {error ? <Notice message={error} /> : null}
 
-      <div className="table-wrap">
-        <table>
+      <div className="overflow-x-auto rounded-lg border border-[#e3eaf2] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:border-[#d7e0eb] hover:shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+        <table className="w-full min-w-[760px] border-collapse">
           <thead>
             <tr>
               {config.columns.map((column) => (
-                <th key={column.key}>{column.label}</th>
+                <th className="sticky top-0 z-[1] border-b border-[#edf1f6] bg-[#f8fbfd] px-4 py-3.5 text-left text-xs font-extrabold uppercase text-[#657384]" key={column.key}>{column.label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {!loading && rows.map((row, index) => (
-              <tr key={String(row.id ?? index)}>
+              <tr className="even:bg-[#fcfdff] hover:bg-[#fbfdff]" key={String(row.id ?? index)}>
                 {config.columns.map((column) => (
-                  <td key={column.key}>{formatValue(readColumnValue(row, column))}</td>
+                  <td className="border-b border-[#edf1f6] px-4 py-3.5 text-left text-[#253142]" key={column.key}>{formatValue(readColumnValue(row, column))}</td>
                 ))}
               </tr>
             ))}
@@ -86,7 +86,7 @@ export function ResourcePage({ config, toolbarControl }: { config: ResourceConfi
               ? Array.from({ length: 5 }).map((_, rowIndex) => (
                   <tr className="skeleton-row" key={`loading-${rowIndex}`}>
                     {config.columns.map((column, columnIndex) => (
-                      <td key={column.key}>
+                      <td className="border-b border-[#edf1f6] px-4 py-3.5 text-left text-[#253142]" key={column.key}>
                         <span
                           className="skeleton-line"
                           style={{ width: `${columnIndex % 2 === 0 ? 74 : 52}%` }}
@@ -99,10 +99,10 @@ export function ResourcePage({ config, toolbarControl }: { config: ResourceConfi
             {!loading && rows.length === 0 ? (
               <tr>
                 <td colSpan={config.columns.length}>
-                  <div className="empty-state">
+                  <div className="grid min-h-[180px] place-items-center content-center justify-center gap-2.5 text-center text-[#657384] [&_svg]:h-[42px] [&_svg]:w-[42px] [&_svg]:rounded-lg [&_svg]:border [&_svg]:border-[#f3c3be] [&_svg]:bg-[#fff5f4] [&_svg]:p-2.5 [&_svg]:text-[#c92a1f]">
                     {config.icon}
-                    <strong>Chưa có dữ liệu phù hợp</strong>
-                    <span>Thử đổi từ khóa tìm kiếm hoặc kiểm tra bộ lọc hiện tại.</span>
+                    <strong className="text-[15px] text-[#17202a]">Chưa có dữ liệu phù hợp</strong>
+                    <span className="text-[13px]">Thử đổi từ khóa tìm kiếm hoặc kiểm tra bộ lọc hiện tại.</span>
                   </div>
                 </td>
               </tr>

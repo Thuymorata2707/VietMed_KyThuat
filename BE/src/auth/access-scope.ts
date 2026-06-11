@@ -1,16 +1,17 @@
 import { Prisma } from '@prisma/client';
 import { RequestUser } from '../common/request-user.type';
+import { normalizeRoleName } from './permissions';
 
 export function isAdmin(user?: RequestUser): boolean {
-  return user?.roleName === 'admin';
+  return normalizeRoleName(user?.roleName) === 'admin';
 }
 
 export function isManager(user?: RequestUser): boolean {
-  return user?.roleName === 'manager';
+  return normalizeRoleName(user?.roleName) === 'manager';
 }
 
 export function isEngineer(user?: RequestUser): boolean {
-  return user?.roleName === 'engineer';
+  return normalizeRoleName(user?.roleName) === 'engineer';
 }
 
 export function machineAccessWhere(user?: RequestUser): Prisma.MachineWhereInput {

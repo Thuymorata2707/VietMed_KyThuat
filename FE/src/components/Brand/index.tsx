@@ -1,5 +1,3 @@
-import './styles.css';
-
 type BrandProps = {
   compact?: boolean;
   size?: 'default' | 'large';
@@ -8,15 +6,24 @@ type BrandProps = {
 const logoUrl = 'https://cdn.hstatic.net/themes/200001042017/1001404866/14/logo.png?v=1335';
 
 export function Brand({ compact = false, size = 'default' }: BrandProps) {
+  const isLarge = size === 'large';
+  const markClass = compact
+    ? isLarge
+      ? 'h-14 w-[168px]'
+      : 'h-[30px] w-[50px]'
+    : isLarge
+      ? 'h-11 w-[126px] max-[420px]:h-10 max-[420px]:w-[132px]'
+      : 'h-[34px] w-[86px] max-[420px]:h-10 max-[420px]:w-[132px]';
+
   return (
-    <div className={`${size === 'large' ? 'brand brand-large' : 'brand'}${compact ? ' brand-compact' : ''}`}>
-      <div className={size === 'large' ? 'brand-mark brand-mark-large' : 'brand-mark'}>
-        <img alt="VietMed" src={logoUrl} />
+    <div className={`flex min-w-0 items-center ${isLarge ? 'gap-3.5' : 'gap-2.5'} max-[420px]:items-start max-[420px]:flex-col`}>
+      <div className={`${markClass} inline-flex shrink-0 items-center justify-center`}>
+        <img alt="VietMed" className="block h-full w-full object-contain object-left" src={logoUrl} />
       </div>
       {compact ? null : (
         <div>
-          <strong>{size === 'large' ? 'VietMed Kỹ Thuật' : 'VietMed'}</strong>
-          <span>{size === 'large' ? 'Điều phối thiết bị y tế và dịch vụ kỹ thuật' : 'Kỹ thuật'}</span>
+          <strong className="block whitespace-nowrap text-base leading-tight">{isLarge ? 'VietMed Kỹ Thuật' : 'VietMed'}</strong>
+          <span className="block leading-snug text-[#657384]">{isLarge ? 'Điều phối thiết bị y tế và dịch vụ kỹ thuật' : 'Kỹ thuật'}</span>
         </div>
       )}
     </div>

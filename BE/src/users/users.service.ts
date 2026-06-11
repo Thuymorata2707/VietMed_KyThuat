@@ -4,13 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EngineerProfile, User, UserStatus } from '@prisma/client';
+import { EngineerProfile, Prisma, User, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { pickChangedFields } from '../common/audit-changes';
+import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 type UserWithoutPassword = Omit<User, 'password'> & {
@@ -89,7 +91,46 @@ export class UsersService {
     return this.withoutPassword(user);
   }
 
-  async findAll(): Promise<UserWithoutPassword[]> {
+  async findAll(
+    query?: ListUsersQueryDto,
+  ): Promise<UserWithoutPassword[] | PaginatedResult<UserWithoutPassword>> {
+    if (!this.shouldPaginate(query)) {
+      return this.findAllLegacy();
+    }
+
+    const page = query?.page ?? 1;
+    const limit = query?.limit ?? 20;
+    const where = this.buildFindAllWhere(query);
+
+    const [users, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        include: {
+          role: true,
+          region: true,
+          engineerProfile: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: users.map((user) => this.withoutPassword(user)),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  private async findAllLegacy(): Promise<UserWithoutPassword[]> {
     const users = await this.prisma.user.findMany({
       include: {
         role: true,
@@ -334,6 +375,52 @@ export class UsersService {
 
   private normalizeEmail(email: string): string {
     return email.toLowerCase().trim();
+  }
+
+  private shouldPaginate(query?: ListUsersQueryDto): boolean {
+    return Boolean(
+      query?.search ||
+        query?.limit ||
+        query?.page ||
+        query?.roleName ||
+        query?.regionId ||
+        query?.status,
+    );
+  }
+
+  private buildFindAllWhere(query?: ListUsersQueryDto): Prisma.UserWhereInput {
+    const search = query?.search?.trim();
+    const roleName = query?.roleName?.trim();
+
+    return {
+      status: query?.status,
+      regionId: query?.regionId,
+      role: roleName
+        ? {
+            name: {
+              equals: roleName,
+              mode: 'insensitive',
+            },
+          }
+        : undefined,
+      OR: search
+        ? [
+            { email: { contains: search, mode: 'insensitive' } },
+            { fullName: { contains: search, mode: 'insensitive' } },
+            { phone: { contains: search, mode: 'insensitive' } },
+            {
+              region: {
+                name: { contains: search, mode: 'insensitive' },
+              },
+            },
+            {
+              engineerProfile: {
+                employeeCode: { contains: search, mode: 'insensitive' },
+              },
+            },
+          ]
+        : undefined,
+    };
   }
 
   private withoutPassword<

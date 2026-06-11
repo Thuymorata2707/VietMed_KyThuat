@@ -218,9 +218,29 @@ model User {
   auditLogs            AuditLog[]                 @relation("AuditLogActor")
   uploadedAttachments  Attachment[]               @relation("AttachmentUploadedBy")
   engineerProfile      EngineerProfile?
+  dailyWorkNotes       DailyWorkNote[]            @relation("DailyWorkNoteUser")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DailyWorkNote {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation("DailyWorkNoteUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  title     String
+  note      String?
+  workDate  DateTime
+  startTime String?
+  endTime   String?
+  color     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, workDate])
 }
 
 model Attachment {

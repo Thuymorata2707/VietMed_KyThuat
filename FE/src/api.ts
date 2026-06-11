@@ -10,7 +10,16 @@ export type ApiUser = {
   role?: { id: string; name: string };
   region?: { id: string; name: string; code: string };
   engineerProfile?: {
+    employeeCode?: string | null;
+    dateOfBirth?: string | null;
+    position?: string | null;
+    department?: string | null;
+    workStartDate?: string | null;
+    specialties?: string[];
     expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
+    certificateNo?: string | null;
+    photoUrl?: string | null;
+    note?: string | null;
   } | null;
   roleName?: string;
   regionId?: string;

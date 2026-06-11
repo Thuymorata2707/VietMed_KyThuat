@@ -77,6 +77,22 @@ const emptyQuickMachineForm = (): QuickMachineForm => ({
   serialNumber: '',
 });
 
+type QuickCustomerForm = {
+  address: string;
+  contactPerson: string;
+  name: string;
+  phone: string;
+  province: string;
+};
+
+const emptyQuickCustomerForm = (): QuickCustomerForm => ({
+  address: '',
+  contactPerson: '',
+  name: '',
+  phone: '',
+  province: '',
+});
+
 type QuickMachineModel = {
   id: string;
   code?: string | null;
@@ -91,6 +107,29 @@ type QuickMachineModel = {
       expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
     } | null;
   } | null;
+};
+
+type PickerOption<Row> = SelectOption & {
+  row: Row;
+};
+
+type PickerMachine = TaskMachine & {
+  id: string;
+  inventoryStatus?: string | null;
+  name?: string | null;
+  customer?: {
+    id?: string | null;
+    name?: string | null;
+    province?: string | null;
+  } | null;
+};
+
+type PickerCustomer = {
+  id: string;
+  customerCode?: string | null;
+  name: string;
+  phone?: string | null;
+  province?: string | null;
 };
 
 export function EngineerTasksPage({ user }: { user: ApiUser }) {
@@ -121,7 +160,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [installationDate, setInstallationDate] = useState('');
   const [createForm, setCreateForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm());
   const [isQuickMachineOpen, setIsQuickMachineOpen] = useState(false);
+  const [isQuickCustomerOpen, setIsQuickCustomerOpen] = useState(false);
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(() => emptyQuickMachineForm());
+  const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm());
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [machineOptions, setMachineOptions] = useState<SelectOption[]>([]);
   const [machineModelOptions, setMachineModelOptions] = useState<QuickMachineModel[]>([]);
   const [customerOptions, setCustomerOptions] = useState<SelectOption[]>([]);
@@ -195,21 +237,21 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
     try {
       const [machinesResult, customersResult] = await Promise.all([
-        apiFetch<Paginated<TaskMachine & { id: string; name?: string | null }>>('/machines?limit=100'),
-        apiFetch<Paginated<{ id: string; name: string; province?: string | null }>>('/customers?limit=100'),
+        apiFetch<Paginated<PickerMachine>>('/machines?limit=20&inventoryStatus=INSTALLED'),
+        apiFetch<Paginated<PickerCustomer>>('/customers?limit=20'),
       ]);
-      const modelsResult = await apiFetch<Paginated<QuickMachineModel>>('/machine-models?limit=100');
+      const modelsResult = await apiFetch<Paginated<QuickMachineModel>>('/machine-models?limit=20');
 
       setMachineOptions(
         machinesResult.data.filter((machine) => canEngineerSeeMachine(user, machine)).map((machine) => ({
           value: machine.id,
-          label: [machine.machineCode, machine.serialNumber, machine.modelName || machine.name].filter(Boolean).join(' - '),
+          label: machinePickerLabel(machine),
         })),
       );
       setCustomerOptions(
         customersResult.data.map((customer) => ({
           value: customer.id,
-          label: [customer.name, customer.province].filter(Boolean).join(' - '),
+          label: customerPickerLabel(customer),
         })),
       );
       setMachineModelOptions(modelsResult.data.filter((model) => canEngineerSeeModel(user, model)));
@@ -308,14 +350,31 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setQuickMachineForm((current) => ({ ...current, ...patch }));
   }
 
-  function selectQuickMachineModel(machineModelId: string) {
-    const model = machineModelOptions.find((item) => item.id === machineModelId);
+  function updateQuickCustomerForm(patch: Partial<QuickCustomerForm>) {
+    setQuickCustomerForm((current) => ({ ...current, ...patch }));
+  }
+
+  function selectQuickMachineModel(machineModelId: string, selectedModel?: QuickMachineModel) {
+    const model = selectedModel || machineModelOptions.find((item) => item.id === machineModelId);
+    if (selectedModel) {
+      setMachineModelOptions((current) => [selectedModel, ...current.filter((item) => item.id !== selectedModel.id)]);
+    }
     setQuickMachineForm((current) => ({
       ...current,
       machineModelId,
       modelName: model?.name || current.modelName,
       name: current.name || model?.displayName || model?.name || '',
     }));
+  }
+
+  function selectCreateMachine(machine: PickerMachine) {
+    updateCreateForm({
+      machineId: machine.id,
+      customerId: machine.customer?.id || createForm.customerId,
+      modelName: machine.modelName || createForm.modelName,
+      serialNumber: machine.serialNumber || createForm.serialNumber,
+      deviceName: machine.name || createForm.deviceName,
+    });
   }
 
   async function handleQuickMachineCreate() {
@@ -370,6 +429,56 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       setError(err instanceof Error ? err.message : 'Không tạo được thiết bị nhanh.');
     } finally {
       setCreatingMachine(false);
+    }
+  }
+
+  async function handleQuickCustomerCreate() {
+    const name = quickCustomerForm.name.trim();
+    const regionId = user.regionId || user.region?.id;
+
+    if (!name) {
+      setError('Vui lòng nhập tên khách hàng.');
+      return;
+    }
+
+    if (!regionId) {
+      setError('Tài khoản kỹ sư chưa được gán khu vực, không thể tạo khách hàng nhanh.');
+      return;
+    }
+
+    setCreatingCustomer(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const customer = await apiFetch<PickerCustomer>('/customers', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          phone: quickCustomerForm.phone.trim() || undefined,
+          contactPerson: quickCustomerForm.contactPerson.trim() || undefined,
+          contactPhone: quickCustomerForm.phone.trim() || undefined,
+          province: quickCustomerForm.province.trim() || undefined,
+          address: quickCustomerForm.address.trim() || undefined,
+          regionId,
+          status: 'ACTIVE',
+        }),
+      });
+      const option = {
+        value: customer.id,
+        label: customerPickerLabel(customer),
+      };
+
+      setCustomerOptions((current) => [option, ...current.filter((item) => item.value !== option.value)]);
+      setCreateForm((current) => ({ ...current, customerId: customer.id }));
+      setQuickMachineForm((current) => ({ ...current, customerId: customer.id }));
+      setQuickCustomerForm(emptyQuickCustomerForm());
+      setIsQuickCustomerOpen(false);
+      setSuccess('Đã tạo khách hàng nhanh và chọn vào phiếu hiện tại.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không tạo được khách hàng nhanh.');
+    } finally {
+      setCreatingCustomer(false);
     }
   }
 
@@ -602,22 +711,28 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ) : null}
 
             <div className={createForm.kind === 'installation' ? 'machine-picker create-span-6' : 'machine-picker'}>
-              <label>
-                Thiết bị
-                <select
-                  disabled={loadingCreateOptions}
-                  onChange={(event) => updateCreateForm({ machineId: event.target.value })}
-                  required
-                  value={createForm.machineId}
-                >
-                  <option value="">{loadingCreateOptions ? 'Đang tải thiết bị...' : 'Chọn thiết bị'}</option>
-                  {machineOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label || option.value}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <AsyncEntityPicker<PickerMachine>
+                className="engineer-picker"
+                disabled={loadingCreateOptions}
+                endpoint={machinePickerEndpoint(createForm.kind)}
+                formatOption={(machine) => ({
+                  label: machinePickerLabel(machine),
+                  row: machine,
+                  value: machine.id,
+                })}
+                initialOptions={machineOptions
+                  .map((option) => ({ ...option, row: { id: option.value } as PickerMachine }))
+                  .filter((option) => isMachineEligibleForTicket(createForm.kind, option.row))}
+                label="Thiết bị"
+                onChange={(value, machine) => {
+                  updateCreateForm({ machineId: value });
+                  if (machine) selectCreateMachine(machine);
+                }}
+                placeholder="Tìm mã máy, S/N, model hoặc khách hàng"
+                required
+                rowFilter={(machine) => canEngineerSeeMachine(user, machine) && isMachineEligibleForTicket(createForm.kind, machine)}
+                value={createForm.machineId}
+              />
               <button className="task-secondary" onClick={() => setIsQuickMachineOpen((value) => !value)} type="button">
                 <Plus size={16} />
                 Thêm thiết bị
@@ -632,21 +747,25 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
                   return (
                     <>
-                <label>
-                  Model chuẩn
-                  <select
-                    disabled={loadingCreateOptions}
-                    onChange={(event) => selectQuickMachineModel(event.target.value)}
-                    value={quickMachineForm.machineModelId}
-                  >
-                    <option value="">Nhập model tạm</option>
-                    {machineModelOptions.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {quickModelLabel(model)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <AsyncEntityPicker<QuickMachineModel>
+                  disabled={loadingCreateOptions}
+                  endpoint="/machine-models?limit=20"
+                  formatOption={(model) => ({
+                    label: quickModelLabel(model),
+                    row: model,
+                    value: model.id,
+                  })}
+                  initialOptions={machineModelOptions.map((model) => ({
+                    label: quickModelLabel(model),
+                    row: model,
+                    value: model.id,
+                  }))}
+                  label="Model chuẩn"
+                  onChange={(value, model) => selectQuickMachineModel(value, model)}
+                  placeholder="Tìm mã model, tên model hoặc hãng"
+                  rowFilter={(model) => canEngineerSeeModel(user, model)}
+                  value={quickMachineForm.machineModelId}
+                />
                 <label>
                   Serial
                   <input
@@ -666,21 +785,24 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   Tên thiết bị
                   <input onChange={(event) => updateQuickMachineForm({ name: event.target.value })} value={quickMachineForm.name} />
                 </label>
-                <label>
-                  Khách hàng
-                  <select
-                    disabled={loadingCreateOptions}
-                    onChange={(event) => updateQuickMachineForm({ customerId: event.target.value })}
-                    value={quickMachineForm.customerId || createForm.customerId}
-                  >
-                    <option value="">Chưa gắn khách hàng</option>
-                    {customerOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label || option.value}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <AsyncEntityPicker<PickerCustomer>
+                  disabled={loadingCreateOptions}
+                  endpoint="/customers?limit=20"
+                  formatOption={(customer) => ({
+                    label: customerPickerLabel(customer),
+                    row: customer,
+                    value: customer.id,
+                  })}
+                  initialOptions={customerOptions.map((option) => ({ ...option, row: { id: option.value, name: option.label } }))}
+                  label="Khách hàng"
+                  onChange={(value) => updateQuickMachineForm({ customerId: value })}
+                  placeholder="Tìm tên, mã khách hàng, tỉnh hoặc số điện thoại"
+                  value={quickMachineForm.customerId || createForm.customerId}
+                />
+                <button className="task-secondary quick-customer-toggle" onClick={() => setIsQuickCustomerOpen((value) => !value)} type="button">
+                  <Plus size={16} />
+                  Thêm KH
+                </button>
                 <div className="quick-machine-accessories">
                   {supportsProbes ? (
                     <MachineAccessoryEditor
@@ -709,22 +831,64 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ) : null}
 
             {createForm.kind === 'installation' ? (
-              <label className="create-span-6">
-                Khách hàng
-                <select
+              <div className="customer-picker-row create-span-6">
+                <AsyncEntityPicker<PickerCustomer>
+                  className="customer-picker-main"
                   disabled={loadingCreateOptions}
-                  onChange={(event) => updateCreateForm({ customerId: event.target.value })}
+                  endpoint="/customers?limit=20"
+                  formatOption={(customer) => ({
+                    label: customerPickerLabel(customer),
+                    row: customer,
+                    value: customer.id,
+                  })}
+                  initialOptions={customerOptions.map((option) => ({ ...option, row: { id: option.value, name: option.label } }))}
+                  label="Khách hàng"
+                  onChange={(value) => updateCreateForm({ customerId: value })}
+                  placeholder="Tìm tên, mã khách hàng, tỉnh hoặc số điện thoại"
                   required
                   value={createForm.customerId}
-                >
-                  <option value="">{loadingCreateOptions ? 'Đang tải khách hàng...' : 'Chọn khách hàng'}</option>
-                  {customerOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label || option.value}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                />
+                <button className="task-secondary quick-customer-toggle" onClick={() => setIsQuickCustomerOpen((value) => !value)} type="button">
+                  <Plus size={16} />
+                  Thêm khách hàng
+                </button>
+              </div>
+            ) : null}
+
+            {isQuickCustomerOpen ? (
+              <div className="quick-customer-form">
+                <div className="quick-customer-heading">
+                  <strong>Thêm khách hàng nhanh</strong>
+                  <span>Dùng khi admin chưa kịp tạo hồ sơ. Khách hàng sẽ thuộc khu vực của bạn.</span>
+                </div>
+                <label>
+                  Tên khách hàng
+                  <input
+                    onChange={(event) => updateQuickCustomerForm({ name: event.target.value })}
+                    placeholder="VD: Bệnh viện Đa khoa..."
+                    value={quickCustomerForm.name}
+                  />
+                </label>
+                <label>
+                  Tỉnh/Thành
+                  <input onChange={(event) => updateQuickCustomerForm({ province: event.target.value })} value={quickCustomerForm.province} />
+                </label>
+                <label>
+                  Người liên hệ
+                  <input onChange={(event) => updateQuickCustomerForm({ contactPerson: event.target.value })} value={quickCustomerForm.contactPerson} />
+                </label>
+                <label>
+                  Số điện thoại
+                  <input onChange={(event) => updateQuickCustomerForm({ phone: event.target.value })} value={quickCustomerForm.phone} />
+                </label>
+                <label className="create-wide-field">
+                  Địa chỉ
+                  <input onChange={(event) => updateQuickCustomerForm({ address: event.target.value })} value={quickCustomerForm.address} />
+                </label>
+                <button className="task-primary" disabled={creatingCustomer} onClick={handleQuickCustomerCreate} type="button">
+                  {creatingCustomer ? 'Đang tạo khách hàng' : 'Tạo và chọn khách hàng'}
+                </button>
+              </div>
             ) : null}
 
             {createForm.kind === 'repair' ? (
@@ -1286,6 +1450,177 @@ function canEngineerSeeMachine(user: ApiUser, machine: TaskMachine) {
   if (!expertiseGroup) return true;
   const machineGroup = machine.businessLine?.productIndustry?.expertiseGroup ?? machine.businessLine?.expertiseGroup;
   return !machineGroup || machineGroup === expertiseGroup;
+}
+
+function AsyncEntityPicker<Row extends { id: string }>({
+  className,
+  disabled,
+  endpoint,
+  formatOption,
+  initialOptions,
+  label,
+  onChange,
+  placeholder,
+  required,
+  rowFilter,
+  value,
+}: {
+  className?: string;
+  disabled?: boolean;
+  endpoint: string;
+  formatOption: (row: Row) => PickerOption<Row>;
+  initialOptions: Array<PickerOption<Row>>;
+  label: string;
+  onChange: (value: string, row?: Row) => void;
+  placeholder: string;
+  required?: boolean;
+  rowFilter?: (row: Row) => boolean;
+  value: string;
+}) {
+  const [search, setSearch] = useState('');
+  const [options, setOptions] = useState<Array<PickerOption<Row>>>(initialOptions);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const selectedOption = options.find((option) => option.value === value);
+
+  useEffect(() => {
+    setOptions((current) => {
+      const merged = mergePickerOptions([...current, ...initialOptions]);
+      const isSame =
+        merged.length === current.length &&
+        merged.every((option, index) => option.value === current[index]?.value && option.label === current[index]?.label);
+      return isSame ? current : merged;
+    });
+  }, [initialOptions]);
+
+  useEffect(() => {
+    if (!open || disabled) return;
+
+    const timeout = window.setTimeout(() => {
+      loadOptions();
+    }, 220);
+
+    return () => window.clearTimeout(timeout);
+  }, [open, search, endpoint, disabled]);
+
+  async function loadOptions() {
+    setLoading(true);
+
+    try {
+      const result = await apiFetch<Paginated<Row>>(
+        withSearchParams(endpoint, {
+          limit: '20',
+          search: search.trim(),
+        }),
+      );
+      const nextOptions = result.data
+        .filter((row) => (rowFilter ? rowFilter(row) : true))
+        .map(formatOption);
+      setOptions((current) => mergePickerOptions([...current, ...nextOptions]));
+    } catch {
+      setOptions((current) => current);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function choose(option: PickerOption<Row>) {
+    onChange(option.value, option.row);
+    setSearch(option.label);
+    setOpen(false);
+  }
+
+  const inputValue = open ? search : selectedOption?.label || '';
+
+  return (
+    <div className={['async-entity-picker', className].filter(Boolean).join(' ')}>
+      <span>{label}</span>
+      <div className="async-picker-control">
+        <input
+          disabled={disabled}
+          onBlur={() => {
+            window.setTimeout(() => {
+              setSearch('');
+              setOpen(false);
+            }, 160);
+          }}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setSearch('');
+            setOpen(true);
+          }}
+          placeholder={placeholder}
+          value={inputValue}
+        />
+        {required && !value ? <input className="async-picker-required" required value="" onChange={() => null} /> : null}
+        {open ? (
+          <div className="async-picker-menu">
+            {loading ? <div className="async-picker-state">Đang tìm...</div> : null}
+            {!loading && options.length === 0 ? <div className="async-picker-state">Không tìm thấy dữ liệu phù hợp.</div> : null}
+            {!loading
+              ? options.map((option) => (
+                  <button
+                    className={option.value === value ? 'active' : ''}
+                    key={option.value}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => choose(option)}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))
+              : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function machinePickerLabel(machine: PickerMachine) {
+  return [machine.machineCode, machine.serialNumber ? `S/N ${machine.serialNumber}` : '', machine.modelName || machine.name, machine.customer?.name]
+    .filter(Boolean)
+    .join(' - ');
+}
+
+function machinePickerEndpoint(kind: TaskKind) {
+  const inventoryStatus = kind === 'installation' ? 'IN_STOCK' : 'INSTALLED';
+  return `/machines?limit=20&inventoryStatus=${inventoryStatus}`;
+}
+
+function isMachineEligibleForTicket(kind: TaskKind, machine: PickerMachine) {
+  if (!machine.inventoryStatus) return true;
+  return kind === 'installation' ? machine.inventoryStatus === 'IN_STOCK' : machine.inventoryStatus === 'INSTALLED';
+}
+
+function customerPickerLabel(customer: PickerCustomer) {
+  return [customer.customerCode, customer.name, customer.province, customer.phone].filter(Boolean).join(' - ');
+}
+
+function mergePickerOptions<Row>(options: Array<PickerOption<Row>>) {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    if (!option.value || seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
+  });
+}
+
+function withSearchParams(endpoint: string, params: Record<string, string>) {
+  const [path, query = ''] = endpoint.split('?');
+  const searchParams = new URLSearchParams(query);
+
+  Object.entries(params).forEach(([key, paramValue]) => {
+    if (paramValue) {
+      searchParams.set(key, paramValue);
+    }
+  });
+
+  const queryString = searchParams.toString();
+  return queryString ? `${path}?${queryString}` : path;
 }
 
 function canEngineerSeeModel(user: ApiUser, model: QuickMachineModel) {

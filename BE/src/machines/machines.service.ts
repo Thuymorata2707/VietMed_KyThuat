@@ -15,7 +15,7 @@ import {
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
-import { machineAccessWhere } from '../auth/access-scope';
+import { isEngineer, machineAccessWhere } from '../auth/access-scope';
 import { pickChangedFields } from '../common/audit-changes';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMachineDto } from './dto/create-machine.dto';
@@ -1127,7 +1127,7 @@ export class MachinesService {
     dto: CreateMachineDto,
     actor?: RequestUser,
   ): CreateMachineDto {
-    if (actor?.roleName !== 'engineer') {
+    if (!isEngineer(actor)) {
       return dto;
     }
 
@@ -1142,7 +1142,7 @@ export class MachinesService {
     dto: CreateMachineDto,
     actor?: RequestUser,
   ) {
-    if (actor?.roleName === 'engineer') {
+    if (isEngineer(actor)) {
       return {
         dataStatus: OperationalDataStatus.PENDING_REVIEW,
         createdSource: OperationalCreatedSource.ENGINEER,

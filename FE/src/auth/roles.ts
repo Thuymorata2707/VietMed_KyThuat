@@ -4,7 +4,8 @@ export type RoleName = 'admin' | 'manager' | 'engineer';
 
 export function getRoleName(user: ApiUser): RoleName {
   const role = (user.role?.name ?? user.roleName ?? '').toLowerCase();
-  if (role === 'manager' || role === 'engineer') return role;
+  if (role === 'manager' || role === 'quản lý' || role === 'quan ly') return 'manager';
+  if (role === 'engineer' || role === 'kỹ sư' || role === 'ky su') return 'engineer';
   return 'admin';
 }
 

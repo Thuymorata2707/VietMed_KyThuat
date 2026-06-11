@@ -90,7 +90,8 @@
 
 .engineer-create-form input,
 .engineer-create-form select,
-.engineer-create-form textarea {
+.engineer-create-form textarea,
+.async-picker-control input {
   background: #ffffff;
   border: 1px solid #ced8e3;
   border-radius: 8px;
@@ -110,9 +111,80 @@
 
 .engineer-create-form input:focus,
 .engineer-create-form select:focus,
-.engineer-create-form textarea:focus {
+.engineer-create-form textarea:focus,
+.async-picker-control:focus-within input {
   border-color: #c92a1f;
   box-shadow: 0 0 0 3px rgba(201, 42, 31, 0.1);
+}
+
+.async-entity-picker {
+  color: #405064;
+  display: grid;
+  font-size: 13px;
+  font-weight: 650;
+  gap: 8px;
+  grid-column: span 3;
+  min-width: 0;
+  position: relative;
+}
+
+.async-picker-control {
+  display: grid;
+  min-width: 0;
+  position: relative;
+}
+
+.async-picker-control input {
+  font-weight: 500;
+  min-height: 48px;
+}
+
+.async-picker-menu {
+  background: #ffffff;
+  border: 1px solid #dfe7ef;
+  border-radius: 10px;
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.16);
+  display: grid;
+  gap: 4px;
+  left: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+}
+
+.async-picker-menu button {
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: #17202a;
+  cursor: pointer;
+  font-weight: 500;
+  min-height: 50px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.async-picker-menu button:hover,
+.async-picker-menu button.active {
+  background: #fff5f4;
+  color: #c92a1f;
+}
+
+.async-picker-state {
+  color: #657384;
+  padding: 12px;
+}
+
+.async-picker-required {
+  height: 1px !important;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 1px !important;
 }
 
 .create-form-section {
@@ -160,6 +232,56 @@
 }
 
 .quick-machine-form .task-primary {
+  align-self: end;
+  min-height: 40px;
+}
+
+.customer-picker-row {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.customer-picker-main {
+  grid-column: auto;
+}
+
+.quick-customer-toggle {
+  min-height: 48px;
+}
+
+.quick-customer-form {
+  background: #fffdfb;
+  border: 1px solid #fedf89;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 14px;
+}
+
+.quick-customer-heading {
+  display: grid;
+  gap: 4px;
+  grid-column: 1 / -1;
+}
+
+.quick-customer-heading strong {
+  color: #17202a;
+}
+
+.quick-customer-heading span {
+  color: #657384;
+  font-size: 13px;
+}
+
+.quick-customer-form label {
+  grid-column: span 1;
+}
+
+.quick-customer-form .task-primary {
   align-self: end;
   min-height: 40px;
 }
@@ -908,8 +1030,13 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .quick-machine-form label {
+  .quick-machine-form label,
+  .quick-customer-form label {
     grid-column: span 1;
+  }
+
+  .quick-customer-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -964,8 +1091,17 @@
     grid-template-columns: 1fr;
   }
 
-  .quick-machine-form label {
+  .customer-picker-row,
+  .quick-customer-form,
+  .quick-machine-form label,
+  .quick-customer-form label,
+  .quick-customer-form .task-primary {
     grid-column: 1 / -1;
+  }
+
+  .customer-picker-row,
+  .quick-customer-form {
+    grid-template-columns: 1fr;
   }
 }
 

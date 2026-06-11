@@ -146,8 +146,8 @@ export const resources: Record<string, ResourceConfig> = {
     ],
   },
   'business-lines': {
-    title: 'Nhóm sản phẩm',
-    description: 'Nhóm sản phẩm nằm trong từng ngành hàng lớn.',
+    title: 'Sản phẩm & Thiết bị',
+    description: 'Quản lý ngành hàng, nhóm sản phẩm, model và từng máy có serial trong cùng một luồng.',
     endpoint: '/business-lines',
     icon: <BriefcaseBusiness size={20} />,
     searchPlaceholder: 'Tìm sản phẩm hoặc mã',

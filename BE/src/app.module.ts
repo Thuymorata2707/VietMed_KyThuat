@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { BusinessLinesModule } from './business-lines/business-lines.module';
 import { CustomersModule } from './customers/customers.module';
 import { AppConfigModule } from './config/app-config.module';
+import { DailyWorkNotesModule } from './daily-work-notes/daily-work-notes.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { EngineerProfilesModule } from './engineer-profiles/engineer-profiles.module';
 import { InventoryMovementsModule } from './inventory-movements/inventory-movements.module';
@@ -34,6 +35,7 @@ import { UsersModule } from './users/users.module';
     RolesModule,
     RegionsModule,
     CustomersModule,
+    DailyWorkNotesModule,
     MachinesModule,
     DashboardModule,
     RepairsModule,

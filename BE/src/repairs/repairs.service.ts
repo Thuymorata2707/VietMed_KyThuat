@@ -11,7 +11,7 @@ import {
 } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
-import { repairAccessWhere } from '../auth/access-scope';
+import { isEngineer, repairAccessWhere } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
@@ -36,7 +36,7 @@ export class RepairsService {
 
     await this.ensureMachineExists(dto.machineId);
 
-    const engineerId = actor.roleName === 'engineer' ? actor.id : dto.engineerId;
+    const engineerId = isEngineer(actor) ? actor.id : dto.engineerId;
 
     if (engineerId) {
       await this.ensureEngineerExists(engineerId);

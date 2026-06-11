@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { RequestUser } from '../../common/request-user.type';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+import { normalizeRoleName } from '../permissions';
 
 type AuthenticatedRequest = Request & {
   user?: RequestUser;
@@ -24,8 +25,8 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-    return Boolean(
-      request.user?.roleName && requiredRoles.includes(request.user.roleName),
-    );
+    const roleName = normalizeRoleName(request.user?.roleName);
+
+    return Boolean(roleName && requiredRoles.includes(roleName));
   }
 }

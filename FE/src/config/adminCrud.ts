@@ -15,6 +15,7 @@ export type CrudField = {
     endpoint: string;
     labelPath: string;
     labelPaths?: string[];
+    searchable?: boolean;
     valuePath: string;
     filterPath?: string;
     filterValues?: string[];
@@ -76,11 +77,43 @@ const installationStatuses = enumOptions(['INSTALLED', 'CANCELLED']);
 const maintenanceTypes = enumOptions(['PERIODIC', 'WARRANTY', 'CONTRACT', 'INTERNAL', 'OTHER']);
 
 const engineerOptionSource = {
-  endpoint: '/users?limit=100',
+  endpoint: '/users?limit=20&roleName=engineer',
   labelPath: 'fullName',
+  labelPaths: ['fullName', 'email', 'region.name'],
+  searchable: true,
   valuePath: 'id',
-  filterPath: 'role.name',
-  filterValues: ['engineer', 'kỹ sư', 'ky su'],
+};
+
+const customerOptionSource = {
+  endpoint: '/customers?limit=20',
+  labelPath: 'name',
+  labelPaths: ['customerCode', 'name', 'province', 'phone'],
+  searchable: true,
+  valuePath: 'id',
+};
+
+const machineOptionSource = {
+  endpoint: '/machines?limit=20',
+  labelPath: 'serialNumber',
+  labelPaths: ['machineCode', 'serialNumber', 'modelName', 'customer.name', 'inventoryStatus'],
+  searchable: true,
+  valuePath: 'id',
+};
+
+const machineModelOptionSource = {
+  endpoint: '/machine-models?limit=20',
+  labelPath: 'code',
+  labelPaths: ['code', 'name', 'manufacturer', 'businessLine.name'],
+  searchable: true,
+  valuePath: 'id',
+};
+
+const businessLineOptionSource = {
+  endpoint: '/business-lines?limit=20',
+  labelPath: 'name',
+  labelPaths: ['productIndustry.name', 'name'],
+  searchable: true,
+  valuePath: 'id',
 };
 
 const inventoryMovementTypes = enumOptions(['IMPORT', 'SPLIT_ACCESSORY', 'RESERVE', 'INSTALL', 'RETURN', 'SELL', 'ADJUST_STATUS'], {
@@ -167,7 +200,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         label: 'Quản lý',
         type: 'select',
         valuePath: 'manager.id',
-        optionSource: { endpoint: '/users', labelPath: 'fullName', valuePath: 'id' },
+        optionSource: { endpoint: '/users', labelPath: 'fullName', labelPaths: ['fullName', 'email'], searchable: true, valuePath: 'id' },
       },
       { name: 'description', label: 'Mô tả', type: 'textarea' },
       { name: 'note', label: 'Ghi chú', type: 'textarea' },
@@ -225,7 +258,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         required: true,
         wide: true,
         valuePath: 'businessLine.id',
-        optionSource: { endpoint: '/business-lines', labelPath: 'name', labelPaths: ['productIndustry.name', 'name'], valuePath: 'id' },
+        optionSource: businessLineOptionSource,
       },
       { name: 'code', label: 'Mã sản phẩm/model', required: true },
       { name: 'name', label: 'Tên sản phẩm/model', required: true },
@@ -260,7 +293,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         type: 'select',
         required: true,
         valuePath: 'machineModel.id',
-        optionSource: { endpoint: '/machine-models?limit=100', labelPath: 'code', labelPaths: ['code', 'name'], valuePath: 'id' },
+        optionSource: machineModelOptionSource,
       },
       { name: 'code', label: 'Mã thành phần', required: true },
       { name: 'name', label: 'Tên thành phần', required: true },
@@ -329,12 +362,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         required: true,
         wide: true,
         valuePath: 'machineModel.id',
-        optionSource: {
-          endpoint: '/machine-models?limit=100',
-          labelPath: 'code',
-          labelPaths: ['code', 'name'],
-          valuePath: 'id',
-        },
+        optionSource: machineModelOptionSource,
       },
       { name: 'name', label: 'Tên máy' },
       { name: 'status', label: 'Trạng thái vận hành', type: 'select', options: machineStatuses },
@@ -346,7 +374,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         label: 'Khách hàng',
         type: 'select',
         valuePath: 'customer.id',
-        optionSource: { endpoint: '/customers?limit=100', labelPath: 'name', valuePath: 'id' },
+        optionSource: customerOptionSource,
       },
       {
         name: 'installedById',
@@ -417,7 +445,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         required: true,
         createOnly: true,
         valuePath: 'machine.id',
-        optionSource: { endpoint: '/machines?limit=100', labelPath: 'serialNumber', valuePath: 'id' },
+        optionSource: { ...machineOptionSource, endpoint: '/machines?limit=20&inventoryStatus=INSTALLED' },
       },
       {
         name: 'engineerId',
@@ -460,7 +488,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         required: true,
         createOnly: true,
         valuePath: 'machine.id',
-        optionSource: { endpoint: '/machines?limit=100', labelPath: 'serialNumber', valuePath: 'id' },
+        optionSource: { ...machineOptionSource, endpoint: '/machines?limit=20&inventoryStatus=INSTALLED' },
       },
       {
         name: 'engineerId',
@@ -499,7 +527,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         required: true,
         createOnly: true,
         valuePath: 'machine.id',
-        optionSource: { endpoint: '/machines?limit=100', labelPath: 'serialNumber', valuePath: 'id' },
+        optionSource: { ...machineOptionSource, endpoint: '/machines?limit=20&inventoryStatus=IN_STOCK' },
       },
       {
         name: 'customerId',
@@ -508,7 +536,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         required: true,
         createOnly: true,
         valuePath: 'customer.id',
-        optionSource: { endpoint: '/customers?limit=100', labelPath: 'name', valuePath: 'id' },
+        optionSource: customerOptionSource,
       },
       {
         name: 'installedById',
@@ -523,7 +551,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         label: 'Ngành hàng',
         type: 'select',
         valuePath: 'businessLine.id',
-        optionSource: { endpoint: '/business-lines', labelPath: 'name', valuePath: 'id' },
+        optionSource: businessLineOptionSource,
       },
       { name: 'installedAt', label: 'Ngày lắp', type: 'date', required: true },
       { name: 'warrantyStartDate', label: 'Bắt đầu bảo hành', type: 'date', valuePath: 'warrantyCard.startDate' },
@@ -569,7 +597,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         type: 'select',
         required: true,
         valuePath: 'machine.id',
-        optionSource: { endpoint: '/machines?limit=100', labelPath: 'serialNumber', valuePath: 'id' },
+        optionSource: machineOptionSource,
       },
       { name: 'type', label: 'Loại phiếu', type: 'select', required: true, options: inventoryMovementTypes },
       { name: 'toStatus', label: 'Trạng thái mới', type: 'select', required: true, options: inventoryStatuses },
@@ -578,7 +606,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         label: 'Khách hàng',
         type: 'select',
         valuePath: 'customer.id',
-        optionSource: { endpoint: '/customers?limit=100', labelPath: 'name', valuePath: 'id' },
+        optionSource: customerOptionSource,
       },
       { name: 'occurredAt', label: 'Ngày phát sinh', type: 'date' },
       { name: 'note', label: 'Ghi chú', type: 'textarea' },

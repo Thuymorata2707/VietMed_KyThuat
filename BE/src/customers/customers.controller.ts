@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequestUser } from '../common/request-user.type';
@@ -24,9 +25,9 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
-  @Roles('admin')
   @Post()
   create(@Body() dto: CreateCustomerDto, @CurrentUser() user: RequestUser) {
+    assertPermission(user, PERMISSIONS.CUSTOMER_CREATE);
     return this.customersService.create(dto, user);
   }
 

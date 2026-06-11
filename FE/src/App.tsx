@@ -4,7 +4,6 @@ import { ApiUser, apiFetch, clearToken, getToken } from './api';
 import { Splash } from './components/Splash';
 import { AppShell } from './layouts/AppShell';
 import { LoginPage } from './pages/LoginPage';
-import './ui-polish.css';
 
 function App() {
   const [user, setUser] = useState<ApiUser | null>(null);
@@ -33,7 +32,11 @@ function App() {
       <Route
         path="/*"
         element={
-          user ? <AppShell user={user} onLogout={() => setUser(null)} /> : <Navigate to="/login" replace />
+          user ? (
+            <AppShell onLogout={() => setUser(null)} onUserUpdated={setUser} user={user} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
     </Routes>
