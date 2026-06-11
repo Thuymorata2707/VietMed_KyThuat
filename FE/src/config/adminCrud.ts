@@ -1,9 +1,10 @@
 import { ResourceConfig } from './resources';
+import { enumOptions } from '../utils/displayLabels';
 
 export type CrudField = {
   name: string;
   label: string;
-  type?: 'text' | 'email' | 'url' | 'image' | 'date' | 'select' | 'textarea' | 'tags';
+  type?: 'text' | 'email' | 'url' | 'image' | 'date' | 'select' | 'textarea' | 'tags' | 'accessories';
   required?: boolean;
   createOnly?: boolean;
   updateOnly?: boolean;
@@ -29,27 +30,13 @@ export type AdminCrudConfig = ResourceConfig & {
   fields: CrudField[];
 };
 
-const customerTypes = [
-  'HOSPITAL',
-  'CLINIC',
-  'LAB',
-  'DISTRIBUTOR',
-  'UNIVERSITY',
-  'COMPANY',
-  'OTHER',
-].map((value) => ({ label: value.replaceAll('_', ' '), value }));
+const customerTypes = enumOptions(['HOSPITAL', 'CLINIC', 'LAB', 'DISTRIBUTOR', 'UNIVERSITY', 'COMPANY', 'OTHER']);
 
-const customerStatuses = ['ACTIVE', 'INACTIVE', 'POTENTIAL', 'BLACKLISTED'].map((value) => ({
-  label: value.replaceAll('_', ' '),
-  value,
-}));
+const customerStatuses = enumOptions(['ACTIVE', 'INACTIVE', 'POTENTIAL', 'BLACKLISTED']);
 
-const activeInactiveStatuses = ['ACTIVE', 'INACTIVE'].map((value) => ({
-  label: value,
-  value,
-}));
+const activeInactiveStatuses = enumOptions(['ACTIVE', 'INACTIVE']);
 
-const productCategories = [
+const productCategories = enumOptions([
   'ULTRASOUND',
   'LAB_TESTING',
   'BIOCHEMISTRY',
@@ -58,7 +45,7 @@ const productCategories = [
   'X_RAY',
   'ENDOSCOPY',
   'OTHER',
-].map((value) => ({ label: value.replaceAll('_', ' '), value }));
+]);
 
 const expertiseGroups = [
   { label: 'Chẩn đoán hình ảnh', value: 'IMAGING' },
@@ -70,30 +57,23 @@ const yesNoOptions = [
   { label: 'Không', value: 'false' },
 ];
 
-const machineStatuses = ['ACTIVE', 'MAINTENANCE', 'REPAIRING', 'INACTIVE'].map((value) => ({
-  label: value.replaceAll('_', ' '),
-  value,
-}));
+const machineStatuses = enumOptions(['ACTIVE', 'MAINTENANCE', 'REPAIRING', 'INACTIVE']);
 
-const inventoryStatuses = ['IN_STOCK', 'ACCESSORY_SPLIT', 'INSTALLED', 'RESERVED', 'RETURNED', 'SOLD'].map((value) => ({
-  label: value.replaceAll('_', ' '),
-  value,
-}));
+const inventoryStatuses = enumOptions(['IN_STOCK', 'ACCESSORY_SPLIT', 'INSTALLED', 'RESERVED', 'RETURNED', 'SOLD']);
 
-const repairPriorities = ['LOW', 'NORMAL', 'HIGH', 'URGENT'].map((value) => ({
-  label: value,
-  value,
-}));
+const dataStatuses = enumOptions(['PENDING_REVIEW', 'VERIFIED', 'NEEDS_UPDATE']);
 
-const taskStatuses = ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].map((value) => ({
-  label: value.replaceAll('_', ' '),
-  value,
-}));
+const createdSources = enumOptions(['ADMIN', 'ENGINEER', 'IMPORT', 'SYSTEM']);
 
-const maintenanceTypes = ['PERIODIC', 'WARRANTY', 'CONTRACT', 'INTERNAL', 'OTHER'].map((value) => ({
-  label: value.replaceAll('_', ' '),
-  value,
-}));
+const repairPriorities = enumOptions(['LOW', 'NORMAL', 'HIGH', 'URGENT']);
+
+const repairStatuses = enumOptions(['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED', 'CANCELLED']);
+
+const maintenanceStatuses = enumOptions(['SCHEDULED', 'ASSIGNED', 'IN_PROGRESS', 'OVERDUE', 'COMPLETED', 'CANCELLED']);
+
+const installationStatuses = enumOptions(['INSTALLED', 'CANCELLED']);
+
+const maintenanceTypes = enumOptions(['PERIODIC', 'WARRANTY', 'CONTRACT', 'INTERNAL', 'OTHER']);
 
 const engineerOptionSource = {
   endpoint: '/users?limit=100',
@@ -103,10 +83,9 @@ const engineerOptionSource = {
   filterValues: ['engineer', 'kỹ sư', 'ky su'],
 };
 
-const inventoryMovementTypes = ['IMPORT', 'SPLIT_ACCESSORY', 'RESERVE', 'INSTALL', 'RETURN', 'SELL', 'ADJUST_STATUS'].map((value) => ({
-  label: value.replaceAll('_', ' '),
-  value,
-}));
+const inventoryMovementTypes = enumOptions(['IMPORT', 'SPLIT_ACCESSORY', 'RESERVE', 'INSTALL', 'RETURN', 'SELL', 'ADJUST_STATUS'], {
+  IMPORT: 'Nhập kho',
+});
 
 export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   customers: {
@@ -337,6 +316,8 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { key: 'modelName', label: 'Model' },
       { key: 'status', label: 'Vận hành' },
       { key: 'inventoryStatus', label: 'Tồn kho' },
+      { key: 'dataStatus', label: 'Xác nhận' },
+      { key: 'createdSource', label: 'Nguồn tạo' },
     ],
     fields: [
       { name: 'serialNumber', label: 'Serial', required: true },
@@ -357,7 +338,9 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       },
       { name: 'name', label: 'Tên máy' },
       { name: 'status', label: 'Trạng thái vận hành', type: 'select', options: machineStatuses },
-      { name: 'inventoryStatus', label: 'Trạng thái kho', type: 'select', options: inventoryStatuses },
+      { name: 'inventoryStatus', label: 'Trạng thái kho', type: 'select', options: inventoryStatuses, detailOnly: true },
+      { name: 'dataStatus', label: 'Trạng thái xác nhận', type: 'select', options: dataStatuses },
+      { name: 'createdSource', label: 'Nguồn tạo dữ liệu', type: 'select', options: createdSources },
       {
         name: 'customerId',
         label: 'Khách hàng',
@@ -385,7 +368,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       {
         name: 'accessories',
         label: 'Phụ kiện đi kèm',
-        type: 'textarea',
+        type: 'accessories',
         wide: true,
       },
     ],
@@ -393,12 +376,11 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   repairs: {
     title: 'Sửa chữa',
     entityLabel: 'phiếu sửa chữa',
-    description: 'Tạo và cập nhật phiếu sửa chữa. Backend hiện không hỗ trợ xóa phiếu.',
+    description: 'Tạo, cập nhật, phân kỹ sư và xóa phiếu sửa chữa.',
     endpoint: '/repairs',
     icon: null,
     searchPlaceholder: 'Tìm tiêu đề, mã máy, kỹ sư',
     roles: ['admin'],
-    canDelete: false,
     columns: [
       { key: 'title', label: 'Tiêu đề' },
       { key: 'machine.machineCode', label: 'Mã máy' },
@@ -445,7 +427,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         optionSource: engineerOptionSource,
       },
       { name: 'priority', label: 'Ưu tiên', type: 'select', options: repairPriorities },
-      { name: 'status', label: 'Trạng thái xử lý', type: 'select', options: taskStatuses, updateOnly: true },
+      { name: 'status', label: 'Trạng thái xử lý', type: 'select', options: repairStatuses, updateOnly: true },
       { name: 'reportedAt', label: 'Ngày báo lỗi', type: 'date', createOnly: true },
       { name: 'resultNote', label: 'Kết quả xử lý', type: 'textarea', updateOnly: true },
       { name: 'customerFeedback', label: 'Phản hồi khách hàng', type: 'textarea', updateOnly: true },
@@ -454,12 +436,11 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   maintenance: {
     title: 'Bảo trì',
     entityLabel: 'phiếu bảo trì',
-    description: 'Tạo và cập nhật lịch bảo trì. Backend hiện không hỗ trợ xóa phiếu.',
+    description: 'Tạo, cập nhật, phân kỹ sư và xóa lịch bảo trì.',
     endpoint: '/maintenance',
     icon: null,
     searchPlaceholder: 'Tìm tiêu đề, mã máy, kỹ sư',
     roles: ['admin'],
-    canDelete: false,
     columns: [
       { key: 'title', label: 'Tiêu đề' },
       { key: 'machine.machineCode', label: 'Mã máy' },
@@ -490,21 +471,19 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       },
       { name: 'scheduledDate', label: 'Ngày bảo trì', type: 'date', required: true },
       { name: 'nextDueDate', label: 'Lịch tiếp theo', type: 'date' },
-      { name: 'checklist', label: 'Checklist', type: 'tags' },
-      { name: 'status', label: 'Trạng thái xử lý', type: 'select', options: taskStatuses, updateOnly: true },
+      { name: 'checklist', label: 'Danh sách kiểm tra', type: 'tags' },
+      { name: 'status', label: 'Trạng thái xử lý', type: 'select', options: maintenanceStatuses, updateOnly: true },
       { name: 'resultNote', label: 'Kết quả bảo trì', type: 'textarea', updateOnly: true },
     ],
   },
   installations: {
     title: 'Lắp đặt',
     entityLabel: 'phiếu lắp đặt',
-    description: 'Tạo phiếu lắp đặt và bảo hành. Backend hiện chỉ hỗ trợ tạo và xem.',
+    description: 'Tạo, cập nhật kỹ sư/ngày lắp/bảo hành và xóa phiếu lắp đặt.',
     endpoint: '/installations',
     icon: null,
     searchPlaceholder: 'Tìm mã máy, khách hàng, kỹ sư',
     roles: ['admin'],
-    canUpdate: false,
-    canDelete: false,
     columns: [
       { key: 'machine.machineCode', label: 'Mã máy' },
       { key: 'customer.name', label: 'Khách hàng' },
@@ -518,6 +497,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         label: 'Thiết bị',
         type: 'select',
         required: true,
+        createOnly: true,
         valuePath: 'machine.id',
         optionSource: { endpoint: '/machines?limit=100', labelPath: 'serialNumber', valuePath: 'id' },
       },
@@ -526,6 +506,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         label: 'Khách hàng',
         type: 'select',
         required: true,
+        createOnly: true,
         valuePath: 'customer.id',
         optionSource: { endpoint: '/customers?limit=100', labelPath: 'name', valuePath: 'id' },
       },
@@ -545,11 +526,12 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         optionSource: { endpoint: '/business-lines', labelPath: 'name', valuePath: 'id' },
       },
       { name: 'installedAt', label: 'Ngày lắp', type: 'date', required: true },
-      { name: 'warrantyStartDate', label: 'Bắt đầu bảo hành', type: 'date' },
-      { name: 'warrantyEndDate', label: 'Kết thúc bảo hành', type: 'date', required: true },
+      { name: 'warrantyStartDate', label: 'Bắt đầu bảo hành', type: 'date', valuePath: 'warrantyCard.startDate' },
+      { name: 'warrantyEndDate', label: 'Kết thúc bảo hành', type: 'date', required: true, valuePath: 'warrantyCard.endDate' },
+      { name: 'status', label: 'Trạng thái', type: 'select', options: installationStatuses, updateOnly: true },
       { name: 'accessories', label: 'Phụ kiện', type: 'tags' },
       { name: 'note', label: 'Ghi chú', type: 'textarea' },
-      { name: 'warrantyNote', label: 'Ghi chú bảo hành', type: 'textarea' },
+      { name: 'warrantyNote', label: 'Ghi chú bảo hành', type: 'textarea', valuePath: 'warrantyCard.note' },
       { name: 'handoverInstallerName', label: 'Người lắp đặt', detailOnly: true },
       { name: 'handoverInstallerPosition', label: 'Chức vụ bên bàn giao', detailOnly: true },
       { name: 'handoverVehicle', label: 'Phương tiện đi', detailOnly: true },
@@ -566,7 +548,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   'inventory-movements': {
     title: 'Kho máy',
     entityLabel: 'phiếu kho',
-    description: 'Tạo phiếu điều chuyển trạng thái kho. Backend hiện chỉ hỗ trợ tạo và xem.',
+    description: 'Tạo phiếu điều chuyển trạng thái kho. Hệ thống hiện chỉ hỗ trợ tạo và xem.',
     endpoint: '/inventory-movements',
     icon: null,
     searchPlaceholder: 'Tìm mã phiếu, serial, người tạo',

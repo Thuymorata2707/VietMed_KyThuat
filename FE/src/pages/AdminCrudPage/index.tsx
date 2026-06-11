@@ -5,10 +5,14 @@ import { AdminCrudConfig, CrudField } from '../../config/adminCrud';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
+import { displayLabel } from '../../utils/displayLabels';
 import { TableRow, filterRows, formatValue, readPath } from '../../utils/format';
+import { formatMachineAccessoriesText, parseMachineAccessoriesInput, serializeMachineAccessories } from '../../utils/machineAccessories';
 import './styles.css';
 
-type SelectOption = { label: string; value: string };
+type SelectOption = { label: string; value: string; row?: TableRow };
 type OptionMap = Record<string, SelectOption[]>;
 type FormState = Record<string, string>;
 type FilterState = Record<string, string>;
@@ -20,7 +24,17 @@ type PaginationState = {
 };
 
 const pageSizeOptions = [10, 20, 50, 100];
-const quickFilterKeys = ['status', 'priority', 'type', 'engineer.fullName', 'installedBy.fullName', 'primaryEngineer.fullName'];
+const quickFilterKeys = [
+  'status',
+  'inventoryStatus',
+  'dataStatus',
+  'createdSource',
+  'priority',
+  'type',
+  'engineer.fullName',
+  'installedBy.fullName',
+  'primaryEngineer.fullName',
+];
 
 export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConfig; headerControl?: ReactNode }) {
   const [rows, setRows] = useState<TableRow[]>([]);
@@ -129,7 +143,7 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
     setSuccess('');
 
     try {
-      const fields = visibleFields(config.fields, Boolean(editingRow));
+      const fields = visibleFields(config.fields, Boolean(editingRow), form, options, config.endpoint, editingRow);
       const payload = isMachinesEndpoint(config.endpoint) ? buildMachinePayload(fields, form, editingRow) : buildPayload(fields, form);
       if (editingRow) {
         await apiFetch(`${config.endpoint}/${String(editingRow.id)}`, {
@@ -187,7 +201,7 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
   return (
     <PageFrame>
       <div className="admin-crud-heading">
-        <PageTitle eyebrow="Admin" title={config.title} description={config.description} />
+        <PageTitle eyebrow="Quản trị" title={config.title} description={config.description} />
         <div className="admin-crud-heading-actions">
           {headerControl}
           <button className="secondary-button" disabled={loading} onClick={loadPage} type="button">
@@ -405,8 +419,13 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
 
             <form className="admin-crud-form" onSubmit={handleSubmit}>
               <div className="form-grid">
-                {visibleFields(config.fields, Boolean(editingRow)).map((field) => (
+                {visibleFields(config.fields, Boolean(editingRow), form, options, config.endpoint, editingRow).map((field) => (
                   <FieldControl
+                    accessoryMode={
+                      field.type === 'accessories' && isUltrasoundMachineForm(form, options, editingRow)
+                        ? 'probe'
+                        : 'generic'
+                    }
                     field={field}
                     key={field.name}
                     onChange={(value) => setForm((current) => ({ ...current, [field.name]: value }))}
@@ -453,11 +472,13 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
 }
 
 function FieldControl({
+  accessoryMode,
   field,
   value,
   options,
   onChange,
 }: {
+  accessoryMode?: 'probe' | 'generic';
   field: CrudField;
   value: string;
   options: SelectOption[];
@@ -472,6 +493,28 @@ function FieldControl({
           placeholder={textareaPlaceholder(field)}
           required={field.required}
           value={value}
+        />
+      </label>
+    );
+  }
+
+  if (field.type === 'accessories') {
+    if (accessoryMode === 'probe') {
+      return (
+        <div className="wide-field">
+          <span className="field-label">{field.label}</span>
+          <MachineAccessoryEditor onChange={onChange} value={value} />
+        </div>
+      );
+    }
+
+    return (
+      <label className="wide-field">
+        {field.label}
+        <textarea
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Mỗi dòng: Tên phụ kiện | S/N"
+          value={formatMachineAccessoriesText(value)}
         />
       </label>
     );
@@ -605,7 +648,7 @@ function renderStatusBadge(value: unknown) {
 function statusTone(label: string) {
   const normalized = label.toLowerCase();
 
-  if (/active|done|complete|completed|success|approved|resolved|đang hoạt động|hoàn thành|đã duyệt|đã xử lý/.test(normalized)) {
+  if (/active|done|complete|completed|success|approved|resolved|verified|đang hoạt động|hoàn thành|đã duyệt|đã xử lý|đã xác nhận/.test(normalized)) {
     return 'good';
   }
 
@@ -613,7 +656,7 @@ function statusTone(label: string) {
     return 'danger';
   }
 
-  if (/pending|progress|processing|assigned|scheduled|waiting|maintenance|repairing|high|chờ|đang|sắp|bảo trì|sửa|đã phân công|cao/.test(normalized)) {
+  if (/pending|progress|processing|assigned|scheduled|waiting|maintenance|repairing|high|needs_update|chờ|đang|sắp|bảo trì|sửa|đã phân công|cao|cần bổ sung/.test(normalized)) {
     return 'warn';
   }
 
@@ -667,51 +710,7 @@ function formatDisplayValue(value: unknown): string {
   }
 
   const formatted = formatValue(value);
-  const normalized = typeof value === 'string' ? value.toUpperCase() : formatted.toUpperCase();
-  const labels: Record<string, string> = {
-    ACTIVE: 'Đang hoạt động',
-    INACTIVE: 'Tạm ngưng',
-    POTENTIAL: 'Tiềm năng',
-    BLACKLISTED: 'Không hợp tác',
-    MAINTENANCE: 'Đang bảo trì',
-    REPAIRING: 'Đang sửa',
-    IN_STOCK: 'Trong kho',
-    ACCESSORY_SPLIT: 'Đã tách phụ kiện',
-    INSTALLED: 'Đã lắp đặt',
-    RESERVED: 'Đã giữ hàng',
-    RETURNED: 'Đã trả về',
-    SOLD: 'Đã bán',
-    LOW: 'Thấp',
-    NORMAL: 'Bình thường',
-    HIGH: 'Cao',
-    URGENT: 'Khẩn cấp',
-    PENDING: 'Chờ xử lý',
-    ASSIGNED: 'Đã phân công',
-    IN_PROGRESS: 'Đang xử lý',
-    COMPLETED: 'Hoàn thành',
-    CANCELLED: 'Đã hủy',
-    PERIODIC: 'Định kỳ',
-    WARRANTY: 'Bảo hành',
-    CONTRACT: 'Hợp đồng',
-    INTERNAL: 'Nội bộ',
-    OTHER: 'Khác',
-    IMPORT: 'Nhập kho',
-    SPLIT_ACCESSORY: 'Tách phụ kiện',
-    RESERVE: 'Giữ hàng',
-    INSTALL: 'Lắp đặt',
-    RETURN: 'Trả về',
-    SELL: 'Bán',
-    ADJUST_STATUS: 'Điều chỉnh trạng thái',
-    IN_WARRANTY: 'Còn bảo hành',
-    OUT_OF_WARRANTY: 'Hết bảo hành',
-    NEW_100: 'Mới 100%',
-    IMAGING: 'Chẩn đoán hình ảnh',
-    LAB_TESTING: 'Xét nghiệm',
-    TRUE: 'Có',
-    FALSE: 'Không',
-  };
-
-  return labels[normalized] || formatted;
+  return displayLabel(typeof value === 'string' ? value : formatted);
 }
 
 function formatObjectValue(value: Record<string, unknown>): string {
@@ -761,6 +760,7 @@ async function loadOptions(fields: CrudField[]) {
           field.name,
           rows.map((row) => ({
             label: buildOptionLabel(row, source.labelPaths, source.labelPath),
+            row,
             value: String(readPath(row, source.valuePath) ?? ''),
           })).filter((option) => option.label && option.value),
         ] as const;
@@ -800,7 +800,7 @@ function buildInitialForm(fields: CrudField[], row: TableRow | null, options: Op
       }
 
       if (isMachinesEndpoint(endpoint) && field.name === 'accessories') {
-        return [field.name, formatMachineAccessoriesForForm(readPath(row, 'accessories'))];
+        return [field.name, serializeMachineAccessories(readPath(row, 'accessories'))];
       }
 
       const rawValue = readPath(row, field.valuePath || field.name);
@@ -842,44 +842,11 @@ function buildMachinePayload(fields: CrudField[], form: FormState, editingRow: T
   return payload;
 }
 
-function formatMachineAccessoriesForForm(value: unknown) {
-  if (!Array.isArray(value)) return '';
-
-  return value
-    .map((item) => {
-      if (!item || typeof item !== 'object') return '';
-      const accessory = item as Record<string, unknown>;
-      const name = String(accessory.name ?? '').trim();
-      const serialNumber = String(accessory.serialNumber ?? '').trim();
-      return [name, serialNumber].filter(Boolean).join(' | ');
-    })
-    .filter(Boolean)
-    .join('\n');
-}
-
 function parseMachineAccessoriesForm(value: string, existingAccessories: unknown[]) {
-  return value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line, index) => {
-      const [name = '', serialNumber = '', code = ''] = line.split('|').map((part) => part.trim());
-      const existing = existingAccessories[index] && typeof existingAccessories[index] === 'object'
-        ? (existingAccessories[index] as Record<string, unknown>)
-        : null;
-
-      return {
-        id: typeof existing?.id === 'string' ? existing.id : undefined,
-        name: name || (typeof existing?.name === 'string' ? existing.name : undefined),
-        serialNumber: serialNumber || undefined,
-        code: code || undefined,
-      };
-    })
-    .filter((accessory) => accessory.name);
+  return parseMachineAccessoriesInput(value, existingAccessories);
 }
 
 function textareaPlaceholder(field: CrudField) {
-  if (field.name === 'accessories') return 'Mỗi dòng: Tên phụ kiện | S/N';
   if (field.type === 'tags') return 'Mỗi dòng là một mục';
   return undefined;
 }
@@ -888,13 +855,31 @@ function isMachinesEndpoint(endpoint?: string) {
   return endpoint === '/machines';
 }
 
-function visibleFields(fields: CrudField[], isEditing: boolean) {
+function visibleFields(
+  fields: CrudField[],
+  isEditing: boolean,
+  form?: FormState,
+  options?: OptionMap,
+  endpoint?: string,
+  row?: TableRow | null,
+) {
   return fields.filter((field) => {
     if (field.detailOnly) return false;
     if (isEditing && field.createOnly) return false;
     if (!isEditing && field.updateOnly) return false;
     return true;
   });
+}
+
+function isUltrasoundMachineForm(form: FormState, options: OptionMap, row: TableRow | null) {
+  const selectedModelId = form.machineModelId || String(readPath(row ?? {}, 'machineModel.id') ?? '');
+  const selectedOption = options.machineModelId?.find((option) => option.value === selectedModelId);
+  const rowModel = readPath(row ?? {}, 'machineModel');
+
+  if (selectedOption?.row) return isUltrasoundMachineModel(selectedOption.row);
+  if (rowModel && typeof rowModel === 'object') return isUltrasoundMachineModel(rowModel as Record<string, unknown>);
+
+  return false;
 }
 
 function withQueryParams(endpoint: string, params: Record<string, string>) {

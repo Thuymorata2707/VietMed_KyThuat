@@ -1,4 +1,4 @@
-import { Edit3, ImageOff, Loader2, Power, PowerOff, RefreshCw, UserPlus, X } from 'lucide-react';
+import { Edit3, ImageOff, Loader2, Power, PowerOff, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
@@ -88,6 +88,7 @@ export function AdminUsersPage() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [form, setForm] = useState<UserFormState>(emptyForm);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -277,6 +278,24 @@ export function AdminUsersPage() {
     }
   }
 
+  async function removeUser() {
+    if (!deletingUser) return;
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiFetch(`/users/${deletingUser.id}`, { method: 'DELETE' });
+      setSuccess('Đã xóa nhân sự.');
+      setDeletingUser(null);
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không xóa được nhân sự');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <PageFrame>
       <div className="admin-users-heading">
@@ -361,6 +380,14 @@ export function AdminUsersPage() {
                             <Power size={16} />
                           </button>
                         )}
+                        <button
+                          className="icon-button danger"
+                          onClick={() => setDeletingUser(user)}
+                          title="Xóa nhân sự"
+                          type="button"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -627,6 +654,29 @@ export function AdminUsersPage() {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      ) : null}
+
+      {deletingUser ? (
+        <div className="crud-modal-backdrop" role="presentation">
+          <section aria-modal="true" className="confirm-modal" role="dialog">
+            <div>
+              <span className="confirm-eyebrow">Xác nhận xóa nhân sự</span>
+              <h2>{deletingUser.fullName || deletingUser.email}</h2>
+              <p>
+                Tài khoản sẽ bị xóa khỏi hệ thống. Các phiếu và máy đã liên kết sẽ được giữ lại nhưng bỏ tham chiếu
+                tới nhân sự này nếu backend cho phép.
+              </p>
+            </div>
+            <div className="modal-actions">
+              <button className="secondary-button" onClick={() => setDeletingUser(null)} type="button">
+                Hủy
+              </button>
+              <button className="danger-button" disabled={saving} onClick={removeUser} type="button">
+                {saving ? 'Đang xóa' : 'Xóa nhân sự'}
+              </button>
+            </div>
           </section>
         </div>
       ) : null}

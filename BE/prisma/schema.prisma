@@ -28,6 +28,19 @@ enum MachineInventoryStatus {
   SOLD
 }
 
+enum OperationalDataStatus {
+  PENDING_REVIEW
+  VERIFIED
+  NEEDS_UPDATE
+}
+
+enum OperationalCreatedSource {
+  ADMIN
+  ENGINEER
+  IMPORT
+  SYSTEM
+}
+
 enum InventoryMovementType {
   IMPORT
   SPLIT_ACCESSORY
@@ -447,12 +460,15 @@ model Machine {
 
   status          MachineStatus          @default(ACTIVE)
   inventoryStatus MachineInventoryStatus @default(IN_STOCK)
+  dataStatus      OperationalDataStatus  @default(VERIFIED)
+  createdSource   OperationalCreatedSource @default(ADMIN)
 
   manufacturingDate   DateTime?
   warehouseImportDate DateTime?
   installDate         DateTime?
   warrantyStartDate   DateTime?
   warrantyEndDate     DateTime?
+  accessoriesSnapshot Json @default("[]")
 
   businessLineId String?
   businessLine   BusinessLine? @relation(fields: [businessLineId], references: [id])
@@ -518,8 +534,8 @@ model MachineInstallation {
   businessLineId String?
   businessLine   BusinessLine? @relation(fields: [businessLineId], references: [id], onDelete: SetNull)
 
-  installedById String
-  installedBy   User   @relation("MachineInstallationEngineer", fields: [installedById], references: [id])
+  installedById String?
+  installedBy   User?  @relation("MachineInstallationEngineer", fields: [installedById], references: [id], onDelete: SetNull)
 
   installedAt DateTime
   accessories String[]

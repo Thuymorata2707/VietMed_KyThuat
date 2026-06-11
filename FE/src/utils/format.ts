@@ -1,3 +1,5 @@
+import { displayLabel } from './displayLabels';
+
 export type TableRow = Record<string, unknown>;
 
 export function readPath(row: TableRow, path: string) {
@@ -15,7 +17,7 @@ export function formatValue(value: unknown) {
     return new Intl.DateTimeFormat('vi-VN').format(new Date(value));
   }
   if (typeof value === 'object') return '-';
-  return String(value).replaceAll('_', ' ');
+  return displayLabel(value);
 }
 
 export function filterRows(rows: TableRow[], query: string) {

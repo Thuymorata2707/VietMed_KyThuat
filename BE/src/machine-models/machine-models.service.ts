@@ -4,11 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  BusinessLineStatus,
-  MachineProductCategory,
-  Prisma,
-} from '@prisma/client';
+import { BusinessLineStatus, Prisma } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { pickChangedFields } from '../common/audit-changes';
 import { PaginatedResult } from '../common/paginated-result.type';
@@ -50,7 +46,9 @@ export class MachineModelsService {
         include: this.defaultInclude(),
       });
 
-      for (const [componentIndex, component] of (dto.components ?? []).entries()) {
+      for (const [componentIndex, component] of (
+        dto.components ?? []
+      ).entries()) {
         const createdComponent = await tx.machineComponent.create({
           data: {
             machineModelId: created.id,
@@ -62,7 +60,9 @@ export class MachineModelsService {
           },
         });
 
-        for (const [accessoryIndex, accessory] of (component.accessories ?? []).entries()) {
+        for (const [accessoryIndex, accessory] of (
+          component.accessories ?? []
+        ).entries()) {
           await tx.componentAccessory.create({
             data: {
               componentId: createdComponent.id,

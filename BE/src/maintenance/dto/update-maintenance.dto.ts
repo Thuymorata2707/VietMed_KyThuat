@@ -1,4 +1,4 @@
-import { MaintenanceType } from '@prisma/client';
+import { MaintenanceStatus, MaintenanceType } from '@prisma/client';
 import {
   IsArray,
   IsDateString,
@@ -19,6 +19,14 @@ export class UpdateMaintenanceDto {
   @IsOptional()
   @IsEnum(MaintenanceType)
   type?: MaintenanceType;
+
+  @IsOptional()
+  @IsEnum(MaintenanceStatus)
+  status?: MaintenanceStatus;
+
+  @IsOptional()
+  @IsString()
+  engineerId?: string | null;
 
   @IsOptional()
   @IsDateString()

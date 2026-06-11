@@ -132,6 +132,21 @@ export class RepairsService {
   async update(id: string, dto: UpdateRepairDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.REPAIR_UPDATE);
     const repair = await this.findOne(id, actor);
+    const nextEngineerId =
+      dto.engineerId === undefined ? repair.engineerId : dto.engineerId || null;
+    const nextStatus = dto.status ?? repair.status;
+
+    if (nextEngineerId) {
+      await this.ensureEngineerExists(nextEngineerId);
+    }
+
+    this.ensureStatusTransitionIsAllowed(repair.status, nextStatus);
+
+    if (this.statusRequiresEngineer(nextStatus) && !nextEngineerId) {
+      throw new BadRequestException(
+        'Repair must be assigned to an engineer first',
+      );
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.repair.update({
@@ -143,6 +158,19 @@ export class RepairsService {
               ? undefined
               : dto.description?.trim() || null,
           priority: dto.priority,
+          engineerId:
+            dto.engineerId === undefined ? undefined : nextEngineerId,
+          status: dto.status,
+          assignedAt:
+            dto.engineerId !== undefined && nextEngineerId && !repair.assignedAt
+              ? new Date()
+              : undefined,
+          startedAt:
+            dto.status === RepairStatus.IN_PROGRESS && !repair.startedAt
+              ? new Date()
+              : undefined,
+          completedAt:
+            dto.status === RepairStatus.COMPLETED ? new Date() : undefined,
           resultNote:
             dto.resultNote === undefined
               ? undefined
@@ -169,6 +197,22 @@ export class RepairsService {
         include: this.defaultInclude(),
       });
 
+      const machineStatus = this.getMachineStatusForRepairStatus(nextStatus);
+
+      if (machineStatus) {
+        validateMachineState(
+          machineStatus,
+          repair.machine.inventoryStatus,
+          repair.machine.customerId,
+        );
+        await tx.machine.update({
+          where: { id: repair.machineId },
+          data: {
+            status: machineStatus,
+          },
+        });
+      }
+
       await this.auditLogsService.create(
         {
           action: AUDIT_ACTIONS.UPDATE,
@@ -179,6 +223,8 @@ export class RepairsService {
             'title',
             'description',
             'priority',
+            'engineerId',
+            'status',
             'resultNote',
             'customerFeedback',
             'usingDepartment',
@@ -198,6 +244,35 @@ export class RepairsService {
 
       return updated;
     });
+  }
+
+  async remove(id: string, actor: RequestUser) {
+    assertPermission(actor, PERMISSIONS.REPAIR_DELETE);
+    const repair = await this.findOne(id, actor);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.repair.delete({
+        where: { id },
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.DELETE,
+          entityType: 'Repair',
+          entityId: id,
+          actor,
+          metadata: {
+            code: repair.code,
+            machineId: repair.machineId,
+            engineerId: repair.engineerId,
+            status: repair.status,
+          },
+        },
+        tx,
+      );
+    });
+
+    return { deleted: true };
   }
 
   async assign(id: string, dto: AssignRepairDto, actor: RequestUser) {

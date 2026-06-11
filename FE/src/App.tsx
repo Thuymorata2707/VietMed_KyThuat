@@ -4,6 +4,7 @@ import { ApiUser, apiFetch, clearToken, getToken } from './api';
 import { Splash } from './components/Splash';
 import { AppShell } from './layouts/AppShell';
 import { LoginPage } from './pages/LoginPage';
+import './ui-polish.css';
 
 function App() {
   const [user, setUser] = useState<ApiUser | null>(null);
@@ -16,6 +17,7 @@ function App() {
     }
 
     apiFetch<ApiUser>('/auth/me')
+    
       .then(setUser)
       .catch(() => clearToken())
       .finally(() => setCheckingSession(false));

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -15,6 +16,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequestUser } from '../common/request-user.type';
 import { CreateInstallationDto } from './dto/create-installation.dto';
 import { ListInstallationsQueryDto } from './dto/list-installations-query.dto';
+import { UpdateInstallationDto } from './dto/update-installation.dto';
 import { UpdateInstallationStatusDto } from './dto/update-installation-status.dto';
 import { InstallationsService } from './installations.service';
 
@@ -47,6 +49,16 @@ export class InstallationsController {
     return this.installationsService.findOne(id, user);
   }
 
+  @Roles('admin')
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateInstallationDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.installationsService.update(id, dto, user);
+  }
+
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
@@ -54,5 +66,11 @@ export class InstallationsController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.installationsService.updateStatus(id, dto, user);
+  }
+
+  @Roles('admin')
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.installationsService.remove(id, user);
   }
 }

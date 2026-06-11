@@ -20,7 +20,7 @@ export type ResourceConfig = {
   description: string;
   endpoint: string;
   icon: ReactNode;
-  columns: Array<{ key: string; label: string }>;
+  columns: Array<{ key: string; label: string; fallbackKeys?: string[] }>;
   searchPlaceholder: string;
   roles: RoleName[];
   searchEnabled?: boolean;
@@ -52,9 +52,10 @@ export const resources: Record<string, ResourceConfig> = {
     columns: [
       { key: 'machineCode', label: 'Mã máy' },
       { key: 'serialNumber', label: 'Serial' },
-      { key: 'modelName', label: 'Model' },
+      { key: 'machineModel.code', label: 'Model', fallbackKeys: ['modelName'] },
       { key: 'status', label: 'Vận hành' },
       { key: 'inventoryStatus', label: 'Tồn kho' },
+      { key: 'dataStatus', label: 'Xác nhận' },
     ],
   },
   installations: {
@@ -184,8 +185,8 @@ export const resources: Record<string, ResourceConfig> = {
     roles: ['admin', 'manager', 'engineer'],
     searchEnabled: false,
     columns: [
-      { key: 'name', label: 'Sản phẩm/Model' },
       { key: 'code', label: 'Mã' },
+      { key: 'name', label: 'Sản phẩm/Model' },
       { key: 'manufacturer', label: 'Hãng' },
       { key: 'productCategory', label: 'Loại thiết bị' },
       { key: 'businessLine.name', label: 'Nhóm sản phẩm' },
@@ -201,7 +202,7 @@ export const resources: Record<string, ResourceConfig> = {
     columns: [
       { key: 'name', label: 'Thành phần' },
       { key: 'code', label: 'Mã' },
-      { key: 'machineModel.name', label: 'Model' },
+      { key: 'machineModel.code', label: 'Model' },
       { key: 'machineModel.businessLine.name', label: 'Nhóm sản phẩm' },
       { key: 'status', label: 'Trạng thái' },
     ],
@@ -217,7 +218,7 @@ export const resources: Record<string, ResourceConfig> = {
       { key: 'name', label: 'Phụ kiện' },
       { key: 'code', label: 'Mã' },
       { key: 'component.name', label: 'Thành phần' },
-      { key: 'component.machineModel.name', label: 'Model' },
+      { key: 'component.machineModel.code', label: 'Model' },
       { key: 'requiresSerial', label: 'Cần S/N' },
     ],
   },

@@ -75,19 +75,34 @@ export function ResourcePage({ config, toolbarControl }: { config: ResourceConfi
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => (
+            {!loading && rows.map((row, index) => (
               <tr key={String(row.id ?? index)}>
                 {config.columns.map((column) => (
-                  <td key={column.key}>{formatValue(readPath(row, column.key))}</td>
+                  <td key={column.key}>{formatValue(readColumnValue(row, column))}</td>
                 ))}
               </tr>
             ))}
+            {loading
+              ? Array.from({ length: 5 }).map((_, rowIndex) => (
+                  <tr className="skeleton-row" key={`loading-${rowIndex}`}>
+                    {config.columns.map((column, columnIndex) => (
+                      <td key={column.key}>
+                        <span
+                          className="skeleton-line"
+                          style={{ width: `${columnIndex % 2 === 0 ? 74 : 52}%` }}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : null}
             {!loading && rows.length === 0 ? (
               <tr>
                 <td colSpan={config.columns.length}>
                   <div className="empty-state">
                     {config.icon}
-                    <span>Chưa có dữ liệu phù hợp</span>
+                    <strong>Chưa có dữ liệu phù hợp</strong>
+                    <span>Thử đổi từ khóa tìm kiếm hoặc kiểm tra bộ lọc hiện tại.</span>
                   </div>
                 </td>
               </tr>
@@ -97,4 +112,16 @@ export function ResourcePage({ config, toolbarControl }: { config: ResourceConfi
       </div>
     </PageFrame>
   );
+}
+
+function readColumnValue(row: TableRow, column: ResourceConfig['columns'][number]) {
+  const value = readPath(row, column.key);
+  if (value !== null && value !== undefined && value !== '') return value;
+
+  for (const fallbackKey of column.fallbackKeys ?? []) {
+    const fallbackValue = readPath(row, fallbackKey);
+    if (fallbackValue !== null && fallbackValue !== undefined && fallbackValue !== '') return fallbackValue;
+  }
+
+  return value;
 }

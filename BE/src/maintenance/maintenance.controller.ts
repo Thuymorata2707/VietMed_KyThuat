@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -81,5 +82,11 @@ export class MaintenanceController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.maintenanceService.updateStatus(id, dto, user);
+  }
+
+  @Roles('admin')
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.maintenanceService.remove(id, user);
   }
 }

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -55,5 +56,10 @@ export class UsersController {
   @Patch(':id/deactivate')
   deactivate(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.usersService.setStatus(id, UserStatus.INACTIVE, user);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.usersService.remove(id, user);
   }
 }

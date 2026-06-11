@@ -8,6 +8,8 @@ import {
   MachineInventoryStatus,
   MachineProductCategory,
   MachineStatus,
+  OperationalCreatedSource,
+  OperationalDataStatus,
   Prisma,
 } from '@prisma/client';
 import { PaginatedResult } from '../common/paginated-result.type';
@@ -57,6 +59,7 @@ export class MachinesService {
     const status = input.status ?? MachineStatus.ACTIVE;
     const inventoryStatus =
       input.inventoryStatus ?? MachineInventoryStatus.IN_STOCK;
+    const reviewFields = this.resolveCreateReviewFields(input, actor);
     const customerId = input.customerId || null;
 
     validateMachineState(status, inventoryStatus, customerId);
@@ -80,6 +83,8 @@ export class MachinesService {
             machineModel?.productLine ?? input.productLine?.trim() ?? null,
           status,
           inventoryStatus,
+          dataStatus: reviewFields.dataStatus,
+          createdSource: reviewFields.createdSource,
           manufacturingDate: this.parseOptionalDate(input.manufacturingDate),
           warehouseImportDate: this.parseOptionalDate(input.warehouseImportDate),
           installDate: this.parseOptionalDate(input.installDate),
@@ -103,6 +108,7 @@ export class MachinesService {
           })),
         });
       }
+      await this.refreshMachineAccessoriesSnapshot(tx, created.id);
 
       await this.auditLogsService.create(
         {
@@ -116,6 +122,8 @@ export class MachinesService {
             customerId: created.customerId,
             status: created.status,
             inventoryStatus: created.inventoryStatus,
+            dataStatus: created.dataStatus,
+            createdSource: created.createdSource,
           },
         },
         tx,
@@ -345,6 +353,7 @@ export class MachinesService {
         },
         include: this.machineAccessoriesInclude(),
       });
+      await this.refreshMachineAccessoriesSnapshot(tx, machineId);
 
       await this.auditLogsService.create(
         {
@@ -432,6 +441,7 @@ export class MachinesService {
         },
         include: this.machineAccessoriesInclude(),
       });
+      await this.refreshMachineAccessoriesSnapshot(tx, machineId);
 
       await this.auditLogsService.create(
         {
@@ -470,6 +480,7 @@ export class MachinesService {
 
     await this.prisma.$transaction(async (tx) => {
       await tx.machineAccessory.delete({ where: { id: accessoryId } });
+      await this.refreshMachineAccessoriesSnapshot(tx, machineId);
 
       await this.auditLogsService.create(
         {
@@ -558,6 +569,8 @@ export class MachinesService {
             : dto.productLine?.trim() || null,
         status: dto.status,
         inventoryStatus: dto.inventoryStatus,
+        dataStatus: dto.dataStatus,
+        createdSource: dto.createdSource,
         manufacturingDate:
           dto.manufacturingDate === undefined
             ? undefined
@@ -607,6 +620,7 @@ export class MachinesService {
           updated.machineModelId,
           dto.accessories,
         );
+        await this.refreshMachineAccessoriesSnapshot(tx, id);
       }
 
       await this.auditLogsService.create(
@@ -627,6 +641,8 @@ export class MachinesService {
             'productLine',
             'status',
             'inventoryStatus',
+            'dataStatus',
+            'createdSource',
             'customerId',
             'businessLineId',
             'machineModelId',
@@ -1025,6 +1041,40 @@ export class MachinesService {
     }
   }
 
+  private async refreshMachineAccessoriesSnapshot(
+    tx: Prisma.TransactionClient,
+    machineId: string,
+  ) {
+    const accessories = await tx.machineAccessory.findMany({
+      where: { machineId },
+      orderBy: [{ name: 'asc' }, { serialNumber: 'asc' }],
+      select: {
+        id: true,
+        componentAccessoryId: true,
+        code: true,
+        name: true,
+        serialNumber: true,
+        description: true,
+        note: true,
+      },
+    });
+
+    await tx.machine.update({
+      where: { id: machineId },
+      data: {
+        accessoriesSnapshot: accessories.map((accessory) => ({
+          id: accessory.id,
+          componentAccessoryId: accessory.componentAccessoryId,
+          code: accessory.code,
+          name: accessory.name,
+          serialNumber: accessory.serialNumber,
+          description: accessory.description,
+          note: accessory.note,
+        })) as Prisma.InputJsonValue,
+      },
+    });
+  }
+
   private async ensureComponentAccessoryBelongsToModel(
     componentAccessoryId?: string | null,
     machineModelId?: string | null,
@@ -1088,6 +1138,30 @@ export class MachinesService {
     };
   }
 
+  private resolveCreateReviewFields(
+    dto: CreateMachineDto,
+    actor?: RequestUser,
+  ) {
+    if (actor?.roleName === 'engineer') {
+      return {
+        dataStatus: OperationalDataStatus.PENDING_REVIEW,
+        createdSource: OperationalCreatedSource.ENGINEER,
+      };
+    }
+
+    if (dto.dataStatus || dto.createdSource) {
+      return {
+        dataStatus: dto.dataStatus ?? OperationalDataStatus.VERIFIED,
+        createdSource: dto.createdSource ?? OperationalCreatedSource.ADMIN,
+      };
+    }
+
+    return {
+      dataStatus: OperationalDataStatus.VERIFIED,
+      createdSource: OperationalCreatedSource.ADMIN,
+    };
+  }
+
   private normalizeOptionalSerialNumber(serialNumber?: string | null) {
     return serialNumber?.trim()
       ? this.normalizeSerialNumber(serialNumber)
@@ -1131,6 +1205,8 @@ export class MachinesService {
     return {
       status: query.status,
       inventoryStatus: query.inventoryStatus,
+      dataStatus: query.dataStatus,
+      createdSource: query.createdSource,
       productCategory: query.productCategory,
       customerId: query.customerId,
       businessLineId: query.businessLineId,

@@ -124,6 +124,23 @@ export class MaintenanceService {
   async update(id: string, dto: UpdateMaintenanceDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.MAINTENANCE_UPDATE);
     const maintenance = await this.findOne(id, actor);
+    const nextEngineerId =
+      dto.engineerId === undefined
+        ? maintenance.engineerId
+        : dto.engineerId || null;
+    const nextStatus = dto.status ?? maintenance.status;
+
+    if (nextEngineerId) {
+      await this.ensureEngineerExists(nextEngineerId);
+    }
+
+    this.ensureStatusTransitionIsAllowed(maintenance.status, nextStatus);
+
+    if (this.statusRequiresEngineer(nextStatus) && !nextEngineerId) {
+      throw new BadRequestException(
+        'Maintenance must be assigned to an engineer first',
+      );
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.maintenance.update({
@@ -135,6 +152,22 @@ export class MaintenanceService {
               ? undefined
               : dto.description?.trim() || null,
           type: dto.type,
+          engineerId:
+            dto.engineerId === undefined ? undefined : nextEngineerId,
+          status: dto.status,
+          assignedAt:
+            dto.engineerId !== undefined &&
+            nextEngineerId &&
+            !maintenance.assignedAt
+              ? new Date()
+              : undefined,
+          startedAt:
+            dto.status === MaintenanceStatus.IN_PROGRESS &&
+            !maintenance.startedAt
+              ? new Date()
+              : undefined,
+          completedAt:
+            dto.status === MaintenanceStatus.COMPLETED ? new Date() : undefined,
           scheduledDate: dto.scheduledDate
             ? this.parseRequiredDate(dto.scheduledDate, 'scheduledDate')
             : undefined,
@@ -154,6 +187,23 @@ export class MaintenanceService {
         include: this.defaultInclude(),
       });
 
+      const machineStatus =
+        this.getMachineStatusForMaintenanceStatus(nextStatus);
+
+      if (machineStatus) {
+        validateMachineState(
+          machineStatus,
+          maintenance.machine.inventoryStatus,
+          maintenance.machine.customerId,
+        );
+        await tx.machine.update({
+          where: { id: maintenance.machineId },
+          data: {
+            status: machineStatus,
+          },
+        });
+      }
+
       await this.auditLogsService.create(
         {
           action: AUDIT_ACTIONS.UPDATE,
@@ -164,6 +214,8 @@ export class MaintenanceService {
             'title',
             'description',
             'type',
+            'engineerId',
+            'status',
             'scheduledDate',
             'checklist',
             'resultNote',
@@ -175,6 +227,35 @@ export class MaintenanceService {
 
       return updated;
     });
+  }
+
+  async remove(id: string, actor: RequestUser) {
+    assertPermission(actor, PERMISSIONS.MAINTENANCE_DELETE);
+    const maintenance = await this.findOne(id, actor);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.maintenance.delete({
+        where: { id },
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.DELETE,
+          entityType: 'Maintenance',
+          entityId: id,
+          actor,
+          metadata: {
+            code: maintenance.code,
+            machineId: maintenance.machineId,
+            engineerId: maintenance.engineerId,
+            status: maintenance.status,
+          },
+        },
+        tx,
+      );
+    });
+
+    return { deleted: true };
   }
 
   async assign(id: string, dto: AssignMaintenanceDto, actor: RequestUser) {

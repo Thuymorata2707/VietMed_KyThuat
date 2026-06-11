@@ -85,6 +85,8 @@ export class DashboardService {
       inactiveBusinessLines,
       totalInventoryMovements,
       totalMachines,
+      pendingReviewMachines,
+      engineerCreatedMachines,
       totalUsers,
       totalRepairs,
       activeMachines,
@@ -175,6 +177,12 @@ export class DashboardService {
         where: this.inventoryMovementWhere(inventoryMovementScope),
       }),
       this.prisma.machine.count({ where: this.machineWhere(machineScope) }),
+      this.prisma.machine.count({
+        where: this.machineWhere(machineScope, { dataStatus: 'PENDING_REVIEW' }),
+      }),
+      this.prisma.machine.count({
+        where: this.machineWhere(machineScope, { createdSource: 'ENGINEER' }),
+      }),
       this.prisma.user.count({ where: this.userWhere(userScope) }),
       this.prisma.repair.count({ where: this.repairWhere(repairScope) }),
       this.prisma.machine.count({
@@ -370,6 +378,8 @@ export class DashboardService {
       inactiveBusinessLines,
       totalInventoryMovements,
       totalMachines,
+      pendingReviewMachines,
+      engineerCreatedMachines,
       totalUsers,
       totalRepairs,
       totalMaintenances,

@@ -1,4 +1,4 @@
-import { RepairPriority } from '@prisma/client';
+import { RepairPriority, RepairStatus } from '@prisma/client';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class UpdateRepairDto {
@@ -13,6 +13,14 @@ export class UpdateRepairDto {
   @IsOptional()
   @IsEnum(RepairPriority)
   priority?: RepairPriority;
+
+  @IsOptional()
+  @IsEnum(RepairStatus)
+  status?: RepairStatus;
+
+  @IsOptional()
+  @IsString()
+  engineerId?: string | null;
 
   @IsOptional()
   @IsString()

@@ -2,6 +2,8 @@ import {
   MachineInventoryStatus,
   MachineProductCategory,
   MachineStatus,
+  OperationalCreatedSource,
+  OperationalDataStatus,
 } from '@prisma/client';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
@@ -18,6 +20,14 @@ export class ListMachinesQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsEnum(MachineProductCategory)
   productCategory?: MachineProductCategory;
+
+  @IsOptional()
+  @IsEnum(OperationalDataStatus)
+  dataStatus?: OperationalDataStatus;
+
+  @IsOptional()
+  @IsEnum(OperationalCreatedSource)
+  createdSource?: OperationalCreatedSource;
 
   @IsOptional()
   @IsString()

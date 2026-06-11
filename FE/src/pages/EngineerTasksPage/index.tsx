@@ -1,9 +1,12 @@
 import { Download, FileUp, Loader2, Plus, Search, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
+import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 import { InstallationHandoverForm } from './InstallationHandoverForm';
 import { SummaryTile } from './SummaryTile';
 import { attachmentOptionsByKind, installationStatusOptions, maintenanceStatusOptions, repairStatusOptions } from './constants';
@@ -57,6 +60,7 @@ import {
 import './styles.css';
 
 type QuickMachineForm = {
+  accessoriesText: string;
   customerId: string;
   machineModelId: string;
   modelName: string;
@@ -65,6 +69,7 @@ type QuickMachineForm = {
 };
 
 const emptyQuickMachineForm = (): QuickMachineForm => ({
+  accessoriesText: '',
   customerId: '',
   machineModelId: '',
   modelName: '',
@@ -78,7 +83,9 @@ type QuickMachineModel = {
   name?: string | null;
   displayName?: string | null;
   manufacturer?: string | null;
+  productCategory?: string | null;
   businessLine?: {
+    productCategory?: string | null;
     expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
     productIndustry?: {
       expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
@@ -317,6 +324,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     const modelName = quickMachineForm.modelName.trim() || selectedModel?.name?.trim() || selectedModel?.code?.trim() || '';
     const name = quickMachineForm.name.trim();
     const customerId = quickMachineForm.customerId || createForm.customerId;
+    const supportsProbes = isUltrasoundMachineModel(selectedModel);
 
     if (!serialNumber || !modelName) {
       setError('Vui lòng nhập Serial và Model/Tên thiết bị để tạo thiết bị nhanh.');
@@ -337,8 +345,9 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           name: name || modelName,
           customerId: customerId || undefined,
           primaryEngineerId: isEngineerUser(user) ? user.id : undefined,
-          inventoryStatus: customerId ? 'INSTALLED' : 'IN_STOCK',
+          inventoryStatus: 'IN_STOCK',
           status: 'ACTIVE',
+          accessories: parseMachineAccessoriesInput(quickMachineForm.accessoriesText),
         }),
       });
       const option = {
@@ -617,6 +626,12 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
             {isQuickMachineOpen ? (
               <div className="quick-machine-form">
+                {(() => {
+                  const selectedQuickModel = machineModelOptions.find((model) => model.id === quickMachineForm.machineModelId);
+                  const supportsProbes = isUltrasoundMachineModel(selectedQuickModel);
+
+                  return (
+                    <>
                 <label>
                   Model chuẩn
                   <select
@@ -666,9 +681,30 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     ))}
                   </select>
                 </label>
+                <div className="quick-machine-accessories">
+                  {supportsProbes ? (
+                    <MachineAccessoryEditor
+                      compact
+                      onChange={(value) => updateQuickMachineForm({ accessoriesText: value })}
+                      value={quickMachineForm.accessoriesText}
+                    />
+                  ) : (
+                    <label>
+                      Phụ kiện đi kèm
+                      <textarea
+                        onChange={(event) => updateQuickMachineForm({ accessoriesText: event.target.value })}
+                        placeholder={'Mỗi dòng: Phụ kiện | S/N\\nVí dụ: Bộ dây nguồn | ACC-001'}
+                        value={quickMachineForm.accessoriesText}
+                      />
+                    </label>
+                  )}
+                </div>
                 <button className="task-primary" disabled={creatingMachine || loadingCreateOptions} onClick={handleQuickMachineCreate} type="button">
                   {creatingMachine ? 'Đang tạo' : 'Tạo và chọn'}
                 </button>
+                    </>
+                  );
+                })()}
               </div>
             ) : null}
 

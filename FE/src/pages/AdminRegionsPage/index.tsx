@@ -1,6 +1,6 @@
-import { Loader2, MapPinned, Plus, RefreshCw, X } from 'lucide-react';
+import { Building2, Loader2, MapPinned, PackageSearch, Plus, RefreshCw, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { apiFetch } from '../../api';
+import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -14,6 +14,35 @@ type Region = {
   updatedAt: string;
 };
 
+type CustomerSummary = {
+  id: string;
+  name: string;
+  customerCode?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  fullAddress?: string | null;
+  _count?: {
+    machines?: number;
+  };
+};
+
+type CustomerMachine = {
+  id: string;
+  machineCode?: string | null;
+  serialNumber?: string | null;
+  modelName?: string | null;
+  name?: string | null;
+  manufacturer?: string | null;
+  status?: string | null;
+  inventoryStatus?: string | null;
+  installDate?: string | null;
+  warrantyEndDate?: string | null;
+};
+
+type CustomerDetail = CustomerSummary & {
+  machines?: CustomerMachine[];
+};
+
 const emptyForm = {
   name: '',
   code: '',
@@ -21,10 +50,15 @@ const emptyForm = {
 
 export function AdminRegionsPage() {
   const [regions, setRegions] = useState<Region[]>([]);
+  const [customers, setCustomers] = useState<CustomerSummary[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerDetail | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [query, setQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [loadingCustomerDetail, setLoadingCustomerDetail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -46,11 +80,47 @@ export function AdminRegionsPage() {
     setError('');
 
     try {
-      setRegions(await apiFetch<Region[]>('/regions'));
+      const nextRegions = await apiFetch<Region[]>('/regions');
+      setRegions(nextRegions);
+      setSelectedRegion((current) => {
+        if (!current) return current;
+        return nextRegions.find((region) => region.id === current.id) ?? null;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được khu vực');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function selectRegion(region: Region) {
+    setSelectedRegion(region);
+    setSelectedCustomer(null);
+    setLoadingCustomers(true);
+    setError('');
+
+    try {
+      const result = await apiFetch<Paginated<CustomerSummary>>(`/customers?regionId=${region.id}&limit=100`);
+      setCustomers(result.data);
+    } catch (err) {
+      setCustomers([]);
+      setError(err instanceof Error ? err.message : 'Không tải được khách hàng của khu vực');
+    } finally {
+      setLoadingCustomers(false);
+    }
+  }
+
+  async function selectCustomer(customer: CustomerSummary) {
+    setLoadingCustomerDetail(true);
+    setError('');
+
+    try {
+      setSelectedCustomer(await apiFetch<CustomerDetail>(`/customers/${customer.id}`));
+    } catch (err) {
+      setSelectedCustomer(null);
+      setError(err instanceof Error ? err.message : 'Không tải được máy của khách hàng');
+    } finally {
+      setLoadingCustomerDetail(false);
     }
   }
 
@@ -64,6 +134,12 @@ export function AdminRegionsPage() {
   function closeModal() {
     setIsModalOpen(false);
     setForm(emptyForm);
+  }
+
+  function closeRegionDetail() {
+    setSelectedRegion(null);
+    setSelectedCustomer(null);
+    setCustomers([]);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -128,7 +204,11 @@ export function AdminRegionsPage() {
             </thead>
             <tbody>
               {filteredRegions.map((region) => (
-                <tr key={region.id}>
+                <tr
+                  className={selectedRegion?.id === region.id ? 'region-row active' : 'region-row'}
+                  key={region.id}
+                  onClick={() => void selectRegion(region)}
+                >
                   <td>
                     <div className="region-name">
                       <MapPinned size={17} />
@@ -164,6 +244,132 @@ export function AdminRegionsPage() {
           </table>
         </div>
       </section>
+
+      {selectedRegion ? (
+        <div className="region-detail-backdrop" onClick={closeRegionDetail} role="presentation">
+          <aside aria-modal="true" className="region-detail-drawer" onClick={(event) => event.stopPropagation()} role="dialog">
+            <div className="region-drilldown-heading">
+              <div>
+                <span>Khách hàng theo khu vực</span>
+                <h2>{selectedRegion.name}</h2>
+              </div>
+              <div className="region-detail-actions">
+                <button className="secondary-button compact" disabled={loadingCustomers} onClick={() => void selectRegion(selectedRegion)} type="button">
+                  {loadingCustomers ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
+                  Tải khách
+                </button>
+                <button className="icon-button" onClick={closeRegionDetail} title="Đóng" type="button">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="region-customer-layout">
+              <div className="region-customer-list">
+                {loadingCustomers ? (
+                  <div className="table-state">
+                    <Loader2 className="spin-icon" size={18} />
+                    Đang tải khách hàng...
+                  </div>
+                ) : null}
+
+                {!loadingCustomers && customers.length === 0 ? (
+                  <div className="table-state empty-state">
+                    <strong>Chưa có khách hàng trong khu vực này</strong>
+                    <span>Khách hàng sẽ xuất hiện khi hồ sơ được gán vào khu vực.</span>
+                  </div>
+                ) : null}
+
+                {customers.map((customer) => (
+                  <button
+                    className={selectedCustomer?.id === customer.id ? 'region-customer-card active' : 'region-customer-card'}
+                    key={customer.id}
+                    onClick={() => void selectCustomer(customer)}
+                    type="button"
+                  >
+                    <Building2 size={18} />
+                    <span>
+                      <strong>{customer.name}</strong>
+                      <small>
+                        {[customer.customerCode, customer.phone, customer.fullAddress || customer.address].filter(Boolean).join(' - ') ||
+                          'Chưa có thông tin liên hệ'}
+                      </small>
+                    </span>
+                    <em>{customer._count?.machines ?? 0} máy</em>
+                  </button>
+                ))}
+              </div>
+
+              <div className="customer-machine-blog">
+                {loadingCustomerDetail ? (
+                  <div className="table-state">
+                    <Loader2 className="spin-icon" size={18} />
+                    Đang tải máy đã mua...
+                  </div>
+                ) : null}
+
+                {!loadingCustomerDetail && !selectedCustomer ? (
+                  <div className="machine-blog-empty">
+                    <PackageSearch size={24} />
+                    <strong>Chọn khách hàng để xem máy đã mua</strong>
+                    <span>Một khách hàng có thể có nhiều máy, mỗi máy sẽ hiển thị thành một khối riêng.</span>
+                  </div>
+                ) : null}
+
+                {!loadingCustomerDetail && selectedCustomer ? (
+                  <>
+                    <div className="machine-blog-title">
+                      <span>Máy của khách hàng</span>
+                      <h3>{selectedCustomer.name}</h3>
+                    </div>
+
+                    {selectedCustomer.machines?.length ? (
+                      <div className="machine-blog-list">
+                        {selectedCustomer.machines.map((machine) => (
+                          <article className="machine-blog-card" key={machine.id}>
+                            <div>
+                              <strong>{machine.machineCode || machine.serialNumber || machine.name || 'Máy chưa có mã'}</strong>
+                              <span>{[machine.modelName, machine.manufacturer].filter(Boolean).join(' - ') || 'Chưa có model'}</span>
+                            </div>
+                            <dl>
+                              <div>
+                                <dt>Serial</dt>
+                                <dd>{machine.serialNumber || '-'}</dd>
+                              </div>
+                              <div>
+                                <dt>Trạng thái</dt>
+                                <dd>{machine.status || '-'}</dd>
+                              </div>
+                              <div>
+                                <dt>Kho</dt>
+                                <dd>{machine.inventoryStatus || '-'}</dd>
+                              </div>
+                              <div>
+                                <dt>Ngày lắp</dt>
+                                <dd>{machine.installDate ? formatDate(machine.installDate) : '-'}</dd>
+                              </div>
+                              <div>
+                                <dt>BH đến</dt>
+                                <dd>{machine.warrantyEndDate ? formatDate(machine.warrantyEndDate) : '-'}</dd>
+                              </div>
+                            </dl>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="machine-blog-empty">
+                        <PackageSearch size={24} />
+                        <strong>Khách hàng này chưa có máy</strong>
+                        <span>Khi máy được bán/lắp đặt và gán khách hàng, danh sách sẽ hiện ở đây.</span>
+                      </div>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </aside>
+        </div>
+      ) : null}
 
       {isModalOpen ? (
         <div className="crud-modal-backdrop" role="presentation">

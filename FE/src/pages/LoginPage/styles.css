@@ -88,7 +88,7 @@
   box-shadow: 0 0 0 4px rgba(201, 42, 31, 0.08);
 }
 
-.primary-button {
+.login-form .primary-button {
   align-items: center;
   background: #d83a30;
   border: 0;
@@ -104,11 +104,11 @@
   padding: 0 18px;
 }
 
-.primary-button:hover {
+.login-form .primary-button:hover {
   background: #c92a1f;
 }
 
-.primary-button:disabled {
+.login-form .primary-button:disabled {
   cursor: wait;
   opacity: 0.68;
 }
@@ -186,13 +186,13 @@
   width: 112px;
 }
 
-.hero-copy {
+.login-hero .hero-copy {
   display: grid;
   gap: 16px;
   max-width: 560px;
 }
 
-.hero-copy span {
+.login-hero .hero-copy span {
   color: rgba(255, 255, 255, 0.72);
   font-size: 12px;
   font-weight: 700;
@@ -200,7 +200,7 @@
   text-transform: uppercase;
 }
 
-.hero-copy h2 {
+.login-hero .hero-copy h2 {
   color: #ffffff;
   font-size: 46px;
   font-weight: 650;
@@ -208,7 +208,7 @@
   max-width: 560px;
 }
 
-.hero-copy p {
+.login-hero .hero-copy p {
   color: rgba(255, 255, 255, 0.7);
   font-size: 16px;
   line-height: 1.6;
@@ -240,7 +240,7 @@
     padding: 32px;
   }
 
-  .hero-copy h2 {
+  .login-hero .hero-copy h2 {
     font-size: 36px;
   }
 
@@ -255,7 +255,7 @@
     font-size: 28px;
   }
 
-  .hero-copy h2 {
+  .login-hero .hero-copy h2 {
     font-size: 30px;
   }
 

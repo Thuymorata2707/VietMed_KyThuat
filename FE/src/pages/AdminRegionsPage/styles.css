@@ -43,6 +43,19 @@
   gap: 8px;
 }
 
+.region-row {
+  cursor: pointer;
+}
+
+.region-row:hover,
+.region-row.active {
+  background: #f8fbfd;
+}
+
+.region-row.active {
+  box-shadow: inset 3px 0 0 #c92a1f;
+}
+
 .admin-region-form {
   display: grid;
   gap: 18px;
@@ -61,9 +74,208 @@
   text-align: center;
 }
 
+.region-detail-backdrop {
+  background: rgb(15 23 42 / 28%);
+  display: flex;
+  inset: 0;
+  justify-content: flex-end;
+  position: fixed;
+  z-index: 40;
+}
+
+.region-detail-drawer {
+  background: var(--color-surface);
+  box-shadow: -18px 0 40px rgb(15 23 42 / 18%);
+  display: grid;
+  gap: 16px;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  max-width: 1100px;
+  overflow: hidden;
+  padding: 18px;
+  width: min(92vw, 1100px);
+}
+
+.region-drilldown-heading {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.region-detail-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.region-drilldown-heading > div,
+.machine-blog-title {
+  display: grid;
+  gap: 4px;
+}
+
+.region-drilldown-heading span,
+.machine-blog-title span,
+.region-customer-card small,
+.region-customer-card em,
+.machine-blog-card span,
+.machine-blog-card dt,
+.machine-blog-empty span {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.region-drilldown-heading h2,
+.machine-blog-title h3 {
+  margin: 0;
+}
+
+.region-customer-layout {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.region-customer-list,
+.machine-blog-list {
+  align-content: start;
+  display: grid;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.region-customer-card {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 12px;
+  text-align: left;
+}
+
+.region-customer-card:hover,
+.region-customer-card.active {
+  border-color: #f0b7b1;
+  box-shadow: inset 3px 0 0 #c92a1f;
+}
+
+.region-customer-card span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.region-customer-card strong,
+.region-customer-card small,
+.machine-blog-card strong,
+.machine-blog-card span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.region-customer-card em {
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.customer-machine-blog {
+  background: #f8fbfd;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.machine-blog-card {
+  background: #ffffff;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 13px;
+}
+
+.machine-blog-card > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.machine-blog-card dl {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+}
+
+.machine-blog-card dl div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.machine-blog-card dd {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 650;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.machine-blog-empty {
+  align-content: center;
+  color: var(--color-muted);
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  min-height: 220px;
+  text-align: center;
+}
+
 @media (max-width: 640px) {
   .admin-regions-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .region-detail-drawer {
+    height: 100vh;
+    padding: 14px;
+    width: 100vw;
+  }
+
+  .region-drilldown-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .region-detail-actions {
+    justify-content: space-between;
+  }
+
+  .region-customer-layout,
+  .machine-blog-card dl {
+    grid-template-columns: 1fr;
+  }
+
+  .region-customer-layout {
+    overflow-y: auto;
   }
 }

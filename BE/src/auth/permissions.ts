@@ -23,18 +23,22 @@ export const PERMISSIONS = {
 
   INSTALLATION_READ: 'installation:read',
   INSTALLATION_CREATE: 'installation:create',
+  INSTALLATION_UPDATE: 'installation:update',
+  INSTALLATION_DELETE: 'installation:delete',
   INSTALLATION_STATUS_UPDATE: 'installation:status:update',
 
   REPAIR_READ: 'repair:read',
   REPAIR_CREATE: 'repair:create',
   REPAIR_UPDATE: 'repair:update',
   REPAIR_ASSIGN: 'repair:assign',
+  REPAIR_DELETE: 'repair:delete',
   REPAIR_STATUS_UPDATE: 'repair:status:update',
 
   MAINTENANCE_READ: 'maintenance:read',
   MAINTENANCE_CREATE: 'maintenance:create',
   MAINTENANCE_UPDATE: 'maintenance:update',
   MAINTENANCE_ASSIGN: 'maintenance:assign',
+  MAINTENANCE_DELETE: 'maintenance:delete',
   MAINTENANCE_STATUS_UPDATE: 'maintenance:status:update',
 
   ATTACHMENT_READ: 'attachment:read',

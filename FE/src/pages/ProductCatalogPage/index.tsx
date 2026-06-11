@@ -1,10 +1,13 @@
 import { Boxes, CheckCircle2, Edit3, ImageOff, PackagePlus, RefreshCw, Search, Trash2, X } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, Fragment, useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { getRoleName } from '../../auth/roles';
+import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { formatMachineAccessoriesText, parseMachineAccessoriesInput, serializeMachineAccessories } from '../../utils/machineAccessories';
 import './styles.css';
 
 type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING';
@@ -134,6 +137,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
   const [selectedProductId, setSelectedProductId] = useState('');
   const [models, setModels] = useState<MachineModel[]>([]);
   const [query, setQuery] = useState('');
+  const [modelQuery, setModelQuery] = useState('');
   const [productModalMode, setProductModalMode] = useState<ProductModalMode | null>(null);
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm(''));
   const [machineForm, setMachineForm] = useState<MachineForm>(emptyMachineForm(''));
@@ -180,6 +184,16 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
   }, [products, query]);
 
   const selectedProduct = products.find((product) => product.id === selectedProductId) ?? filteredProducts[0] ?? products[0];
+  const filteredModels = useMemo(() => {
+    const normalizedQuery = modelQuery.trim().toLowerCase();
+    if (!normalizedQuery) return models;
+
+    return models.filter((model) =>
+      [model.code, model.name, model.displayName, model.productLine, model.manufacturer]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedQuery)),
+    );
+  }, [modelQuery, models]);
 
   useEffect(() => {
     if (!selectedIndustry) {
@@ -198,11 +212,13 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     if (!selectedProduct) {
       setModels([]);
       setSelectedProductId('');
+      setModelQuery('');
       return;
     }
 
     if (selectedProduct.id !== selectedProductId) {
       setSelectedProductId(selectedProduct.id);
+      setModelQuery('');
     }
 
     void loadModels(selectedProduct.id);
@@ -249,6 +265,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     setSelectedIndustryId(industryId);
     setSelectedProductId('');
     setQuery('');
+    setModelQuery('');
   }
 
   async function loadModelStock(nextModels: MachineModel[]) {
@@ -453,7 +470,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
         });
       }
 
-      setSuccess(`Đã nhập ${serialNumbers.length} máy ${model.name} vào kho.`);
+      setSuccess(`Đã nhập ${serialNumbers.length} máy ${modelShortLabel(model)} vào kho.`);
       closeProductModal();
       await loadModels(selectedProduct?.id || '');
     } catch (err) {
@@ -472,6 +489,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
 
     try {
       if (editingMachine) {
+        const model = activeMachineModel || models.find((item) => item.id === machineForm.machineModelId);
         await apiFetch(`/machines/${editingMachine.id}`, {
           method: 'PATCH',
           body: JSON.stringify(
@@ -631,7 +649,9 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
 
             <ProductDetail
               loading={loadingModels}
-              models={models}
+              allModelCount={models.length}
+              modelQuery={modelQuery}
+              models={filteredModels}
               onDelete={startDeleteProduct}
               onEdit={startEditProduct}
               onImport={startImportMachines}
@@ -640,6 +660,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
               onEditMachine={startEditMachine}
               onSelectMachine={selectMachine}
               onSelectModel={selectModel}
+              onSetModelQuery={setModelQuery}
               product={selectedProduct}
               role={role}
               selectedMachineDetail={selectedMachineDetail}
@@ -688,9 +709,11 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
 function ProductDetail({
   product,
   models,
+  allModelCount,
   loading,
   loadingMachineDetail,
   loadingModelDetail,
+  modelQuery,
   role,
   onEdit,
   onDelete,
@@ -700,6 +723,7 @@ function ProductDetail({
   onEditMachine,
   onSelectMachine,
   onSelectModel,
+  onSetModelQuery,
   selectedMachineDetail,
   selectedMachineId,
   selectedModelDetail,
@@ -708,9 +732,11 @@ function ProductDetail({
 }: {
   product?: BusinessLine;
   models: MachineModel[];
+  allModelCount: number;
   loading: boolean;
   loadingMachineDetail: boolean;
   loadingModelDetail: boolean;
+  modelQuery: string;
   role: string;
   onEdit: (product: BusinessLine) => void;
   onDelete: (product: BusinessLine) => void;
@@ -720,6 +746,7 @@ function ProductDetail({
   onEditMachine: (machineId: string) => void;
   onSelectMachine: (machineId: string) => void;
   onSelectModel: (modelId: string) => void;
+  onSetModelQuery: (value: string) => void;
   selectedMachineDetail: MachineDetail | null;
   selectedMachineId: string;
   selectedModelDetail: MachineModelDetail | null;
@@ -783,8 +810,14 @@ function ProductDetail({
 
       <div className="model-section">
         <div className="model-section-title">
-          <strong>Model thuộc nhóm</strong>
-          <span>{loading ? 'Đang tải' : `${models.length} model`}</span>
+          <div>
+            <strong>Model thuộc nhóm</strong>
+            <span>{loading ? 'Đang tải' : allModelCount === models.length ? `${models.length} model` : `${models.length}/${allModelCount} model`}</span>
+          </div>
+          <label className="model-search">
+            <Search size={16} />
+            <input onChange={(event) => onSetModelQuery(event.target.value)} placeholder="Tìm XCUBE90, CL9000I..." value={modelQuery} />
+          </label>
         </div>
 
         <div className="model-table">
@@ -792,7 +825,8 @@ function ProductDetail({
             const isSelectedModel = model.id === selectedModelId;
 
             return (
-              <section className={isSelectedModel ? 'model-row active' : 'model-row'} key={model.id}>
+              <Fragment key={model.id}>
+                <section className={isSelectedModel ? 'model-row active' : 'model-row'}>
                 <button className="model-row-main" onClick={() => onSelectModel(model.id)} type="button">
                   <span>
                     <strong>{modelShortLabel(model)}</strong>
@@ -822,119 +856,120 @@ function ProductDetail({
                     {isSelectedModel ? 'Đang xem' : 'Xem S/N'}
                   </button>
                 </div>
-              </section>
+                </section>
+
+                {isSelectedModel && selectedModel ? (
+                  <div className="machine-stock-panel">
+                    <div className="machine-stock-head">
+                      <div>
+                        <strong>{modelShortLabel(selectedModel)}</strong>
+                        <span>
+                          {loadingModelDetail
+                            ? 'Đang tải danh sách máy'
+                            : `${selectedModelDetail?.warehouseQuantity ?? stockByModel[selectedModel.id]?.inStock ?? 0} máy còn kho / ${
+                                selectedModelDetail?.machines?.length ?? 0
+                              } máy tổng`}
+                        </span>
+                      </div>
+                      <div className="template-summary">
+                        <span>{countModelAccessories(selectedModelView)} phụ kiện mẫu</span>
+                        <span>{selectedModelView?.components?.length ?? 0} thành phần</span>
+                      </div>
+                    </div>
+
+                    <div className="machine-serial-layout">
+                      <div className="machine-serial-list">
+                        {(selectedModelDetail?.machines ?? []).map((machine) => (
+                          <div className={machine.id === selectedMachineId ? 'machine-serial-item active' : 'machine-serial-item'} key={machine.id}>
+                            <button onClick={() => onSelectMachine(machine.id)} type="button">
+                              <strong>{machine.serialNumber}</strong>
+                              <span>{[machine.machineCode, inventoryLabel(machine.inventoryStatus)].filter(Boolean).join(' - ')}</span>
+                              <small>{machine.customer?.name || `${machine._count?.accessories ?? 0} phụ kiện`}</small>
+                            </button>
+                            {role === 'admin' ? (
+                              <span className="machine-row-actions">
+                                <button className="icon-button" onClick={() => onEditMachine(machine.id)} title="Sửa máy" type="button">
+                                  <Edit3 size={15} />
+                                </button>
+                                <button className="icon-button danger" onClick={() => onDeleteMachine(machine.id)} title="Xóa máy" type="button">
+                                  <Trash2 size={15} />
+                                </button>
+                              </span>
+                            ) : null}
+                          </div>
+                        ))}
+                        {!loadingModelDetail && (selectedModelDetail?.machines ?? []).length === 0 ? (
+                          <p className="component-empty">Model này chưa có máy vật lý nào trong kho/hệ thống.</p>
+                        ) : null}
+                      </div>
+
+                      <div className="machine-accessory-panel">
+                        {selectedMachineDetail ? (
+                          <>
+                            <div className="machine-accessory-head">
+                              <strong>{selectedMachineDetail.serialNumber}</strong>
+                              <span>{inventoryLabel(selectedMachineDetail.inventoryStatus)}</span>
+                            </div>
+                            {selectedMachineDetail.accessories?.length ? (
+                              <div className="machine-accessory-list">
+                                {selectedMachineDetail.accessories.map((accessory) => (
+                                  <div className="machine-accessory-item" key={accessory.id}>
+                                    <strong>{accessory.name}</strong>
+                                    <span>{[accessory.serialNumber, accessory.code].filter(Boolean).join(' - ') || 'Chưa có S/N'}</span>
+                                    <small>{accessory.componentAccessory?.component?.name || accessory.note || 'Phụ kiện theo máy'}</small>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="component-empty">Máy này chưa khai báo phụ kiện riêng.</p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="component-empty">
+                            {loadingMachineDetail ? 'Đang tải phụ kiện máy.' : 'Chọn một S/N máy để xem phụ kiện riêng.'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedModelView?.components?.length ? (
+                      <details className="template-accessories">
+                        <summary>Cấu hình phụ kiện mẫu của model</summary>
+                        <div className="component-list">
+                          {selectedModelView.components.map((component) => (
+                            <div className="component-block" key={component.id}>
+                              <div className="component-title">
+                                <Boxes size={16} />
+                                <strong>{component.name}</strong>
+                                <span>{component.code}</span>
+                              </div>
+                              {component.accessories?.length ? (
+                                <div className="accessory-list">
+                                  {component.accessories.map((accessory) => (
+                                    <span className="accessory-chip" key={accessory.id}>
+                                      <CheckCircle2 size={15} />
+                                      {accessory.name}
+                                      {accessory.requiresSerial ? <small>Cần S/N</small> : null}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="component-empty">Chưa khai báo phụ kiện.</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ) : null}
+                  </div>
+                ) : null}
+              </Fragment>
             );
           })}
         </div>
 
         {!loading && models.length === 0 ? <div className="catalog-empty">Nhóm này chưa có model máy.</div> : null}
       </div>
-
-      {selectedModel ? (
-        <div className="machine-stock-panel">
-          <div className="machine-stock-head">
-            <div>
-              <strong>{modelShortLabel(selectedModel)}</strong>
-              <span>
-                {loadingModelDetail
-                  ? 'Đang tải danh sách máy'
-                  : `${selectedModelDetail?.warehouseQuantity ?? stockByModel[selectedModel.id]?.inStock ?? 0} máy còn kho / ${
-                      selectedModelDetail?.machines?.length ?? 0
-                    } máy tổng`}
-              </span>
-            </div>
-            <div className="template-summary">
-              <span>{countModelAccessories(selectedModelView)} phụ kiện mẫu</span>
-              <span>{selectedModelView?.components?.length ?? 0} thành phần</span>
-            </div>
-          </div>
-
-          <div className="machine-serial-layout">
-            <div className="machine-serial-list">
-              {(selectedModelDetail?.machines ?? []).map((machine) => (
-                <div className={machine.id === selectedMachineId ? 'machine-serial-item active' : 'machine-serial-item'} key={machine.id}>
-                  <button onClick={() => onSelectMachine(machine.id)} type="button">
-                    <strong>{machine.serialNumber}</strong>
-                    <span>{[machine.machineCode, inventoryLabel(machine.inventoryStatus)].filter(Boolean).join(' - ')}</span>
-                    <small>{machine.customer?.name || `${machine._count?.accessories ?? 0} phụ kiện`}</small>
-                  </button>
-                  {role === 'admin' ? (
-                    <span className="machine-row-actions">
-                      <button className="icon-button" onClick={() => onEditMachine(machine.id)} title="Sửa máy" type="button">
-                        <Edit3 size={15} />
-                      </button>
-                      <button className="icon-button danger" onClick={() => onDeleteMachine(machine.id)} title="Xóa máy" type="button">
-                        <Trash2 size={15} />
-                      </button>
-                    </span>
-                  ) : null}
-                </div>
-              ))}
-              {!loadingModelDetail && (selectedModelDetail?.machines ?? []).length === 0 ? (
-                <p className="component-empty">Model này chưa có máy vật lý nào trong kho/hệ thống.</p>
-              ) : null}
-            </div>
-
-            <div className="machine-accessory-panel">
-              {selectedMachineDetail ? (
-                <>
-                  <div className="machine-accessory-head">
-                    <strong>{selectedMachineDetail.serialNumber}</strong>
-                    <span>{inventoryLabel(selectedMachineDetail.inventoryStatus)}</span>
-                  </div>
-                  {selectedMachineDetail.accessories?.length ? (
-                    <div className="machine-accessory-list">
-                      {selectedMachineDetail.accessories.map((accessory) => (
-                        <div className="machine-accessory-item" key={accessory.id}>
-                          <strong>{accessory.name}</strong>
-                          <span>{[accessory.serialNumber, accessory.code].filter(Boolean).join(' - ') || 'Chưa có S/N'}</span>
-                          <small>{accessory.componentAccessory?.component?.name || accessory.note || 'Phụ kiện theo máy'}</small>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="component-empty">Máy này chưa khai báo phụ kiện riêng.</p>
-                  )}
-                </>
-              ) : (
-                <p className="component-empty">
-                  {loadingMachineDetail ? 'Đang tải phụ kiện máy.' : 'Chọn một S/N máy để xem phụ kiện riêng.'}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {selectedModelView?.components?.length ? (
-            <details className="template-accessories">
-              <summary>Cấu hình phụ kiện mẫu của model</summary>
-              <div className="component-list">
-                {selectedModelView.components.map((component) => (
-                  <div className="component-block" key={component.id}>
-                    <div className="component-title">
-                      <Boxes size={16} />
-                      <strong>{component.name}</strong>
-                      <span>{component.code}</span>
-                    </div>
-                    {component.accessories?.length ? (
-                      <div className="accessory-list">
-                        {component.accessories.map((accessory) => (
-                          <span className="accessory-chip" key={accessory.id}>
-                            <CheckCircle2 size={15} />
-                            {accessory.name}
-                            {accessory.requiresSerial ? <small>Cần S/N</small> : null}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="component-empty">Chưa khai báo phụ kiện.</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </details>
-          ) : null}
-        </div>
-      ) : null}
     </article>
   );
 }
@@ -1011,6 +1046,7 @@ function ProductEditorModal({
 
   if (mode === 'machine-create' || mode === 'machine-edit') {
     const modelName = activeMachineModel ? modelShortLabel(activeMachineModel) : 'Model máy';
+    const supportsProbes = isUltrasoundMachineModel(activeMachineModel);
     return (
       <div className="product-editor-backdrop" role="presentation">
         <section aria-modal="true" className="product-editor-modal" role="dialog">
@@ -1055,18 +1091,24 @@ function ProductEditorModal({
             <div className="form-step">
               <span>2</span>
               <div>
-                <h3>S/N phụ kiện đi kèm</h3>
-                <label>
-                  Phụ kiện
-                  <textarea
-                    onChange={(event) => setMachineValue('accessoriesText', event.target.value)}
-                    placeholder={'Mỗi dòng: Phụ kiện | Serial Number\\nVí dụ:\\nConvex C5-2 | PRB-001\\nLinear L12-4 | PRB-002'}
-                    value={machineValue.accessoriesText}
-                  />
-                </label>
-                <div className="serial-note">
-                  Nếu model đã có cấu hình phụ kiện thì hệ thống sẽ điền sẵn. Nếu chưa có, nhập trực tiếp theo dạng Tên phụ kiện | S/N.
-                </div>
+                <h3>{supportsProbes ? 'S/N đầu dò đi kèm' : 'S/N phụ kiện đi kèm'}</h3>
+                {supportsProbes ? (
+                  <MachineAccessoryEditor onChange={(value) => setMachineValue('accessoriesText', value)} value={machineValue.accessoriesText} />
+                ) : (
+                  <label>
+                    Phụ kiện
+                    <textarea
+                      onChange={(event) => setMachineValue('accessoriesText', event.target.value)}
+                      placeholder={'Mỗi dòng: Phụ kiện | Serial Number\\nVí dụ:\\nBộ dây nguồn | ACC-001\\nCáp kết nối | ACC-002'}
+                      value={formatMachineAccessoriesText(machineValue.accessoriesText)}
+                    />
+                  </label>
+                )}
+                  <div className="serial-note">
+                    {supportsProbes
+                      ? 'Chọn ký hiệu đầu dò từ danh sách ALPINION và nhập S/N thực tế. Có thể thêm hoặc xóa bao nhiêu đầu dò tùy máy siêu âm.'
+                      : 'Nhập phụ kiện đi kèm của máy, mỗi dòng một phụ kiện theo dạng Tên phụ kiện | S/N.'}
+                  </div>
               </div>
             </div>
 
@@ -1377,62 +1419,40 @@ function flattenTemplateAccessories(model: MachineModel) {
 }
 
 function buildTemplateAccessoriesText(model: MachineModel) {
-  return flattenTemplateAccessories(model)
-    .map((accessory) => `${accessory.code} - ${accessory.name} | `)
-    .join('\n');
+  return serializeMachineAccessories(
+    flattenTemplateAccessories(model).map((accessory) => ({
+      componentAccessoryId: accessory.id,
+      code: accessory.code,
+      name: accessory.code || accessory.name,
+      serialNumber: '',
+    })),
+  );
 }
 
 function buildExistingAccessoriesText(machine: MachineDetail) {
-  return (machine.accessories ?? [])
-    .map((accessory) => `${accessory.id} - ${accessory.name} | ${accessory.serialNumber || ''}`)
-    .join('\n');
+  return serializeMachineAccessories(machine.accessories ?? []);
 }
 
 function parseTemplateAccessoryLines(value: string, model: MachineModel) {
   const templateAccessories = flattenTemplateAccessories(model);
+  const parsed = parseMachineAccessoriesInput(value);
 
-  return value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [label, serialNumber = ''] = line.split('|');
-      const key = label.trim().split(' - ')[0]?.trim();
-      const template = templateAccessories.find((accessory) => accessory.code === key || accessory.id === key);
+  return parsed.map((item) => {
+    const template = templateAccessories.find((accessory) => accessory.code === item.code || accessory.id === item.componentAccessoryId);
 
-      if (!template) {
-        const name = label.trim();
-        if (!name) return null;
+    if (!template) return item;
 
-        return {
-          name,
-          serialNumber: serialNumber.trim(),
-        };
-      }
-
-      return {
-        componentAccessoryId: template.id,
-        serialNumber: serialNumber.trim(),
-      };
-    })
-    .filter(Boolean);
+    return {
+      componentAccessoryId: template.id,
+      code: template.code,
+      name: template.code || template.name,
+      serialNumber: item.serialNumber,
+    };
+  });
 }
 
 function parseExistingAccessoryLines(value: string) {
-  return value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [label, serialNumber = ''] = line.split('|');
-      const [id = '', name = ''] = label.trim().split(' - ').map((item) => item.trim());
-      return {
-        id: id || undefined,
-        name: name || undefined,
-        serialNumber: serialNumber.trim() || undefined,
-      };
-    })
-    .filter((item) => item.id || item.name);
+  return parseMachineAccessoriesInput(value);
 }
 
 function countModelAccessories(model?: MachineModel | null) {

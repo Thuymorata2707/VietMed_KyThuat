@@ -2,6 +2,8 @@ import {
   MachineInventoryStatus,
   MachineProductCategory,
   MachineStatus,
+  OperationalCreatedSource,
+  OperationalDataStatus,
 } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
@@ -58,6 +60,14 @@ export class UpdateMachineDto {
   @IsOptional()
   @IsEnum(MachineInventoryStatus)
   inventoryStatus?: MachineInventoryStatus;
+
+  @IsOptional()
+  @IsEnum(OperationalDataStatus)
+  dataStatus?: OperationalDataStatus;
+
+  @IsOptional()
+  @IsEnum(OperationalCreatedSource)
+  createdSource?: OperationalCreatedSource;
 
   @IsOptional()
   @IsDateString()

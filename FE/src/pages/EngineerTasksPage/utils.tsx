@@ -1,4 +1,5 @@
 import { ClipboardCheck, PackageCheck, Wrench } from 'lucide-react';
+import { displayLabel } from '../../utils/displayLabels';
 import type { AttachmentType, EngineerTask, InstallationDeviceItem, TaskFilter, TaskKind, TaskTone, CreateTicketForm } from './types';
 
 export const todayValue = () => new Date().toISOString().slice(0, 10);
@@ -179,39 +180,15 @@ export function nextDefaultStatus(task: EngineerTask) {
 }
 
 export function statusLabel(value: string) {
-  const labels: Record<string, string> = {
-    PENDING: 'Chờ xử lý',
-    SCHEDULED: 'Đã lên lịch',
-    ASSIGNED: 'Đã phân công',
-    IN_PROGRESS: 'Đang xử lý',
-    WAITING_PARTS: 'Chờ linh kiện',
-    COMPLETED: 'Hoàn thành',
-    OVERDUE: 'Quá hạn',
-    CANCELLED: 'Đã hủy',
-    INSTALLED: 'Đã lắp đặt',
-  };
-  return labels[value] || value.replaceAll('_', ' ');
+  return displayLabel(value);
 }
 
 function priorityLabel(value: string) {
-  const labels: Record<string, string> = {
-    LOW: 'Thấp',
-    NORMAL: 'Bình thường',
-    HIGH: 'Cao',
-    URGENT: 'Khẩn cấp',
-  };
-  return labels[value] || value;
+  return displayLabel(value);
 }
 
 function maintenanceTypeLabel(value: string) {
-  const labels: Record<string, string> = {
-    PERIODIC: 'Định kỳ',
-    WARRANTY: 'Bảo hành',
-    CONTRACT: 'Hợp đồng',
-    INTERNAL: 'Nội bộ',
-    OTHER: 'Khác',
-  };
-  return labels[value] || value;
+  return displayLabel(value);
 }
 
 export function statusTone(value: string): TaskTone {

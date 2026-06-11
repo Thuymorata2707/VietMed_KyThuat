@@ -238,6 +238,67 @@ export class UsersService {
     return this.withoutPassword(user);
   }
 
+  async remove(id: string, actor?: RequestUser) {
+    if (actor?.id === id) {
+      throw new BadRequestException('Cannot delete your own account');
+    }
+
+    const user = await this.findOne(id);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.repair.updateMany({
+        where: { engineerId: id },
+        data: { engineerId: null },
+      });
+
+      await tx.maintenance.updateMany({
+        where: { engineerId: id },
+        data: { engineerId: null },
+      });
+
+      await tx.machine.updateMany({
+        where: { installedById: id },
+        data: { installedById: null },
+      });
+
+      await tx.machine.updateMany({
+        where: { primaryEngineerId: id },
+        data: { primaryEngineerId: null },
+      });
+
+      await tx.businessLine.updateMany({
+        where: { managerId: id },
+        data: { managerId: null },
+      });
+
+      await tx.engineerProfile.deleteMany({
+        where: { userId: id },
+      });
+
+      await tx.user.delete({
+        where: { id },
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: 'DELETE',
+          entityType: 'User',
+          entityId: id,
+          actor,
+          metadata: {
+            email: user.email,
+            fullName: user.fullName,
+            roleId: user.roleId,
+            regionId: user.regionId,
+          },
+        },
+        tx,
+      );
+    });
+
+    return { deleted: true };
+  }
+
   private validateCreateUser(dto: CreateUserDto) {
     if (
       !dto.email ||
