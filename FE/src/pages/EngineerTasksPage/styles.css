@@ -1,112 +1,64 @@
+@layer theme, base, components, utilities, app;
+@reference "../../styles.css";
+
+@layer app {
 .engineer-task-summary {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  @apply grid grid-cols-6 gap-3.5;
 }
 
 .summary-tile {
-  background: #ffffff;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-  display: grid;
-  gap: 8px;
-  padding: 16px;
+  @apply grid gap-2 rounded-lg border border-[#e3eaf2] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)];
 }
 
 .summary-tile span {
-  color: #657384;
-  font-size: 13px;
+  @apply text-[13px] text-[#657384];
 }
 
 .summary-tile strong {
-  color: #17202a;
-  font-size: 28px;
-  line-height: 1;
+  @apply text-[28px] leading-none text-[#17202a];
 }
 
 .summary-tile.danger {
-  background: #fff1f3;
-  border-color: #fecdd3;
+  @apply border-[#fecdd3] bg-[#fff1f3];
 }
 
 .summary-tile.danger strong {
-  color: #b42318;
+  @apply text-[#b42318];
 }
 
 .engineer-workspace-tabs {
-  background: #ffffff;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  display: grid;
-  gap: 4px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding: 4px;
+  @apply grid grid-cols-2 gap-1 rounded-lg border border-[#e3eaf2] bg-white p-1;
 }
 
 .engineer-workspace-tabs button {
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  color: #405064;
-  cursor: pointer;
-  font-weight: 700;
-  min-height: 42px;
-  padding: 0 14px;
+  @apply min-h-[42px] cursor-pointer rounded-md border-0 bg-transparent px-3.5 font-bold text-[#405064];
 }
 
 .engineer-workspace-tabs button.active {
-  background: #fff8f7;
-  box-shadow: inset 0 -2px 0 #c92a1f;
-  color: #c92a1f;
+  @apply bg-[#fff8f7] text-[#c92a1f] shadow-[inset_0_-2px_0_#c92a1f];
 }
 
 .engineer-create-panel {
-  background: #ffffff;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-  display: grid;
-  gap: 16px;
-  padding: 18px;
+  @apply grid gap-4 rounded-lg border border-[#e3eaf2] bg-white p-[18px] font-sans shadow-[0_1px_2px_rgba(15,23,42,0.04)];
 }
 
 .engineer-create-form {
-  align-items: start;
-  display: grid;
-  gap: 16px 14px;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  @apply grid grid-cols-12 items-start gap-x-3.5 gap-y-4;
 }
 
 .engineer-create-form label {
-  color: #405064;
-  display: grid;
-  grid-column: span 3;
-  font-size: 13px;
-  font-weight: 650;
-  gap: 8px;
-  min-width: 0;
+  @apply col-span-3 grid min-w-0 gap-2 text-[13px] font-semibold text-[#405064];
 }
 
 .engineer-create-form input,
 .engineer-create-form select,
 .engineer-create-form textarea,
 .async-picker-control input {
-  background: #ffffff;
-  border: 1px solid #ced8e3;
-  border-radius: 8px;
-  color: #17202a;
-  min-height: 40px;
-  outline: none;
-  padding: 0 12px;
-  width: 100%;
+  @apply min-h-10 w-full rounded-lg border border-[#ced8e3] bg-white px-3 text-[#17202a] outline-none;
 }
 
 .engineer-create-form textarea {
-  line-height: 1.5;
-  min-height: 96px;
-  padding: 10px 12px;
-  resize: vertical;
+  @apply min-h-24 resize-y px-3 py-2.5 leading-normal;
 }
 
 .engineer-create-form input:focus,
@@ -118,14 +70,7 @@
 }
 
 .async-entity-picker {
-  color: #405064;
-  display: grid;
-  font-size: 13px;
-  font-weight: 650;
-  gap: 8px;
-  grid-column: span 3;
-  min-width: 0;
-  position: relative;
+  @apply relative col-span-3 grid min-w-0 gap-2 text-[13px] font-semibold text-[#405064];
 }
 
 .async-picker-control {
@@ -217,18 +162,21 @@
 }
 
 .quick-machine-form {
-  background: #f8fbfd;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  display: grid;
-  gap: 12px;
-  grid-column: 1 / -1;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  padding: 14px;
+  @apply col-span-full grid grid-cols-5 gap-3 rounded-lg border border-[#e3eaf2] bg-[#f8fbfd] p-3.5;
 }
 
 .quick-machine-form label {
   grid-column: span 1;
+}
+
+.quick-machine-form .async-entity-picker {
+  grid-column: span 2;
+}
+
+.quick-machine-accessories {
+  display: grid;
+  grid-column: 1 / -1;
+  min-width: 0;
 }
 
 .quick-machine-form .task-primary {
@@ -252,14 +200,7 @@
 }
 
 .quick-customer-form {
-  background: #fffdfb;
-  border: 1px solid #fedf89;
-  border-radius: 8px;
-  display: grid;
-  gap: 12px;
-  grid-column: 1 / -1;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 14px;
+  @apply col-span-full grid grid-cols-4 gap-3 rounded-lg border border-[#fedf89] bg-[#fffdfb] p-3.5;
 }
 
 .quick-customer-heading {
@@ -332,6 +273,7 @@
   border-radius: 8px;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  font-family: var(--font-sans);
 }
 
 .task-toolbar {
@@ -438,6 +380,10 @@
 .create-kind-select {
   justify-self: start;
   min-width: 320px;
+}
+
+.create-kind-select select {
+  width: 100%;
 }
 
 .task-list {
@@ -651,6 +597,7 @@
   overflow-y: auto;
   padding: 24px;
   width: 520px;
+  font-family: var(--font-sans);
 }
 
 .task-drawer-heading {
@@ -1030,6 +977,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .quick-machine-form .async-entity-picker,
+  .quick-machine-accessories {
+    grid-column: 1 / -1;
+  }
+
   .quick-machine-form label,
   .quick-customer-form label {
     grid-column: span 1;
@@ -1093,6 +1045,8 @@
 
   .customer-picker-row,
   .quick-customer-form,
+  .quick-machine-form .async-entity-picker,
+  .quick-machine-accessories,
   .quick-machine-form label,
   .quick-customer-form label,
   .quick-customer-form .task-primary {
@@ -1114,4 +1068,10 @@
     display: grid;
     width: 100%;
   }
+
+  .create-kind-select {
+    min-width: 0;
+    width: 100%;
+  }
+}
 }

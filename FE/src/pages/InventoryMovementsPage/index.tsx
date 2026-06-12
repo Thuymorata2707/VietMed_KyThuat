@@ -1,0 +1,541 @@
+import { Boxes, ClipboardCheck, History, Loader2, PackageCheck, RotateCcw, Search, ShoppingCart, Split, Wrench } from 'lucide-react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Paginated, apiFetch } from '../../api';
+import { Notice } from '../../components/Notice';
+import { PageFrame } from '../../components/PageFrame';
+import { PageTitle } from '../../components/PageTitle';
+import { RoleName } from '../../auth/roles';
+import { displayLabel } from '../../utils/displayLabels';
+import { formatValue } from '../../utils/format';
+
+type InventoryTab = 'stock' | 'installed' | 'history';
+type InventoryStatus = 'IN_STOCK' | 'ACCESSORY_SPLIT' | 'INSTALLED' | 'RESERVED' | 'RETURNED' | 'SOLD';
+type MovementType = 'IMPORT' | 'SPLIT_ACCESSORY' | 'RESERVE' | 'INSTALL' | 'RETURN' | 'SELL' | 'ADJUST_STATUS';
+
+type Customer = {
+  id: string;
+  customerCode?: string | null;
+  name: string;
+  phone?: string | null;
+  province?: string | null;
+};
+
+type Machine = {
+  id: string;
+  machineCode?: string | null;
+  serialNumber?: string | null;
+  modelName?: string | null;
+  name?: string | null;
+  inventoryStatus: InventoryStatus;
+  status?: string | null;
+  installDate?: string | null;
+  warrantyEndDate?: string | null;
+  customer?: Customer | null;
+  primaryEngineer?: { fullName?: string | null; email?: string | null } | null;
+  machineModel?: { code?: string | null; name?: string | null } | null;
+  accessories?: unknown[];
+};
+
+type InventoryMovement = {
+  id: string;
+  code?: string | null;
+  type: MovementType;
+  fromStatus?: InventoryStatus | null;
+  toStatus: InventoryStatus;
+  occurredAt: string;
+  note?: string | null;
+  machine?: Machine | null;
+  customer?: Customer | null;
+  createdBy?: { fullName?: string | null; email?: string | null } | null;
+};
+
+type MovementAction = {
+  label: string;
+  type: MovementType;
+  toStatus: InventoryStatus;
+  note: string;
+  requiresCustomer?: boolean;
+};
+
+const stockStatuses: InventoryStatus[] = ['IN_STOCK', 'RESERVED', 'RETURNED', 'ACCESSORY_SPLIT'];
+
+export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState<InventoryTab>(() => normalizeInventoryTab(searchParams.get('tab')));
+  const [query, setQuery] = useState(searchParams.get('q') || '');
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const [movements, setMovements] = useState<InventoryMovement[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [activeMove, setActiveMove] = useState<{ action: MovementAction; machine: Machine } | null>(null);
+  const [movementCustomerId, setMovementCustomerId] = useState('');
+  const [movementNote, setMovementNote] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredMachines = useMemo(() => {
+    return machines.filter((machine) => {
+      if (tab === 'stock' && !stockStatuses.includes(machine.inventoryStatus)) return false;
+      if (tab === 'installed' && machine.inventoryStatus !== 'INSTALLED') return false;
+      if (!normalizedQuery) return true;
+      return machineSearchText(machine).includes(normalizedQuery);
+    });
+  }, [machines, normalizedQuery, tab]);
+
+  const filteredMovements = useMemo(() => {
+    return movements.filter((movement) => {
+      if (!normalizedQuery) return true;
+      return [
+        movement.code,
+        movement.type,
+        movement.fromStatus,
+        movement.toStatus,
+        movement.machine?.machineCode,
+        movement.machine?.serialNumber,
+        movement.machine?.modelName,
+        movement.customer?.name,
+        movement.createdBy?.fullName,
+        movement.note,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+  }, [movements, normalizedQuery]);
+
+  const stats = useMemo(
+    () => ({
+      stock: machines.filter((machine) => stockStatuses.includes(machine.inventoryStatus)).length,
+      installed: machines.filter((machine) => machine.inventoryStatus === 'INSTALLED').length,
+      history: movements.length,
+      reserved: machines.filter((machine) => machine.inventoryStatus === 'RESERVED').length,
+    }),
+    [machines, movements],
+  );
+  const inventorySearch = buildInventorySearch(tab, query);
+  const returnToInventory = encodeURIComponent(`/inventory-movements${inventorySearch}`);
+
+  async function loadData() {
+    setLoading(true);
+    setError('');
+
+    try {
+      const [machinesResult, movementsResult, customersResult] = await Promise.all([
+        apiFetch<Paginated<Machine>>('/machines?limit=100'),
+        apiFetch<InventoryMovement[]>('/inventory-movements'),
+        apiFetch<Paginated<Customer>>('/customers?limit=100'),
+      ]);
+
+      setMachines(machinesResult.data);
+      setMovements(movementsResult);
+      setCustomers(customersResult.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không tải được dữ liệu kho máy.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function openMovement(machine: Machine, action: MovementAction) {
+    setActiveMove({ action, machine });
+    setMovementCustomerId(machine.customer?.id ?? '');
+    setMovementNote(action.note);
+    setError('');
+    setSuccess('');
+  }
+
+  function updateInventoryState(nextTab: InventoryTab, nextQuery: string) {
+    setTab(nextTab);
+    setQuery(nextQuery);
+
+    const nextParams = new URLSearchParams();
+    if (nextTab !== 'stock') nextParams.set('tab', nextTab);
+    if (nextQuery.trim()) nextParams.set('q', nextQuery.trim());
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  async function submitMovement(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!activeMove) return;
+
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiFetch('/inventory-movements', {
+        method: 'POST',
+        body: JSON.stringify({
+          machineId: activeMove.machine.id,
+          type: activeMove.action.type,
+          toStatus: activeMove.action.toStatus,
+          customerId: movementCustomerId || undefined,
+          note: movementNote.trim() || undefined,
+        }),
+      });
+
+      setSuccess('Đã ghi nhận phiếu kho và cập nhật trạng thái máy.');
+      setActiveMove(null);
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không tạo được phiếu kho.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <PageFrame>
+      <PageTitle
+        eyebrow="Kho kỹ thuật"
+        title="Kho máy"
+        description="Theo dõi máy trong kho, máy đã lắp và toàn bộ lịch sử điều chuyển trạng thái."
+      />
+
+      {error ? <Notice message={error} /> : null}
+      {success ? <div className="success-notice">{success}</div> : null}
+
+      <section className="grid grid-cols-4 gap-3 max-lg:grid-cols-2 max-sm:grid-cols-1">
+        <SummaryCard label="Tồn kho khả dụng" value={stats.stock} />
+        <SummaryCard label="Đã giữ hàng" value={stats.reserved} />
+        <SummaryCard label="Đã lắp đặt" value={stats.installed} />
+        <SummaryCard label="Phiếu kho" value={stats.history} />
+      </section>
+
+      <div className="rounded-lg border border-[#e3eaf2] bg-white p-1 font-sans">
+        <div className="grid grid-cols-3 gap-1 max-sm:grid-cols-1">
+          <TabButton active={tab === 'stock'} icon={<Boxes size={17} />} label="Tồn kho" onClick={() => updateInventoryState('stock', query)} />
+          <TabButton active={tab === 'installed'} icon={<PackageCheck size={17} />} label="Máy đã lắp" onClick={() => updateInventoryState('installed', query)} />
+          <TabButton active={tab === 'history'} icon={<History size={17} />} label="Lịch sử kho" onClick={() => updateInventoryState('history', query)} />
+        </div>
+      </div>
+
+      <div className="flex min-w-0 items-center justify-between gap-3.5 max-sm:flex-col max-sm:items-stretch">
+        <div className="flex min-h-11 max-w-[560px] flex-1 items-center gap-2.5 rounded-lg border border-[#e3eaf2] bg-white px-3 text-[#657384] transition focus-within:-translate-y-px focus-within:border-[#c92a1f] focus-within:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] max-sm:max-w-none">
+          <Search size={18} />
+          <input
+            className="min-w-0 flex-1 border-0 font-sans text-[#17202a] outline-none"
+            onChange={(event) => updateInventoryState(tab, event.target.value)}
+            placeholder={tab === 'history' ? 'Tìm mã phiếu, máy, khách hàng, người tạo' : 'Tìm mã máy, serial, model hoặc khách hàng'}
+            value={query}
+          />
+        </div>
+        <button className="secondary-button" disabled={loading} onClick={loadData} type="button">
+          {loading ? <Loader2 className="spin-icon" size={17} /> : <History size={17} />}
+          Tải lại
+        </button>
+      </div>
+
+      {tab === 'history' ? (
+        <HistoryTable loading={loading} movements={filteredMovements} />
+      ) : (
+        <MachineTable
+          loading={loading}
+          machines={filteredMachines}
+          mode={tab}
+          canManageInventory={currentRole === 'admin'}
+          returnTo={returnToInventory}
+          onMove={openMovement}
+        />
+      )}
+
+      {activeMove ? (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/40 p-5" role="presentation">
+          <form className="grid w-full max-w-[520px] gap-4 rounded-lg border border-[#dfe7ef] bg-white p-5 font-sans shadow-[0_24px_70px_rgba(15,23,42,0.2)]" onSubmit={submitMovement}>
+            <div>
+              <span className="text-xs font-bold uppercase text-[#c92a1f]">Phiếu kho</span>
+              <h2 className="mt-1 text-xl font-bold text-[#17202a]">{activeMove.action.label}</h2>
+              <p className="mt-1 text-sm text-[#657384]">{machineLabel(activeMove.machine)}</p>
+            </div>
+
+            {activeMove.action.requiresCustomer ? (
+              <label className="grid gap-2 text-sm font-semibold text-[#405064]">
+                Khách hàng
+                <select className={fieldClass} onChange={(event) => setMovementCustomerId(event.target.value)} required value={movementCustomerId}>
+                  <option value="">Chọn khách hàng</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customerLabel(customer)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            <label className="grid gap-2 text-sm font-semibold text-[#405064]">
+              Ghi chú
+              <textarea className={`${fieldClass} min-h-24 py-2.5`} onChange={(event) => setMovementNote(event.target.value)} value={movementNote} />
+            </label>
+
+            <div className="flex justify-end gap-2 border-t border-[#edf1f6] pt-4">
+              <button className="secondary-button" disabled={saving} onClick={() => setActiveMove(null)} type="button">
+                Hủy
+              </button>
+              <button className="primary-button" disabled={saving} type="submit">
+                {saving ? <Loader2 className="spin-icon" size={17} /> : <ClipboardCheck size={17} />}
+                Ghi nhận
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </PageFrame>
+  );
+}
+
+function SummaryCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="grid gap-2 rounded-lg border border-[#e3eaf2] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <span className="text-sm text-[#657384]">{label}</span>
+      <strong className="text-3xl leading-none text-[#17202a]">{value}</strong>
+    </div>
+  );
+}
+
+function TabButton({ active, icon, label, onClick }: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      className={`inline-flex min-h-[42px] items-center justify-center gap-2 rounded-md px-3 font-bold transition ${
+        active ? 'bg-[#fff8f7] text-[#c92a1f] shadow-[inset_0_-2px_0_#c92a1f]' : 'text-[#405064] hover:bg-[#f8fafc]'
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function MachineTable({
+  loading,
+  machines,
+  mode,
+  canManageInventory,
+  returnTo,
+  onMove,
+}: {
+  loading: boolean;
+  machines: Machine[];
+  mode: 'stock' | 'installed';
+  canManageInventory: boolean;
+  returnTo: string;
+  onMove: (machine: Machine, action: MovementAction) => void;
+}) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[#e3eaf2] bg-white font-sans shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <table className="w-full min-w-[1040px] border-collapse">
+        <thead>
+          <tr>
+            {['Máy', 'Serial / Model', 'Khách hàng', 'Trạng thái', mode === 'installed' ? 'Bảo hành / Kỹ sư' : 'Phụ kiện', 'Thao tác'].map((header) => (
+              <th className="border-b border-[#edf1f6] bg-[#f8fbfd] px-4 py-3 text-left text-xs font-extrabold uppercase text-[#657384]" key={header}>
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? <LoadingRows columns={6} /> : null}
+          {!loading && machines.map((machine) => (
+            <tr className="even:bg-[#fcfdff] hover:bg-[#fbfdff]" key={machine.id}>
+              <td className={cellClass}>
+                <strong className="block text-[#17202a]">{machine.machineCode || machine.name || '-'}</strong>
+                <span className="text-xs text-[#657384]">{machine.name || 'Thiết bị'}</span>
+              </td>
+              <td className={cellClass}>
+                <span className="block">{machine.serialNumber || '-'}</span>
+                <span className="text-xs text-[#657384]">{machine.machineModel?.code || machine.modelName || machine.machineModel?.name || '-'}</span>
+              </td>
+              <td className={cellClass}>{machine.customer?.name || '-'}</td>
+              <td className={cellClass}><StatusBadge value={machine.inventoryStatus} /></td>
+              <td className={cellClass}>
+                {mode === 'installed' ? (
+                  <>
+                    <span className="block">{machine.warrantyEndDate ? formatValue(machine.warrantyEndDate) : 'Chưa có hạn BH'}</span>
+                    <span className="text-xs text-[#657384]">{machine.primaryEngineer?.fullName || machine.primaryEngineer?.email || 'Chưa có kỹ sư'}</span>
+                  </>
+                ) : (
+                  `${machine.accessories?.length ?? 0} phụ kiện`
+                )}
+              </td>
+              <td className={`${cellClass} min-w-[260px]`}>
+                <div className="flex flex-wrap gap-2">
+                  {mode === 'installed' ? (
+                    <>
+                      {canManageInventory ? (
+                        <button className="secondary-button" onClick={() => onMove(machine, movementActions.return)} type="button">
+                          <RotateCcw size={15} />
+                          Thu hồi
+                        </button>
+                      ) : null}
+                      <Link className="secondary-button" to={`/service-tickets/create?kind=repair&machineId=${machine.id}&returnTo=${returnTo}`}>
+                        <Wrench size={15} />
+                        Sửa chữa
+                      </Link>
+                      <Link className="secondary-button" to={`/service-tickets/create?kind=maintenance&machineId=${machine.id}&returnTo=${returnTo}`}>
+                        <ClipboardCheck size={15} />
+                        Bảo trì
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RETURNED') ? (
+                        <button className="secondary-button" onClick={() => onMove(machine, movementActions.reserve)} type="button">
+                          <ClipboardCheck size={15} />
+                          Giữ máy
+                        </button>
+                      ) : null}
+                      {machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RESERVED' || machine.inventoryStatus === 'RETURNED' ? (
+                        <Link className="primary-button" to={`/installations/create?machineId=${machine.id}&returnTo=${returnTo}`}>
+                          <PackageCheck size={15} />
+                          Lắp đặt
+                        </Link>
+                      ) : null}
+                      {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RETURNED') ? (
+                        <button className="secondary-button" onClick={() => onMove(machine, movementActions.splitAccessory)} type="button">
+                          <Split size={15} />
+                          Tách phụ kiện
+                        </button>
+                      ) : null}
+                      {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RESERVED' || machine.inventoryStatus === 'RETURNED') ? (
+                        <button className="secondary-button" onClick={() => onMove(machine, movementActions.sell)} type="button">
+                          <ShoppingCart size={15} />
+                          Bán
+                        </button>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+          {!loading && machines.length === 0 ? <EmptyRow columns={6} /> : null}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function HistoryTable({ loading, movements }: { loading: boolean; movements: InventoryMovement[] }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-[#e3eaf2] bg-white font-sans shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <table className="w-full min-w-[980px] border-collapse">
+        <thead>
+          <tr>
+            {['Mã phiếu', 'Loại', 'Máy', 'Chuyển trạng thái', 'Khách hàng', 'Người tạo', 'Ngày'].map((header) => (
+              <th className="border-b border-[#edf1f6] bg-[#f8fbfd] px-4 py-3 text-left text-xs font-extrabold uppercase text-[#657384]" key={header}>
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? <LoadingRows columns={7} /> : null}
+          {!loading && movements.map((movement) => (
+            <tr className="even:bg-[#fcfdff] hover:bg-[#fbfdff]" key={movement.id}>
+              <td className={cellClass}>{movement.code || '-'}</td>
+              <td className={cellClass}>{displayLabel(movement.type)}</td>
+              <td className={cellClass}>{movement.machine ? machineLabel(movement.machine) : '-'}</td>
+              <td className={cellClass}>
+                <span>{movement.fromStatus ? displayLabel(movement.fromStatus) : '-'}</span>
+                <span className="px-2 text-[#98a2b3]">→</span>
+                <StatusBadge value={movement.toStatus} />
+              </td>
+              <td className={cellClass}>{movement.customer?.name || '-'}</td>
+              <td className={cellClass}>{movement.createdBy?.fullName || movement.createdBy?.email || '-'}</td>
+              <td className={cellClass}>{formatValue(movement.occurredAt)}</td>
+            </tr>
+          ))}
+          {!loading && movements.length === 0 ? <EmptyRow columns={7} /> : null}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function StatusBadge({ value }: { value: InventoryStatus }) {
+  const tone = value === 'INSTALLED' ? 'good' : value === 'RESERVED' ? 'warn' : value === 'SOLD' ? 'danger' : 'neutral';
+  return <span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-bold ${statusToneClass[tone]}`}>{displayLabel(value)}</span>;
+}
+
+function LoadingRows({ columns }: { columns: number }) {
+  return (
+    <>
+      {Array.from({ length: 5 }).map((_, rowIndex) => (
+        <tr key={`loading-${rowIndex}`}>
+          {Array.from({ length: columns }).map((__, columnIndex) => (
+            <td className={cellClass} key={columnIndex}>
+              <span className="skeleton-line" style={{ width: `${columnIndex % 2 === 0 ? 74 : 52}%` }} />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+function EmptyRow({ columns }: { columns: number }) {
+  return (
+    <tr>
+      <td colSpan={columns}>
+        <div className="grid min-h-[180px] place-items-center content-center justify-center gap-2.5 text-center text-[#657384]">
+          <Boxes className="rounded-lg border border-[#f3c3be] bg-[#fff5f4] p-2.5 text-[#c92a1f]" size={42} />
+          <strong className="text-[15px] text-[#17202a]">Chưa có dữ liệu phù hợp</strong>
+          <span className="text-[13px]">Thử đổi tab hoặc từ khóa tìm kiếm.</span>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function machineSearchText(machine: Machine) {
+  return [machine.machineCode, machine.serialNumber, machine.modelName, machine.name, machine.customer?.name, machine.inventoryStatus]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
+function machineLabel(machine: Machine) {
+  return [machine.machineCode, machine.serialNumber, machine.modelName || machine.machineModel?.name || machine.name].filter(Boolean).join(' - ');
+}
+
+function customerLabel(customer: Customer) {
+  return [customer.customerCode, customer.name, customer.province, customer.phone].filter(Boolean).join(' - ');
+}
+
+function normalizeInventoryTab(value: string | null): InventoryTab {
+  if (value === 'installed' || value === 'history') return value;
+  return 'stock';
+}
+
+function buildInventorySearch(tab: InventoryTab, query: string) {
+  const params = new URLSearchParams();
+  if (tab !== 'stock') params.set('tab', tab);
+  if (query.trim()) params.set('q', query.trim());
+  const value = params.toString();
+  return value ? `?${value}` : '';
+}
+
+const movementActions = {
+  reserve: { label: 'Giữ máy cho khách/dự án', type: 'RESERVE', toStatus: 'RESERVED', note: 'Giữ máy từ kho.', requiresCustomer: false },
+  return: { label: 'Thu hồi máy về kho', type: 'RETURN', toStatus: 'RETURNED', note: 'Thu hồi máy từ khách hàng.' },
+  sell: { label: 'Bán/Thanh lý máy', type: 'SELL', toStatus: 'SOLD', note: 'Xuất bán hoặc thanh lý máy.' },
+  splitAccessory: { label: 'Tách phụ kiện khỏi máy', type: 'SPLIT_ACCESSORY', toStatus: 'ACCESSORY_SPLIT', note: 'Tách phụ kiện khỏi máy để quản lý riêng.' },
+} satisfies Record<string, MovementAction>;
+
+const cellClass = 'border-b border-[#edf1f6] px-4 py-3.5 text-left align-middle text-[#253142]';
+const fieldClass = 'min-h-11 w-full rounded-lg border border-[#ced8e3] bg-white px-3 font-sans text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]';
+const statusToneClass = {
+  good: 'border-[#abefc6] bg-[#ecfdf3] text-[#027a48]',
+  warn: 'border-[#fedf89] bg-[#fff7ed] text-[#b54708]',
+  danger: 'border-[#fecdd3] bg-[#fff1f3] text-[#b42318]',
+  neutral: 'border-[#dfe7ef] bg-[#f4f7fb] text-[#405064]',
+};

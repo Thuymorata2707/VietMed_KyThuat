@@ -16,6 +16,7 @@ import { MachineModelsModule } from './machine-models/machine-models.module';
 import { MachineComponentsModule } from './machine-components/machine-components.module';
 import { MachinesModule } from './machines/machines.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductIndustriesModule } from './product-industries/product-industries.module';
 import { RegionsModule } from './regions/regions.module';
@@ -41,6 +42,7 @@ import { UsersModule } from './users/users.module';
     RepairsModule,
     EngineerProfilesModule,
     MaintenanceModule,
+    NotificationsModule,
     InventoryMovementsModule,
     InstallationsModule,
     MachineModelsModule,

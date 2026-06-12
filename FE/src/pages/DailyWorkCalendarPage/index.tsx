@@ -43,7 +43,8 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
   const [viewDate, setViewDate] = useState(() => startOfMonth(new Date()));
   const [notes, setNotes] = useState<DailyWorkNote[]>([]);
   const [engineers, setEngineers] = useState<ApiUser[]>([]);
-  const [selectedEngineerId, setSelectedEngineerId] = useState(user.id);
+  const [selectedEngineerId, setSelectedEngineerId] = useState(currentRole === 'admin' ? '' : user.id);
+  const [selectedDayDate, setSelectedDayDate] = useState('');
   const [editingNote, setEditingNote] = useState<DailyWorkNote | null>(null);
   const [form, setForm] = useState<NoteForm>(() => emptyForm(toDateInput(new Date())));
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,7 +53,8 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const isAdmin = currentRole === 'admin';
-  const canEdit = !isAdmin || selectedEngineerId === user.id;
+  const canEditExisting = !isAdmin;
+  const canCreate = !isAdmin || Boolean(selectedEngineerId);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -76,19 +78,25 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     try {
       const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&roleName=engineer&status=ACTIVE');
       setEngineers(result.data);
-      setSelectedEngineerId((current) => current || result.data[0]?.id || user.id);
+      setSelectedEngineerId((current) => current || result.data[0]?.id || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được danh sách kỹ sư.');
     }
   }
 
   async function loadNotes() {
+    if (isAdmin && !selectedEngineerId) {
+      setNotes([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError('');
     const from = toDateInput(startOfMonth(viewDate));
     const to = toDateInput(endOfMonth(viewDate));
     const query = new URLSearchParams({ from, to });
-    if (isAdmin) query.set('userId', selectedEngineerId);
+    if (isAdmin && selectedEngineerId) query.set('userId', selectedEngineerId);
 
     try {
       const result = await apiFetch<DailyWorkNote[]>(`/daily-work-notes?${query.toString()}`);
@@ -101,16 +109,20 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
   }
 
   function openCreate(date: Date) {
-    if (!canEdit) return;
+    if (!canCreate) return;
     setEditingNote(null);
     setForm(emptyForm(toDateInput(date)));
     setIsModalOpen(true);
+    setSelectedDayDate('');
     setError('');
     setSuccess('');
   }
 
   function openEdit(note: DailyWorkNote) {
-    if (!canEdit) return;
+    if (!canEditExisting) {
+      setSelectedDayDate(toDateInput(note.workDate));
+      return;
+    }
     setEditingNote(note);
     setForm({
       title: note.title,
@@ -121,8 +133,20 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
       color: note.color || colorOptions[0].value,
     });
     setIsModalOpen(true);
+    setSelectedDayDate('');
     setError('');
     setSuccess('');
+  }
+
+  function openDay(date: Date) {
+    if (isAdmin) {
+      setSelectedDayDate(toDateInput(date));
+      setError('');
+      setSuccess('');
+      return;
+    }
+
+    openCreate(date);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -139,6 +163,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
         startTime: form.startTime || null,
         endTime: form.endTime || null,
         color: form.color,
+        userId: isAdmin ? selectedEngineerId : undefined,
       };
 
       if (editingNote) {
@@ -152,10 +177,11 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
           method: 'POST',
           body: JSON.stringify(payload),
         });
-        setSuccess('Đã thêm ghi chú công việc.');
+        setSuccess(isAdmin ? 'Đã thêm việc cho kỹ sư.' : 'Đã thêm ghi chú công việc.');
       }
 
       setIsModalOpen(false);
+      setSelectedDayDate('');
       await loadNotes();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không lưu được ghi chú.');
@@ -182,6 +208,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
   }
 
   const selectedEngineer = engineers.find((engineer) => engineer.id === selectedEngineerId);
+  const selectedDayNotes = selectedDayDate ? notesByDate[selectedDayDate] || [] : [];
 
   return (
     <PageFrame>
@@ -194,8 +221,14 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
         {isAdmin ? (
           <label className="grid min-w-[min(360px,100%)] gap-2 font-bold text-white/80">
             Chọn kỹ sư
-            <select className="min-h-11 rounded-[10px] border border-white/35 bg-white/95 px-3 text-[#17202a]" onChange={(event) => setSelectedEngineerId(event.target.value)} value={selectedEngineerId}>
-              <option value={user.id}>Tài khoản admin</option>
+            <select
+              className="min-h-11 rounded-[10px] border border-white/35 bg-white/95 px-3 text-[#17202a]"
+              onChange={(event) => {
+                setSelectedEngineerId(event.target.value);
+                setSelectedDayDate('');
+              }}
+              value={selectedEngineerId}
+            >
               {engineers.map((engineer) => (
                 <option key={engineer.id} value={engineer.id}>
                   {engineer.fullName || engineer.email}
@@ -249,7 +282,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                   isSameDate(day.date, new Date()) ? 'shadow-[inset_0_0_0_2px_#c92a1f]' : '',
                 ].filter(Boolean).join(' ')}
                 key={key}
-                onClick={() => openCreate(day.date)}
+                onClick={() => openDay(day.date)}
                 type="button"
               >
                 <span className="font-extrabold">{day.date.getDate()}</span>
@@ -269,20 +302,66 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                   ))}
                   {dayNotes.length > 3 ? <small className="text-[#657384]">+{dayNotes.length - 3} việc khác</small> : null}
                 </div>
-                {canEdit ? <Plus className="absolute right-2.5 top-2.5 text-[#c92a1f] opacity-0 group-hover:opacity-100" size={15} /> : null}
+                {canCreate ? <Plus className="absolute right-2.5 top-2.5 text-[#c92a1f] opacity-0 group-hover:opacity-100" size={15} /> : null}
               </button>
             );
           })}
         </div>
       </section>
 
+      {selectedDayDate ? (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/30 p-5 backdrop-blur-[3px]" onClick={() => setSelectedDayDate('')} role="presentation">
+          <section aria-modal="true" className="grid w-full max-w-[720px] gap-4 rounded-[14px] border border-[#dfe7ef] bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.2)]" onClick={(event) => event.stopPropagation()} role="dialog">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span className="block text-xs font-extrabold uppercase text-[#c92a1f]">Công việc trong ngày</span>
+                <h2 className="mt-1 text-[#17202a]">{formatDateTitle(selectedDayDate)}</h2>
+                <p className="mt-1 text-sm text-[#657384]">{selectedEngineer?.fullName || selectedEngineer?.email || 'Kỹ sư'}</p>
+              </div>
+              <button className="icon-button" onClick={() => setSelectedDayDate('')} type="button">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="grid gap-2">
+              {selectedDayNotes.map((note) => (
+                <article className="rounded-lg border border-[#edf1f6] bg-[#f8fbfd] p-3" key={note.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-[#17202a]">{note.title}</strong>
+                    <span className="rounded-full border border-[#dfe7ef] bg-white px-2.5 py-1 text-xs font-bold text-[#657384]">
+                      {[note.startTime, note.endTime].filter(Boolean).join(' - ') || 'Cả ngày'}
+                    </span>
+                  </div>
+                  {note.note ? <p className="mt-2 text-sm leading-relaxed text-[#405064]">{note.note}</p> : null}
+                </article>
+              ))}
+
+              {selectedDayNotes.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-[#ced8e3] bg-[#f8fbfd] p-6 text-center text-sm text-[#657384]">
+                  Ngày này chưa có công việc nào.
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-[#edf1f6] pt-4">
+              <button className="secondary-button" onClick={() => setSelectedDayDate('')} type="button">Đóng</button>
+              <button className="primary-button" disabled={!selectedEngineerId} onClick={() => openCreate(dateFromInput(selectedDayDate))} type="button">
+                <Plus size={16} />
+                Thêm việc cho kỹ sư
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       {isModalOpen ? (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/30 p-5 backdrop-blur-[3px]" role="presentation">
           <section aria-modal="true" className="grid w-full max-w-[720px] gap-[18px] rounded-[14px] border border-[#dfe7ef] bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.2)]" role="dialog">
             <div className="flex items-start justify-between">
               <div>
-                <span className="block text-xs font-extrabold uppercase text-[#c92a1f]">{editingNote ? 'Sửa ghi chú' : 'Thêm ghi chú'}</span>
+                <span className="block text-xs font-extrabold uppercase text-[#c92a1f]">{editingNote ? 'Sửa ghi chú' : isAdmin ? 'Thêm việc cho kỹ sư' : 'Thêm ghi chú'}</span>
                 <h2 className="mt-1 text-[#17202a]">{formatDateTitle(form.workDate)}</h2>
+                {isAdmin ? <p className="mt-1 text-sm text-[#657384]">{selectedEngineer?.fullName || selectedEngineer?.email}</p> : null}
               </div>
               <button className="icon-button" onClick={() => setIsModalOpen(false)} type="button">
                 <X size={16} />
@@ -318,7 +397,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                 <textarea onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))} value={form.note} />
               </label>
               <div className="col-span-full flex justify-end gap-2.5 border-t border-[#edf1f6] pt-3.5">
-                {editingNote ? (
+                {editingNote && canEditExisting ? (
                   <button className="danger-button" disabled={saving} onClick={removeNote} type="button">
                     <Trash2 size={16} />
                     Xóa
@@ -383,6 +462,11 @@ function toDateInput(value: Date | string) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function dateFromInput(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function isSameDate(left: Date, right: Date) {

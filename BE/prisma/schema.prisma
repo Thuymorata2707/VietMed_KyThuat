@@ -214,6 +214,8 @@ model User {
   issuedWarrantyCards  WarrantyCard[]             @relation("WarrantyCardIssuedBy")
   responsibleMachines  Machine[]                  @relation("MachinePrimaryEngineer")
   inventoryMovements   MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
+  receivedNotifications Notification[]             @relation("NotificationRecipient")
+  sentNotifications     Notification[]             @relation("NotificationSender")
   managedBusinessLines BusinessLine[]             @relation("BusinessLineManager")
   auditLogs            AuditLog[]                 @relation("AuditLogActor")
   uploadedAttachments  Attachment[]               @relation("AttachmentUploadedBy")
@@ -716,5 +718,29 @@ model Repair {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([createdById])
+}
+
+model Notification {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+
+  title   String
+  message String
+  href    String?
+
+  entityType String?
+  entityId   String?
+
+  createdById String?
+  createdBy   User?   @relation("NotificationSender", fields: [createdById], references: [id], onDelete: SetNull)
+
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@index([entityType, entityId])
   @@index([createdById])
 }

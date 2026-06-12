@@ -16,6 +16,7 @@ import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { validateMachineState } from '../machines/machine-state.rules';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignRepairDto } from './dto/assign-repair.dto';
 import { CreateRepairDto } from './dto/create-repair.dto';
@@ -28,6 +29,7 @@ export class RepairsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreateRepairDto, actor: RequestUser) {
@@ -87,6 +89,21 @@ export class RepairsService {
         },
         tx,
       );
+
+      if (repair.engineerId && repair.engineerId !== actor.id) {
+        await this.notificationsService.create(
+          {
+            userId: repair.engineerId,
+            title: 'Bạn có phiếu sửa chữa mới',
+            message: `${actor.email} đã phân công phiếu ${repair.code}: ${repair.title}`,
+            href: '/my-tasks',
+            entityType: 'Repair',
+            entityId: repair.id,
+            createdById: actor.id,
+          },
+          tx,
+        );
+      }
 
       return repair;
     });
@@ -242,6 +259,21 @@ export class RepairsService {
         tx,
       );
 
+      if (updated.engineerId && updated.engineerId !== repair.engineerId) {
+        await this.notificationsService.create(
+          {
+            userId: updated.engineerId,
+            title: 'Bạn có phiếu sửa chữa mới',
+            message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+            href: '/my-tasks',
+            entityType: 'Repair',
+            entityId: updated.id,
+            createdById: actor.id,
+          },
+          tx,
+        );
+      }
+
       return updated;
     });
   }
@@ -321,6 +353,21 @@ export class RepairsService {
         },
         tx,
       );
+
+      if (updated.engineerId && updated.engineerId !== repair.engineerId) {
+        await this.notificationsService.create(
+          {
+            userId: updated.engineerId,
+            title: 'Bạn có phiếu sửa chữa mới',
+            message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+            href: '/my-tasks',
+            entityType: 'Repair',
+            entityId: updated.id,
+            createdById: actor.id,
+          },
+          tx,
+        );
+      }
 
       return updated;
     });

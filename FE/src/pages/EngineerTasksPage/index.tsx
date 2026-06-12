@@ -164,9 +164,9 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(() => emptyQuickMachineForm());
   const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm());
   const [creatingCustomer, setCreatingCustomer] = useState(false);
-  const [machineOptions, setMachineOptions] = useState<SelectOption[]>([]);
+  const [machineOptions, setMachineOptions] = useState<Array<PickerOption<PickerMachine>>>([]);
   const [machineModelOptions, setMachineModelOptions] = useState<QuickMachineModel[]>([]);
-  const [customerOptions, setCustomerOptions] = useState<SelectOption[]>([]);
+  const [customerOptions, setCustomerOptions] = useState<Array<PickerOption<PickerCustomer>>>([]);
 
   useEffect(() => {
     loadTasks();
@@ -246,12 +246,14 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         machinesResult.data.filter((machine) => canEngineerSeeMachine(user, machine)).map((machine) => ({
           value: machine.id,
           label: machinePickerLabel(machine),
+          row: machine,
         })),
       );
       setCustomerOptions(
         customersResult.data.map((customer) => ({
           value: customer.id,
           label: customerPickerLabel(customer),
+          row: customer,
         })),
       );
       setMachineModelOptions(modelsResult.data.filter((model) => canEngineerSeeModel(user, model)));
@@ -346,6 +348,19 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setCreateForm((current) => ({ ...current, ...patch }));
   }
 
+  function changeCreateKind(kind: TaskKind) {
+    setCreateForm((current) => ({
+      ...current,
+      kind,
+      machineId: '',
+      customerId: '',
+      deviceName: '',
+      modelName: '',
+      serialNumber: '',
+    }));
+    setQuickMachineForm(emptyQuickMachineForm());
+  }
+
   function updateQuickMachineForm(patch: Partial<QuickMachineForm>) {
     setQuickMachineForm((current) => ({ ...current, ...patch }));
   }
@@ -383,7 +398,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     const modelName = quickMachineForm.modelName.trim() || selectedModel?.name?.trim() || selectedModel?.code?.trim() || '';
     const name = quickMachineForm.name.trim();
     const customerId = quickMachineForm.customerId || createForm.customerId;
-    const supportsProbes = isUltrasoundMachineModel(selectedModel);
+    const inventoryStatus = createForm.kind === 'installation' ? 'IN_STOCK' : 'INSTALLED';
 
     if (!serialNumber || !modelName) {
       setError('Vui lòng nhập Serial và Model/Tên thiết bị để tạo thiết bị nhanh.');
@@ -395,7 +410,13 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setSuccess('');
 
     try {
-      const machine = await apiFetch<TaskMachine & { id: string; name?: string | null }>('/machines', {
+      const machine = await apiFetch<
+        TaskMachine & {
+          id: string;
+          name?: string | null;
+          customer?: { id?: string | null; name?: string | null; province?: string | null } | null;
+        }
+      >('/machines', {
         method: 'POST',
         body: JSON.stringify({
           serialNumber,
@@ -404,23 +425,30 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           name: name || modelName,
           customerId: customerId || undefined,
           primaryEngineerId: isEngineerUser(user) ? user.id : undefined,
-          inventoryStatus: 'IN_STOCK',
+          inventoryStatus,
           status: 'ACTIVE',
           accessories: parseMachineAccessoriesInput(quickMachineForm.accessoriesText),
         }),
       });
+      const customerOption = customerOptions.find((option) => option.value === customerId);
+      const pickerMachine: PickerMachine = {
+        ...machine,
+        customer: machine.customer ?? (customerId ? { id: customerId, name: customerOption?.label } : null),
+        inventoryStatus,
+      };
       const option = {
         value: machine.id,
-        label: [machine.machineCode, machine.serialNumber, machine.modelName || machine.name].filter(Boolean).join(' - '),
+        label: machinePickerLabel(pickerMachine),
+        row: pickerMachine,
       };
       setMachineOptions((current) => [option, ...current.filter((item) => item.value !== option.value)]);
       setCreateForm((current) => ({
         ...current,
         machineId: machine.id,
-        customerId: current.customerId || customerId,
+        customerId: current.customerId || customerId || machine.customer?.id || '',
         modelName: current.modelName || selectedModel?.code || modelName,
         serialNumber: current.serialNumber || serialNumber,
-        deviceName: current.deviceName || name,
+        deviceName: current.deviceName || name || machine.name || modelName,
       }));
       setQuickMachineForm(emptyQuickMachineForm());
       setIsQuickMachineOpen(false);
@@ -467,6 +495,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       const option = {
         value: customer.id,
         label: customerPickerLabel(customer),
+        row: customer,
       };
 
       setCustomerOptions((current) => [option, ...current.filter((item) => item.value !== option.value)]);
@@ -690,7 +719,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
           <label className="task-filter-select create-kind-select">
             <span>Loại phiếu</span>
-            <select onChange={(event) => updateCreateForm({ kind: event.target.value as TaskKind })} value={createForm.kind}>
+            <select onChange={(event) => changeCreateKind(event.target.value as TaskKind)} value={createForm.kind}>
               <option value="repair">Phiếu bảo dưỡng, sửa chữa thiết bị tại chỗ</option>
               <option value="maintenance">Bảo trì</option>
               <option value="installation">Lắp đặt</option>
@@ -721,7 +750,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   value: machine.id,
                 })}
                 initialOptions={machineOptions
-                  .map((option) => ({ ...option, row: { id: option.value } as PickerMachine }))
                   .filter((option) => isMachineEligibleForTicket(createForm.kind, option.row))}
                 label="Thiết bị"
                 onChange={(value, machine) => {
@@ -793,7 +821,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     row: customer,
                     value: customer.id,
                   })}
-                  initialOptions={customerOptions.map((option) => ({ ...option, row: { id: option.value, name: option.label } }))}
+                  initialOptions={customerOptions}
                   label="Khách hàng"
                   onChange={(value) => updateQuickMachineForm({ customerId: value })}
                   placeholder="Tìm tên, mã khách hàng, tỉnh hoặc số điện thoại"
@@ -841,7 +869,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     row: customer,
                     value: customer.id,
                   })}
-                  initialOptions={customerOptions.map((option) => ({ ...option, row: { id: option.value, name: option.label } }))}
+                  initialOptions={customerOptions}
                   label="Khách hàng"
                   onChange={(value) => updateCreateForm({ customerId: value })}
                   placeholder="Tìm tên, mã khách hàng, tỉnh hoặc số điện thoại"
@@ -853,7 +881,32 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   Thêm khách hàng
                 </button>
               </div>
-            ) : null}
+            ) : (
+              <div className="customer-picker-row create-span-6">
+                <AsyncEntityPicker<PickerCustomer>
+                  className="customer-picker-main"
+                  disabled={loadingCreateOptions}
+                  endpoint="/customers?limit=20"
+                  formatOption={(customer) => ({
+                    label: customerPickerLabel(customer),
+                    row: customer,
+                    value: customer.id,
+                  })}
+                  initialOptions={customerOptions}
+                  label="Khách hàng cho thiết bị mới"
+                  onChange={(value) => {
+                    updateCreateForm({ customerId: value });
+                    updateQuickMachineForm({ customerId: value });
+                  }}
+                  placeholder="Chọn trước khách hàng nếu cần tạo thiết bị nhanh"
+                  value={createForm.customerId}
+                />
+                <button className="task-secondary quick-customer-toggle" onClick={() => setIsQuickCustomerOpen((value) => !value)} type="button">
+                  <Plus size={16} />
+                  Thêm khách hàng
+                </button>
+              </div>
+            )}
 
             {isQuickCustomerOpen ? (
               <div className="quick-customer-form">

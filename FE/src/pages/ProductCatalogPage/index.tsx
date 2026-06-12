@@ -112,11 +112,12 @@ type ProductForm = {
 const allIndustriesKey = 'all';
 
 export function ProductCatalogPage({ user }: { user: ApiUser }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [industries, setIndustries] = useState<ProductIndustry[]>([]);
   const [models, setModels] = useState<MachineModel[]>([]);
   const [stockByModel, setStockByModel] = useState<Record<string, ModelStock>>({});
-  const [selectedIndustryId, setSelectedIndustryId] = useState(allIndustriesKey);
-  const [query, setQuery] = useState('');
+  const [selectedIndustryId, setSelectedIndustryId] = useState(searchParams.get('industry') || allIndustriesKey);
+  const [query, setQuery] = useState(searchParams.get('q') || '');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -149,6 +150,39 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
       return matchesIndustry && matchesExpertise && matchesQuery;
     });
   }, [models, query, role, selectedIndustryId, userExpertise]);
+
+  const stockByIndustry = useMemo(() => {
+    const next: Record<string, ModelStock> = {};
+
+    models.forEach((model) => {
+      const industryId = model.businessLine?.productIndustry?.id;
+      if (!industryId) return;
+
+      const current = next[industryId] ?? { inStock: 0, total: 0 };
+      const stock = stockByModel[model.id] ?? { inStock: 0, total: 0 };
+      next[industryId] = {
+        inStock: current.inStock + stock.inStock,
+        total: current.total + stock.total,
+      };
+    });
+
+    return next;
+  }, [models, stockByModel]);
+
+  const visibleIndustryStock = useMemo(
+    () =>
+      visibleIndustries.reduce(
+        (total, industry) => {
+          const stock = stockByIndustry[industry.id] ?? { inStock: 0, total: 0 };
+          return {
+            inStock: total.inStock + stock.inStock,
+            total: total.total + stock.total,
+          };
+        },
+        { inStock: 0, total: 0 },
+      ),
+    [stockByIndustry, visibleIndustries],
+  );
 
   async function loadData() {
     setLoading(true);
@@ -187,6 +221,18 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     setStockByModel(Object.fromEntries(entries));
   }
 
+  function updateCatalogState(nextIndustryId: string, nextQuery: string) {
+    setSelectedIndustryId(nextIndustryId);
+    setQuery(nextQuery);
+
+    const nextParams = new URLSearchParams();
+    if (nextIndustryId && nextIndustryId !== allIndustriesKey) nextParams.set('industry', nextIndustryId);
+    if (nextQuery.trim()) nextParams.set('q', nextQuery.trim());
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  const catalogSearch = buildCatalogSearch(selectedIndustryId, query);
+
   return (
     <PageFrame>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -211,24 +257,33 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
 
       {error ? <Notice message={error} /> : null}
 
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <IndustryStockCard label="Tất cả ngành hàng" stock={visibleIndustryStock} />
+        {visibleIndustries.slice(0, 3).map((industry) => (
+          <IndustryStockCard key={industry.id} label={industry.name} stock={stockByIndustry[industry.id] ?? { inStock: 0, total: 0 }} />
+        ))}
+      </section>
+
       <section className="rounded-lg border border-[#dfe7ef] bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf1f6] p-3.5">
           <div className="flex flex-wrap gap-2">
             <button
               className={industryTabClass(selectedIndustryId === allIndustriesKey)}
-              onClick={() => setSelectedIndustryId(allIndustriesKey)}
+              onClick={() => updateCatalogState(allIndustriesKey, query)}
               type="button"
             >
-              Tất cả
+              <span>Tất cả</span>
+              <StockPill stock={visibleIndustryStock} />
             </button>
             {visibleIndustries.map((industry) => (
               <button
                 className={industryTabClass(industry.id === selectedIndustryId)}
                 key={industry.id}
-                onClick={() => setSelectedIndustryId(industry.id)}
+                onClick={() => updateCatalogState(industry.id, query)}
                 type="button"
               >
-                {industry.name}
+                <span>{industry.name}</span>
+                <StockPill stock={stockByIndustry[industry.id] ?? { inStock: 0, total: 0 }} />
               </button>
             ))}
           </div>
@@ -236,7 +291,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
             <Search size={16} />
             <input
               className="min-w-0 flex-1 border-0 text-[#17202a] outline-none"
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => updateCatalogState(selectedIndustryId, event.target.value)}
               placeholder="Tìm model, hãng, nhóm sản phẩm"
               value={query}
             />
@@ -258,6 +313,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
               {visibleModels.map((model) => (
                 <ModelRow
                   canAddProduct={canAddProduct}
+                  catalogSearch={catalogSearch}
                   key={model.id}
                   model={model}
                   stock={stockByModel[model.id]}
@@ -292,6 +348,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
 export function ProductModelDetailPage({ user }: { user: ApiUser }) {
   const navigate = useNavigate();
   const { modelId = '' } = useParams();
+  const [searchParams] = useSearchParams();
   const [detail, setDetail] = useState<MachineModelDetail | null>(null);
   const [selectedMachineId, setSelectedMachineId] = useState('');
   const [selectedMachineDetail, setSelectedMachineDetail] = useState<MachineDetail | null>(null);
@@ -306,6 +363,7 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
   const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
   const canAddProduct = role === 'admin' || role === 'engineer';
   const canEditModelImage = role === 'admin';
+  const backToCatalogHref = `/business-lines${buildCatalogSearch(searchParams.get('industry') || allIndustriesKey, searchParams.get('q') || '')}`;
 
   useEffect(() => {
     void loadModelDetail();
@@ -403,7 +461,7 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
               Add sản phẩm
             </Link>
           ) : null}
-          <button className="secondary-button" onClick={() => navigate('/business-lines')} type="button">
+          <button className="secondary-button" onClick={() => navigate(backToCatalogHref)} type="button">
             <ArrowLeft size={17} />
             Quay lại danh sách
           </button>
@@ -685,17 +743,19 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
 function ModelRow({
   canAddProduct,
+  catalogSearch,
   model,
   stock,
 }: {
   canAddProduct: boolean;
+  catalogSearch: string;
   model: MachineModel;
   stock?: ModelStock;
 }) {
   return (
     <tr className="border-b border-[#edf1f6] hover:bg-[#fff8f7]">
       <td className="px-4 py-4">
-        <Link className="flex min-w-0 items-center gap-3 text-left" to={`/business-lines/models/${model.id}`}>
+        <Link className="flex min-w-0 items-center gap-3 text-left" to={`/business-lines/models/${model.id}${catalogSearch}`}>
           <ModelImage model={model} />
           <div className="min-w-0">
             <strong className="block text-sm text-[#17202a]">{modelShortLabel(model)}</strong>
@@ -905,8 +965,29 @@ function DetailItem({ label, value }: { label: string; value?: string }) {
   );
 }
 
+function IndustryStockCard({ label, stock }: { label: string; stock: ModelStock }) {
+  return (
+    <div className="grid gap-2 rounded-lg border border-[#e3eaf2] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <span className="text-sm font-semibold text-[#657384]">{label}</span>
+      <div className="flex items-end justify-between gap-3">
+        <strong className="text-3xl leading-none text-[#17202a]">{stock.total}</strong>
+        <span className="rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2.5 py-1 text-xs font-bold text-[#027a48]">Còn kho {stock.inStock}</span>
+      </div>
+    </div>
+  );
+}
+
+function StockPill({ stock }: { stock: ModelStock }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-current/20 bg-white/70 px-2 py-0.5 text-[11px] font-extrabold">
+      <span>{stock.total}</span>
+      <span className="opacity-70">/ còn {stock.inStock}</span>
+    </span>
+  );
+}
+
 function industryTabClass(active: boolean) {
-  return `min-h-9 rounded-lg border px-3 text-sm font-bold ${
+  return `inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-bold ${
     active ? 'border-[#f0b7b1] bg-[#fff1ef] text-[#c92a1f]' : 'border-[#dfe7ef] bg-[#f4f7fb] text-[#405064] hover:border-[#c92a1f]'
   }`;
 }
@@ -1053,4 +1134,12 @@ function compactPayload(payload: Record<string, unknown>) {
       return true;
     }),
   );
+}
+
+function buildCatalogSearch(industryId: string, query: string) {
+  const params = new URLSearchParams();
+  if (industryId && industryId !== allIndustriesKey) params.set('industry', industryId);
+  if (query.trim()) params.set('q', query.trim());
+  const value = params.toString();
+  return value ? `?${value}` : '';
 }

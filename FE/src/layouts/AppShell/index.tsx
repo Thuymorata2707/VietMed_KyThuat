@@ -1,7 +1,7 @@
-import { ChevronsLeft, ChevronsRight, LogOut, Settings2 } from 'lucide-react';
-import { useState } from 'react';
+import { Bell, ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { ApiUser, clearToken, getApiBaseUrl } from '../../api';
+import { ApiUser, apiFetch, clearToken, getApiBaseUrl } from '../../api';
 import { getRoleName, roleLabel } from '../../auth/roles';
 import { Brand } from '../../components/Brand';
 import { RequireRole } from '../../components/RequireRole';
@@ -18,8 +18,10 @@ import { AdminWorkAssignmentPage } from '../../pages/AdminWorkAssignmentPage';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { DailyWorkCalendarPage } from '../../pages/DailyWorkCalendarPage';
 import { EngineerTasksPage } from '../../pages/EngineerTasksPage';
+import { InventoryMovementsPage } from '../../pages/InventoryMovementsPage';
 import { ProductAddPage, ProductCatalogPage, ProductModelDetailPage } from '../../pages/ProductCatalogPage';
 import { ResourcePage } from '../../pages/ResourcePage';
+import { ServiceTicketCreatePage } from '../../pages/ServiceTicketCreatePage';
 import { ServiceTicketsPage } from '../../pages/ServiceTicketsPage';
 import { initials } from '../../utils/format';
 
@@ -29,10 +31,23 @@ type AppShellProps = {
   onUserUpdated: (user: ApiUser) => void;
 };
 
+type NotificationItem = {
+  id: string;
+  title: string;
+  message: string;
+  href?: string | null;
+  readAt?: string | null;
+  createdAt: string;
+  createdBy?: { fullName?: string | null; email?: string | null } | null;
+};
+
 export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
   const role = getRoleName(user);
   const visibleNavItems = navItemsForRole(role);
   const visibleNavGroups = navGroupsForRole(role);
@@ -42,11 +57,64 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   const pageTitle = location.pathname.startsWith('/account-settings')
     ? 'Thiết lập tài khoản'
     : activeNavItem?.label || 'Tổng quan';
+  const unreadCount = useMemo(() => notifications.filter((item) => !item.readAt).length, [notifications]);
+
+  useEffect(() => {
+    void loadNotifications();
+    const interval = window.setInterval(() => void loadNotifications(), 15000);
+    return () => window.clearInterval(interval);
+  }, [user.id]);
+
+  useEffect(() => {
+    if (!isNotificationOpen) {
+      return;
+    }
+
+    function closeNotificationOnOutsideClick(event: PointerEvent) {
+      const target = event.target;
+
+      if (target instanceof Node && notificationRef.current?.contains(target)) {
+        return;
+      }
+
+      setIsNotificationOpen(false);
+    }
+
+    document.addEventListener('pointerdown', closeNotificationOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeNotificationOnOutsideClick);
+  }, [isNotificationOpen]);
 
   function logout() {
     clearToken();
     onLogout();
     navigate('/login');
+  }
+
+  async function loadNotifications() {
+    try {
+      const result = await apiFetch<NotificationItem[]>('/notifications?limit=10');
+      setNotifications(result);
+    } catch {
+      setNotifications([]);
+    }
+  }
+
+  async function openNotification(notification: NotificationItem) {
+    if (!notification.readAt) {
+      await apiFetch(`/notifications/${notification.id}/read`, { method: 'PATCH' }).catch(() => null);
+      setNotifications((current) => current.map((item) => (item.id === notification.id ? { ...item, readAt: new Date().toISOString() } : item)));
+    }
+
+    setIsNotificationOpen(false);
+    if (notification.href) {
+      navigate(notification.href);
+    }
+  }
+
+  async function markAllNotificationsRead() {
+    await apiFetch('/notifications/read-all', { method: 'PATCH' }).catch(() => null);
+    const now = new Date().toISOString();
+    setNotifications((current) => current.map((item) => ({ ...item, readAt: item.readAt ?? now })));
   }
 
   return (
@@ -117,9 +185,64 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
               API sẵn sàng
             </span>
             <span className="min-h-[34px] rounded-lg border border-[#f0b7b1] bg-[#fff8f7] px-2.5 py-[7px] text-[13px] font-extrabold text-[#c92a1f]">{roleLabel(role)}</span>
-            <button className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-[#e3eaf2] bg-white text-[#405064] hover:-translate-y-px hover:border-[#f3c3be] hover:text-[#c92a1f]" onClick={() => navigate('/account-settings')} title="Thiết lập tài khoản" type="button">
-              <Settings2 size={18} />
-            </button>
+            <div className="relative" ref={notificationRef}>
+              <button
+                aria-label="Thông báo"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#f0b7b1] bg-[#fff5f4] text-[#c92a1f] shadow-[0_8px_18px_rgba(201,42,31,0.12)] hover:-translate-y-px hover:border-[#c92a1f] hover:bg-white"
+                onClick={() => setIsNotificationOpen((value) => !value)}
+                title="Thông báo"
+                type="button"
+              >
+                <Bell size={18} />
+                {unreadCount ? (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#c92a1f] px-1.5 text-[11px] font-extrabold leading-5 text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                ) : null}
+              </button>
+              {isNotificationOpen ? (
+                <div className="absolute right-0 top-[calc(100%+8px)] z-30 grid w-[360px] max-w-[calc(100vw-32px)] gap-2 rounded-lg border border-[#dfe7ef] bg-white p-3 shadow-[0_18px_46px_rgba(15,23,42,0.16)]">
+                  <div className="flex items-center justify-between gap-3 border-b border-[#edf1f6] pb-2">
+                    <strong className="text-sm text-[#17202a]">Thông báo</strong>
+                    <button className="text-xs font-bold text-[#c92a1f]" onClick={markAllNotificationsRead} type="button">
+                      Đã đọc tất cả
+                    </button>
+                  </div>
+                  <div className="grid max-h-[360px] gap-1 overflow-y-auto">
+                    {notifications.map((notification) => (
+                      <button
+                        className={`grid gap-1 rounded-lg p-3 text-left hover:bg-[#fff8f7] ${notification.readAt ? 'bg-white' : 'bg-[#fff5f4]'}`}
+                        key={notification.id}
+                        onClick={() => void openNotification(notification)}
+                        type="button"
+                      >
+                        <span className="text-sm font-bold text-[#17202a]">{notification.title}</span>
+                        <span className="text-[13px] leading-snug text-[#657384]">{notification.message}</span>
+                        <span className="text-xs font-semibold text-[#8a98aa]">{formatNotificationDate(notification.createdAt)}</span>
+                      </button>
+                    ))}
+                    {notifications.length === 0 ? (
+                      <div className="grid min-h-24 place-items-center rounded-lg bg-[#f8fafc] text-sm text-[#657384]">
+                        Chưa có thông báo.
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <Link
+              className="inline-flex h-[38px] w-[38px] items-center justify-center overflow-hidden rounded-full border border-[#e3eaf2] bg-white text-[#253142] hover:-translate-y-px hover:border-[#f3c3be]"
+              title="Tài khoản"
+              to="/account-settings"
+            >
+              {user.engineerProfile?.photoUrl ? (
+                <img alt={user.fullName || user.email} className="h-full w-full object-cover" src={user.engineerProfile.photoUrl} />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#fff5f4] to-[#eef4fb] text-[12px] font-extrabold">
+                  {initials(user.fullName || user.email)}
+                </span>
+              )}
+            </Link>
           </div>
         </header>
 
@@ -212,11 +335,47 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
               </RequireRole>
             }
           />
+          <Route
+            path="/service-tickets/create"
+            element={
+              <RequireRole
+                allowedRoles={resources.repairs.roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <ServiceTicketCreatePage user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/installations/create"
+            element={
+              <RequireRole
+                allowedRoles={resources.installations.roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <ServiceTicketCreatePage fixedKind="installation" user={user} />
+              </RequireRole>
+            }
+          />
           <Route path="/repairs" element={<Navigate to="/service-tickets" replace />} />
           <Route path="/maintenance" element={<Navigate to="/service-tickets" replace />} />
           <Route path="/machines" element={<Navigate to="/business-lines" replace />} />
+          <Route
+            path="/inventory-movements"
+            element={
+              <RequireRole
+                allowedRoles={resources['inventory-movements'].roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <InventoryMovementsPage currentRole={role} />
+              </RequireRole>
+            }
+          />
           {Object.keys(resources).map((key) => (
-            ['users', 'roles', 'regions', 'repairs', 'maintenance', 'machines'].includes(key) ? null :
+            ['users', 'roles', 'regions', 'repairs', 'maintenance', 'machines', 'inventory-movements'].includes(key) ? null :
             <Route
               key={key}
               path={`/${key}`}
@@ -242,4 +401,17 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       </main>
     </div>
   );
+}
+
+function formatNotificationDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date);
 }

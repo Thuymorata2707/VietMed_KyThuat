@@ -1,6 +1,10 @@
 import { IsDateString, IsOptional, IsString } from 'class-validator';
 
 export class CreateDailyWorkNoteDto {
+  @IsOptional()
+  @IsString()
+  userId?: string;
+
   @IsString()
   title!: string;
 

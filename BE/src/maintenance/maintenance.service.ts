@@ -16,6 +16,7 @@ import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { validateMachineState } from '../machines/machine-state.rules';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignMaintenanceDto } from './dto/assign-maintenance.dto';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
@@ -28,6 +29,7 @@ export class MaintenanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreateMaintenanceDto, actor: RequestUser) {
@@ -79,6 +81,21 @@ export class MaintenanceService {
         },
         tx,
       );
+
+      if (maintenance.engineerId && maintenance.engineerId !== actor.id) {
+        await this.notificationsService.create(
+          {
+            userId: maintenance.engineerId,
+            title: 'Bạn có phiếu bảo trì mới',
+            message: `${actor.email} đã phân công phiếu ${maintenance.code}: ${maintenance.title}`,
+            href: '/my-tasks',
+            entityType: 'Maintenance',
+            entityId: maintenance.id,
+            createdById: actor.id,
+          },
+          tx,
+        );
+      }
 
       return maintenance;
     });
@@ -225,6 +242,21 @@ export class MaintenanceService {
         tx,
       );
 
+      if (updated.engineerId && updated.engineerId !== maintenance.engineerId) {
+        await this.notificationsService.create(
+          {
+            userId: updated.engineerId,
+            title: 'Bạn có phiếu bảo trì mới',
+            message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+            href: '/my-tasks',
+            entityType: 'Maintenance',
+            entityId: updated.id,
+            createdById: actor.id,
+          },
+          tx,
+        );
+      }
+
       return updated;
     });
   }
@@ -305,6 +337,21 @@ export class MaintenanceService {
         },
         tx,
       );
+
+      if (updated.engineerId && updated.engineerId !== maintenance.engineerId) {
+        await this.notificationsService.create(
+          {
+            userId: updated.engineerId,
+            title: 'Bạn có phiếu bảo trì mới',
+            message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+            href: '/my-tasks',
+            entityType: 'Maintenance',
+            entityId: updated.id,
+            createdById: actor.id,
+          },
+          tx,
+        );
+      }
 
       return updated;
     });

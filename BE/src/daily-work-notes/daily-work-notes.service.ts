@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { isAdmin, isEngineer } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDailyWorkNoteDto } from './dto/create-daily-work-note.dto';
 import { ListDailyWorkNotesQueryDto } from './dto/list-daily-work-notes-query.dto';
@@ -14,7 +15,10 @@ import { UpdateDailyWorkNoteDto } from './dto/update-daily-work-note.dto';
 
 @Injectable()
 export class DailyWorkNotesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async findAll(query: ListDailyWorkNotesQueryDto, user: RequestUser) {
     const userId = this.resolveReadableUserId(query.userId, user);
@@ -41,9 +45,12 @@ export class DailyWorkNotesService {
       throw new ForbiddenException('You do not have permission for this action');
     }
 
-    return this.prisma.dailyWorkNote.create({
+    const targetUserId = isAdmin(user) && dto.userId ? dto.userId : user.id;
+    await this.ensureUserExists(targetUserId);
+
+    const note = await this.prisma.dailyWorkNote.create({
       data: {
-        userId: user.id,
+        userId: targetUserId,
         title: this.cleanRequired(dto.title, 'title'),
         note: this.cleanOptional(dto.note),
         workDate: this.parseDate(dto.workDate, 'workDate'),
@@ -53,6 +60,22 @@ export class DailyWorkNotesService {
       },
       include: this.defaultInclude(),
     });
+
+    if (isAdmin(user) && targetUserId !== user.id) {
+      await this.notificationsService
+        .create({
+          userId: targetUserId,
+          title: 'Bạn có lịch công việc mới',
+          message: `${user.email} đã thêm lịch ${note.title} vào ngày ${this.formatDate(note.workDate)}`,
+          href: '/daily-work',
+          entityType: 'DailyWorkNote',
+          entityId: note.id,
+          createdById: user.id,
+        })
+        .catch(() => null);
+    }
+
+    return note;
   }
 
   async update(id: string, dto: UpdateDailyWorkNoteDto, user: RequestUser) {
@@ -110,6 +133,13 @@ export class DailyWorkNotesService {
     return note;
   }
 
+  private async ensureUserExists(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+  }
+
   private cleanRequired(value: string, fieldName: string) {
     const cleaned = value.trim();
     if (!cleaned) {
@@ -128,6 +158,13 @@ export class DailyWorkNotesService {
       throw new BadRequestException(`Invalid ${fieldName}`);
     }
     return date;
+  }
+
+  private formatDate(value: Date) {
+    return new Intl.DateTimeFormat('vi-VN', {
+      dateStyle: 'short',
+      timeZone: 'Asia/Ho_Chi_Minh',
+    }).format(value);
   }
 
   private defaultInclude() {

@@ -1,5 +1,6 @@
 import { Edit3, ImageOff, Loader2, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { FormEvent, KeyboardEvent, MouseEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { AdminCrudConfig, CrudField } from '../../config/adminCrud';
 import { Notice } from '../../components/Notice';
@@ -258,10 +259,17 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
             </div>
           ) : null}
           {config.canCreate !== false ? (
-            <button className="primary-button compact" onClick={startCreate} type="button">
-              <Plus size={17} />
-              Tạo mới
-            </button>
+            serviceCreateHref(config.endpoint) ? (
+              <Link className="primary-button compact" to={serviceCreateHref(config.endpoint)!}>
+                <Plus size={17} />
+                Tạo phiếu
+              </Link>
+            ) : (
+              <button className="primary-button compact" onClick={startCreate} type="button">
+                <Plus size={17} />
+                Tạo mới
+              </button>
+            )
           ) : null}
         </div>
 
@@ -1058,6 +1066,13 @@ function textareaPlaceholder(field: CrudField) {
 
 function isMachinesEndpoint(endpoint?: string) {
   return endpoint === '/machines';
+}
+
+function serviceCreateHref(endpoint?: string) {
+  if (endpoint === '/repairs') return '/service-tickets/create?kind=repair';
+  if (endpoint === '/maintenance') return '/service-tickets/create?kind=maintenance';
+  if (endpoint === '/installations') return '/installations/create';
+  return '';
 }
 
 function visibleFields(
