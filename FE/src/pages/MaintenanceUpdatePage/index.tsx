@@ -1,7 +1,8 @@
 import { ArrowLeft, Download, Loader2, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
+import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
+import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -9,8 +10,16 @@ import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
 import type { AttachmentType, MaintenanceTask, TaskAttachment } from '../EngineerTasksPage/types';
 import { attachmentTypeLabel, formatFileSize, statusLabel } from '../EngineerTasksPage/utils';
 
+type EngineerOption = {
+  id: string;
+  fullName?: string | null;
+  email: string;
+};
+
 type MaintenanceForm = {
   status: string;
+  type: string;
+  engineerId: string;
   scheduledDate: string;
   nextDueDate: string;
   resultNote: string;
@@ -24,16 +33,18 @@ type MaintenanceForm = {
   serialNumber: string;
 };
 
-export function MaintenanceUpdatePage() {
+export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/my-tasks';
+  const isAdmin = getRoleName(user) === 'admin';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [detail, setDetail] = useState<MaintenanceTask | null>(null);
+  const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [form, setForm] = useState<MaintenanceForm>(() => emptyForm());
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
@@ -57,6 +68,9 @@ export function MaintenanceUpdatePage() {
       const maintenance = await apiFetch<MaintenanceTask>(`/maintenance/${id}`);
       setDetail(maintenance);
       setForm(buildForm(maintenance));
+      if (isAdmin) {
+        await loadEngineers();
+      }
       await loadAttachments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được phiếu bảo trì.');
@@ -67,6 +81,15 @@ export function MaintenanceUpdatePage() {
 
   function updateForm(patch: Partial<MaintenanceForm>) {
     setForm((current) => ({ ...current, ...patch }));
+  }
+
+  async function loadEngineers() {
+    try {
+      const response = await apiFetch<Paginated<EngineerOption>>('/users?limit=100&roleName=engineer');
+      setEngineers(response.data);
+    } catch {
+      setEngineers([]);
+    }
   }
 
   async function loadAttachments() {
@@ -95,6 +118,12 @@ export function MaintenanceUpdatePage() {
         method: 'PATCH',
         body: JSON.stringify({
           status: form.status,
+          ...(isAdmin
+            ? {
+                type: form.type,
+                engineerId: form.engineerId || null,
+              }
+            : {}),
           scheduledDate: form.scheduledDate || undefined,
           nextDueDate: form.nextDueDate || undefined,
           resultNote: form.resultNote.trim() || undefined,
@@ -210,6 +239,31 @@ export function MaintenanceUpdatePage() {
                     ))}
                   </select>
                 </label>
+                {isAdmin ? (
+                  <label className={labelClass}>
+                    Loại bảo trì
+                    <select className={fieldClass} onChange={(event) => updateForm({ type: event.target.value })} value={form.type}>
+                      <option value="PERIODIC">Định kỳ</option>
+                      <option value="WARRANTY">Bảo hành</option>
+                      <option value="CONTRACT">Hợp đồng</option>
+                      <option value="INTERNAL">Nội bộ</option>
+                      <option value="OTHER">Khác</option>
+                    </select>
+                  </label>
+                ) : null}
+                {isAdmin ? (
+                  <label className={labelClass}>
+                    Kỹ sư
+                    <select className={fieldClass} onChange={(event) => updateForm({ engineerId: event.target.value })} value={form.engineerId}>
+                      <option value="">Chưa phân công</option>
+                      {engineers.map((engineer) => (
+                        <option key={engineer.id} value={engineer.id}>
+                          {engineer.fullName || engineer.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
                 <label className={labelClass}>
                   Ngày bảo trì
                   <input className={fieldClass} onChange={(event) => updateForm({ scheduledDate: event.target.value })} type="date" value={form.scheduledDate} />
@@ -373,6 +427,8 @@ export function MaintenanceUpdatePage() {
 function emptyForm(): MaintenanceForm {
   return {
     status: 'IN_PROGRESS',
+    type: 'PERIODIC',
+    engineerId: '',
     scheduledDate: '',
     nextDueDate: '',
     resultNote: '',
@@ -390,6 +446,8 @@ function emptyForm(): MaintenanceForm {
 function buildForm(maintenance: MaintenanceTask): MaintenanceForm {
   return {
     status: maintenance.status || 'IN_PROGRESS',
+    type: maintenance.type || 'PERIODIC',
+    engineerId: maintenance.engineer?.id || '',
     scheduledDate: dateInputValue(maintenance.scheduledDate),
     nextDueDate: dateInputValue(maintenance.nextDueDate),
     resultNote: maintenance.resultNote || '',

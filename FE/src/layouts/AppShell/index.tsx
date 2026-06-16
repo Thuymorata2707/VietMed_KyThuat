@@ -49,6 +49,7 @@ type NotificationItem = {
 export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const mainRef = useRef<HTMLElement>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -71,6 +72,10 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     const interval = window.setInterval(() => void loadNotifications(), 15000);
     return () => window.clearInterval(interval);
   }, [user.id]);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isNotificationOpen) {
@@ -125,8 +130,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   }
 
   return (
-    <div className={`grid min-h-screen w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
-      <aside className={`sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-[#e3eaf2] bg-white/95 px-4 py-[22px] max-[980px]:static max-[980px]:h-auto max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-6 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-[22px] max-[980px]:gap-4'}`}>
+    <div className={`grid min-h-screen w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
+      <aside className={`flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#e3eaf2] bg-white/95 px-4 py-[22px] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-6 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-[22px] max-[980px]:gap-4'}`}>
         <div className={`flex min-w-0 items-center gap-2.5 ${isSidebarCollapsed ? 'grid justify-items-center' : 'justify-between'} max-[980px]:flex max-[980px]:justify-between`}>
           <Brand compact={isSidebarCollapsed} />
           <button
@@ -181,8 +186,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
         </div>
       </aside>
 
-      <main className="min-w-0 overflow-x-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0)_190px),#f5f7fb] [&>*]:min-w-0">
-        <header className="sticky top-0 z-[2] flex min-h-[68px] items-center justify-between border-b border-white/80 bg-white/70 px-[30px] shadow-[inset_0_-1px_0_rgba(227,234,242,0.46),0_10px_32px_rgba(15,23,42,0.026)] backdrop-blur-[22px] backdrop-saturate-150 max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:p-4">
+      <main ref={mainRef} className="min-w-0 overflow-x-hidden overscroll-contain bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0)_190px),#f5f7fb] [&>*]:min-w-0 min-[981px]:h-screen min-[981px]:overflow-y-auto">
+        <header className="sticky top-0 z-[2] flex min-h-[68px] items-center justify-between border-b border-white/80 bg-white/85 px-[30px] shadow-[inset_0_-1px_0_rgba(227,234,242,0.46),0_10px_32px_rgba(15,23,42,0.026)] backdrop-blur-md backdrop-saturate-150 [transform:translateZ(0)] [will-change:transform] max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:p-4">
           <div className="min-w-0">
             <span className="block text-xs font-extrabold uppercase text-[#657384]">VietMed Kỹ Thuật</span>
             <strong className="block text-lg leading-tight text-[#17202a]">{pageTitle}</strong>
@@ -434,7 +439,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <RepairUpdatePage />
+                <RepairUpdatePage user={user} />
               </RequireRole>
             }
           />
@@ -446,7 +451,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <MaintenanceUpdatePage />
+                <MaintenanceUpdatePage user={user} />
               </RequireRole>
             }
           />
@@ -505,6 +510,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                   ) : key === 'installations' && role !== 'admin' ? (
                     <ResourcePage
                       config={resources[key]}
+                      getEditHref={(row) => (row.id ? `/installations/${String(row.id)}/update?returnTo=/installations` : null)}
                       toolbarControl={
                         <Link className="primary-button" to="/installations/create?returnTo=/installations">
                           <Plus size={16} />

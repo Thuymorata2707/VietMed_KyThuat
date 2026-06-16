@@ -1,7 +1,7 @@
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ApiUser, apiFetch } from '../../api';
+import { ApiUser, Paginated, apiFetch } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
@@ -10,6 +10,12 @@ import { PageTitle } from '../../components/PageTitle';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 import type { CreateTicketForm, InstallationDeviceItem, InstallationTask } from '../EngineerTasksPage/types';
 import { emptyCreateTicketForm, emptyInstallationDeviceItem, normalizeInstallationDeviceItems } from '../EngineerTasksPage/utils';
+
+type EngineerOption = {
+  id: string;
+  fullName?: string | null;
+  email: string;
+};
 
 const statusOptions = [
   { value: 'PENDING', label: 'Chờ duyệt' },
@@ -34,7 +40,10 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   const [machineSerialNumber, setMachineSerialNumber] = useState('');
   const [machineCode, setMachineCode] = useState('');
   const [machineAccessoriesText, setMachineAccessoriesText] = useState('');
+  const [installedById, setInstalledById] = useState('');
+  const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [form, setForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm('installation'));
+  const isAdmin = role === 'admin';
 
   useEffect(() => {
     loadDetail();
@@ -55,7 +64,11 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
       setMachineSerialNumber(installation.machine?.serialNumber || '');
       setMachineCode(installation.machine?.machineCode || '');
       setMachineAccessoriesText('');
+      setInstalledById(installation.installedBy?.id || '');
       setForm(buildForm(installation));
+      if (isAdmin) {
+        await loadEngineers();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được phiếu lắp đặt.');
     } finally {
@@ -65,6 +78,15 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
 
   function updateForm(patch: Partial<CreateTicketForm>) {
     setForm((current) => ({ ...current, ...patch }));
+  }
+
+  async function loadEngineers() {
+    try {
+      const response = await apiFetch<Paginated<EngineerOption>>('/users?limit=100&roleName=engineer');
+      setEngineers(response.data);
+    } catch {
+      setEngineers([]);
+    }
   }
 
   function updateDeviceItem(index: number, patch: Partial<InstallationDeviceItem>) {
@@ -104,6 +126,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
         method: 'PATCH',
         body: JSON.stringify({
           status,
+          ...(isAdmin ? { installedById: installedById || undefined } : {}),
           installedAt: installedAt || form.workDate || undefined,
           warrantyStartDate: form.workDate || installedAt || undefined,
           warrantyEndDate: form.warrantyEndDate || undefined,
@@ -356,6 +379,19 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   ))}
                 </select>
               </label>
+              {isAdmin ? (
+                <label className="mt-4 grid gap-2 text-sm font-semibold text-[#405064]">
+                  Kỹ sư lắp đặt
+                  <select className={fieldClass} onChange={(event) => setInstalledById(event.target.value)} value={installedById}>
+                    <option value="">Chưa phân công</option>
+                    {engineers.map((engineer) => (
+                      <option key={engineer.id} value={engineer.id}>
+                        {engineer.fullName || engineer.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               {role !== 'admin' ? (
                 <p className="mt-3 text-sm font-medium text-[#657384]">
                   Kỹ sư được chuyển sang Đã lắp đặt sau khi nhập S/N máy thực tế. Khi lưu, hệ thống sẽ tạo/gắn máy vào kho và cập nhật tổng máy đã lắp.

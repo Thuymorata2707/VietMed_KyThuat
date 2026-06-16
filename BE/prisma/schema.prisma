@@ -426,7 +426,7 @@ model BusinessLine {
   name            String
   status          BusinessLineStatus     @default(ACTIVE)
   manufacturer    String?
-  imageUrl        String?
+  imageUrl  String? 
   productCategory MachineProductCategory @default(OTHER)
   countryOfOrigin String?
   website         String?
@@ -492,7 +492,7 @@ model MachineComponent {
   machineModelId String
   machineModel   MachineModel @relation(fields: [machineModelId], references: [id], onDelete: Cascade)
 
-  accessories ComponentAccessory[]
+  accessories String[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -532,7 +532,7 @@ model Machine {
   serialNumber String  @unique
 
   name            String?
-  imageUrl        String?
+  imageUrl  String?  
   modelName       String
   version         String?
   manufacturer    String
@@ -623,7 +623,7 @@ model MachineInstallation {
   installedBy   User?  @relation("MachineInstallationEngineer", fields: [installedById], references: [id], onDelete: SetNull)
 
   installedAt DateTime
-  accessories String[]
+  accessories   Json     @default("[]")
   note        String?
 
   handoverInstallerName     String?
@@ -732,7 +732,7 @@ model Maintenance {
   startedAt     DateTime?
   completedAt   DateTime?
 
-  checklist   String[]
+  checklist     String[]
   resultNote  String?
   nextDueDate DateTime?
 

@@ -1253,9 +1253,25 @@ function adminCrudFormCreateHref(endpoint?: string) {
 }
 
 function adminCrudFormEditHref(endpoint: string | undefined, row: TableRow) {
-  if (endpoint !== '/customers') return '';
+  if (endpoint === '/customers') {
+    const customerId = readPath(row, 'id');
+    return customerId ? `/customers/${String(customerId)}/edit` : '';
+  }
+
+  const serviceUpdate = serviceUpdateHref(endpoint, row);
+  if (serviceUpdate) return serviceUpdate;
+
+  return '';
+}
+
+function serviceUpdateHref(endpoint: string | undefined, row: TableRow) {
   const id = readPath(row, 'id');
-  return id ? `/customers/${String(id)}/edit` : '';
+  if (!id) return '';
+
+  if (endpoint === '/repairs') return `/repairs/${String(id)}/update?returnTo=/service-tickets`;
+  if (endpoint === '/maintenance') return `/maintenance/${String(id)}/update?returnTo=/service-tickets`;
+  if (endpoint === '/installations') return `/installations/${String(id)}/update?returnTo=/installations`;
+  return '';
 }
 
 function visibleFields(

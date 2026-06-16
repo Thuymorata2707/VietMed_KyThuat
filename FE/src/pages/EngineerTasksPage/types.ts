@@ -44,6 +44,11 @@ export type RepairTask = {
   warrantyStatus?: string | null;
   conditionAssessment?: string | null;
   repairMethod?: string | null;
+  engineer?: {
+    id?: string | null;
+    fullName?: string | null;
+    email?: string | null;
+  } | null;
   createdBy?: {
     fullName?: string | null;
     email?: string | null;
@@ -62,6 +67,11 @@ export type MaintenanceTask = {
   nextDueDate?: string | null;
   resultNote?: string | null;
   checklist?: string[];
+  engineer?: {
+    id?: string | null;
+    fullName?: string | null;
+    email?: string | null;
+  } | null;
   usingDepartment?: string | null;
   representative?: string | null;
   address?: string | null;
@@ -108,6 +118,11 @@ export type InstallationTask = {
   installedDeviceItems?: InstallationDeviceItem[];
   deviceCondition?: string | null;
   deviceConditionNote?: string | null;
+  installedBy?: {
+    id?: string | null;
+    fullName?: string | null;
+    email?: string | null;
+  } | null;
   warrantyCard?: {
     startDate?: string | null;
     endDate?: string | null;

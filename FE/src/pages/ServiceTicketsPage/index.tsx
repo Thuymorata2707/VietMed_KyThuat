@@ -43,5 +43,13 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
     return <AdminCrudPage config={adminCrudConfigs[kind]} headerControl={selector} />;
   }
 
-  return <ResourcePage config={resources[kind]} toolbarControl={selector} />;
+  const updateBase = kind === 'maintenance' ? '/maintenance' : '/repairs';
+
+  return (
+    <ResourcePage
+      config={resources[kind]}
+      getEditHref={(row) => (row.id ? `${updateBase}/${String(row.id)}/update?returnTo=/service-tickets` : null)}
+      toolbarControl={selector}
+    />
+  );
 }

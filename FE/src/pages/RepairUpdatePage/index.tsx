@@ -1,7 +1,8 @@
 import { ArrowLeft, Download, Loader2, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
+import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
+import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -9,8 +10,16 @@ import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
 import type { AttachmentType, RepairTask, TaskAttachment } from '../EngineerTasksPage/types';
 import { attachmentTypeLabel, formatFileSize, statusLabel } from '../EngineerTasksPage/utils';
 
+type EngineerOption = {
+  id: string;
+  fullName?: string | null;
+  email: string;
+};
+
 type RepairForm = {
   status: string;
+  priority: string;
+  engineerId: string;
   resultNote: string;
   customerFeedback: string;
   conditionAssessment: string;
@@ -24,16 +33,18 @@ type RepairForm = {
   serialNumber: string;
 };
 
-export function RepairUpdatePage() {
+export function RepairUpdatePage({ user }: { user: ApiUser }) {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/service-tickets';
+  const isAdmin = getRoleName(user) === 'admin';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [detail, setDetail] = useState<RepairTask | null>(null);
+  const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [form, setForm] = useState<RepairForm>(() => emptyForm());
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
@@ -57,6 +68,9 @@ export function RepairUpdatePage() {
       const repair = await apiFetch<RepairTask>(`/repairs/${id}`);
       setDetail(repair);
       setForm(buildForm(repair));
+      if (isAdmin) {
+        await loadEngineers();
+      }
       await loadAttachments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được phiếu sửa chữa.');
@@ -67,6 +81,15 @@ export function RepairUpdatePage() {
 
   function updateForm(patch: Partial<RepairForm>) {
     setForm((current) => ({ ...current, ...patch }));
+  }
+
+  async function loadEngineers() {
+    try {
+      const response = await apiFetch<Paginated<EngineerOption>>('/users?limit=100&roleName=engineer');
+      setEngineers(response.data);
+    } catch {
+      setEngineers([]);
+    }
   }
 
   async function loadAttachments() {
@@ -145,6 +168,12 @@ export function RepairUpdatePage() {
         method: 'PATCH',
         body: JSON.stringify({
           status: form.status,
+          ...(isAdmin
+            ? {
+                priority: form.priority,
+                engineerId: form.engineerId || null,
+              }
+            : {}),
           resultNote: form.resultNote.trim() || undefined,
           customerFeedback: form.customerFeedback.trim() || undefined,
           conditionAssessment: form.conditionAssessment.trim() || undefined,
@@ -210,6 +239,30 @@ export function RepairUpdatePage() {
                     ))}
                   </select>
                 </label>
+                {isAdmin ? (
+                  <label className={labelClass}>
+                    Mức ưu tiên
+                    <select className={fieldClass} onChange={(event) => updateForm({ priority: event.target.value })} value={form.priority}>
+                      <option value="LOW">Thấp</option>
+                      <option value="NORMAL">Bình thường</option>
+                      <option value="HIGH">Cao</option>
+                      <option value="URGENT">Khẩn cấp</option>
+                    </select>
+                  </label>
+                ) : null}
+                {isAdmin ? (
+                  <label className={labelClass}>
+                    Kỹ sư xử lý
+                    <select className={fieldClass} onChange={(event) => updateForm({ engineerId: event.target.value })} value={form.engineerId}>
+                      <option value="">Chưa phân công</option>
+                      {engineers.map((engineer) => (
+                        <option key={engineer.id} value={engineer.id}>
+                          {engineer.fullName || engineer.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
                 <label className={labelClass}>
                   S/N máy
                   <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
@@ -382,6 +435,8 @@ export function RepairUpdatePage() {
 function emptyForm(): RepairForm {
   return {
     status: 'IN_PROGRESS',
+    priority: 'NORMAL',
+    engineerId: '',
     resultNote: '',
     customerFeedback: '',
     conditionAssessment: '',
@@ -399,6 +454,8 @@ function emptyForm(): RepairForm {
 function buildForm(repair: RepairTask): RepairForm {
   return {
     status: repair.status || 'IN_PROGRESS',
+    priority: repair.priority || 'NORMAL',
+    engineerId: repair.engineer?.id || '',
     resultNote: repair.resultNote || '',
     customerFeedback: repair.customerFeedback || '',
     conditionAssessment: repair.conditionAssessment || '',

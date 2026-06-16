@@ -1,5 +1,6 @@
-import { Search } from 'lucide-react';
+import { Edit3, Search } from 'lucide-react';
 import { ReactNode, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -7,7 +8,15 @@ import { PageTitle } from '../../components/PageTitle';
 import { ResourceConfig } from '../../config/resources';
 import { TableRow, filterRows, formatValue, readPath } from '../../utils/format';
 
-export function ResourcePage({ config, toolbarControl }: { config: ResourceConfig; toolbarControl?: ReactNode }) {
+export function ResourcePage({
+  config,
+  toolbarControl,
+  getEditHref,
+}: {
+  config: ResourceConfig;
+  toolbarControl?: ReactNode;
+  getEditHref?: (row: TableRow) => string | null;
+}) {
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<TableRow[]>([]);
   const [meta, setMeta] = useState<Paginated<TableRow>['meta'] | null>(null);
@@ -72,16 +81,29 @@ export function ResourcePage({ config, toolbarControl }: { config: ResourceConfi
               {config.columns.map((column) => (
                 <th className="sticky top-0 z-[1] border-b border-[#edf1f6] bg-[#f8fbfd] px-4 py-3.5 text-left text-xs font-extrabold uppercase text-[#657384]" key={column.key}>{column.label}</th>
               ))}
+              {getEditHref ? <th className="sticky top-0 z-[1] border-b border-[#edf1f6] bg-[#f8fbfd] px-4 py-3.5 text-right text-xs font-extrabold uppercase text-[#657384]"></th> : null}
             </tr>
           </thead>
           <tbody>
-            {!loading && rows.map((row, index) => (
+            {!loading && rows.map((row, index) => {
+              const editHref = getEditHref?.(row) ?? null;
+              return (
               <tr className="even:bg-[#fcfdff] hover:bg-[#fbfdff]" key={String(row.id ?? index)}>
                 {config.columns.map((column) => (
                   <td className="border-b border-[#edf1f6] px-4 py-3.5 text-left text-[#253142]" key={column.key}>{formatValue(readColumnValue(row, column))}</td>
                 ))}
+                {getEditHref ? (
+                  <td className="border-b border-[#edf1f6] px-4 py-3.5 text-right">
+                    {editHref ? (
+                      <Link className="icon-button" title="Sửa" to={editHref}>
+                        <Edit3 size={16} />
+                      </Link>
+                    ) : null}
+                  </td>
+                ) : null}
               </tr>
-            ))}
+              );
+            })}
             {loading
               ? Array.from({ length: 5 }).map((_, rowIndex) => (
                   <tr className="skeleton-row" key={`loading-${rowIndex}`}>
@@ -93,12 +115,13 @@ export function ResourcePage({ config, toolbarControl }: { config: ResourceConfi
                         />
                       </td>
                     ))}
+                    {getEditHref ? <td className="border-b border-[#edf1f6] px-4 py-3.5" /> : null}
                   </tr>
                 ))
               : null}
             {!loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={config.columns.length}>
+                <td colSpan={config.columns.length + (getEditHref ? 1 : 0)}>
                   <div className="grid min-h-[180px] place-items-center content-center justify-center gap-2.5 text-center text-[#657384] [&_svg]:h-[42px] [&_svg]:w-[42px] [&_svg]:rounded-lg [&_svg]:border [&_svg]:border-[#f3c3be] [&_svg]:bg-[#fff5f4] [&_svg]:p-2.5 [&_svg]:text-[#c92a1f]">
                     {config.icon}
                     <strong className="text-[15px] text-[#17202a]">Chưa có dữ liệu phù hợp</strong>
