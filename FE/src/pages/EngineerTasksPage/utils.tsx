@@ -15,11 +15,12 @@ export function emptyInstallationDeviceItem(): InstallationDeviceItem {
   };
 }
 
-export const emptyCreateTicketForm = (): CreateTicketForm => ({
-  kind: 'repair',
+export const emptyCreateTicketForm = (kind: TaskKind = 'repair'): CreateTicketForm => ({
+  kind,
   title: '',
   description: '',
   machineId: '',
+  machineModelId: '',
   customerId: '',
   priority: 'NORMAL',
   maintenanceType: 'PERIODIC',
@@ -73,7 +74,7 @@ export function taskDateValue(task: EngineerTask) {
 }
 
 export function taskTitle(task: EngineerTask) {
-  if (task.kind === 'installation') return `Lắp đặt ${task.machine?.modelName || task.machine?.machineCode || task.code}`;
+  if (task.kind === 'installation') return `Lắp đặt ${task.machine?.modelName || task.plannedMachineModel?.name || task.plannedModelName || task.machine?.machineCode || task.code}`;
   return task.title;
 }
 
@@ -85,15 +86,18 @@ export function taskDescription(task: EngineerTask) {
 export function taskCustomer(task: EngineerTask) {
   if (task.kind === 'installation') return task.customer?.name || task.machine?.customer?.name;
   if (task.kind === 'repair') return task.usingDepartment || task.machine?.customer?.name;
-  return task.machine?.customer?.name;
+  if (task.kind === 'maintenance') return task.usingDepartment || task.machine?.customer?.name;
+  return undefined;
 }
 
 export function taskModelText(task: EngineerTask) {
-  return task.kind === 'repair' ? task.modelName || task.deviceName : undefined;
+  if (task.kind === 'installation') return task.machine?.modelName || task.plannedMachineModel?.name || task.plannedModelName;
+  if (task.kind === 'repair' || task.kind === 'maintenance') return task.modelName || task.deviceName;
+  return undefined;
 }
 
 export function taskSerialText(task: EngineerTask) {
-  return task.kind === 'repair' ? task.serialNumber : undefined;
+  return task.kind === 'repair' || task.kind === 'maintenance' ? task.serialNumber : undefined;
 }
 
 export function createTicketTitle(kind: TaskKind) {

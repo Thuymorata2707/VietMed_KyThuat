@@ -34,7 +34,13 @@ type MachineModelOption = {
   displayName?: string | null;
   manufacturer?: string | null;
   productCategory?: string | null;
-  businessLine?: { productCategory?: string | null } | null;
+  businessLine?: {
+    productCategory?: string | null;
+    expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
+    productIndustry?: {
+      expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
+    } | null;
+  } | null;
 };
 type MachineOption = {
   id: string;
@@ -44,6 +50,13 @@ type MachineOption = {
   name?: string | null;
   inventoryStatus?: string | null;
   customer?: CustomerOption | null;
+  businessLine?: {
+    expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
+    productIndustry?: {
+      expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
+    } | null;
+  } | null;
+  machineModel?: MachineModelOption | null;
 };
 
 type TicketForm = {
@@ -57,6 +70,7 @@ type TicketForm = {
   deviceName: string;
   engineerId: string;
   machineId: string;
+  machineModelId: string;
   maintenanceType: string;
   modelName: string;
   nextDueDate: string;
@@ -98,6 +112,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const [searchParams, setSearchParams] = useSearchParams();
   const initialKind = fixedKind ?? normalizeKind(searchParams.get('kind'));
   const initialMachineId = searchParams.get('machineId') ?? '';
+  const initialWarrantyStatus = searchParams.get('warrantyStatus') ?? '';
   const returnTo = searchParams.get('returnTo') ?? '';
   const role = getRoleName(user);
   const [kind, setKind] = useState<TicketKind>(initialKind);
@@ -119,10 +134,12 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const [success, setSuccess] = useState('');
   const scope = fixedKind === 'installation' || initialKind === 'installation' ? 'installation' : 'service';
 
-  const selectedMachine = useMemo(() => machines.find((machine) => machine.id === form.machineId), [form.machineId, machines]);
+  const visibleMachines = useMemo(() => machines.filter((machine) => canEngineerUseMachine(user, machine)), [machines, user]);
+  const visibleMachineModels = useMemo(() => machineModels.filter((model) => canEngineerUseModel(user, model)), [machineModels, user]);
+  const selectedMachine = useMemo(() => visibleMachines.find((machine) => machine.id === form.machineId), [form.machineId, visibleMachines]);
   const selectedModel = useMemo(
-    () => machineModels.find((model) => model.id === quickMachineForm.machineModelId),
-    [machineModels, quickMachineForm.machineModelId],
+    () => visibleMachineModels.find((model) => model.id === quickMachineForm.machineModelId),
+    [quickMachineForm.machineModelId, visibleMachineModels],
   );
   const quickMachineSupportsAccessories = isUltrasoundMachineModel(selectedModel);
   const backHref = returnTo || (scope === 'installation' ? '/installations' : '/service-tickets');
@@ -133,35 +150,45 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
   useEffect(() => {
     if (!fixedKind) {
-      setSearchParams(compactSearchParams({ kind, machineId: initialMachineId, returnTo }));
+      setSearchParams(compactSearchParams({ kind, machineId: initialMachineId, returnTo, warrantyStatus: initialWarrantyStatus }));
     }
     setForm((current) => ({
       ...emptyTicketForm(user, kind),
       customerId: current.customerId,
       engineerId: current.engineerId,
       machineId: '',
+      warrantyStatus: initialWarrantyStatus || current.warrantyStatus,
     }));
     loadMachines(kind).catch((err) => {
       setError(err instanceof Error ? err.message : 'Không tải được danh sách thiết bị.');
     });
-  }, [fixedKind, initialMachineId, kind, returnTo]);
+  }, [fixedKind, initialMachineId, initialWarrantyStatus, kind, returnTo]);
 
   async function loadOptions() {
     setLoading(true);
     setError('');
 
     try {
-      const [customersResult, engineersResult, regionsResult, modelsResult] = await Promise.all([
+      const [customersResult, modelsResult] = await Promise.all([
         apiFetch<Paginated<CustomerOption>>('/customers?limit=100'),
-        apiFetch<Paginated<EngineerOption>>('/users?limit=100&roleName=engineer'),
-        apiFetch<Paginated<Region> | Region[]>('/regions?limit=100'),
         apiFetch<Paginated<MachineModelOption>>('/machine-models?limit=100'),
       ]);
 
       setCustomers(customersResult.data);
-      setEngineers(engineersResult.data);
-      setRegions(unpackList(regionsResult));
       setMachineModels(modelsResult.data);
+
+      if (role === 'engineer') {
+        setEngineers([{ id: user.id, email: user.email, fullName: user.fullName }]);
+        setRegions(user.region?.id ? [{ id: user.region.id, name: user.region.name }] : []);
+      } else {
+        const [engineersResult, regionsResult] = await Promise.all([
+          apiFetch<Paginated<EngineerOption>>('/users?limit=100&roleName=engineer'),
+          apiFetch<Paginated<Region> | Region[]>('/regions?limit=100'),
+        ]);
+        setEngineers(engineersResult.data);
+        setRegions(unpackList(regionsResult));
+      }
+
       await loadMachines(kind);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được dữ liệu tạo phiếu.');
@@ -173,8 +200,9 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   async function loadMachines(nextKind: TicketKind) {
     const inventoryStatus = nextKind === 'installation' ? 'IN_STOCK' : 'INSTALLED';
     const result = await apiFetch<Paginated<MachineOption>>(`/machines?limit=100&inventoryStatus=${inventoryStatus}`);
-    setMachines(result.data);
-    const initialMachine = result.data.find((machine) => machine.id === initialMachineId);
+    const availableMachines = result.data.filter((machine) => canEngineerUseMachine(user, machine));
+    setMachines(availableMachines);
+    const initialMachine = availableMachines.find((machine) => machine.id === initialMachineId);
     if (initialMachine) {
       applyMachine(initialMachine);
     }
@@ -303,7 +331,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           body: JSON.stringify({
             title: form.title.trim(),
             description: form.description.trim() || undefined,
-            machineId: form.machineId,
+            machineId: form.machineId || undefined,
             engineerId: form.engineerId || undefined,
             priority: form.priority,
             reportedAt: form.reportedAt || undefined,
@@ -326,18 +354,27 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
             title: form.title.trim(),
             description: form.description.trim() || undefined,
             type: form.maintenanceType,
-            machineId: form.machineId,
+            machineId: form.machineId || undefined,
             engineerId: form.engineerId || undefined,
             scheduledDate: form.scheduledDate,
             nextDueDate: form.nextDueDate || undefined,
             checklist: splitLines(form.checklist),
+            usingDepartment: form.usingDepartment.trim() || undefined,
+            representative: form.representative.trim() || undefined,
+            address: form.address.trim() || undefined,
+            contactPhone: form.contactPhone.trim() || undefined,
+            deviceName: form.deviceName.trim() || undefined,
+            modelName: form.modelName.trim() || undefined,
+            serialNumber: form.serialNumber.trim() || undefined,
           }),
         });
       } else {
         await apiFetch('/installations', {
           method: 'POST',
           body: JSON.stringify({
-            machineId: form.machineId,
+            machineId: form.machineId || undefined,
+            machineModelId: form.machineModelId || undefined,
+            plannedModelName: visibleMachineModels.find((model) => model.id === form.machineModelId)?.name || form.modelName.trim() || undefined,
             customerId: form.customerId,
             installedById: form.engineerId,
             installedAt: form.scheduledDate,
@@ -348,7 +385,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         });
       }
 
-      setSuccess('Đã tạo phiếu.');
+      setSuccess(role === 'engineer' ? 'Đã tạo phiếu. Admin sẽ kiểm tra và duyệt dữ liệu vận hành liên quan.' : 'Đã tạo phiếu.');
       setForm(emptyTicketForm(user, kind));
       window.setTimeout(() => navigate(backHref), 450);
     } catch (err) {
@@ -364,7 +401,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         <PageTitle
           eyebrow="Phiếu dịch vụ"
           title="Tạo phiếu"
-          description="Chọn dữ liệu có sẵn trước. Chỉ tạo mới khách hàng hoặc thiết bị khi chưa có trong hệ thống."
+          description="Tạo phiếu từ đúng mục nghiệp vụ. Dữ liệu khách hàng hoặc thiết bị do kỹ sư tạo nhanh sẽ chờ admin kiểm tra trước khi xác nhận chính thức."
         />
         <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
           <ArrowLeft size={17} />
@@ -375,11 +412,21 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <form className="grid gap-4 font-sans lg:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
-        <section className="grid gap-4">
-          <div className="rounded-lg border border-[#dfe7ef] bg-white p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-bold text-[#17202a]">Thông tin phiếu</h2>
+      {role === 'engineer' ? (
+        <div className="rounded-lg border border-[#fedf89] bg-[#fffbeb] px-4 py-3 text-sm font-semibold leading-relaxed text-[#92400e]">
+          Phiếu và dữ liệu mới bạn tạo sẽ được lưu vào hệ thống để admin theo dõi, kiểm tra và duyệt dữ liệu vận hành.
+        </div>
+      ) : null}
+
+      <form className="grid min-w-0 gap-4 font-sans min-[1320px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
+        <section className="grid min-w-0 gap-4">
+          <div className={panelClass}>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[#edf1f6] pb-4">
+              <div>
+                <span className="text-xs font-extrabold uppercase text-[#c92a1f]">Bước 1</span>
+                <h2 className="mt-1 text-lg font-bold text-[#17202a]">Thông tin phiếu</h2>
+                <p className="mt-1 text-sm text-[#657384]">Chọn đúng loại phiếu, thiết bị và kỹ sư phụ trách trước khi nhập chi tiết.</p>
+              </div>
               <label className="grid min-w-[220px] max-sm:min-w-0 max-sm:w-full gap-2 text-sm font-semibold text-[#405064]">
                 Loại phiếu
                 <select className={fieldClass} onChange={(event) => setKind(event.target.value as TicketKind)} value={kind}>
@@ -403,17 +450,43 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 </label>
               ) : null}
 
-              <label className={wideLabelClass}>
-                Thiết bị
-                <select className={fieldClass} disabled={loading} onChange={(event) => selectMachine(event.target.value)} required value={form.machineId}>
-                  <option value="">Chọn thiết bị có sẵn</option>
-                  {machines.map((machine) => (
-                    <option key={machine.id} value={machine.id}>
-                      {machineLabel(machine)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {kind === 'installation' ? (
+                <label className={wideLabelClass}>
+                  Model dự kiến
+                  <select
+                    className={fieldClass}
+                    disabled={loading}
+                    onChange={(event) => {
+                      const model = visibleMachineModels.find((item) => item.id === event.target.value);
+                      updateForm({
+                        machineModelId: event.target.value,
+                        modelName: model?.name || model?.displayName || '',
+                      });
+                    }}
+                    required
+                    value={form.machineModelId}
+                  >
+                    <option value="">Chọn model cần lắp</option>
+                    {visibleMachineModels.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {modelLabel(model)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label className={wideLabelClass}>
+                  Thiết bị có sẵn
+                  <select className={fieldClass} disabled={loading} onChange={(event) => selectMachine(event.target.value)} value={form.machineId}>
+                    <option value="">Không bắt buộc</option>
+                    {visibleMachines.map((machine) => (
+                      <option key={machine.id} value={machine.id}>
+                        {machineLabel(machine)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
               {kind === 'installation' ? (
                 <label className={labelClass}>
@@ -451,11 +524,12 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#dfe7ef] bg-white p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className={panelClass}>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[#edf1f6] pb-4">
               <div>
+                <span className="text-xs font-extrabold uppercase text-[#c92a1f]">Bước 2</span>
                 <h2 className="text-lg font-bold text-[#17202a]">Dữ liệu chưa có</h2>
-                <p className="mt-1 text-sm text-[#657384]">Mở phần này khi tìm không thấy khách hàng hoặc thiết bị.</p>
+                <p className="mt-1 text-sm text-[#657384]">Chỉ mở phần này khi tìm không thấy khách hàng hoặc thiết bị trong danh sách.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button className="secondary-button" onClick={() => setShowQuickCustomer((value) => !value)} type="button">
@@ -475,6 +549,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
               <QuickCustomerPanel
                 creating={creatingCustomer}
                 form={quickCustomerForm}
+                isEngineer={role === 'engineer'}
                 onCreate={createCustomer}
                 regions={regions}
                 updateForm={(patch) => setQuickCustomerForm((current) => ({ ...current, ...patch }))}
@@ -487,7 +562,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 customers={customers}
                 form={quickMachineForm}
                 kind={kind}
-                models={machineModels}
+                models={visibleMachineModels}
                 onCreate={createMachine}
                 selectedModel={selectedModel}
                 supportsAccessories={quickMachineSupportsAccessories}
@@ -497,9 +572,10 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           </div>
         </section>
 
-        <aside className="grid gap-4 self-start">
-          <div className="rounded-lg border border-[#dfe7ef] bg-white p-5">
-            <h2 className="mb-4 text-lg font-bold text-[#17202a]">Tóm tắt</h2>
+        <aside className="grid min-w-0 gap-4 self-start">
+          <div className={panelClass}>
+            <span className="text-xs font-extrabold uppercase text-[#c92a1f]">Kiểm tra</span>
+            <h2 className="mb-4 mt-1 text-lg font-bold text-[#17202a]">Tóm tắt</h2>
             <div className="grid gap-3 text-sm text-[#405064]">
               <SummaryRow label="Loại phiếu" value={ticketKindLabel(kind)} />
               <SummaryRow label="Thiết bị" value={selectedMachine ? machineLabel(selectedMachine) : 'Chưa chọn'} />
@@ -599,6 +675,34 @@ function MaintenanceFields({ form, updateForm }: { form: TicketForm; updateForm:
         Lịch tiếp theo
         <input className={fieldClass} onChange={(event) => updateForm({ nextDueDate: event.target.value })} type="date" value={form.nextDueDate} />
       </label>
+      <label className={labelClass}>
+        Đơn vị sử dụng
+        <input className={fieldClass} onChange={(event) => updateForm({ usingDepartment: event.target.value })} value={form.usingDepartment} />
+      </label>
+      <label className={labelClass}>
+        Người đại diện
+        <input className={fieldClass} onChange={(event) => updateForm({ representative: event.target.value })} value={form.representative} />
+      </label>
+      <label className={labelClass}>
+        Số điện thoại
+        <input className={fieldClass} onChange={(event) => updateForm({ contactPhone: event.target.value })} value={form.contactPhone} />
+      </label>
+      <label className={wideLabelClass}>
+        Địa chỉ
+        <input className={fieldClass} onChange={(event) => updateForm({ address: event.target.value })} value={form.address} />
+      </label>
+      <label className={labelClass}>
+        Tên thiết bị
+        <input className={fieldClass} onChange={(event) => updateForm({ deviceName: event.target.value })} value={form.deviceName} />
+      </label>
+      <label className={labelClass}>
+        Model
+        <input className={fieldClass} onChange={(event) => updateForm({ modelName: event.target.value })} value={form.modelName} />
+      </label>
+      <label className={labelClass}>
+        S/N
+        <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
+      </label>
       <label className={wideLabelClass}>
         Checklist
         <textarea className={textareaClass} onChange={(event) => updateForm({ checklist: event.target.value })} placeholder="Mỗi dòng là một hạng mục kiểm tra" value={form.checklist} />
@@ -637,12 +741,14 @@ function InstallationFields({ form, updateForm }: { form: TicketForm; updateForm
 function QuickCustomerPanel({
   creating,
   form,
+  isEngineer,
   onCreate,
   regions,
   updateForm,
 }: {
   creating: boolean;
   form: QuickCustomerForm;
+  isEngineer: boolean;
   onCreate: () => void;
   regions: Region[];
   updateForm: (patch: Partial<QuickCustomerForm>) => void;
@@ -653,17 +759,24 @@ function QuickCustomerPanel({
         Tên khách hàng
         <input className={fieldClass} onChange={(event) => updateForm({ name: event.target.value })} value={form.name} />
       </label>
-      <label className={labelClass}>
-        Khu vực
-        <select className={fieldClass} onChange={(event) => updateForm({ regionId: event.target.value })} value={form.regionId}>
-          <option value="">Chọn khu vực</option>
-          {regions.map((region) => (
-            <option key={region.id} value={region.id}>
-              {region.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {isEngineer ? (
+        <div className="grid min-w-0 gap-2 rounded-lg border border-[#dfe7ef] bg-white px-3 py-2 text-sm">
+          <span className="font-bold text-[#405064]">Khu vực</span>
+          <strong className="text-[#17202a]">{regions[0]?.name || 'Theo khu vực tài khoản'}</strong>
+        </div>
+      ) : (
+        <label className={labelClass}>
+          Khu vực
+          <select className={fieldClass} onChange={(event) => updateForm({ regionId: event.target.value })} value={form.regionId}>
+            <option value="">Chọn khu vực</option>
+            {regions.map((region) => (
+              <option key={region.id} value={region.id}>
+                {region.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className={labelClass}>
         Tỉnh/Thành
         <input className={fieldClass} onChange={(event) => updateForm({ province: event.target.value })} value={form.province} />
@@ -791,12 +904,13 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-const labelClass = 'grid min-w-0 gap-2 font-sans text-sm font-semibold leading-snug text-[#405064]';
+const panelClass = 'rounded-lg border border-[#dfe7ef] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]';
+const labelClass = 'grid min-w-0 content-start gap-2 font-sans text-sm font-bold leading-snug text-[#405064]';
 const wideLabelClass = `${labelClass} md:col-span-2`;
 const fieldClass =
-  'h-11 w-full min-w-0 rounded-lg border border-[#ced8e3] bg-white px-3 font-sans text-[#17202a] outline-none transition focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] disabled:cursor-not-allowed disabled:bg-[#f8fafc] disabled:text-[#8a98aa]';
+  'h-11 w-full min-w-0 rounded-lg border border-[#ced8e3] bg-white px-3 font-sans text-sm font-medium text-[#17202a] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] disabled:cursor-not-allowed disabled:bg-[#f8fafc] disabled:text-[#8a98aa]';
 const textareaClass =
-  'min-h-28 w-full min-w-0 resize-y rounded-lg border border-[#ced8e3] bg-white px-3 py-2 font-sans text-[#17202a] outline-none transition focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] disabled:cursor-not-allowed disabled:bg-[#f8fafc] disabled:text-[#8a98aa]';
+  'min-h-28 w-full min-w-0 resize-y rounded-lg border border-[#ced8e3] bg-white px-3 py-2.5 font-sans text-sm font-medium leading-relaxed text-[#17202a] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] disabled:cursor-not-allowed disabled:bg-[#f8fafc] disabled:text-[#8a98aa]';
 
 function normalizeKind(value: string | null): TicketKind {
   if (value === 'maintenance' || value === 'installation') return value;
@@ -816,6 +930,7 @@ function emptyTicketForm(user: ApiUser, kind: TicketKind): TicketForm {
     deviceName: '',
     engineerId: getRoleName(user) === 'engineer' ? user.id : '',
     machineId: '',
+    machineModelId: '',
     maintenanceType: 'PERIODIC',
     modelName: '',
     nextDueDate: '',
@@ -870,6 +985,27 @@ function compactSearchParams(params: Record<string, string>) {
   return Object.fromEntries(Object.entries(params).filter(([, value]) => value));
 }
 
+function canEngineerUseMachine(user: ApiUser, machine: MachineOption) {
+  const expertiseGroup = user.engineerProfile?.expertiseGroup;
+  if (getRoleName(user) !== 'engineer' || !expertiseGroup) return true;
+
+  const machineGroup =
+    machine.businessLine?.productIndustry?.expertiseGroup ??
+    machine.businessLine?.expertiseGroup ??
+    machine.machineModel?.businessLine?.productIndustry?.expertiseGroup ??
+    machine.machineModel?.businessLine?.expertiseGroup;
+
+  return !machineGroup || machineGroup === expertiseGroup;
+}
+
+function canEngineerUseModel(user: ApiUser, model: MachineModelOption) {
+  const expertiseGroup = user.engineerProfile?.expertiseGroup;
+  if (getRoleName(user) !== 'engineer' || !expertiseGroup) return true;
+
+  const modelGroup = model.businessLine?.productIndustry?.expertiseGroup ?? model.businessLine?.expertiseGroup;
+  return !modelGroup || modelGroup === expertiseGroup;
+}
+
 function ticketKindLabel(kind: TicketKind) {
   if (kind === 'maintenance') return 'Bảo trì';
   if (kind === 'installation') return 'Lắp đặt';
@@ -882,6 +1018,10 @@ function customerLabel(customer: CustomerOption) {
 
 function machineLabel(machine: MachineOption) {
   return [machine.machineCode, machine.serialNumber, machine.modelName || machine.name, machine.customer?.name].filter(Boolean).join(' - ');
+}
+
+function modelLabel(model: MachineModelOption) {
+  return [model.code, model.displayName || model.name, model.manufacturer].filter(Boolean).join(' - ');
 }
 
 function customerNameForSummary(machine: MachineOption | undefined, customers: CustomerOption[], customerId: string) {

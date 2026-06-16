@@ -39,15 +39,24 @@ export class InstallationDeviceItemDto {
 
 export class CreateInstallationDto {
   @IsString()
-  @IsNotEmpty()
-  machineId!: string;
+  @IsOptional()
+  machineId?: string;
+
+  @IsOptional()
+  @IsString()
+  machineModelId?: string;
+
+  @IsOptional()
+  @IsString()
+  plannedModelName?: string;
 
   @IsString()
   @IsNotEmpty()
   customerId!: string;
 
+  @IsOptional()
   @IsDateString()
-  installedAt!: string;
+  installedAt?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -70,8 +79,9 @@ export class CreateInstallationDto {
   @IsDateString()
   warrantyStartDate?: string;
 
+  @IsOptional()
   @IsDateString()
-  warrantyEndDate!: string;
+  warrantyEndDate?: string;
 
   @IsOptional()
   @IsString()

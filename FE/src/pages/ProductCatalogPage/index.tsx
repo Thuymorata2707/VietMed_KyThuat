@@ -619,17 +619,17 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <form className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
-        <section className="grid gap-4">
+      <form className="grid min-w-0 gap-4 min-[1320px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
+        <section className="grid min-w-0 gap-4">
           <div className="rounded-lg border border-[#dfe7ef] bg-white p-5">
             <div className="mb-4">
               <h2 className="text-lg font-bold text-[#17202a]">Products Description</h2>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-semibold text-[#405064] md:col-span-2">
+            <div className="grid min-w-0 gap-4 md:grid-cols-2">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#405064] md:col-span-2">
                 Model sản phẩm
                 <select
-                  className="h-11 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
                   disabled={loading}
                   onChange={(event) => updateField('machineModelId', event.target.value)}
                   required
@@ -642,39 +642,39 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                   ))}
                 </select>
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-[#405064]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#405064]">
                 Category
                 <input
-                  className="h-11 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none"
+                  className="h-11 min-w-0 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none"
                   readOnly
                   value={selectedModel?.businessLine?.productIndustry?.name ?? ''}
                 />
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-[#405064]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#405064]">
                 Brand
-                <input className="h-11 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none" readOnly value={selectedModel?.manufacturer ?? ''} />
+                <input className="h-11 min-w-0 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none" readOnly value={selectedModel?.manufacturer ?? ''} />
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-[#405064]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#405064]">
                 Serial Number
                 <input
-                  className="h-11 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
                   onChange={(event) => updateField('serialNumber', event.target.value)}
                   required
                   value={form.serialNumber}
                 />
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-[#405064]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#405064]">
                 Mã máy nội bộ
                 <input
-                  className="h-11 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
                   onChange={(event) => updateField('machineCode', event.target.value)}
                   value={form.machineCode}
                 />
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-[#405064]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#405064]">
                 Ngày nhập kho
                 <input
-                  className="h-11 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
                   onChange={(event) => updateField('warehouseImportDate', event.target.value)}
                   type="date"
                   value={form.warehouseImportDate}
@@ -690,10 +690,10 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             {supportsProbes ? (
               <MachineAccessoryEditor onChange={(value) => updateField('accessoriesText', value)} value={form.accessoriesText} />
             ) : (
-              <label className="grid gap-2 text-sm font-semibold text-[#405064]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#405064]">
                 S/N phụ kiện
                 <textarea
-                  className="min-h-36 rounded-lg border border-[#ced8e3] px-3 py-2 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
+                  className="min-h-36 min-w-0 rounded-lg border border-[#ced8e3] px-3 py-2 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
                   onChange={(event) => updateField('accessoriesText', event.target.value)}
                   placeholder={'Mỗi dòng: Phụ kiện | Serial Number\nVí dụ:\nBộ dây nguồn | ACC-001\nCáp kết nối | ACC-002'}
                   value={formatMachineAccessoriesText(form.accessoriesText)}
@@ -703,7 +703,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
           </div>
         </section>
 
-        <aside className="grid gap-4 self-start">
+        <aside className="grid min-w-0 gap-4 self-start">
           <div className="rounded-lg border border-[#dfe7ef] bg-white p-5">
             <h2 className="mb-4 text-lg font-bold text-[#17202a]">Products Images</h2>
             <div className="grid min-h-48 place-items-center rounded-lg border border-dashed border-[#ced8e3] bg-[#f8fafc] p-4 text-center text-sm text-[#657384]">
@@ -839,8 +839,8 @@ function ModelDetailBlock({
         </div>
       </div>
 
-      <div className="grid gap-4 p-5 xl:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
-        <div className="grid gap-4 self-start">
+      <div className="grid min-w-0 gap-4 p-5 min-[1320px]:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
+        <div className="grid min-w-0 gap-4 self-start">
           {canEditImage ? (
             <div className="rounded-lg border border-[#dfe7ef] bg-[#f8fafc] p-4">
               <label className="grid gap-2 text-sm font-semibold text-[#405064]">

@@ -23,6 +23,7 @@ import { RegionsModule } from './regions/regions.module';
 import { RepairsModule } from './repairs/repairs.module';
 import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
+import { WeeklyReportsModule } from './weekly-reports/weekly-reports.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { UsersModule } from './users/users.module';
     MachineModelsModule,
     MachineComponentsModule,
     ProductIndustriesModule,
+    WeeklyReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -24,6 +25,23 @@ import { ListMaintenanceQueryDto } from './dto/list-maintenance-query.dto';
 import { UpdateMaintenanceStatusDto } from './dto/update-maintenance-status.dto';
 import { UpdateMaintenanceDto } from './dto/update-maintenance.dto';
 
+type MachineExpertiseSource = {
+  businessLine?: {
+    expertiseGroup?: string | null;
+    productIndustry?: {
+      expertiseGroup?: string | null;
+    } | null;
+  } | null;
+  machineModel?: {
+    businessLine?: {
+      expertiseGroup?: string | null;
+      productIndustry?: {
+        expertiseGroup?: string | null;
+      } | null;
+    } | null;
+  } | null;
+} | null;
+
 @Injectable()
 export class MaintenanceService {
   constructor(
@@ -35,9 +53,15 @@ export class MaintenanceService {
   async create(dto: CreateMaintenanceDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.MAINTENANCE_CREATE);
     this.validateCreateMaintenance(dto);
-    await this.ensureMachineExists(dto.machineId);
+    const machine = dto.machineId
+      ? await this.ensureMachineExists(dto.machineId)
+      : null;
+    if (machine) {
+      await this.assertEngineerCanUseMachine(actor, machine);
+    }
 
-    const engineerId = isEngineer(actor) ? actor.id : dto.engineerId;
+    const createdByEngineer = isEngineer(actor);
+    const engineerId = createdByEngineer ? actor.id : dto.engineerId;
 
     if (engineerId) {
       await this.ensureEngineerExists(engineerId);
@@ -46,22 +70,31 @@ export class MaintenanceService {
     return this.prisma.$transaction(async (tx) => {
       const maintenance = await tx.maintenance.create({
         data: {
-          code: await this.generateMaintenanceCode(),
+          code: await this.generateMaintenanceCode(machine),
           title: dto.title.trim(),
           description: dto.description?.trim() || null,
           type: dto.type ?? MaintenanceType.PERIODIC,
-          status: engineerId
-            ? MaintenanceStatus.ASSIGNED
-            : MaintenanceStatus.SCHEDULED,
-          machineId: dto.machineId,
+          status: createdByEngineer
+            ? MaintenanceStatus.SCHEDULED
+            : engineerId
+              ? MaintenanceStatus.ASSIGNED
+              : MaintenanceStatus.SCHEDULED,
+          machineId: machine?.id ?? null,
           engineerId: engineerId || null,
           scheduledDate: this.parseRequiredDate(
             dto.scheduledDate,
             'scheduledDate',
           ),
-          assignedAt: engineerId ? new Date() : null,
+          assignedAt: createdByEngineer ? null : engineerId ? new Date() : null,
           checklist: this.normalizeChecklist(dto.checklist),
           nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
+          usingDepartment: this.cleanOptionalString(dto.usingDepartment),
+          representative: this.cleanOptionalString(dto.representative),
+          address: this.cleanOptionalString(dto.address),
+          contactPhone: this.cleanOptionalString(dto.contactPhone),
+          deviceName: this.cleanOptionalString(dto.deviceName),
+          modelName: this.cleanOptionalString(dto.modelName),
+          serialNumber: this.cleanOptionalString(dto.serialNumber),
         },
         include: this.defaultInclude(),
       });
@@ -89,6 +122,20 @@ export class MaintenanceService {
             title: 'Bạn có phiếu bảo trì mới',
             message: `${actor.email} đã phân công phiếu ${maintenance.code}: ${maintenance.title}`,
             href: '/my-tasks',
+            entityType: 'Maintenance',
+            entityId: maintenance.id,
+            createdById: actor.id,
+          },
+          tx,
+        );
+      }
+
+      if (isEngineer(actor)) {
+        await this.notificationsService.createForAdmins(
+          {
+            title: 'Kỹ sư tạo phiếu bảo trì mới',
+            message: `${actor.email} đã tạo phiếu ${maintenance.code}: ${maintenance.title}. Vui lòng kiểm tra và duyệt dữ liệu liên quan.`,
+            href: '/service-tickets',
             entityType: 'Maintenance',
             entityId: maintenance.id,
             createdById: actor.id,
@@ -146,6 +193,19 @@ export class MaintenanceService {
         ? maintenance.engineerId
         : dto.engineerId || null;
     const nextStatus = dto.status ?? maintenance.status;
+    const nextMachine =
+      dto.machineId === undefined
+        ? maintenance.machine
+        : dto.machineId
+          ? await this.ensureMachineExists(dto.machineId)
+          : null;
+
+    if (nextMachine) {
+      await this.assertEngineerCanUseMachine(
+        actor,
+        nextMachine as MachineExpertiseSource,
+      );
+    }
 
     if (nextEngineerId) {
       await this.ensureEngineerExists(nextEngineerId);
@@ -171,6 +231,8 @@ export class MaintenanceService {
           type: dto.type,
           engineerId:
             dto.engineerId === undefined ? undefined : nextEngineerId,
+          machineId:
+            dto.machineId === undefined ? undefined : nextMachine?.id ?? null,
           status: dto.status,
           assignedAt:
             dto.engineerId !== undefined &&
@@ -200,6 +262,15 @@ export class MaintenanceService {
             dto.nextDueDate === undefined
               ? undefined
               : this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
+          usingDepartment: this.cleanOptionalUpdateString(
+            dto.usingDepartment,
+          ),
+          representative: this.cleanOptionalUpdateString(dto.representative),
+          address: this.cleanOptionalUpdateString(dto.address),
+          contactPhone: this.cleanOptionalUpdateString(dto.contactPhone),
+          deviceName: this.cleanOptionalUpdateString(dto.deviceName),
+          modelName: this.cleanOptionalUpdateString(dto.modelName),
+          serialNumber: this.cleanOptionalUpdateString(dto.serialNumber),
         },
         include: this.defaultInclude(),
       });
@@ -207,14 +278,14 @@ export class MaintenanceService {
       const machineStatus =
         this.getMachineStatusForMaintenanceStatus(nextStatus);
 
-      if (machineStatus) {
+      if (machineStatus && nextMachine) {
         validateMachineState(
           machineStatus,
-          maintenance.machine.inventoryStatus,
-          maintenance.machine.customerId,
+          nextMachine.inventoryStatus,
+          nextMachine.customerId,
         );
         await tx.machine.update({
-          where: { id: maintenance.machineId },
+          where: { id: nextMachine.id },
           data: {
             status: machineStatus,
           },
@@ -237,6 +308,13 @@ export class MaintenanceService {
             'checklist',
             'resultNote',
             'nextDueDate',
+            'usingDepartment',
+            'representative',
+            'address',
+            'contactPhone',
+            'deviceName',
+            'modelName',
+            'serialNumber',
           ]),
         },
         tx,
@@ -400,14 +478,14 @@ export class MaintenanceService {
         dto.status,
       );
 
-      if (machineStatus) {
+      if (machineStatus && maintenance.machine) {
         validateMachineState(
           machineStatus,
           maintenance.machine.inventoryStatus,
           maintenance.machine.customerId,
         );
         await tx.machine.update({
-          where: { id: maintenance.machineId },
+          where: { id: maintenance.machine.id },
           data: {
             status: machineStatus,
           },
@@ -454,20 +532,77 @@ export class MaintenanceService {
   }
 
   private validateCreateMaintenance(dto: CreateMaintenanceDto) {
-    if (!dto.title?.trim() || !dto.machineId || !dto.scheduledDate) {
+    if (!dto.title?.trim() || !dto.scheduledDate) {
       throw new BadRequestException(
-        'title, machineId and scheduledDate are required',
+        'title and scheduledDate are required',
       );
     }
+  }
+
+  private cleanOptionalString(value?: string | null) {
+    return value?.trim() || null;
+  }
+
+  private cleanOptionalUpdateString(value?: string | null) {
+    return value === undefined ? undefined : this.cleanOptionalString(value);
   }
 
   private async ensureMachineExists(machineId: string) {
     const machine = await this.prisma.machine.findUnique({
       where: { id: machineId },
+      include: {
+        businessLine: {
+          include: {
+            productIndustry: true,
+          },
+        },
+        machineModel: {
+          include: {
+            businessLine: {
+              include: {
+                productIndustry: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!machine) {
       throw new BadRequestException('Machine does not exist');
+    }
+
+    return machine;
+  }
+
+  private async assertEngineerCanUseMachine(
+    actor: RequestUser,
+    machine: MachineExpertiseSource,
+  ) {
+    if (!isEngineer(actor)) {
+      return;
+    }
+
+    const engineer = await this.prisma.user.findUnique({
+      where: { id: actor.id },
+      include: { engineerProfile: true },
+    });
+    const expertiseGroup = engineer?.engineerProfile?.expertiseGroup;
+
+    if (!expertiseGroup) {
+      return;
+    }
+
+    const machineGroup =
+      machine.businessLine?.productIndustry?.expertiseGroup ??
+      machine.businessLine?.expertiseGroup ??
+      machine.machineModel?.businessLine?.productIndustry?.expertiseGroup ??
+      machine.machineModel?.businessLine?.expertiseGroup;
+
+    if (machineGroup && machineGroup !== expertiseGroup) {
+      throw new ForbiddenException(
+        'Engineer can only create tickets for assigned product group',
+      );
     }
   }
 
@@ -488,12 +623,12 @@ export class MaintenanceService {
     }
   }
 
-  private async generateMaintenanceCode(): Promise<string> {
+  private async generateMaintenanceCode(
+    machine: MachineExpertiseSource,
+  ): Promise<string> {
     const now = new Date();
     const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const prefix = `MT-${year}${month}${day}`;
+    const prefix = `BT-${this.getExpertiseGroupCode(machine)}-${year}`;
 
     const count = await this.prisma.maintenance.count({
       where: {
@@ -504,6 +639,20 @@ export class MaintenanceService {
     });
 
     return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+  }
+
+  private getExpertiseGroupCode(
+    machine: MachineExpertiseSource,
+  ) {
+    const group =
+      machine?.businessLine?.productIndustry?.expertiseGroup ??
+      machine?.businessLine?.expertiseGroup ??
+      machine?.machineModel?.businessLine?.productIndustry?.expertiseGroup ??
+      machine?.machineModel?.businessLine?.expertiseGroup;
+
+    if (group === 'LAB_TESTING') return 'XN';
+    if (group === 'IMAGING') return 'SA';
+    return 'KT';
   }
 
   private parseRequiredDate(value: string, fieldName: string): Date {
@@ -568,6 +717,11 @@ export class MaintenanceService {
             { code: { contains: search, mode: 'insensitive' } },
             { title: { contains: search, mode: 'insensitive' } },
             { description: { contains: search, mode: 'insensitive' } },
+            { deviceName: { contains: search, mode: 'insensitive' } },
+            { modelName: { contains: search, mode: 'insensitive' } },
+            { serialNumber: { contains: search, mode: 'insensitive' } },
+            { usingDepartment: { contains: search, mode: 'insensitive' } },
+            { representative: { contains: search, mode: 'insensitive' } },
             {
               machine: {
                 serialNumber: { contains: search, mode: 'insensitive' },
@@ -656,6 +810,7 @@ export class MaintenanceService {
       ],
       [MaintenanceStatus.ASSIGNED]: [
         MaintenanceStatus.IN_PROGRESS,
+        MaintenanceStatus.COMPLETED,
         MaintenanceStatus.OVERDUE,
         MaintenanceStatus.CANCELLED,
       ],
@@ -666,6 +821,7 @@ export class MaintenanceService {
       [MaintenanceStatus.OVERDUE]: [
         MaintenanceStatus.ASSIGNED,
         MaintenanceStatus.IN_PROGRESS,
+        MaintenanceStatus.COMPLETED,
         MaintenanceStatus.CANCELLED,
       ],
       [MaintenanceStatus.COMPLETED]: [],

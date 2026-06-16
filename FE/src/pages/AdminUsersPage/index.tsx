@@ -1,5 +1,6 @@
-import { Edit3, ImageOff, Loader2, Power, PowerOff, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Edit3, ImageOff, Loader2, Power, PowerOff, RefreshCw, Save, Trash2, UserPlus } from 'lucide-react';
+import { Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -81,14 +82,15 @@ const emptyForm: UserFormState = {
 
 const pageSizeOptions = [10, 20, 50, 100];
 
-export function AdminUsersPage() {
+export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
+  const navigate = useNavigate();
+  const { userId = '' } = useParams();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
   const [form, setForm] = useState<UserFormState>(emptyForm);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -97,9 +99,11 @@ export function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const isFormPage = Boolean(formMode);
+
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [formMode, userId]);
 
   const filteredUsers = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -145,31 +149,34 @@ export function AdminUsersPage() {
         apiFetch<Region[]>('/regions'),
       ]);
 
-      setUsers(unpack(usersResult));
+      const nextUsers = unpack(usersResult);
+      setUsers(nextUsers);
       setRoles(rolesResult);
       setRegions(regionsResult);
-      setForm((current) => ({
-        ...current,
-        roleId: current.roleId || rolesResult[0]?.id || '',
-        regionId: current.regionId || regionsResult[0]?.id || '',
-      }));
+
+      if (formMode === 'edit') {
+        const nextEditingUser = nextUsers.find((item) => item.id === userId) ?? null;
+        setEditingUser(nextEditingUser);
+        if (nextEditingUser) {
+          setForm(formFromUser(nextEditingUser, rolesResult, regionsResult));
+        } else {
+          setError('Không tìm thấy nhân sự cần chỉnh sửa.');
+        }
+      } else if (formMode === 'create') {
+        setEditingUser(null);
+        setForm(buildEmptyForm(rolesResult, regionsResult));
+      } else {
+        setForm((current) => ({
+          ...current,
+          roleId: current.roleId || rolesResult[0]?.id || '',
+          regionId: current.regionId || regionsResult[0]?.id || '',
+        }));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được dữ liệu nhân sự');
     } finally {
       setLoading(false);
     }
-  }
-
-  function startCreate() {
-    setEditingUser(null);
-    setForm({
-      ...emptyForm,
-      roleId: roles[0]?.id || '',
-      regionId: regions[0]?.id || '',
-    });
-    setIsFormOpen(true);
-    setError('');
-    setSuccess('');
   }
 
   function handleSearchChange(value: string) {
@@ -182,40 +189,10 @@ export function AdminUsersPage() {
     setPage(1);
   }
 
-  function startEdit(user: AdminUser) {
-    const profile = user.engineerProfile;
-    setEditingUser(user);
-    setForm({
-      email: user.email,
-      password: '',
-      fullName: user.fullName,
-      phone: user.phone || '',
-      employeeCode: profile?.employeeCode || '',
-      dateOfBirth: toDateInput(profile?.dateOfBirth),
-      position: profile?.position || '',
-      department: profile?.department || '',
-      workStartDate: toDateInput(profile?.workStartDate),
-      specialties: profile?.specialties?.join('\n') || '',
-      certificateNo: profile?.certificateNo || '',
-      photoUrl: profile?.photoUrl || '',
-      profileNote: profile?.note || '',
-      roleId: user.role?.id ?? roles[0]?.id ?? '',
-      regionId: user.region?.id ?? regions[0]?.id ?? '',
-      status: user.status,
-    });
-    setIsFormOpen(true);
-    setError('');
-    setSuccess('');
-  }
-
   function closeForm() {
-    setIsFormOpen(false);
     setEditingUser(null);
-    setForm({
-      ...emptyForm,
-      roleId: roles[0]?.id || '',
-      regionId: regions[0]?.id || '',
-    });
+    setForm(buildEmptyForm(roles, regions));
+    navigate('/users');
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -243,8 +220,12 @@ export function AdminUsersPage() {
         setSuccess('Đã tạo tài khoản mới.');
       }
 
-      await loadData();
-      closeForm();
+      if (isFormPage) {
+        navigate('/users');
+      } else {
+        await loadData();
+        closeForm();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không lưu được tài khoản');
     } finally {
@@ -295,6 +276,55 @@ export function AdminUsersPage() {
     }
   }
 
+  if (isFormPage) {
+    return (
+      <PageFrame>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <PageTitle
+            eyebrow="Admin"
+            title={formMode === 'edit' ? 'Chỉnh sửa nhân sự' : 'Tạo mới nhân sự'}
+            description="Tạo tài khoản, phân quyền, gán khu vực phụ trách và cập nhật hồ sơ kỹ sư."
+          />
+          <button className="secondary-button" onClick={closeForm} type="button">
+            <ArrowLeft size={17} />
+            Quay lại danh sách
+          </button>
+        </div>
+
+        {error ? <Notice message={error} /> : null}
+        {success ? <div className="success-notice">{success}</div> : null}
+
+        <section className="crud-form-page">
+          <div className="form-panel-heading">
+            <div>
+              <span>{editingUser ? 'Cập nhật' : 'Tạo mới'}</span>
+              <h2>{editingUser ? editingUser.fullName : 'Tài khoản nhân sự'}</h2>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="table-state">
+              <Loader2 className="spin-icon" size={18} />
+              Đang tải biểu mẫu...
+            </div>
+          ) : (
+            <UserForm
+              editingUser={editingUser}
+              form={form}
+              onCancel={closeForm}
+              onChange={setForm}
+              onSubmit={handleSubmit}
+              regions={regions}
+              roles={roles}
+              saving={saving}
+              shouldShowEngineerProfile={shouldShowEngineerProfile}
+            />
+          )}
+        </section>
+      </PageFrame>
+    );
+  }
+
   return (
     <PageFrame>
       <div className="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
@@ -319,10 +349,10 @@ export function AdminUsersPage() {
               placeholder="Tìm tên, email, vai trò, khu vực"
               value={query}
             />
-            <button className="primary-button compact" onClick={startCreate} type="button">
+            <Link className="primary-button compact" to="/users/new">
               <UserPlus size={17} />
               Tạo mới
-            </button>
+            </Link>
           </div>
 
           <div className="overflow-x-auto">
@@ -361,9 +391,9 @@ export function AdminUsersPage() {
                     </td>
                     <td className="sticky right-0 z-[1] border-b border-[#edf1f6] bg-white px-3.5 py-[13px]">
                       <div className="flex justify-end gap-1.5">
-                        <button className="icon-button" onClick={() => startEdit(user)} title="Sửa" type="button">
+                        <Link className="icon-button" to={`/users/${user.id}/edit`} title="Sửa">
                           <Edit3 size={16} />
-                        </button>
+                        </Link>
                         {user.status === 'ACTIVE' ? (
                           <button
                             className="icon-button danger"
@@ -457,210 +487,6 @@ export function AdminUsersPage() {
           </div>
       </section>
 
-      {isFormOpen ? (
-        <div className="crud-modal-backdrop" role="presentation">
-          <section aria-modal="true" className="crud-modal" role="dialog">
-            <div className="form-panel-heading">
-              <div>
-                <span>{editingUser ? 'Cập nhật' : 'Tạo mới'}</span>
-                <h2>{editingUser ? editingUser.fullName : 'Tài khoản nhân sự'}</h2>
-              </div>
-              <button className="icon-button" onClick={closeForm} title="Đóng" type="button">
-                <X size={16} />
-              </button>
-            </div>
-
-            <form className="grid gap-[18px] [&_input]:min-h-10 [&_input]:rounded-lg [&_input]:border [&_input]:border-[#ced8e3] [&_input]:px-3 [&_input]:text-[#17202a] [&_input]:outline-none [&_input:focus]:border-[#c92a1f] [&_input:focus]:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] [&_label]:grid [&_label]:gap-[7px] [&_label]:font-medium [&_label]:text-[#405064] [&_select]:min-h-10 [&_select]:rounded-lg [&_select]:border [&_select]:border-[#ced8e3] [&_select]:bg-white [&_select]:px-3 [&_select]:text-[#17202a] [&_select]:outline-none [&_select:focus]:border-[#c92a1f] [&_select:focus]:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] [&_textarea]:min-h-[86px] [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#ced8e3] [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#17202a] [&_textarea]:outline-none [&_textarea:focus]:border-[#c92a1f] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]" onSubmit={handleSubmit}>
-              <div className="form-grid">
-                <label>
-                  Họ tên
-                  <input
-                    onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))}
-                    required
-                    value={form.fullName}
-                  />
-                </label>
-
-                <label>
-                  Email
-                  <input
-                    autoComplete="email"
-                    onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                    required
-                    type="email"
-                    value={form.email}
-                  />
-                </label>
-
-                <label>
-                  Mật khẩu
-                  <input
-                    autoComplete="new-password"
-                    minLength={6}
-                    onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                    placeholder={editingUser ? 'Để trống nếu không đổi' : 'Tối thiểu 6 ký tự'}
-                    required={!editingUser}
-                    type="password"
-                    value={form.password}
-                  />
-                </label>
-
-                <label>
-                  Số điện thoại
-                  <input
-                    onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                    value={form.phone}
-                  />
-                </label>
-
-                <label>
-                  Vai trò
-                  <select
-                    onChange={(event) => setForm((current) => ({ ...current, roleId: event.target.value }))}
-                    required
-                    value={form.roleId}
-                  >
-                    {roles.map((role) => (
-                      <option key={role.id} value={role.id}>
-                        {role.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  Khu vực
-                  <select
-                    onChange={(event) => setForm((current) => ({ ...current, regionId: event.target.value }))}
-                    required
-                    value={form.regionId}
-                  >
-                    {regions.map((region) => (
-                      <option key={region.id} value={region.id}>
-                        {region.name} ({region.code})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  Trạng thái
-                  <select
-                    onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as UserStatus }))}
-                    value={form.status}
-                  >
-                    <option value="ACTIVE">Đang hoạt động</option>
-                    <option value="INACTIVE">Tạm khóa</option>
-                  </select>
-                </label>
-
-                {shouldShowEngineerProfile ? (
-                  <div className="col-span-full grid gap-3.5 rounded-lg border border-[#edf1f6] bg-[#f8fbfd] p-3.5">
-                    <div className="grid gap-1">
-                      <span className="text-sm font-semibold text-[#17202a]">Hồ sơ kỹ sư</span>
-                      <p className="leading-snug text-[#657384]">Thông tin chuyên môn dùng cho phân công lắp đặt, bảo trì và sửa chữa.</p>
-                    </div>
-
-                    <div className="form-grid compact-grid">
-                      <label>
-                        Mã nhân viên
-                        <input
-                          onChange={(event) => setForm((current) => ({ ...current, employeeCode: event.target.value }))}
-                          value={form.employeeCode}
-                        />
-                      </label>
-
-                      <label>
-                        Chức vụ
-                        <input
-                          onChange={(event) => setForm((current) => ({ ...current, position: event.target.value }))}
-                          value={form.position}
-                        />
-                      </label>
-
-                      <label>
-                        Phòng ban
-                        <input
-                          onChange={(event) => setForm((current) => ({ ...current, department: event.target.value }))}
-                          value={form.department}
-                        />
-                      </label>
-
-                      <label>
-                        Số chứng chỉ
-                        <input
-                          onChange={(event) => setForm((current) => ({ ...current, certificateNo: event.target.value }))}
-                          value={form.certificateNo}
-                        />
-                      </label>
-
-                      <label>
-                        Ngày sinh
-                        <input
-                          onChange={(event) => setForm((current) => ({ ...current, dateOfBirth: event.target.value }))}
-                          type="date"
-                          value={form.dateOfBirth}
-                        />
-                      </label>
-
-                      <label>
-                        Ngày bắt đầu làm
-                        <input
-                          onChange={(event) => setForm((current) => ({ ...current, workStartDate: event.target.value }))}
-                          type="date"
-                          value={form.workStartDate}
-                        />
-                      </label>
-
-                      <label className="wide-field">
-                        Ảnh kỹ sư
-                        <input
-                          onChange={(event) => setForm((current) => ({ ...current, photoUrl: event.target.value }))}
-                          placeholder="https://..."
-                          type="url"
-                          value={form.photoUrl}
-                        />
-                        {form.photoUrl ? (
-                          <span className="mt-0.5 block overflow-hidden rounded-lg border border-[#dfe7ef] bg-[#f4f7fb]">
-                            <img alt="" className="aspect-video w-full object-cover" src={form.photoUrl} />
-                          </span>
-                        ) : null}
-                      </label>
-
-                      <label className="wide-field">
-                        Chuyên môn
-                        <textarea
-                          onChange={(event) => setForm((current) => ({ ...current, specialties: event.target.value }))}
-                          placeholder="Mỗi dòng là một chuyên môn"
-                          value={form.specialties}
-                        />
-                      </label>
-
-                      <label className="wide-field">
-                        Ghi chú hồ sơ
-                        <textarea
-                          onChange={(event) => setForm((current) => ({ ...current, profileNote: event.target.value }))}
-                          value={form.profileNote}
-                        />
-                      </label>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="modal-actions">
-                <button className="secondary-button" onClick={closeForm} type="button">
-                  Hủy
-                </button>
-                <button className="primary-button" disabled={saving} type="submit">
-                  {saving ? 'Đang lưu' : editingUser ? 'Lưu thay đổi' : 'Tạo tài khoản'}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      ) : null}
-
       {deletingUser ? (
         <div className="crud-modal-backdrop" role="presentation">
           <section aria-modal="true" className="confirm-modal" role="dialog">
@@ -715,6 +541,213 @@ function buildPayload(form: UserFormState, isEditing: boolean) {
   }
 
   return payload;
+}
+
+function UserForm({
+  editingUser,
+  form,
+  onCancel,
+  onChange,
+  onSubmit,
+  regions,
+  roles,
+  saving,
+  shouldShowEngineerProfile,
+}: {
+  editingUser: AdminUser | null;
+  form: UserFormState;
+  onCancel: () => void;
+  onChange: Dispatch<SetStateAction<UserFormState>>;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  regions: Region[];
+  roles: Role[];
+  saving: boolean;
+  shouldShowEngineerProfile: boolean;
+}) {
+  return (
+    <form className="user-form-page-grid" onSubmit={onSubmit}>
+      <div className="form-grid">
+        <label>
+          Họ tên
+          <input
+            onChange={(event) => onChange((current) => ({ ...current, fullName: event.target.value }))}
+            required
+            value={form.fullName}
+          />
+        </label>
+
+        <label>
+          Email
+          <input
+            autoComplete="email"
+            onChange={(event) => onChange((current) => ({ ...current, email: event.target.value }))}
+            required
+            type="email"
+            value={form.email}
+          />
+        </label>
+
+        <label>
+          Mật khẩu
+          <input
+            autoComplete="new-password"
+            minLength={6}
+            onChange={(event) => onChange((current) => ({ ...current, password: event.target.value }))}
+            placeholder={editingUser ? 'Để trống nếu không đổi' : 'Tối thiểu 6 ký tự'}
+            required={!editingUser}
+            type="password"
+            value={form.password}
+          />
+        </label>
+
+        <label>
+          Số điện thoại
+          <input onChange={(event) => onChange((current) => ({ ...current, phone: event.target.value }))} value={form.phone} />
+        </label>
+
+        <label>
+          Vai trò
+          <select onChange={(event) => onChange((current) => ({ ...current, roleId: event.target.value }))} required value={form.roleId}>
+            {roles.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Khu vực
+          <select onChange={(event) => onChange((current) => ({ ...current, regionId: event.target.value }))} required value={form.regionId}>
+            {regions.map((region) => (
+              <option key={region.id} value={region.id}>
+                {region.name} ({region.code})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Trạng thái
+          <select onChange={(event) => onChange((current) => ({ ...current, status: event.target.value as UserStatus }))} value={form.status}>
+            <option value="ACTIVE">Đang hoạt động</option>
+            <option value="INACTIVE">Tạm khóa</option>
+          </select>
+        </label>
+
+        {shouldShowEngineerProfile ? (
+          <div className="col-span-full grid gap-3.5 rounded-lg border border-[#edf1f6] bg-[#f8fbfd] p-3.5">
+            <div className="grid gap-1">
+              <span className="text-sm font-semibold text-[#17202a]">Hồ sơ kỹ sư</span>
+              <p className="leading-snug text-[#657384]">Thông tin chuyên môn dùng cho phân công lắp đặt, bảo trì và sửa chữa.</p>
+            </div>
+
+            <div className="form-grid compact-grid">
+              <label>
+                Mã nhân viên
+                <input onChange={(event) => onChange((current) => ({ ...current, employeeCode: event.target.value }))} value={form.employeeCode} />
+              </label>
+
+              <label>
+                Chức vụ
+                <input onChange={(event) => onChange((current) => ({ ...current, position: event.target.value }))} value={form.position} />
+              </label>
+
+              <label>
+                Phòng ban
+                <input onChange={(event) => onChange((current) => ({ ...current, department: event.target.value }))} value={form.department} />
+              </label>
+
+              <label>
+                Số chứng chỉ
+                <input onChange={(event) => onChange((current) => ({ ...current, certificateNo: event.target.value }))} value={form.certificateNo} />
+              </label>
+
+              <label>
+                Ngày sinh
+                <input onChange={(event) => onChange((current) => ({ ...current, dateOfBirth: event.target.value }))} type="date" value={form.dateOfBirth} />
+              </label>
+
+              <label>
+                Ngày bắt đầu làm
+                <input onChange={(event) => onChange((current) => ({ ...current, workStartDate: event.target.value }))} type="date" value={form.workStartDate} />
+              </label>
+
+              <label className="wide-field">
+                Ảnh kỹ sư
+                <input
+                  onChange={(event) => onChange((current) => ({ ...current, photoUrl: event.target.value }))}
+                  placeholder="https://..."
+                  type="url"
+                  value={form.photoUrl}
+                />
+                {form.photoUrl ? (
+                  <span className="mt-0.5 block overflow-hidden rounded-lg border border-[#dfe7ef] bg-[#f4f7fb]">
+                    <img alt="" className="aspect-video w-full object-cover" src={form.photoUrl} />
+                  </span>
+                ) : null}
+              </label>
+
+              <label className="wide-field">
+                Chuyên môn
+                <textarea
+                  onChange={(event) => onChange((current) => ({ ...current, specialties: event.target.value }))}
+                  placeholder="Mỗi dòng là một chuyên môn"
+                  value={form.specialties}
+                />
+              </label>
+
+              <label className="wide-field">
+                Ghi chú hồ sơ
+                <textarea onChange={(event) => onChange((current) => ({ ...current, profileNote: event.target.value }))} value={form.profileNote} />
+              </label>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="modal-actions">
+        <button className="secondary-button" onClick={onCancel} type="button">
+          Hủy
+        </button>
+        <button className="primary-button" disabled={saving} type="submit">
+          {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
+          {saving ? 'Đang lưu' : editingUser ? 'Lưu thay đổi' : 'Tạo tài khoản'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function buildEmptyForm(roles: Role[], regions: Region[]) {
+  return {
+    ...emptyForm,
+    roleId: roles[0]?.id || '',
+    regionId: regions[0]?.id || '',
+  };
+}
+
+function formFromUser(user: AdminUser, roles: Role[], regions: Region[]) {
+  const profile = user.engineerProfile;
+
+  return {
+    email: user.email,
+    password: '',
+    fullName: user.fullName,
+    phone: user.phone || '',
+    employeeCode: profile?.employeeCode || '',
+    dateOfBirth: toDateInput(profile?.dateOfBirth),
+    position: profile?.position || '',
+    department: profile?.department || '',
+    workStartDate: toDateInput(profile?.workStartDate),
+    specialties: profile?.specialties?.join('\n') || '',
+    certificateNo: profile?.certificateNo || '',
+    photoUrl: profile?.photoUrl || '',
+    profileNote: profile?.note || '',
+    roleId: user.role?.id ?? roles[0]?.id ?? '',
+    regionId: user.region?.id ?? regions[0]?.id ?? '',
+    status: user.status,
+  };
 }
 
 function unpack<T>(result: Paginated<T> | T[]) {

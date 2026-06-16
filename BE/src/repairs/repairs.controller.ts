@@ -52,7 +52,7 @@ export class RepairsController {
     return this.repairsService.findOne(id, user);
   }
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Patch(':id')
   update(
     @Param('id') id: string,

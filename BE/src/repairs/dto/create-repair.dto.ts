@@ -16,9 +16,9 @@ export class CreateRepairDto {
   @IsString()
   description?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  machineId!: string;
+  machineId?: string;
 
   @IsOptional()
   @IsString()

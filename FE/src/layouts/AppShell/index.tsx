@@ -1,4 +1,4 @@
-import { Bell, ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
+import { Bell, ChevronsLeft, ChevronsRight, LogOut, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiUser, apiFetch, clearToken, getApiBaseUrl } from '../../api';
@@ -10,7 +10,7 @@ import { resources } from '../../config/resources';
 import { adminCrudConfigs } from '../../config/adminCrud';
 import { AccessDeniedPage } from '../../pages/AccessDeniedPage';
 import { AccountSettingsPage } from '../../pages/AccountSettingsPage';
-import { AdminCrudPage } from '../../pages/AdminCrudPage';
+import { AdminCrudFormPage, AdminCrudPage } from '../../pages/AdminCrudPage';
 import { AdminRegionsPage } from '../../pages/AdminRegionsPage';
 import { AdminRolesPage } from '../../pages/AdminRolesPage';
 import { AdminUsersPage } from '../../pages/AdminUsersPage';
@@ -18,11 +18,16 @@ import { AdminWorkAssignmentPage } from '../../pages/AdminWorkAssignmentPage';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { DailyWorkCalendarPage } from '../../pages/DailyWorkCalendarPage';
 import { EngineerTasksPage } from '../../pages/EngineerTasksPage';
+import { InstallationUpdatePage } from '../../pages/InstallationUpdatePage';
 import { InventoryMovementsPage } from '../../pages/InventoryMovementsPage';
+import { MaintenanceUpdatePage } from '../../pages/MaintenanceUpdatePage';
 import { ProductAddPage, ProductCatalogPage, ProductModelDetailPage } from '../../pages/ProductCatalogPage';
+import { RepairUpdatePage } from '../../pages/RepairUpdatePage';
 import { ResourcePage } from '../../pages/ResourcePage';
 import { ServiceTicketCreatePage } from '../../pages/ServiceTicketCreatePage';
 import { ServiceTicketsPage } from '../../pages/ServiceTicketsPage';
+import { TechnicalMachinesPage } from '../../pages/TechnicalMachinesPage';
+import { WeeklyReportsPage } from '../../pages/WeeklyReportsPage';
 import { initials } from '../../utils/format';
 
 type AppShellProps = {
@@ -56,6 +61,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   );
   const pageTitle = location.pathname.startsWith('/account-settings')
     ? 'Thiết lập tài khoản'
+    : location.pathname.startsWith('/technical-machines')
+      ? 'Máy phòng kỹ thuật'
     : activeNavItem?.label || 'Tổng quan';
   const unreadCount = useMemo(() => notifications.filter((item) => !item.readAt).length, [notifications]);
 
@@ -92,7 +99,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
 
   async function loadNotifications() {
     try {
-      const result = await apiFetch<NotificationItem[]>('/notifications?limit=10');
+      const result = await apiFetch<NotificationItem[]>('/notifications?limit=50');
       setNotifications(result);
     } catch {
       setNotifications([]);
@@ -118,7 +125,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   }
 
   return (
-    <div className={`grid min-h-screen transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
+    <div className={`grid min-h-screen w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
       <aside className={`sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-[#e3eaf2] bg-white/95 px-4 py-[22px] max-[980px]:static max-[980px]:h-auto max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-6 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-[22px] max-[980px]:gap-4'}`}>
         <div className={`flex min-w-0 items-center gap-2.5 ${isSidebarCollapsed ? 'grid justify-items-center' : 'justify-between'} max-[980px]:flex max-[980px]:justify-between`}>
           <Brand compact={isSidebarCollapsed} />
@@ -174,7 +181,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
         </div>
       </aside>
 
-      <main className="min-w-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0)_190px),#f5f7fb]">
+      <main className="min-w-0 overflow-x-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0)_190px),#f5f7fb] [&>*]:min-w-0">
         <header className="sticky top-0 z-[2] flex min-h-[68px] items-center justify-between border-b border-white/80 bg-white/70 px-[30px] shadow-[inset_0_-1px_0_rgba(227,234,242,0.46),0_10px_32px_rgba(15,23,42,0.026)] backdrop-blur-[22px] backdrop-saturate-150 max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:p-4">
           <div className="min-w-0">
             <span className="block text-xs font-extrabold uppercase text-[#657384]">VietMed Kỹ Thuật</span>
@@ -248,9 +255,57 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
 
         <Routes>
           <Route path="/" element={<DashboardPage role={role} />} />
+          <Route
+            path="/technical-machines"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'manager', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <TechnicalMachinesPage />
+              </RequireRole>
+            }
+          />
           <Route path="/account-settings" element={<AccountSettingsPage onUserUpdated={onUserUpdated} user={user} />} />
           <Route path="/daily-work" element={<DailyWorkCalendarPage currentRole={role} user={user} />} />
+          <Route
+            path="/weekly-reports"
+            element={
+              <RequireRole
+                allowedRoles={resources.repairs.roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <WeeklyReportsPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
           <Route path="/my-tasks" element={role === 'admin' ? <AdminWorkAssignmentPage /> : <EngineerTasksPage user={user} />} />
+          <Route
+            path="/users/new"
+            element={
+              <RequireRole
+                allowedRoles={resources.users.roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminUsersPage formMode="create" />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/users/:userId/edit"
+            element={
+              <RequireRole
+                allowedRoles={resources.users.roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminUsersPage formMode="edit" />
+              </RequireRole>
+            }
+          />
           <Route
             path="/users"
             element={
@@ -260,6 +315,30 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <AdminUsersPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/customers/new"
+            element={
+              <RequireRole
+                allowedRoles={adminCrudConfigs.customers.roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminCrudFormPage config={adminCrudConfigs.customers} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/customers/:id/edit"
+            element={
+              <RequireRole
+                allowedRoles={adminCrudConfigs.customers.roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminCrudFormPage config={adminCrudConfigs.customers} />
               </RequireRole>
             }
           />
@@ -327,7 +406,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/service-tickets"
             element={
               <RequireRole
-                allowedRoles={resources.repairs.roles}
+                allowedRoles={['admin', 'engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
@@ -339,11 +418,35 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/service-tickets/create"
             element={
               <RequireRole
-                allowedRoles={resources.repairs.roles}
+                allowedRoles={['admin', 'engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <ServiceTicketCreatePage user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/repairs/:id/update"
+            element={
+              <RequireRole
+                allowedRoles={resources.repairs.roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <RepairUpdatePage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/maintenance/:id/update"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <MaintenanceUpdatePage />
               </RequireRole>
             }
           />
@@ -356,6 +459,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <ServiceTicketCreatePage fixedKind="installation" user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/installations/:id/update"
+            element={
+              <RequireRole
+                allowedRoles={resources.installations.roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <InstallationUpdatePage user={user} />
               </RequireRole>
             }
           />
@@ -387,6 +502,16 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 >
                   {key === 'business-lines' ? (
                     <ProductCatalogPage user={user} />
+                  ) : key === 'installations' && role !== 'admin' ? (
+                    <ResourcePage
+                      config={resources[key]}
+                      toolbarControl={
+                        <Link className="primary-button" to="/installations/create?returnTo=/installations">
+                          <Plus size={16} />
+                          Tạo phiếu
+                        </Link>
+                      }
+                    />
                   ) : role === 'admin' && adminCrudConfigs[key] ? (
                     <AdminCrudPage config={adminCrudConfigs[key]} />
                   ) : (

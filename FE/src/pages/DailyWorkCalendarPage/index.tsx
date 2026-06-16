@@ -212,14 +212,14 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
   return (
     <PageFrame>
-      <section className="flex items-end justify-between gap-[18px] rounded-[18px] bg-[linear-gradient(135deg,#17202a_0%,#253142_56%,#a61f17_120%)] p-6 text-white max-[900px]:grid max-[900px]:items-stretch">
-        <div>
+      <section className="flex min-w-0 items-end justify-between gap-[18px] rounded-[18px] bg-[linear-gradient(135deg,#17202a_0%,#253142_56%,#a61f17_120%)] p-6 text-white max-[1180px]:grid max-[1180px]:items-stretch">
+        <div className="min-w-0">
           <span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.08em] text-[#ffd9d5]">Lịch công việc</span>
           <h1 className="mb-2.5 text-[clamp(30px,4vw,46px)] font-bold leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Công việc hàng ngày của tôi'}</h1>
           <p className="text-white/80">{isAdmin ? 'Admin chọn kỹ sư để xem lịch công việc cá nhân.' : 'Ghi lại kế hoạch, việc phát sinh và ghi chú theo ngày.'}</p>
         </div>
         {isAdmin ? (
-          <label className="grid min-w-[min(360px,100%)] gap-2 font-bold text-white/80">
+          <label className="grid min-w-0 gap-2 font-bold text-white/80 min-[1180px]:min-w-[min(360px,100%)]">
             Chọn kỹ sư
             <select
               className="min-h-11 rounded-[10px] border border-white/35 bg-white/95 px-3 text-[#17202a]"
@@ -242,13 +242,13 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="overflow-hidden rounded-[14px] border border-[#dfe7ef] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] max-sm:overflow-x-auto">
-        <div className="flex items-center justify-between gap-4 border-b border-[#edf1f6] p-4 max-[900px]:grid max-[900px]:items-stretch">
-          <div>
+      <section className="min-w-0 overflow-hidden rounded-[14px] border border-[#dfe7ef] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] max-[1180px]:overflow-x-auto">
+        <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[#edf1f6] p-4 max-[1180px]:grid max-[1180px]:items-stretch">
+          <div className="min-w-0">
             <strong className="block text-xl capitalize text-[#17202a]">{monthLabel(viewDate)}</strong>
             <span className="mt-1 block text-[#657384]">{loading ? 'Đang tải lịch...' : `${notes.length} ghi chú trong tháng`}</span>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex min-w-0 flex-wrap gap-2">
             <button className="secondary-button" onClick={() => setViewDate(addMonths(viewDate, -1))} type="button">
               <ChevronLeft size={17} />
               Tháng trước
@@ -263,13 +263,13 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
           </div>
         </div>
 
-        <div className="grid grid-cols-7 max-sm:min-w-[760px]">
+        <div className="grid grid-cols-7 max-[1180px]:min-w-[760px]">
           {weekdayLabels.map((label) => (
             <span className="border-b border-[#edf1f6] bg-[#f8fbfd] p-[11px] text-center text-xs font-extrabold text-[#657384]" key={label}>{label}</span>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 max-sm:min-w-[760px]">
+        <div className="grid grid-cols-7 max-[1180px]:min-w-[760px]">
           {calendarDays.map((day) => {
             const key = toDateInput(day.date);
             const dayNotes = notesByDate[key] || [];

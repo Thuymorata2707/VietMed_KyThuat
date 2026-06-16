@@ -21,9 +21,9 @@ export class CreateMaintenanceDto {
   @IsEnum(MaintenanceType)
   type?: MaintenanceType;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  machineId!: string;
+  machineId?: string;
 
   @IsOptional()
   @IsString()
@@ -40,4 +40,32 @@ export class CreateMaintenanceDto {
   @IsOptional()
   @IsDateString()
   nextDueDate?: string;
+
+  @IsOptional()
+  @IsString()
+  usingDepartment?: string;
+
+  @IsOptional()
+  @IsString()
+  representative?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  contactPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  deviceName?: string;
+
+  @IsOptional()
+  @IsString()
+  modelName?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNumber?: string;
 }

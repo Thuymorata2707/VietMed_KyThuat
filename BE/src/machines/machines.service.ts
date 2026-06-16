@@ -43,6 +43,15 @@ export class MachinesService {
     const machineModel = await this.ensureMachineModelExists(
       input.machineModelId,
     );
+    input.machineCode =
+      input.machineCode?.trim() ||
+      (await this.generateMachineCode(
+        machineModel?.code ??
+          machineModel?.name ??
+          input.modelName ??
+          input.name ??
+          'MAY',
+      ));
     await this.ensureCustomerExists(input.customerId);
     await this.ensureSerialNumberIsAvailable(input.serialNumber);
     await this.ensureMachineCodeIsAvailable(input.machineCode);
@@ -815,6 +824,43 @@ export class MachinesService {
     if (machine && machine.id !== currentMachineId) {
       throw new ConflictException('Machine code already exists');
     }
+  }
+
+  private async generateMachineCode(source: string) {
+    const prefix = this.normalizeMachineCodePrefix(source);
+    const latest = await this.prisma.machine.findFirst({
+      where: {
+        machineCode: {
+          startsWith: `${prefix}-`,
+        },
+      },
+      orderBy: {
+        machineCode: 'desc',
+      },
+      select: {
+        machineCode: true,
+      },
+    });
+    const latestNumber = latest?.machineCode
+      ? Number(latest.machineCode.slice(prefix.length + 1))
+      : 0;
+    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
+
+    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  private normalizeMachineCodePrefix(value: string) {
+    const normalized = value
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/Đ/g, 'D')
+      .replace(/[^A-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-');
+
+    return normalized || 'MAY';
   }
 
   private async ensureEngineerExists(engineerId?: string | null) {

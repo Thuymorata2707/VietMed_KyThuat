@@ -29,6 +29,10 @@ export class UpdateMaintenanceDto {
   engineerId?: string | null;
 
   @IsOptional()
+  @IsString()
+  machineId?: string | null;
+
+  @IsOptional()
   @IsDateString()
   scheduledDate?: string;
 
@@ -44,4 +48,32 @@ export class UpdateMaintenanceDto {
   @IsOptional()
   @IsDateString()
   nextDueDate?: string | null;
+
+  @IsOptional()
+  @IsString()
+  usingDepartment?: string | null;
+
+  @IsOptional()
+  @IsString()
+  representative?: string | null;
+
+  @IsOptional()
+  @IsString()
+  address?: string | null;
+
+  @IsOptional()
+  @IsString()
+  contactPhone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  deviceName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  modelName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  serialNumber?: string | null;
 }

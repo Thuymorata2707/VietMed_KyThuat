@@ -142,6 +142,7 @@ enum MaintenanceType {
 }
 
 enum InstallationStatus {
+  PENDING
   INSTALLED
   CANCELLED
 }
@@ -162,6 +163,13 @@ enum AttachmentType {
   PART_INVOICE
   ACCEPTANCE_PDF
   OTHER
+}
+
+enum WeeklyReportStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  NEEDS_REVISION
 }
 
 model Region {
@@ -221,6 +229,8 @@ model User {
   uploadedAttachments  Attachment[]               @relation("AttachmentUploadedBy")
   engineerProfile      EngineerProfile?
   dailyWorkNotes       DailyWorkNote[]            @relation("DailyWorkNoteUser")
+  weeklyReports        WeeklyReport[]             @relation("WeeklyReportUser")
+  reviewedWeeklyReports WeeklyReport[]            @relation("WeeklyReportReviewer")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -243,6 +253,54 @@ model DailyWorkNote {
   updatedAt DateTime @updatedAt
 
   @@index([userId, workDate])
+}
+
+model WeeklyReport {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation("WeeklyReportUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  weekStart DateTime
+  status    WeeklyReportStatus @default(DRAFT)
+  note      String?
+
+  submittedAt DateTime?
+  reviewedAt  DateTime?
+  reviewerId  String?
+  reviewer    User?     @relation("WeeklyReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  rows WeeklyReportRow[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, weekStart])
+  @@index([weekStart])
+  @@index([status])
+  @@index([reviewerId])
+}
+
+model WeeklyReportRow {
+  id String @id @default(cuid())
+
+  reportId String
+  report   WeeklyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  workDate    DateTime
+  customer    String?
+  machine     String?
+  content     String?
+  result      String?
+  pending     String?
+  proposal    String?
+  sortOrder   Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reportId, sortOrder])
+  @@index([workDate])
 }
 
 model Attachment {
@@ -412,6 +470,7 @@ model MachineModel {
 
   machines Machine[]
   components MachineComponent[]
+  plannedInstallations MachineInstallation[] @relation("PlannedInstallationModel")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -547,8 +606,12 @@ model MachineInstallation {
   code   String             @unique
   status InstallationStatus @default(INSTALLED)
 
-  machineId String
-  machine   Machine @relation(fields: [machineId], references: [id])
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id])
+
+  plannedMachineModelId String?
+  plannedMachineModel   MachineModel? @relation("PlannedInstallationModel", fields: [plannedMachineModelId], references: [id], onDelete: SetNull)
+  plannedModelName      String?
 
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
@@ -581,6 +644,7 @@ model MachineInstallation {
   updatedAt DateTime @updatedAt
 
   @@index([machineId])
+  @@index([plannedMachineModelId])
   @@index([customerId])
   @@index([businessLineId])
   @@index([installedById])
@@ -597,8 +661,8 @@ model WarrantyCard {
   installationId String              @unique
   installation   MachineInstallation @relation(fields: [installationId], references: [id])
 
-  machineId String
-  machine   Machine @relation(fields: [machineId], references: [id])
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id])
 
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
@@ -657,8 +721,8 @@ model Maintenance {
   type   MaintenanceType   @default(PERIODIC)
   status MaintenanceStatus @default(SCHEDULED)
 
-  machineId String
-  machine   Machine @relation(fields: [machineId], references: [id])
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id])
 
   engineerId String?
   engineer   User?   @relation(fields: [engineerId], references: [id])
@@ -671,6 +735,14 @@ model Maintenance {
   checklist   String[]
   resultNote  String?
   nextDueDate DateTime?
+
+  usingDepartment String?
+  representative  String?
+  address         String?
+  contactPhone    String?
+  deviceName      String?
+  modelName       String?
+  serialNumber    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -687,8 +759,8 @@ model Repair {
   status   RepairStatus   @default(PENDING)
   priority RepairPriority @default(NORMAL)
 
-  machineId String
-  machine   Machine @relation(fields: [machineId], references: [id])
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id])
 
   engineerId String?
   engineer   User?   @relation("RepairEngineer", fields: [engineerId], references: [id])

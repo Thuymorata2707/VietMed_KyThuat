@@ -14,6 +14,7 @@ export const maintenanceStatusOptions = [
 ];
 
 export const installationStatusOptions = [
+  { value: 'PENDING', label: 'Chờ duyệt' },
   { value: 'INSTALLED', label: 'Đã lắp đặt' },
   { value: 'CANCELLED', label: 'Hủy' },
 ];

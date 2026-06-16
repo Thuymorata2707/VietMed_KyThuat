@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,14 +10,16 @@ import {
   MachineInventoryStatus,
   MachineStatus,
   Prisma,
+  WarrantyStatus,
 } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
-import { installationAccessWhere, isEngineer } from '../auth/access-scope';
+import { installationAccessWhere, isAdmin, isEngineer } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { validateInventoryMovement } from '../machines/machine-state.rules';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInstallationDto } from './dto/create-installation.dto';
 import { ListInstallationsQueryDto } from './dto/list-installations-query.dto';
@@ -28,6 +31,7 @@ export class InstallationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreateInstallationDto, actor: RequestUser) {
@@ -36,160 +40,148 @@ export class InstallationsService {
 
     const installedById = isEngineer(actor) ? actor.id : dto.installedById;
 
-    const [machine, customer, engineer, businessLine] = await Promise.all([
-      this.findMachine(dto.machineId),
+    const [machine, customer, engineer, businessLine, machineModel] = await Promise.all([
+      dto.machineId ? this.findMachine(dto.machineId) : Promise.resolve(null),
       this.findCustomer(dto.customerId),
       this.findEngineer(installedById),
       this.findBusinessLine(dto.businessLineId),
+      dto.machineModelId ? this.findMachineModel(dto.machineModelId) : Promise.resolve(null),
     ]);
 
-    if (machine.inventoryStatus === MachineInventoryStatus.INSTALLED) {
+    if (machine?.inventoryStatus === MachineInventoryStatus.INSTALLED) {
       throw new BadRequestException('Machine is already installed');
     }
 
-    validateInventoryMovement(
-      InventoryMovementType.INSTALL,
-      machine.inventoryStatus,
-      MachineInventoryStatus.INSTALLED,
-      customer.id,
-    );
+    if (machine) {
+      await this.assertEngineerCanUseMachine(actor, machine);
+    }
 
-    const installedAt = this.parseRequiredDate(dto.installedAt, 'installedAt');
+    const installedAt =
+      this.parseOptionalDate(dto.installedAt, 'installedAt') ?? new Date();
     const warrantyStartDate =
       this.parseOptionalDate(dto.warrantyStartDate, 'warrantyStartDate') ??
       installedAt;
-    const warrantyEndDate = this.parseRequiredDate(
+    const warrantyEndDate = this.parseOptionalDate(
       dto.warrantyEndDate,
       'warrantyEndDate',
     );
 
-    if (warrantyEndDate < warrantyStartDate) {
+    if (warrantyEndDate && warrantyEndDate < warrantyStartDate) {
       throw new BadRequestException(
         'warrantyEndDate must be after warrantyStartDate',
       );
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const installationCode = await this.generateInstallationCode(tx);
-      const warrantyCode = await this.generateWarrantyCode(tx);
-
-      const machineUpdate = await tx.machine.updateMany({
-        where: {
-          id: machine.id,
-          inventoryStatus: machine.inventoryStatus,
-        },
-        data: {
-          customerId: customer.id,
-          businessLineId: businessLine?.id ?? machine.businessLineId,
-          installedById: engineer.id,
-          primaryEngineerId: machine.primaryEngineerId ?? engineer.id,
-          installDate: installedAt,
-          warrantyStartDate,
-          warrantyEndDate,
-          inventoryStatus: MachineInventoryStatus.INSTALLED,
-          status: MachineStatus.ACTIVE,
-        },
-      });
-
-      if (machineUpdate.count !== 1) {
-        throw new BadRequestException(
-          'Machine has already been installed or changed status',
-        );
-      }
-
-      const installation = await tx.machineInstallation.create({
-        data: {
-          code: installationCode,
-          status: InstallationStatus.INSTALLED,
-          machineId: machine.id,
-          customerId: customer.id,
-          businessLineId: businessLine?.id ?? machine.businessLineId ?? null,
-          installedById: engineer.id,
-          installedAt,
-          accessories: this.normalizeAccessories(dto.accessories),
-          note: dto.note?.trim() || null,
-          handoverInstallerName: this.cleanOptionalString(
-            dto.handoverInstallerName,
-          ),
-          handoverInstallerPosition: this.cleanOptionalString(
-            dto.handoverInstallerPosition,
-          ),
-          handoverVehicle: this.cleanOptionalString(dto.handoverVehicle),
-          handoverDepartureDate: this.parseOptionalDate(
-            dto.handoverDepartureDate,
-            'handoverDepartureDate',
-          ),
-          receiverInstallAddress: this.cleanOptionalString(
-            dto.receiverInstallAddress,
-          ),
-          receiverRepresentative: this.cleanOptionalString(
-            dto.receiverRepresentative,
-          ),
-          receiverPosition: this.cleanOptionalString(dto.receiverPosition),
-          receiverPhone: this.cleanOptionalString(dto.receiverPhone),
-          installedDeviceItems: this.normalizeDeviceItems(
-            dto.installedDeviceItems,
-          ),
-          deviceCondition: dto.deviceCondition || 'NEW_100',
-          deviceConditionNote: this.cleanOptionalString(
-            dto.deviceConditionNote,
-          ),
-        },
-      });
-
-      await tx.warrantyCard.create({
-        data: {
-          code: warrantyCode,
-          installationId: installation.id,
-          machineId: machine.id,
-          customerId: customer.id,
-          issuedAt: new Date(),
-          startDate: warrantyStartDate,
-          endDate: warrantyEndDate,
-          note: dto.warrantyNote?.trim() || null,
-          issuedById: actor?.id || null,
-          issuedByEmail: actor?.email || null,
-        },
-      });
-
-      await tx.machineInventoryMovement.create({
-        data: {
-          code: await this.generateMovementCode(tx),
-          type: InventoryMovementType.INSTALL,
-          machineId: machine.id,
-          fromStatus: machine.inventoryStatus,
-          toStatus: MachineInventoryStatus.INSTALLED,
-          occurredAt: installedAt,
-          note: `Installed by ${engineer.fullName}`,
-          customerId: customer.id,
-          createdById: actor?.id || null,
-        },
-      });
-
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.CREATE_INSTALLATION,
-          entityType: 'MachineInstallation',
-          entityId: installation.id,
-          actor,
-          metadata: {
-            code: installationCode,
-            machineId: machine.id,
-            serialNumber: machine.serialNumber,
-            customerId: customer.id,
-            installedById: engineer.id,
-            warrantyCode,
-          },
-        },
+      const installationCode = await this.generateInstallationCode(
         tx,
+        machine,
+        machineModel,
+        businessLine,
       );
+        const installation = await tx.machineInstallation.create({
+          data: {
+            code: installationCode,
+            status: InstallationStatus.PENDING,
+            machineId: machine?.id ?? null,
+            plannedMachineModelId: machineModel?.id ?? null,
+            plannedModelName:
+              machineModel?.name ?? dto.plannedModelName?.trim() ?? null,
+            customerId: customer.id,
+            businessLineId:
+              businessLine?.id ??
+              machine?.businessLineId ??
+              machineModel?.businessLineId ??
+              null,
+            installedById: engineer.id,
+            installedAt,
+            accessories: this.normalizeAccessories(dto.accessories),
+            note: dto.note?.trim() || null,
+            handoverInstallerName: this.cleanOptionalString(
+              dto.handoverInstallerName,
+            ),
+            handoverInstallerPosition: this.cleanOptionalString(
+              dto.handoverInstallerPosition,
+            ),
+            handoverVehicle: this.cleanOptionalString(dto.handoverVehicle),
+            handoverDepartureDate: this.parseOptionalDate(
+              dto.handoverDepartureDate,
+              'handoverDepartureDate',
+            ),
+            receiverInstallAddress: this.cleanOptionalString(
+              dto.receiverInstallAddress,
+            ),
+            receiverRepresentative: this.cleanOptionalString(
+              dto.receiverRepresentative,
+            ),
+            receiverPosition: this.cleanOptionalString(dto.receiverPosition),
+            receiverPhone: this.cleanOptionalString(dto.receiverPhone),
+            installedDeviceItems: this.normalizeDeviceItems(
+              dto.installedDeviceItems,
+            ),
+            deviceCondition: dto.deviceCondition || 'NEW_100',
+            deviceConditionNote: this.cleanOptionalString(
+              dto.deviceConditionNote,
+            ),
+          },
+        });
 
-      const created = await tx.machineInstallation.findUnique({
-        where: { id: installation.id },
-        include: this.defaultInclude(),
-      });
+        if (machine && warrantyEndDate) {
+          await tx.warrantyCard.create({
+            data: {
+              code: await this.generateWarrantyCode(tx),
+              installationId: installation.id,
+              machineId: machine.id,
+              customerId: customer.id,
+              issuedAt: new Date(),
+              startDate: warrantyStartDate,
+              endDate: warrantyEndDate,
+              note: dto.warrantyNote?.trim() || null,
+              issuedById: actor?.id || null,
+              issuedByEmail: actor?.email || null,
+            },
+          });
+        }
 
-      return created;
+        await this.auditLogsService.create(
+          {
+            action: AUDIT_ACTIONS.CREATE_INSTALLATION,
+            entityType: 'MachineInstallation',
+            entityId: installation.id,
+            actor,
+            metadata: {
+              code: installationCode,
+              machineId: machine?.id ?? null,
+              serialNumber: machine?.serialNumber ?? null,
+              plannedMachineModelId: machineModel?.id ?? null,
+              plannedModelName:
+                machineModel?.name ?? dto.plannedModelName?.trim() ?? null,
+              customerId: customer.id,
+              installedById: engineer.id,
+              status: InstallationStatus.PENDING,
+            },
+          },
+          tx,
+        );
+
+        if (isEngineer(actor)) {
+          await this.notificationsService.createForAdmins(
+            {
+              title: 'Kỹ sư tạo phiếu lắp đặt mới',
+              message: `${actor.email} đã tạo phiếu ${installationCode}. Vui lòng kiểm tra và duyệt dữ liệu liên quan.`,
+              href: '/installations',
+              entityType: 'MachineInstallation',
+              entityId: installation.id,
+              createdById: actor.id,
+            },
+            tx,
+          );
+        }
+
+        return tx.machineInstallation.findUnique({
+          where: { id: installation.id },
+          include: this.defaultInclude(),
+        });
     });
   }
 
@@ -249,6 +241,10 @@ export class InstallationsService {
       dto.warrantyEndDate,
       'warrantyEndDate',
     );
+    const handoverDepartureDate = this.parseOptionalDate(
+      dto.handoverDepartureDate,
+      'handoverDepartureDate',
+    );
     const nextWarrantyStartDate =
       warrantyStartDate ?? installation.warrantyCard?.startDate ?? null;
     const nextWarrantyEndDate =
@@ -264,13 +260,108 @@ export class InstallationsService {
       );
     }
 
+    const isAssignedEngineerCompleting =
+      isEngineer(actor) &&
+      installation.installedById === actor.id &&
+      installation.status === InstallationStatus.PENDING &&
+      dto.status === InstallationStatus.INSTALLED;
+
+    if (
+      !isAdmin(actor) &&
+      dto.status &&
+      dto.status !== installation.status &&
+      !isAssignedEngineerCompleting
+    ) {
+      throw new ForbiddenException('Only admin can change installation status');
+    }
+
     return this.prisma.$transaction(async (tx) => {
+      let completedMachineId: string | undefined;
+      if (
+        installation.status === InstallationStatus.PENDING &&
+        dto.status === InstallationStatus.INSTALLED
+      ) {
+        const actualMachine = await this.resolveActualInstallationMachine(
+          tx,
+          installation,
+          dto,
+          actor,
+        );
+        completedMachineId = actualMachine.id;
+        const nextInstalledAt = installedAt ?? installation.installedAt;
+        const approvedWarrantyStartDate =
+          warrantyStartDate ?? installation.warrantyCard?.startDate ?? nextInstalledAt;
+        const approvedWarrantyEndDate =
+          warrantyEndDate ?? installation.warrantyCard?.endDate ?? nextInstalledAt;
+
+        validateInventoryMovement(
+          InventoryMovementType.INSTALL,
+          actualMachine.inventoryStatus,
+          MachineInventoryStatus.INSTALLED,
+          installation.customerId,
+        );
+
+        const machineUpdate = await tx.machine.updateMany({
+          where: {
+            id: actualMachine.id,
+            inventoryStatus: actualMachine.inventoryStatus,
+          },
+          data: {
+            customerId: installation.customerId,
+            businessLineId:
+              dto.businessLineId === undefined
+                ? installation.businessLineId ?? actualMachine.businessLineId
+                : businessLine?.id ?? null,
+            installedById: installedBy?.id ?? installation.installedById,
+            primaryEngineerId:
+              installedBy?.id ?? installation.installedById ?? undefined,
+            installDate: nextInstalledAt,
+            warrantyStartDate: approvedWarrantyStartDate,
+            warrantyEndDate: approvedWarrantyEndDate,
+            inventoryStatus: MachineInventoryStatus.INSTALLED,
+            status: MachineStatus.ACTIVE,
+          },
+        });
+
+        if (machineUpdate.count !== 1) {
+          throw new BadRequestException(
+            'Machine has already been installed or changed status',
+          );
+        }
+
+        await tx.machineInventoryMovement.create({
+          data: {
+            code: await this.generateMovementCode(tx),
+            type: InventoryMovementType.INSTALL,
+            machineId: actualMachine.id,
+            fromStatus: actualMachine.inventoryStatus,
+            toStatus: MachineInventoryStatus.INSTALLED,
+            occurredAt: nextInstalledAt,
+            note: `Approved installation ${installation.code}`,
+            customerId: installation.customerId,
+            createdById: actor?.id || null,
+          },
+        });
+      }
+
+      if (
+        installation.status === InstallationStatus.PENDING &&
+        dto.status === InstallationStatus.CANCELLED
+      ) {
+        await tx.warrantyCard.updateMany({
+          where: { installationId: id },
+          data: { status: WarrantyStatus.CANCELLED },
+        });
+      }
+
       const updated = await tx.machineInstallation.update({
         where: { id },
         data: {
           status: dto.status,
+          machineId: completedMachineId ?? dto.machineId ?? undefined,
           installedAt: installedAt ?? undefined,
           installedById: installedBy?.id,
+          plannedMachineModelId: dto.machineModelId ?? undefined,
           businessLineId:
             dto.businessLineId === undefined ? undefined : businessLine?.id ?? null,
           accessories:
@@ -279,12 +370,54 @@ export class InstallationsService {
               : this.normalizeAccessories(dto.accessories),
           note:
             dto.note === undefined ? undefined : dto.note?.trim() || null,
+          handoverInstallerName:
+            dto.handoverInstallerName === undefined
+              ? undefined
+              : this.cleanOptionalString(dto.handoverInstallerName),
+          handoverInstallerPosition:
+            dto.handoverInstallerPosition === undefined
+              ? undefined
+              : this.cleanOptionalString(dto.handoverInstallerPosition),
+          handoverVehicle:
+            dto.handoverVehicle === undefined
+              ? undefined
+              : this.cleanOptionalString(dto.handoverVehicle),
+          handoverDepartureDate:
+            dto.handoverDepartureDate === undefined
+              ? undefined
+              : handoverDepartureDate ?? null,
+          receiverInstallAddress:
+            dto.receiverInstallAddress === undefined
+              ? undefined
+              : this.cleanOptionalString(dto.receiverInstallAddress),
+          receiverRepresentative:
+            dto.receiverRepresentative === undefined
+              ? undefined
+              : this.cleanOptionalString(dto.receiverRepresentative),
+          receiverPosition:
+            dto.receiverPosition === undefined
+              ? undefined
+              : this.cleanOptionalString(dto.receiverPosition),
+          receiverPhone:
+            dto.receiverPhone === undefined
+              ? undefined
+              : this.cleanOptionalString(dto.receiverPhone),
+          installedDeviceItems:
+            dto.installedDeviceItems === undefined
+              ? undefined
+              : this.normalizeDeviceItems(dto.installedDeviceItems),
+          deviceCondition:
+            dto.deviceCondition === undefined ? undefined : dto.deviceCondition,
+          deviceConditionNote:
+            dto.deviceConditionNote === undefined
+              ? undefined
+              : this.cleanOptionalString(dto.deviceConditionNote),
         },
         include: this.defaultInclude(),
       });
 
       if (warrantyStartDate || warrantyEndDate || dto.warrantyNote !== undefined) {
-        await tx.warrantyCard.update({
+        const warrantyUpdate = await tx.warrantyCard.updateMany({
           where: { installationId: id },
           data: {
             startDate: warrantyStartDate ?? undefined,
@@ -295,6 +428,23 @@ export class InstallationsService {
                 : dto.warrantyNote?.trim() || null,
           },
         });
+
+        if (warrantyUpdate.count === 0 && updated.machineId && warrantyEndDate) {
+          await tx.warrantyCard.create({
+            data: {
+              code: await this.generateWarrantyCode(tx),
+              installationId: id,
+              machineId: updated.machineId,
+              customerId: updated.customerId,
+              issuedAt: new Date(),
+              startDate: warrantyStartDate ?? updated.installedAt,
+              endDate: warrantyEndDate,
+              note: dto.warrantyNote?.trim() || null,
+              issuedById: actor?.id || null,
+              issuedByEmail: actor?.email || null,
+            },
+          });
+        }
       }
 
       if (
@@ -304,20 +454,23 @@ export class InstallationsService {
         warrantyEndDate ||
         dto.businessLineId !== undefined
       ) {
-        await tx.machine.update({
-          where: { id: installation.machineId },
-          data: {
-            installedById: installedBy?.id,
-            primaryEngineerId: installedBy?.id,
-            installDate: installedAt ?? undefined,
-            warrantyStartDate: warrantyStartDate ?? undefined,
-            warrantyEndDate: warrantyEndDate ?? undefined,
-            businessLineId:
-              dto.businessLineId === undefined
-                ? undefined
-                : businessLine?.id ?? installation.machine.businessLineId,
-          },
-        });
+        const machineId = updated.machineId;
+        if (machineId) {
+          await tx.machine.update({
+            where: { id: machineId },
+            data: {
+              installedById: installedBy?.id,
+              primaryEngineerId: installedBy?.id,
+              installDate: installedAt ?? undefined,
+              warrantyStartDate: warrantyStartDate ?? undefined,
+              warrantyEndDate: warrantyEndDate ?? undefined,
+              businessLineId:
+                dto.businessLineId === undefined
+                  ? undefined
+                  : businessLine?.id ?? installation.machine?.businessLineId,
+            },
+          });
+        }
       }
 
       await this.auditLogsService.create(
@@ -400,8 +553,88 @@ export class InstallationsService {
     assertPermission(actor, PERMISSIONS.INSTALLATION_STATUS_UPDATE);
     const installation = await this.findOne(id, actor);
     const installedAt = this.parseOptionalDate(dto.installedAt, 'installedAt');
+    const isPendingDecision =
+      installation.status === InstallationStatus.PENDING &&
+      (dto.status === InstallationStatus.INSTALLED ||
+        dto.status === InstallationStatus.CANCELLED);
+
+    if (isPendingDecision && !isAdmin(actor)) {
+      throw new ForbiddenException('Only admin can approve installation requests');
+    }
 
     return this.prisma.$transaction(async (tx) => {
+      if (
+        installation.status === InstallationStatus.PENDING &&
+        dto.status === InstallationStatus.INSTALLED
+      ) {
+        if (!installation.machine) {
+          throw new BadRequestException(
+            'Machine serial number must be updated before approving installation',
+          );
+        }
+        const nextInstalledAt = installedAt ?? installation.installedAt;
+        const warrantyStartDate =
+          installation.warrantyCard?.startDate ?? nextInstalledAt;
+        const warrantyEndDate =
+          installation.warrantyCard?.endDate ?? nextInstalledAt;
+
+        validateInventoryMovement(
+          InventoryMovementType.INSTALL,
+          installation.machine.inventoryStatus,
+          MachineInventoryStatus.INSTALLED,
+          installation.customerId,
+        );
+
+        const machineUpdate = await tx.machine.updateMany({
+          where: {
+            id: installation.machineId,
+            inventoryStatus: installation.machine.inventoryStatus,
+          },
+          data: {
+            customerId: installation.customerId,
+            businessLineId:
+              installation.businessLineId ?? installation.machine.businessLineId,
+            installedById: installation.installedById,
+            primaryEngineerId: installation.installedById ?? undefined,
+            installDate: nextInstalledAt,
+            warrantyStartDate,
+            warrantyEndDate,
+            inventoryStatus: MachineInventoryStatus.INSTALLED,
+            status: MachineStatus.ACTIVE,
+          },
+        });
+
+        if (machineUpdate.count !== 1) {
+          throw new BadRequestException(
+            'Machine has already been installed or changed status',
+          );
+        }
+
+        await tx.machineInventoryMovement.create({
+          data: {
+            code: await this.generateMovementCode(tx),
+            type: InventoryMovementType.INSTALL,
+            machineId: installation.machineId,
+            fromStatus: installation.machine.inventoryStatus,
+            toStatus: MachineInventoryStatus.INSTALLED,
+            occurredAt: nextInstalledAt,
+            note: `Approved installation ${installation.code}`,
+            customerId: installation.customerId,
+            createdById: actor?.id || null,
+          },
+        });
+      }
+
+      if (
+        installation.status === InstallationStatus.PENDING &&
+        dto.status === InstallationStatus.CANCELLED
+      ) {
+        await tx.warrantyCard.updateMany({
+          where: { installationId: id },
+          data: { status: WarrantyStatus.CANCELLED },
+        });
+      }
+
       const updated = await tx.machineInstallation.update({
         where: { id },
         data: {
@@ -455,14 +688,12 @@ export class InstallationsService {
 
   private validateCreate(dto: CreateInstallationDto) {
     if (
-      !dto.machineId ||
       !dto.customerId ||
-      !dto.installedAt ||
       !dto.installedById ||
-      !dto.warrantyEndDate
+      (!dto.machineId && !dto.machineModelId && !dto.plannedModelName?.trim())
     ) {
       throw new BadRequestException(
-        'machineId, customerId, installedAt, installedById and warrantyEndDate are required',
+        'customerId, installedById and machineId or planned model are required',
       );
     }
 
@@ -477,12 +708,173 @@ export class InstallationsService {
     const machine = await this.prisma.machine.findUnique({
       where: { id: machineId },
       include: {
-        businessLine: true,
+        businessLine: {
+          include: {
+            productIndustry: true,
+          },
+        },
+        machineModel: {
+          include: {
+            businessLine: {
+              include: {
+                productIndustry: true,
+              },
+            },
+          },
+        },
       },
     });
 
     if (!machine) {
       throw new BadRequestException('Machine does not exist');
+    }
+
+    return machine;
+  }
+
+  private async findMachineModel(machineModelId: string) {
+    const machineModel = await this.prisma.machineModel.findUnique({
+      where: { id: machineModelId },
+      include: {
+        businessLine: {
+          include: {
+            productIndustry: true,
+          },
+        },
+      },
+    });
+
+    if (!machineModel) {
+      throw new BadRequestException('Machine model does not exist');
+    }
+
+    return machineModel;
+  }
+
+  private async assertEngineerCanUseMachine(
+    actor: RequestUser,
+    machine: Awaited<ReturnType<InstallationsService['findMachine']>>,
+  ) {
+    if (!isEngineer(actor)) {
+      return;
+    }
+
+    const engineer = await this.prisma.user.findUnique({
+      where: { id: actor.id },
+      include: { engineerProfile: true },
+    });
+    const expertiseGroup = engineer?.engineerProfile?.expertiseGroup;
+
+    if (!expertiseGroup) {
+      return;
+    }
+
+    const machineGroup =
+      machine.businessLine?.productIndustry?.expertiseGroup ??
+      machine.businessLine?.expertiseGroup ??
+      machine.machineModel?.businessLine?.productIndustry?.expertiseGroup ??
+      machine.machineModel?.businessLine?.expertiseGroup;
+
+    if (machineGroup && machineGroup !== expertiseGroup) {
+      throw new ForbiddenException(
+        'Engineer can only create tickets for assigned product group',
+      );
+    }
+  }
+
+  private async resolveActualInstallationMachine(
+    tx: Prisma.TransactionClient,
+    installation: any,
+    dto: UpdateInstallationDto,
+    actor: RequestUser,
+  ) {
+    const existingMachineId = dto.machineId || installation.machineId;
+    if (existingMachineId) {
+      const machine = await tx.machine.findUnique({
+        where: { id: existingMachineId },
+      });
+      if (!machine) {
+        throw new BadRequestException('Machine does not exist');
+      }
+      return machine;
+    }
+
+    const serialNumber =
+      dto.machineSerialNumber?.trim() ||
+      dto.installedDeviceItems?.find((item) => item.serialNumber?.trim())
+        ?.serialNumber?.trim();
+
+    if (!serialNumber) {
+      throw new BadRequestException(
+        'Machine serial number is required to complete installation',
+      );
+    }
+
+    const machineModelId = dto.machineModelId || installation.plannedMachineModelId;
+    const machineModel = machineModelId
+      ? await tx.machineModel.findUnique({
+          where: { id: machineModelId },
+          include: { businessLine: true },
+        })
+      : null;
+    const fallbackModelName =
+      dto.installedDeviceItems?.find((item) => item.model?.trim())?.model?.trim() ||
+      installation.plannedModelName ||
+      dto.machineName?.trim() ||
+      'Máy lắp đặt';
+
+    const machine = await tx.machine.create({
+      data: {
+        machineCode: dto.machineCode?.trim() || null,
+        serialNumber: serialNumber.toUpperCase(),
+        name: dto.machineName?.trim() || machineModel?.displayName || machineModel?.name || fallbackModelName,
+        modelName: machineModel?.name || fallbackModelName,
+        manufacturer: machineModel?.manufacturer || '',
+        productCategory: machineModel?.productCategory || 'OTHER',
+        productLine: machineModel?.productLine || null,
+        machineModelId: machineModel?.id || null,
+        businessLineId:
+          installation.businessLineId || machineModel?.businessLineId || null,
+        customerId: installation.customerId,
+        installedById: installation.installedById,
+        primaryEngineerId: installation.installedById,
+        inventoryStatus: MachineInventoryStatus.IN_STOCK,
+        status: MachineStatus.ACTIVE,
+        createdSource: isEngineer(actor) ? 'ENGINEER' : 'ADMIN',
+        dataStatus: isEngineer(actor) ? 'PENDING_REVIEW' : 'VERIFIED',
+      },
+    });
+
+    const accessoryInputs: Array<{
+      code?: string | null;
+      name?: string | null;
+      serialNumber?: string | null;
+      description?: string | null;
+      note?: string | null;
+    }> | undefined = dto.machineAccessories?.length
+      ? dto.machineAccessories
+      : dto.installedDeviceItems
+          ?.filter((item, index) => index > 0 && (item.itemName || item.serialNumber))
+          .map((item) => ({
+            name: item.itemName,
+            serialNumber: item.serialNumber,
+            description: item.model,
+          }));
+
+    if (accessoryInputs?.length) {
+      await tx.machineAccessory.createMany({
+        data: accessoryInputs
+          .filter((accessory) => accessory.name?.trim())
+          .map((accessory) => ({
+            machineId: machine.id,
+            code: accessory.code?.trim() || null,
+            name: accessory.name.trim(),
+            serialNumber: accessory.serialNumber?.trim()?.toUpperCase() || null,
+            description: accessory.description?.trim() || null,
+            note: accessory.note?.trim() || null,
+          })),
+        skipDuplicates: true,
+      });
     }
 
     return machine;
@@ -526,6 +918,7 @@ export class InstallationsService {
 
     const businessLine = await this.prisma.businessLine.findUnique({
       where: { id: businessLineId },
+      include: { productIndustry: true },
     });
 
     if (!businessLine) {
@@ -656,8 +1049,11 @@ export class InstallationsService {
 
   private async generateInstallationCode(
     tx: Prisma.TransactionClient,
+    machine: Awaited<ReturnType<InstallationsService['findMachine']>> | null,
+    machineModel?: Awaited<ReturnType<InstallationsService['findMachineModel']>> | null,
+    businessLine?: Awaited<ReturnType<InstallationsService['findBusinessLine']>> | null,
   ): Promise<string> {
-    const prefix = this.getDailyCodePrefix('INS');
+    const prefix = `LD-${this.getExpertiseGroupCode(machine, machineModel, businessLine)}-${new Date().getFullYear()}`;
     const count = await tx.machineInstallation.count({
       where: {
         code: {
@@ -667,6 +1063,26 @@ export class InstallationsService {
     });
 
     return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+  }
+
+  private getExpertiseGroupCode(
+    machine?: Awaited<ReturnType<InstallationsService['findMachine']>> | null,
+    machineModel?: Awaited<ReturnType<InstallationsService['findMachineModel']>> | null,
+    businessLine?: Awaited<ReturnType<InstallationsService['findBusinessLine']>> | null,
+  ) {
+    const group =
+      businessLine?.productIndustry?.expertiseGroup ??
+      businessLine?.expertiseGroup ??
+      machine?.businessLine?.productIndustry?.expertiseGroup ??
+      machine?.businessLine?.expertiseGroup ??
+      machine?.machineModel?.businessLine?.productIndustry?.expertiseGroup ??
+      machine?.machineModel?.businessLine?.expertiseGroup ??
+      machineModel?.businessLine?.productIndustry?.expertiseGroup ??
+      machineModel?.businessLine?.expertiseGroup;
+
+    if (group === 'LAB_TESTING') return 'XN';
+    if (group === 'IMAGING') return 'SA';
+    return 'KT';
   }
 
   private async generateWarrantyCode(
@@ -748,6 +1164,7 @@ export class InstallationsService {
         },
       },
       businessLine: true,
+      plannedMachineModel: true,
       installedBy: {
         select: {
           id: true,

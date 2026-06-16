@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -24,6 +25,23 @@ import { ListRepairsQueryDto } from './dto/list-repairs-query.dto';
 import { UpdateRepairStatusDto } from './dto/update-repair-status.dto';
 import { UpdateRepairDto } from './dto/update-repair.dto';
 
+type MachineExpertiseSource = {
+  businessLine?: {
+    expertiseGroup?: string | null;
+    productIndustry?: {
+      expertiseGroup?: string | null;
+    } | null;
+  } | null;
+  machineModel?: {
+    businessLine?: {
+      expertiseGroup?: string | null;
+      productIndustry?: {
+        expertiseGroup?: string | null;
+      } | null;
+    } | null;
+  } | null;
+} | null;
+
 @Injectable()
 export class RepairsService {
   constructor(
@@ -36,9 +54,15 @@ export class RepairsService {
     assertPermission(actor, PERMISSIONS.REPAIR_CREATE);
     this.validateCreateRepair(dto);
 
-    await this.ensureMachineExists(dto.machineId);
+    const machine = dto.machineId
+      ? await this.ensureMachineExists(dto.machineId)
+      : null;
+    if (machine) {
+      await this.assertEngineerCanUseMachine(actor, machine);
+    }
 
-    const engineerId = isEngineer(actor) ? actor.id : dto.engineerId;
+    const createdByEngineer = isEngineer(actor);
+    const engineerId = createdByEngineer ? actor.id : dto.engineerId;
 
     if (engineerId) {
       await this.ensureEngineerExists(engineerId);
@@ -47,16 +71,20 @@ export class RepairsService {
     return this.prisma.$transaction(async (tx) => {
       const repair = await tx.repair.create({
         data: {
-          code: await this.generateRepairCode(),
+          code: await this.generateRepairCode(machine, dto.warrantyStatus),
           title: dto.title.trim(),
           description: dto.description?.trim() || null,
-          machineId: dto.machineId,
+          machineId: machine?.id ?? null,
           engineerId: engineerId || null,
           createdById: actor.id,
           priority: dto.priority ?? RepairPriority.NORMAL,
-          status: engineerId ? RepairStatus.ASSIGNED : RepairStatus.PENDING,
+          status: createdByEngineer
+            ? RepairStatus.PENDING
+            : engineerId
+              ? RepairStatus.ASSIGNED
+              : RepairStatus.PENDING,
           reportedAt: this.parseOptionalDate(dto.reportedAt) ?? new Date(),
-          assignedAt: engineerId ? new Date() : null,
+          assignedAt: createdByEngineer ? null : engineerId ? new Date() : null,
           usingDepartment: this.cleanOptionalString(dto.usingDepartment),
           representative: this.cleanOptionalString(dto.representative),
           address: this.cleanOptionalString(dto.address),
@@ -97,6 +125,20 @@ export class RepairsService {
             title: 'Bạn có phiếu sửa chữa mới',
             message: `${actor.email} đã phân công phiếu ${repair.code}: ${repair.title}`,
             href: '/my-tasks',
+            entityType: 'Repair',
+            entityId: repair.id,
+            createdById: actor.id,
+          },
+          tx,
+        );
+      }
+
+      if (isEngineer(actor)) {
+        await this.notificationsService.createForAdmins(
+          {
+            title: 'Kỹ sư tạo phiếu sửa chữa mới',
+            message: `${actor.email} đã tạo phiếu ${repair.code}: ${repair.title}. Vui lòng kiểm tra và duyệt dữ liệu liên quan.`,
+            href: '/service-tickets',
             entityType: 'Repair',
             entityId: repair.id,
             createdById: actor.id,
@@ -152,6 +194,19 @@ export class RepairsService {
     const nextEngineerId =
       dto.engineerId === undefined ? repair.engineerId : dto.engineerId || null;
     const nextStatus = dto.status ?? repair.status;
+    const nextMachine =
+      dto.machineId === undefined
+        ? repair.machine
+        : dto.machineId
+          ? await this.ensureMachineExists(dto.machineId)
+          : null;
+
+    if (nextMachine) {
+      await this.assertEngineerCanUseMachine(
+        actor,
+        nextMachine as MachineExpertiseSource,
+      );
+    }
 
     if (nextEngineerId) {
       await this.ensureEngineerExists(nextEngineerId);
@@ -177,6 +232,8 @@ export class RepairsService {
           priority: dto.priority,
           engineerId:
             dto.engineerId === undefined ? undefined : nextEngineerId,
+          machineId:
+            dto.machineId === undefined ? undefined : nextMachine?.id ?? null,
           status: dto.status,
           assignedAt:
             dto.engineerId !== undefined && nextEngineerId && !repair.assignedAt
@@ -216,14 +273,14 @@ export class RepairsService {
 
       const machineStatus = this.getMachineStatusForRepairStatus(nextStatus);
 
-      if (machineStatus) {
+      if (machineStatus && nextMachine) {
         validateMachineState(
           machineStatus,
-          repair.machine.inventoryStatus,
-          repair.machine.customerId,
+          nextMachine.inventoryStatus,
+          nextMachine.customerId,
         );
         await tx.machine.update({
-          where: { id: repair.machineId },
+          where: { id: nextMachine.id },
           data: {
             status: machineStatus,
           },
@@ -412,14 +469,14 @@ export class RepairsService {
 
       const machineStatus = this.getMachineStatusForRepairStatus(dto.status);
 
-      if (machineStatus) {
+      if (machineStatus && repair.machine) {
         validateMachineState(
           machineStatus,
           repair.machine.inventoryStatus,
           repair.machine.customerId,
         );
         await tx.machine.update({
-          where: { id: repair.machineId },
+          where: { id: repair.machine.id },
           data: {
             status: machineStatus,
           },
@@ -468,8 +525,8 @@ export class RepairsService {
   }
 
   private validateCreateRepair(dto: CreateRepairDto) {
-    if (!dto.title?.trim() || !dto.machineId) {
-      throw new BadRequestException('title and machineId are required');
+    if (!dto.title?.trim()) {
+      throw new BadRequestException('title is required');
     }
   }
 
@@ -484,10 +541,59 @@ export class RepairsService {
   private async ensureMachineExists(machineId: string) {
     const machine = await this.prisma.machine.findUnique({
       where: { id: machineId },
+      include: {
+        businessLine: {
+          include: {
+            productIndustry: true,
+          },
+        },
+        machineModel: {
+          include: {
+            businessLine: {
+              include: {
+                productIndustry: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!machine) {
       throw new BadRequestException('Machine does not exist');
+    }
+
+    return machine;
+  }
+
+  private async assertEngineerCanUseMachine(
+    actor: RequestUser,
+    machine: MachineExpertiseSource,
+  ) {
+    if (!isEngineer(actor)) {
+      return;
+    }
+
+    const engineer = await this.prisma.user.findUnique({
+      where: { id: actor.id },
+      include: { engineerProfile: true },
+    });
+    const expertiseGroup = engineer?.engineerProfile?.expertiseGroup;
+
+    if (!expertiseGroup) {
+      return;
+    }
+
+    const machineGroup =
+      machine.businessLine?.productIndustry?.expertiseGroup ??
+      machine.businessLine?.expertiseGroup ??
+      machine.machineModel?.businessLine?.productIndustry?.expertiseGroup ??
+      machine.machineModel?.businessLine?.expertiseGroup;
+
+    if (machineGroup && machineGroup !== expertiseGroup) {
+      throw new ForbiddenException(
+        'Engineer can only create tickets for assigned product group',
+      );
     }
   }
 
@@ -508,12 +614,15 @@ export class RepairsService {
     }
   }
 
-  private async generateRepairCode(): Promise<string> {
+  private async generateRepairCode(
+    machine: MachineExpertiseSource,
+    warrantyStatus?: string | null,
+  ): Promise<string> {
     const now = new Date();
     const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const prefix = `RP-${year}${month}${day}`;
+    const typePrefix = warrantyStatus === 'IN_WARRANTY' ? 'BH' : 'SC';
+    const groupPrefix = this.getExpertiseGroupCode(machine);
+    const prefix = `${typePrefix}-${groupPrefix}-${year}`;
 
     const count = await this.prisma.repair.count({
       where: {
@@ -524,6 +633,20 @@ export class RepairsService {
     });
 
     return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+  }
+
+  private getExpertiseGroupCode(
+    machine: MachineExpertiseSource,
+  ) {
+    const group =
+      machine?.businessLine?.productIndustry?.expertiseGroup ??
+      machine?.businessLine?.expertiseGroup ??
+      machine?.machineModel?.businessLine?.productIndustry?.expertiseGroup ??
+      machine?.machineModel?.businessLine?.expertiseGroup;
+
+    if (group === 'LAB_TESTING') return 'XN';
+    if (group === 'IMAGING') return 'SA';
+    return 'KT';
   }
 
   private parseOptionalDate(value?: string): Date | undefined {
@@ -560,6 +683,11 @@ export class RepairsService {
             { code: { contains: search, mode: 'insensitive' } },
             { title: { contains: search, mode: 'insensitive' } },
             { description: { contains: search, mode: 'insensitive' } },
+            { deviceName: { contains: search, mode: 'insensitive' } },
+            { modelName: { contains: search, mode: 'insensitive' } },
+            { serialNumber: { contains: search, mode: 'insensitive' } },
+            { usingDepartment: { contains: search, mode: 'insensitive' } },
+            { representative: { contains: search, mode: 'insensitive' } },
             {
               machine: {
                 serialNumber: { contains: search, mode: 'insensitive' },
@@ -648,6 +776,8 @@ export class RepairsService {
       [RepairStatus.PENDING]: [RepairStatus.ASSIGNED, RepairStatus.CANCELLED],
       [RepairStatus.ASSIGNED]: [
         RepairStatus.IN_PROGRESS,
+        RepairStatus.WAITING_PARTS,
+        RepairStatus.COMPLETED,
         RepairStatus.CANCELLED,
       ],
       [RepairStatus.IN_PROGRESS]: [

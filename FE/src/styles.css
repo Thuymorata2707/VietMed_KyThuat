@@ -54,10 +54,14 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 #root {
   font-family: var(--font-sans);
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 button,
@@ -167,6 +171,18 @@ p {
 
 .surface-card {
   @apply rounded-lg border border-[#e3eaf2] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)];
+}
+
+.weekly-cell {
+  @apply min-h-10 w-full resize-y rounded-md border border-transparent bg-transparent px-2 py-2 text-[#17202a] outline-none;
+}
+
+.weekly-cell:focus {
+  @apply border-[#c92a1f] bg-white shadow-[0_0_0_3px_rgba(201,42,31,0.1)];
+}
+
+.weekly-cell:disabled {
+  @apply cursor-default text-[#405064] opacity-100;
 }
 
 .skeleton-line {

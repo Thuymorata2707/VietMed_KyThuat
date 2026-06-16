@@ -474,6 +474,102 @@
   bottom: -22px;
 }
 
+.crud-form-page {
+  background: #ffffff;
+  border: 1px solid #dfe7ef;
+  border-radius: 8px;
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  width: 100%;
+}
+
+.crud-form-page .form-panel-heading {
+  background: #f8fbfd;
+  border: 1px solid #edf1f6;
+  border-radius: 8px;
+  margin-bottom: 0;
+  padding: 18px;
+}
+
+.crud-form-page .form-panel-heading span {
+  color: #c92a1f;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.crud-form-page .form-panel-heading h2 {
+  font-size: 24px;
+  line-height: 1.18;
+}
+
+.crud-form-page .admin-crud-form,
+.user-form-page-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.crud-form-page .form-grid {
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.crud-form-page .form-grid label,
+.crud-form-page .searchable-field,
+.user-form-page-grid label {
+  gap: 8px;
+}
+
+.crud-form-page .form-grid input,
+.crud-form-page .form-grid select,
+.crud-form-page .form-grid textarea,
+.crud-form-page .searchable-select input {
+  min-height: 46px;
+}
+
+.user-form-page-grid input,
+.user-form-page-grid select,
+.user-form-page-grid textarea {
+  border: 1px solid #ced8e3;
+  border-radius: 8px;
+  color: #17202a;
+  min-height: 46px;
+  min-width: 0;
+  outline: none;
+  padding: 0 12px;
+}
+
+.user-form-page-grid textarea {
+  min-height: 92px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.user-form-page-grid label {
+  color: #405064;
+  display: grid;
+  font-weight: 500;
+  min-width: 0;
+}
+
+.user-form-page-grid input:focus,
+.user-form-page-grid select:focus,
+.user-form-page-grid textarea:focus {
+  border-color: #c92a1f;
+  box-shadow: 0 0 0 3px rgba(201, 42, 31, 0.1);
+}
+
+@media (max-width: 760px) {
+  .crud-form-page {
+    padding: 16px;
+  }
+
+  .crud-form-page .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .confirm-modal {
   background: #ffffff;
   border: 1px solid #dfe7ef;

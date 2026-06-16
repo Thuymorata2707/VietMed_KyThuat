@@ -24,6 +24,10 @@ export class UpdateRepairDto {
 
   @IsOptional()
   @IsString()
+  machineId?: string | null;
+
+  @IsOptional()
+  @IsString()
   resultNote?: string | null;
 
   @IsOptional()

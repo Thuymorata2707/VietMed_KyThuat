@@ -62,6 +62,13 @@ export type MaintenanceTask = {
   nextDueDate?: string | null;
   resultNote?: string | null;
   checklist?: string[];
+  usingDepartment?: string | null;
+  representative?: string | null;
+  address?: string | null;
+  contactPhone?: string | null;
+  deviceName?: string | null;
+  modelName?: string | null;
+  serialNumber?: string | null;
   machine?: TaskMachine | null;
 };
 
@@ -79,6 +86,15 @@ export type InstallationTask = {
   code: string;
   status: string;
   installedAt?: string | null;
+  plannedModelName?: string | null;
+  plannedMachineModelId?: string | null;
+  plannedMachineModel?: {
+    id: string;
+    code?: string | null;
+    name?: string | null;
+    displayName?: string | null;
+    manufacturer?: string | null;
+  } | null;
   accessories?: string[];
   note?: string | null;
   handoverInstallerName?: string | null;
@@ -92,6 +108,11 @@ export type InstallationTask = {
   installedDeviceItems?: InstallationDeviceItem[];
   deviceCondition?: string | null;
   deviceConditionNote?: string | null;
+  warrantyCard?: {
+    startDate?: string | null;
+    endDate?: string | null;
+    note?: string | null;
+  } | null;
   machine?: TaskMachine | null;
   customer?: {
     name?: string | null;
@@ -140,6 +161,7 @@ export type CreateTicketForm = {
   title: string;
   description: string;
   machineId: string;
+  machineModelId: string;
   customerId: string;
   priority: string;
   maintenanceType: string;

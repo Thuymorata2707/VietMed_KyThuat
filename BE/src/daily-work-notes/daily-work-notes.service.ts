@@ -36,13 +36,19 @@ export class DailyWorkNotesService {
     return this.prisma.dailyWorkNote.findMany({
       where,
       include: this.defaultInclude(),
-      orderBy: [{ workDate: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [
+        { workDate: 'asc' },
+        { startTime: 'asc' },
+        { createdAt: 'asc' },
+      ],
     });
   }
 
   async create(dto: CreateDailyWorkNoteDto, user: RequestUser) {
     if (!isEngineer(user) && !isAdmin(user)) {
-      throw new ForbiddenException('You do not have permission for this action');
+      throw new ForbiddenException(
+        'You do not have permission for this action',
+      );
     }
 
     const targetUserId = isAdmin(user) && dto.userId ? dto.userId : user.id;
@@ -98,8 +104,11 @@ export class DailyWorkNotesService {
             ? undefined
             : this.cleanOptional(dto.startTime),
         endTime:
-          dto.endTime === undefined ? undefined : this.cleanOptional(dto.endTime),
-        color: dto.color === undefined ? undefined : this.cleanOptional(dto.color),
+          dto.endTime === undefined
+            ? undefined
+            : this.cleanOptional(dto.endTime),
+        color:
+          dto.color === undefined ? undefined : this.cleanOptional(dto.color),
       },
       include: this.defaultInclude(),
     });
@@ -111,7 +120,10 @@ export class DailyWorkNotesService {
     return { deleted: true };
   }
 
-  private resolveReadableUserId(queryUserId: string | undefined, user: RequestUser) {
+  private resolveReadableUserId(
+    queryUserId: string | undefined,
+    user: RequestUser,
+  ) {
     if (isAdmin(user)) {
       return queryUserId || user.id;
     }
@@ -134,7 +146,10 @@ export class DailyWorkNotesService {
   }
 
   private async ensureUserExists(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }

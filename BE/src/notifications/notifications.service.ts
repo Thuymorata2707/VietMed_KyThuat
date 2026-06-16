@@ -83,4 +83,40 @@ export class NotificationsService {
       },
     });
   }
+
+  async createForAdmins(
+    input: Omit<CreateNotificationInput, 'userId'>,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    const admins = await client.user.findMany({
+      where: {
+        role: {
+          name: {
+            in: ['admin', 'quản trị viên', 'quan tri vien'],
+          },
+        },
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!admins.length) {
+      return [];
+    }
+
+    return Promise.all(
+      admins.map((admin) =>
+        this.create(
+          {
+            ...input,
+            userId: admin.id,
+          },
+          tx,
+        ),
+      ),
+    );
+  }
 }

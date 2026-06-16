@@ -8,6 +8,7 @@ import {
   History,
   Loader2,
   MapPinned,
+  PackageSearch,
   RefreshCw,
   ShieldCheck,
   Stethoscope,
@@ -26,6 +27,11 @@ import { StatusPanel } from '../../components/StatusPanel';
 
 type Summary = Record<string, number>;
 
+type TechnicalMachines = {
+  total: number;
+  businessLines: unknown[];
+};
+
 const dashboardHeroImage = 'https://www.alpinion.com/uploadImage/product/202403/1709107396000000006.png';
 
 export function DashboardPage({ role }: { role: RoleName }) {
@@ -33,6 +39,7 @@ export function DashboardPage({ role }: { role: RoleName }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const [technicalMachines, setTechnicalMachines] = useState<TechnicalMachines | null>(null);
 
   useEffect(() => {
     void loadSummary();
@@ -43,7 +50,12 @@ export function DashboardPage({ role }: { role: RoleName }) {
     setError('');
 
     try {
-      setSummary(await apiFetch<Summary>('/dashboard/summary'));
+      const [nextSummary, nextTechnicalMachines] = await Promise.all([
+        apiFetch<Summary>('/dashboard/summary'),
+        apiFetch<TechnicalMachines>('/dashboard/technical-machines'),
+      ]);
+      setSummary(nextSummary);
+      setTechnicalMachines(nextTechnicalMachines);
       setLastUpdatedAt(new Date().toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được dashboard');
@@ -264,6 +276,28 @@ export function DashboardPage({ role }: { role: RoleName }) {
           <MetricCard detail={card.detail} icon={card.icon} key={card.label} label={card.label} loading={loading} tone={card.tone} value={card.value} />
         ))}
       </div>
+
+      <section className="grid gap-3.5">
+        <Link
+          className="grid min-h-[132px] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-lg border border-[#dbe5ef] bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-px hover:border-[#bfd0e1] hover:shadow-[0_12px_30px_rgba(15,23,42,0.06)] max-sm:grid-cols-[auto_minmax(0,1fr)]"
+          to="/technical-machines"
+        >
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-[#eef6ff] text-[#2f5f98]">
+            <PackageSearch size={24} />
+          </span>
+          <span className="grid min-w-0 gap-1.5">
+            <span className="text-xs font-extrabold uppercase text-[#657384]">Phòng kỹ thuật</span>
+            <span className="text-xl font-bold text-[#17202a]">Số lượng máy quản lý</span>
+            <span className="text-sm text-[#657384]">
+              {loading ? 'Đang tải danh sách máy' : `${technicalMachines?.businessLines.length ?? 0} ngành hàng, chọn để xem S/N và thông tin lắp đặt`}
+            </span>
+          </span>
+          <span className="grid justify-items-end gap-1 max-sm:col-span-2 max-sm:grid-cols-[1fr_auto] max-sm:items-center max-sm:justify-items-start">
+            <strong className="text-5xl leading-none text-[#2f5f98]">{loading ? '-' : technicalMachines?.total ?? summary?.totalMachines ?? 0}</strong>
+            <span className="text-sm font-bold text-[#405064]">Xem chi tiết</span>
+          </span>
+        </Link>
+      </section>
 
       <div className="grid grid-cols-2 gap-4 max-[1180px]:grid-cols-2 max-[860px]:grid-cols-1">
         <StatusPanel

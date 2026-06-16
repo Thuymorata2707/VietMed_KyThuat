@@ -1,0 +1,1 @@
+ALTER TABLE "WeeklyReportRow" ALTER COLUMN "content" DROP NOT NULL;

@@ -72,7 +72,7 @@ const repairStatuses = enumOptions(['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'WAITI
 
 const maintenanceStatuses = enumOptions(['SCHEDULED', 'ASSIGNED', 'IN_PROGRESS', 'OVERDUE', 'COMPLETED', 'CANCELLED']);
 
-const installationStatuses = enumOptions(['INSTALLED', 'CANCELLED']);
+const installationStatuses = enumOptions(['PENDING', 'INSTALLED', 'CANCELLED']);
 
 const maintenanceTypes = enumOptions(['PERIODIC', 'WARRANTY', 'CONTRACT', 'INTERNAL', 'OTHER']);
 

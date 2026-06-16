@@ -48,6 +48,11 @@ type InstallationAssignment = {
   status: string;
   installedAt?: string | null;
   installedBy?: ApiUser | null;
+  plannedModelName?: string | null;
+  plannedMachineModel?: {
+    name?: string | null;
+    displayName?: string | null;
+  } | null;
   machine?: WorkMachine | null;
   customer?: {
     name?: string | null;
@@ -115,7 +120,7 @@ export function AdminWorkAssignmentPage() {
       setRepairs(nextRepairs);
       setMaintenances(nextMaintenances);
       setInstallations(nextInstallations);
-      setAssignmentByKey(buildAssignmentMap(nextRepairs, nextMaintenances));
+      setAssignmentByKey(buildAssignmentMap(nextRepairs, nextMaintenances, nextInstallations));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được dữ liệu phân việc.');
     } finally {
@@ -167,7 +172,7 @@ export function AdminWorkAssignmentPage() {
         id: item.id,
         kind: 'installation' as const,
         code: item.code,
-        title: `Lắp đặt ${item.machine?.machineCode ?? item.machine?.serialNumber ?? item.code}`,
+        title: `Lắp đặt ${item.machine?.machineCode ?? item.machine?.serialNumber ?? item.machine?.modelName ?? item.plannedMachineModel?.name ?? item.plannedModelName ?? item.code}`,
         status: item.status,
         date: item.installedAt,
         engineer: item.installedBy,
@@ -178,7 +183,7 @@ export function AdminWorkAssignmentPage() {
 
     return nextItems
       .filter((item) => {
-        if (filter === 'unassigned') return item.kind !== 'installation' && !item.engineer?.id;
+        if (filter === 'unassigned') return !item.engineer?.id;
         if (filter === 'active') return !isClosed(item.status);
         return true;
       })
@@ -186,15 +191,18 @@ export function AdminWorkAssignmentPage() {
   }, [filter, installations, maintenances, repairs]);
 
   async function assignWork(item: WorkItem) {
-    if (item.kind === 'installation') return;
-
     const engineerId = assignmentByKey[item.key];
     if (!engineerId) {
       setError('Vui lòng chọn kỹ sư trước khi phân việc.');
       return;
     }
 
-    const endpoint = item.kind === 'repair' ? `/repairs/${item.id}/assign` : `/maintenance/${item.id}/assign`;
+    const endpoint =
+      item.kind === 'repair'
+        ? `/repairs/${item.id}/assign`
+        : item.kind === 'maintenance'
+          ? `/maintenance/${item.id}/assign`
+          : `/installations/${item.id}`;
     setAssigningKey(item.key);
     setError('');
     setSuccess('');
@@ -202,7 +210,9 @@ export function AdminWorkAssignmentPage() {
     try {
       await apiFetch(endpoint, {
         method: 'PATCH',
-        body: JSON.stringify({ engineerId }),
+        body: JSON.stringify(
+          item.kind === 'installation' ? { installedById: engineerId } : { engineerId },
+        ),
       });
       setSuccess(`Đã phân ${kindLabel(item.kind).toLowerCase()} ${item.code} cho kỹ sư.`);
       await loadData();
@@ -332,36 +342,28 @@ export function AdminWorkAssignmentPage() {
                     </span>
                   </div>
                   <div className="col-span-full grid gap-2.5 max-[560px]:grid-cols-1 min-[561px]:grid-cols-[minmax(0,1fr)_auto] min-[821px]:col-start-3 min-[821px]:col-span-1 min-[821px]:row-span-2 min-[821px]:row-start-1 min-[1181px]:col-auto min-[1181px]:row-auto">
-                    {item.kind === 'installation' ? (
-                      <span className="min-h-10 rounded-lg border border-[#dfe7ef] bg-[#f4f7fb] px-3 py-[11px] text-[13px] font-bold text-[#405064]">
-                        Theo dõi lắp đặt
-                      </span>
-                    ) : (
-                      <>
-                        <select
-                          aria-label={`Chọn kỹ sư cho ${item.code}`}
-                          className="h-10 min-w-0 rounded-lg border border-[#ced8e3] bg-white px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
-                          onChange={(event) => setAssignmentByKey((current) => ({ ...current, [item.key]: event.target.value }))}
-                          value={assignmentByKey[item.key] ?? ''}
-                        >
-                          <option value="">Chọn kỹ sư</option>
-                          {engineers.map((engineer) => (
-                            <option key={engineer.id} value={engineer.id}>
-                              {engineer.fullName || engineer.email}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border-0 bg-[#c92a1f] px-4 text-sm font-bold text-white shadow-sm hover:bg-[#a61f17] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
-                          disabled={!assignmentByKey[item.key] || assigningKey === item.key}
-                          onClick={() => assignWork(item)}
-                          type="button"
-                        >
-                          {assigningKey === item.key ? <Loader2 className="animate-spin" size={16} /> : <UserCheck size={16} />}
-                          Phân việc
-                        </button>
-                      </>
-                    )}
+                    <select
+                      aria-label={`Chọn kỹ sư cho ${item.code}`}
+                      className="h-10 min-w-0 rounded-lg border border-[#ced8e3] bg-white px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
+                      onChange={(event) => setAssignmentByKey((current) => ({ ...current, [item.key]: event.target.value }))}
+                      value={assignmentByKey[item.key] ?? ''}
+                    >
+                      <option value="">Chọn kỹ sư</option>
+                      {engineers.map((engineer) => (
+                        <option key={engineer.id} value={engineer.id}>
+                          {engineer.fullName || engineer.email}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border-0 bg-[#c92a1f] px-4 text-sm font-bold text-white shadow-sm hover:bg-[#a61f17] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
+                      disabled={!assignmentByKey[item.key] || assigningKey === item.key}
+                      onClick={() => assignWork(item)}
+                      type="button"
+                    >
+                      {assigningKey === item.key ? <Loader2 className="animate-spin" size={16} /> : <UserCheck size={16} />}
+                      Phân việc
+                    </button>
                   </div>
                 </article>
               ))
@@ -424,7 +426,7 @@ function withQueryParams(endpoint: string, params: Record<string, string>) {
   return queryString ? `${path}?${queryString}` : path;
 }
 
-function buildAssignmentMap(repairs: RepairAssignment[], maintenances: MaintenanceAssignment[]) {
+function buildAssignmentMap(repairs: RepairAssignment[], maintenances: MaintenanceAssignment[], installations: InstallationAssignment[] = []) {
   const map: Record<string, string> = {};
 
   repairs.forEach((item) => {
@@ -433,6 +435,10 @@ function buildAssignmentMap(repairs: RepairAssignment[], maintenances: Maintenan
 
   maintenances.forEach((item) => {
     map[`maintenance:${item.id}`] = item.engineer?.id ?? '';
+  });
+
+  installations.forEach((item) => {
+    map[`installation:${item.id}`] = item.installedBy?.id ?? '';
   });
 
   return map;

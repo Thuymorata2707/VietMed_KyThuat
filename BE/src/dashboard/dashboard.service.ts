@@ -58,6 +58,557 @@ type MaintenanceStatusValue =
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getTechnicalMachines(
+    user?: RequestUser,
+    query: Record<string, string | undefined> = {},
+  ) {
+    const page = Math.max(Number(query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(query.limit) || 25, 1), 100);
+    const search = query.search?.trim();
+    const businessLineId = query.businessLineId?.trim();
+    const installState = query.installState?.trim();
+    const accessScope = machineAccessWhere(user);
+    const baseFilters: Prisma.MachineWhereInput[] = [];
+
+    if (search) {
+      baseFilters.push({
+        OR: [
+          { machineCode: { contains: search, mode: 'insensitive' } },
+          { serialNumber: { contains: search, mode: 'insensitive' } },
+          { name: { contains: search, mode: 'insensitive' } },
+          { modelName: { contains: search, mode: 'insensitive' } },
+          { manufacturer: { contains: search, mode: 'insensitive' } },
+          {
+            customer: {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { hospitalName: { contains: search, mode: 'insensitive' } },
+                { customerCode: { contains: search, mode: 'insensitive' } },
+              ],
+            },
+          },
+          {
+            installations: {
+              some: {
+                customer: {
+                  OR: [
+                    { name: { contains: search, mode: 'insensitive' } },
+                    {
+                      hospitalName: {
+                        contains: search,
+                        mode: 'insensitive',
+                      },
+                    },
+                    {
+                      customerCode: {
+                        contains: search,
+                        mode: 'insensitive',
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          {
+            accessories: {
+              some: {
+                OR: [
+                  { name: { contains: search, mode: 'insensitive' } },
+                  { code: { contains: search, mode: 'insensitive' } },
+                  { serialNumber: { contains: search, mode: 'insensitive' } },
+                ],
+              },
+            },
+          },
+        ],
+      });
+    }
+
+    if (installState === 'INSTALLED') {
+      baseFilters.push({
+        OR: [
+          { inventoryStatus: 'INSTALLED' },
+          { installations: { some: {} } },
+          { customerId: { not: null } },
+        ],
+      });
+    } else if (installState === 'UNINSTALLED') {
+      baseFilters.push({
+        AND: [
+          { inventoryStatus: { not: 'INSTALLED' } },
+          { installations: { none: {} } },
+          { customerId: null },
+        ],
+      });
+    }
+
+    const filterWhere: Prisma.MachineWhereInput = {
+      AND: [accessScope, ...baseFilters],
+    };
+    const selectedBusinessLineWhere: Prisma.MachineWhereInput =
+      businessLineId === '__unassigned__'
+        ? { businessLineId: null }
+        : businessLineId
+          ? { businessLineId }
+          : {};
+    const where: Prisma.MachineWhereInput = {
+      AND: [filterWhere, selectedBusinessLineWhere],
+    };
+
+    const [total, filteredTotal, businessLineCounts, machines] =
+      await Promise.all([
+      this.prisma.machine.count({ where: accessScope }),
+      this.prisma.machine.count({ where }),
+      this.prisma.machine.groupBy({
+        by: ['businessLineId'],
+        where: filterWhere,
+        _count: {
+          _all: true,
+        },
+      }),
+      this.prisma.machine.findMany({
+        where,
+        select: {
+          id: true,
+          machineCode: true,
+          serialNumber: true,
+          modelName: true,
+          name: true,
+          manufacturer: true,
+          productCategory: true,
+          status: true,
+          inventoryStatus: true,
+          installDate: true,
+          warrantyStartDate: true,
+          warrantyEndDate: true,
+          businessLine: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              productCategory: true,
+            },
+          },
+          customer: {
+            select: {
+              id: true,
+              customerCode: true,
+              name: true,
+              hospitalName: true,
+              phone: true,
+              contactPerson: true,
+              contactPhone: true,
+              province: true,
+              district: true,
+              address: true,
+              fullAddress: true,
+            },
+          },
+          installedBy: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+            },
+          },
+          primaryEngineer: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+            },
+          },
+          installations: {
+            select: {
+              id: true,
+              code: true,
+              status: true,
+              installedAt: true,
+              receiverInstallAddress: true,
+              receiverRepresentative: true,
+              receiverPhone: true,
+              customer: {
+                select: {
+                  id: true,
+                  customerCode: true,
+                  name: true,
+                  hospitalName: true,
+                  phone: true,
+                  contactPerson: true,
+                  contactPhone: true,
+                  province: true,
+                  district: true,
+                  address: true,
+                  fullAddress: true,
+                },
+              },
+              installedBy: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+              warrantyCard: {
+                select: {
+                  id: true,
+                  code: true,
+                  status: true,
+                  startDate: true,
+                  endDate: true,
+                },
+              },
+            },
+            orderBy: {
+              installedAt: 'desc',
+            },
+            take: 1,
+          },
+          accessories: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              serialNumber: true,
+              description: true,
+              note: true,
+              componentAccessory: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true,
+                  component: {
+                    select: {
+                      id: true,
+                      code: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: [{ name: 'asc' }, { serialNumber: 'asc' }],
+          },
+        },
+        orderBy: [{ businessLine: { name: 'asc' } }, { serialNumber: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+
+    const businessLineIds = businessLineCounts
+      .map((item) => item.businessLineId)
+      .filter((id): id is string => Boolean(id));
+    const businessLines = businessLineIds.length
+      ? await this.prisma.businessLine.findMany({
+          where: {
+            id: {
+              in: businessLineIds,
+            },
+          },
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            productCategory: true,
+          },
+        })
+      : [];
+
+    const businessLineLookup = new Map(
+      businessLines.map((businessLine) => [businessLine.id, businessLine]),
+    );
+    const businessLineGroups = businessLineCounts
+      .map((item) => {
+        const businessLine = item.businessLineId
+          ? businessLineLookup.get(item.businessLineId)
+          : null;
+        return {
+          id: businessLine?.id ?? null,
+          code: businessLine?.code ?? null,
+          name: businessLine?.name ?? 'Chưa phân ngành',
+          productCategory: businessLine?.productCategory ?? 'OTHER',
+          count: item._count._all,
+        };
+      })
+      .sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.name.localeCompare(b.name);
+      });
+
+    return {
+      total,
+      filteredTotal,
+      page,
+      limit,
+      totalPages: Math.max(Math.ceil(filteredTotal / limit), 1),
+      businessLines: businessLineGroups,
+      machines: machines.map((machine) => {
+        const latestInstallation = machine.installations[0] ?? null;
+        const installedCustomer =
+          latestInstallation?.customer ??
+          (machine.inventoryStatus === 'INSTALLED' ? machine.customer : null);
+        const installedAt =
+          latestInstallation?.installedAt ?? machine.installDate;
+
+        return {
+          id: machine.id,
+          machineCode: machine.machineCode,
+          serialNumber: machine.serialNumber,
+          modelName: machine.modelName,
+          name: machine.name,
+          manufacturer: machine.manufacturer,
+          productCategory: machine.productCategory,
+          status: machine.status,
+          inventoryStatus: machine.inventoryStatus,
+          installDate: installedAt,
+          warrantyStartDate:
+            latestInstallation?.warrantyCard?.startDate ??
+            machine.warrantyStartDate,
+          warrantyEndDate:
+            latestInstallation?.warrantyCard?.endDate ??
+            machine.warrantyEndDate,
+          businessLine: machine.businessLine,
+          installedBy: latestInstallation?.installedBy ?? machine.installedBy,
+          primaryEngineer: machine.primaryEngineer,
+          installation: latestInstallation
+            ? {
+                id: latestInstallation.id,
+                code: latestInstallation.code,
+                status: latestInstallation.status,
+                installedAt: latestInstallation.installedAt,
+                receiverInstallAddress:
+                  latestInstallation.receiverInstallAddress,
+                receiverRepresentative:
+                  latestInstallation.receiverRepresentative,
+                receiverPhone: latestInstallation.receiverPhone,
+                warrantyCard: latestInstallation.warrantyCard,
+              }
+            : null,
+          customer: installedCustomer,
+          accessories: machine.accessories,
+        };
+      }),
+    };
+  }
+
+  async getTechnicalMachinesLegacy(user?: RequestUser) {
+    const machines = await this.prisma.machine.findMany({
+      where: machineAccessWhere(user),
+      select: {
+        id: true,
+        machineCode: true,
+        serialNumber: true,
+        modelName: true,
+        name: true,
+        manufacturer: true,
+        productCategory: true,
+        status: true,
+        inventoryStatus: true,
+        installDate: true,
+        warrantyStartDate: true,
+        warrantyEndDate: true,
+        businessLine: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            productCategory: true,
+          },
+        },
+        customer: {
+          select: {
+            id: true,
+            customerCode: true,
+            name: true,
+            hospitalName: true,
+            phone: true,
+            contactPerson: true,
+            contactPhone: true,
+            province: true,
+            district: true,
+            address: true,
+            fullAddress: true,
+          },
+        },
+        installedBy: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+          },
+        },
+        primaryEngineer: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+          },
+        },
+        installations: {
+          select: {
+            id: true,
+            code: true,
+            status: true,
+            installedAt: true,
+            receiverInstallAddress: true,
+            receiverRepresentative: true,
+            receiverPhone: true,
+            customer: {
+              select: {
+                id: true,
+                customerCode: true,
+                name: true,
+                hospitalName: true,
+                phone: true,
+                contactPerson: true,
+                contactPhone: true,
+                province: true,
+                district: true,
+                address: true,
+                fullAddress: true,
+              },
+            },
+            installedBy: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+            warrantyCard: {
+              select: {
+                id: true,
+                code: true,
+                status: true,
+                startDate: true,
+                endDate: true,
+              },
+            },
+          },
+          orderBy: {
+            installedAt: 'desc',
+          },
+          take: 1,
+        },
+        accessories: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            serialNumber: true,
+            description: true,
+            note: true,
+            componentAccessory: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                component: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: [{ name: 'asc' }, { serialNumber: 'asc' }],
+        },
+      },
+      orderBy: [{ businessLine: { name: 'asc' } }, { serialNumber: 'asc' }],
+    });
+
+    const groups = new Map<
+      string,
+      {
+        id: string | null;
+        code: string | null;
+        name: string;
+        productCategory: MachineProductCategoryValue;
+        count: number;
+        machines: unknown[];
+      }
+    >();
+
+    for (const machine of machines) {
+      const businessLine = machine.businessLine;
+      const groupKey = businessLine?.id ?? '__unassigned__';
+      const latestInstallation = machine.installations[0] ?? null;
+      const installedCustomer =
+        latestInstallation?.customer ??
+        (machine.inventoryStatus === 'INSTALLED' ? machine.customer : null);
+      const installedAt = latestInstallation?.installedAt ?? machine.installDate;
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          id: businessLine?.id ?? null,
+          code: businessLine?.code ?? null,
+          name: businessLine?.name ?? 'Chưa phân ngành',
+          productCategory:
+            businessLine?.productCategory ?? machine.productCategory ?? 'OTHER',
+          count: 0,
+          machines: [],
+        });
+      }
+
+      const group = groups.get(groupKey);
+      if (!group) continue;
+
+      group.count += 1;
+      group.machines.push({
+        id: machine.id,
+        machineCode: machine.machineCode,
+        serialNumber: machine.serialNumber,
+        modelName: machine.modelName,
+        name: machine.name,
+        manufacturer: machine.manufacturer,
+        productCategory: machine.productCategory,
+        status: machine.status,
+        inventoryStatus: machine.inventoryStatus,
+        installDate: installedAt,
+        warrantyStartDate:
+          latestInstallation?.warrantyCard?.startDate ??
+          machine.warrantyStartDate,
+        warrantyEndDate:
+          latestInstallation?.warrantyCard?.endDate ?? machine.warrantyEndDate,
+        businessLine: machine.businessLine,
+        installedBy: latestInstallation?.installedBy ?? machine.installedBy,
+        primaryEngineer: machine.primaryEngineer,
+        installation: latestInstallation
+          ? {
+              id: latestInstallation.id,
+              code: latestInstallation.code,
+              status: latestInstallation.status,
+              installedAt: latestInstallation.installedAt,
+              receiverInstallAddress: latestInstallation.receiverInstallAddress,
+              receiverRepresentative: latestInstallation.receiverRepresentative,
+              receiverPhone: latestInstallation.receiverPhone,
+              warrantyCard: latestInstallation.warrantyCard,
+            }
+          : null,
+        customer: installedCustomer,
+        accessories: machine.accessories,
+      });
+    }
+
+    return {
+      total: machines.length,
+      businessLines: Array.from(groups.values()).sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.name.localeCompare(b.name);
+      }),
+    };
+  }
+
   async getSummary(user?: RequestUser) {
     const customerScope = customerAccessWhere(user);
     const businessLineScope = this.businessLineAccessWhere(user);
@@ -178,7 +729,9 @@ export class DashboardService {
       }),
       this.prisma.machine.count({ where: this.machineWhere(machineScope) }),
       this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { dataStatus: 'PENDING_REVIEW' }),
+        where: this.machineWhere(machineScope, {
+          dataStatus: 'PENDING_REVIEW',
+        }),
       }),
       this.prisma.machine.count({
         where: this.machineWhere(machineScope, { createdSource: 'ENGINEER' }),
@@ -206,7 +759,9 @@ export class DashboardService {
         }),
       }),
       this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { inventoryStatus: 'INSTALLED' }),
+        where: this.machineWhere(machineScope, {
+          inventoryStatus: 'INSTALLED',
+        }),
       }),
       this.prisma.machine.count({
         where: this.machineWhere(machineScope, { inventoryStatus: 'RESERVED' }),

@@ -1,5 +1,6 @@
 import { Download, FileUp, Loader2, Plus, Search, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
@@ -77,6 +78,16 @@ const emptyQuickMachineForm = (): QuickMachineForm => ({
   serialNumber: '',
 });
 
+type DailyWorkNote = {
+  id: string;
+  title: string;
+  note?: string | null;
+  workDate: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  color?: string | null;
+};
+
 type QuickCustomerForm = {
   address: string;
   contactPerson: string;
@@ -132,9 +143,21 @@ type PickerCustomer = {
   province?: string | null;
 };
 
+type BusinessTab = 'repair' | 'maintenance' | 'installation' | 'warranty' | 'calendar';
+
+const businessTabs: Array<{ value: BusinessTab; label: string }> = [
+  { value: 'repair', label: 'Sửa chữa' },
+  { value: 'maintenance', label: 'Bảo trì' },
+  { value: 'installation', label: 'Lắp đặt' },
+  { value: 'warranty', label: 'Bảo hành' },
+  { value: 'calendar', label: 'Lịch công việc' },
+];
+
 export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [tasks, setTasks] = useState<EngineerTask[]>([]);
+  const [dailyWorkNotes, setDailyWorkNotes] = useState<DailyWorkNote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingDailyWork, setLoadingDailyWork] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
@@ -146,6 +169,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [filter, setFilter] = useState<TaskFilter>('open');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('assigned');
+  const [businessTab, setBusinessTab] = useState<BusinessTab>('repair');
   const [selectedTask, setSelectedTask] = useState<EngineerTask | null>(null);
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [attachmentType, setAttachmentType] = useState<AttachmentType>('MACHINE_PHOTO');
@@ -159,6 +183,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [nextDueDate, setNextDueDate] = useState('');
   const [installationDate, setInstallationDate] = useState('');
   const [createForm, setCreateForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm());
+  const [installationEditForm, setInstallationEditForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm('installation'));
   const [isQuickMachineOpen, setIsQuickMachineOpen] = useState(false);
   const [isQuickCustomerOpen, setIsQuickCustomerOpen] = useState(false);
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(() => emptyQuickMachineForm());
@@ -170,13 +195,14 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
   useEffect(() => {
     loadTasks();
-    loadCreateOptions();
+    loadDailyWorkNotes();
   }, [user.id]);
 
   const filteredTasks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
     return tasks.filter((task) => {
+      if (!matchesBusinessTab(task, businessTab)) return false;
       if (!matchesFilter(task, filter)) return false;
       if (kindFilter !== 'all' && task.kind !== kindFilter) return false;
       if (!normalizedQuery) return true;
@@ -195,7 +221,31 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         .toLowerCase()
         .includes(normalizedQuery);
     });
-  }, [filter, kindFilter, query, tasks]);
+  }, [businessTab, filter, kindFilter, query, tasks]);
+
+  const businessTabCounts = useMemo(
+    () => ({
+      repair: tasks.filter((task) => matchesBusinessTab(task, 'repair')).length,
+      maintenance: tasks.filter((task) => matchesBusinessTab(task, 'maintenance')).length,
+      installation: tasks.filter((task) => matchesBusinessTab(task, 'installation')).length,
+      warranty: tasks.filter((task) => matchesBusinessTab(task, 'warranty')).length,
+      calendar: dailyWorkNotes.length,
+    }),
+    [dailyWorkNotes.length, tasks],
+  );
+
+  const filteredDailyWorkNotes = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return dailyWorkNotes.filter((note) => {
+      if (!normalizedQuery) return true;
+      return [note.title, note.note, formatDailyWorkDate(note.workDate), note.startTime, note.endTime]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+  }, [dailyWorkNotes, query]);
 
   const taskStats = useMemo(
     () => ({
@@ -229,6 +279,26 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       setError(err instanceof Error ? err.message : 'Không tải được việc được giao.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadDailyWorkNotes() {
+    setLoadingDailyWork(true);
+
+    const today = startOfDay(new Date());
+    const future = addDays(today, 60);
+    const query = new URLSearchParams({
+      from: toDateInput(today),
+      to: toDateInput(future),
+    });
+
+    try {
+      const result = await apiFetch<DailyWorkNote[]>(`/daily-work-notes?${query.toString()}`);
+      setDailyWorkNotes(result);
+    } catch {
+      setDailyWorkNotes([]);
+    } finally {
+      setLoadingDailyWork(false);
     }
   }
 
@@ -277,7 +347,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           body: JSON.stringify({
             title: createForm.title.trim(),
             description: createForm.description.trim() || undefined,
-            machineId: createForm.machineId,
+            machineId: createForm.machineId || undefined,
             engineerId: user.id,
             priority: createForm.priority,
             reportedAt: createForm.workDate || undefined,
@@ -300,18 +370,28 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             title: createForm.title.trim(),
             description: createForm.description.trim() || undefined,
             type: createForm.maintenanceType,
-            machineId: createForm.machineId,
+            machineId: createForm.machineId || undefined,
             engineerId: user.id,
             scheduledDate: createForm.workDate,
             nextDueDate: createForm.nextDueDate || undefined,
             checklist: splitLines(createForm.checklist),
+            usingDepartment: createForm.usingDepartment.trim() || undefined,
+            representative: createForm.representative.trim() || undefined,
+            address: createForm.address.trim() || undefined,
+            contactPhone: createForm.contactPhone.trim() || undefined,
+            deviceName: createForm.deviceName.trim() || undefined,
+            modelName: createForm.modelName.trim() || undefined,
+            serialNumber: createForm.serialNumber.trim() || undefined,
           }),
         });
       } else {
+        const selectedModel = machineModelOptions.find((model) => model.id === createForm.machineModelId);
         await apiFetch('/installations', {
           method: 'POST',
           body: JSON.stringify({
-            machineId: createForm.machineId,
+            machineId: createForm.machineId || undefined,
+            machineModelId: createForm.machineModelId || undefined,
+            plannedModelName: selectedModel?.name || createForm.modelName.trim() || undefined,
             customerId: createForm.customerId,
             installedById: user.id,
             installedAt: createForm.workDate,
@@ -348,6 +428,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setCreateForm((current) => ({ ...current, ...patch }));
   }
 
+  function updateInstallationEditForm(patch: Partial<CreateTicketForm>) {
+    setInstallationEditForm((current) => ({ ...current, ...patch }));
+  }
+
   function changeCreateKind(kind: TaskKind) {
     setCreateForm((current) => ({
       ...current,
@@ -359,6 +443,27 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       serialNumber: '',
     }));
     setQuickMachineForm(emptyQuickMachineForm());
+  }
+
+  function openCreateRequest() {
+    const kind = defaultCreateKindForBusinessTab(businessTab);
+    setCreateForm((current) => ({
+      ...current,
+      kind,
+      machineId: '',
+      customerId: '',
+      deviceName: '',
+      modelName: '',
+      serialNumber: '',
+      warrantyStatus: businessTab === 'warranty' ? 'IN_WARRANTY' : current.warrantyStatus,
+      maintenanceType: businessTab === 'warranty' ? 'WARRANTY' : current.maintenanceType,
+    }));
+    setQuickMachineForm(emptyQuickMachineForm());
+    setWorkspaceTab('create');
+  }
+
+  function backToAssignedWork() {
+    setWorkspaceTab('assigned');
   }
 
   function updateQuickMachineForm(patch: Partial<QuickMachineForm>) {
@@ -537,6 +642,32 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     }));
   }
 
+  function updateInstallationEditDeviceItem(index: number, patch: Partial<InstallationDeviceItem>) {
+    setInstallationEditForm((current) => ({
+      ...current,
+      installedDeviceItems: current.installedDeviceItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item,
+      ),
+    }));
+  }
+
+  function addInstallationEditDeviceItem() {
+    setInstallationEditForm((current) => ({
+      ...current,
+      installedDeviceItems: [...current.installedDeviceItems, emptyInstallationDeviceItem()],
+    }));
+  }
+
+  function removeInstallationEditDeviceItem(index: number) {
+    setInstallationEditForm((current) => ({
+      ...current,
+      installedDeviceItems:
+        current.installedDeviceItems.length === 1
+          ? [emptyInstallationDeviceItem()]
+          : current.installedDeviceItems.filter((_, itemIndex) => itemIndex !== index),
+    }));
+  }
+
   function openTask(task: EngineerTask) {
     setSelectedTask(task);
     setAttachments([]);
@@ -553,6 +684,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       setCustomerFeedback('');
       setNextDueDate('');
       setInstallationDate(task.installedAt ? task.installedAt.slice(0, 10) : '');
+      setInstallationEditForm(buildInstallationEditForm(task));
       setError('');
       setSuccess('');
       return;
@@ -653,13 +785,31 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     try {
       const endpoint =
         selectedTask.kind === 'installation'
-          ? `/installations/${selectedTask.id}/status`
+          ? `/installations/${selectedTask.id}`
           : selectedTask.kind === 'repair'
           ? `/repairs/${selectedTask.id}/status`
           : `/maintenance/${selectedTask.id}/status`;
       const payload =
         selectedTask.kind === 'installation'
-          ? { status, installedAt: installationDate || undefined, note: resultNote }
+          ? {
+              status,
+              installedAt: installationDate || installationEditForm.workDate || undefined,
+              warrantyStartDate: installationEditForm.workDate || installationDate || undefined,
+              warrantyEndDate: installationEditForm.warrantyEndDate || undefined,
+              note: resultNote,
+              warrantyNote: installationEditForm.description,
+              handoverInstallerName: installationEditForm.handoverInstallerName,
+              handoverInstallerPosition: installationEditForm.handoverInstallerPosition,
+              handoverVehicle: installationEditForm.handoverVehicle,
+              handoverDepartureDate: installationEditForm.handoverDepartureDate || undefined,
+              receiverInstallAddress: installationEditForm.receiverInstallAddress,
+              receiverRepresentative: installationEditForm.receiverRepresentative,
+              receiverPosition: installationEditForm.receiverPosition,
+              receiverPhone: installationEditForm.receiverPhone,
+              installedDeviceItems: normalizeInstallationDeviceItems(installationEditForm.installedDeviceItems),
+              deviceCondition: installationEditForm.deviceCondition,
+              deviceConditionNote: installationEditForm.deviceConditionNote,
+            }
           : selectedTask.kind === 'repair'
           ? { status, resultNote, customerFeedback }
           : { status, resultNote, nextDueDate: nextDueDate || undefined };
@@ -690,7 +840,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="engineer-task-summary">
+      <section className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         <SummaryTile label="Hôm nay" value={taskStats.today} />
         <SummaryTile label="Quá hạn" value={taskStats.overdue} tone={taskStats.overdue > 0 ? 'danger' : 'neutral'} />
         <SummaryTile label="Sắp tới" value={taskStats.upcoming} />
@@ -699,16 +849,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         <SummaryTile label="Đã hoàn tất" value={taskStats.done} />
       </section>
 
-      <div className="engineer-workspace-tabs" aria-label="Khu vực kỹ sư">
-        <button className={workspaceTab === 'assigned' ? 'active' : ''} onClick={() => setWorkspaceTab('assigned')} type="button">
-          Công việc được giao
-        </button>
-        <button className={workspaceTab === 'create' ? 'active' : ''} onClick={() => setWorkspaceTab('create')} type="button">
-          Tạo phiếu gửi admin
-        </button>
-      </div>
-
-      {workspaceTab === 'create' ? (
+      {false ? (
         <section className="engineer-create-panel">
           <div className="task-section-heading">
             <div>
@@ -739,33 +880,64 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               </label>
             ) : null}
 
-            <div className={createForm.kind === 'installation' ? 'machine-picker create-span-6' : 'machine-picker'}>
-              <AsyncEntityPicker<PickerMachine>
-                className="engineer-picker"
-                disabled={loadingCreateOptions}
-                endpoint={machinePickerEndpoint(createForm.kind)}
-                formatOption={(machine) => ({
-                  label: machinePickerLabel(machine),
-                  row: machine,
-                  value: machine.id,
-                })}
-                initialOptions={machineOptions
-                  .filter((option) => isMachineEligibleForTicket(createForm.kind, option.row))}
-                label="Thiết bị"
-                onChange={(value, machine) => {
-                  updateCreateForm({ machineId: value });
-                  if (machine) selectCreateMachine(machine);
-                }}
-                placeholder="Tìm mã máy, S/N, model hoặc khách hàng"
-                required
-                rowFilter={(machine) => canEngineerSeeMachine(user, machine) && isMachineEligibleForTicket(createForm.kind, machine)}
-                value={createForm.machineId}
-              />
-              <button className="task-secondary" onClick={() => setIsQuickMachineOpen((value) => !value)} type="button">
-                <Plus size={16} />
-                Thêm thiết bị
-              </button>
-            </div>
+            {createForm.kind === 'installation' ? (
+              <div className="machine-picker create-span-6">
+                <AsyncEntityPicker<QuickMachineModel>
+                  className="engineer-picker"
+                  disabled={loadingCreateOptions}
+                  endpoint="/machine-models?limit=20"
+                  formatOption={(model) => ({
+                    label: quickModelLabel(model),
+                    row: model,
+                    value: model.id,
+                  })}
+                  initialOptions={machineModelOptions.map((model) => ({
+                    label: quickModelLabel(model),
+                    row: model,
+                    value: model.id,
+                  }))}
+                  label="Model dự kiến"
+                  onChange={(value, model) => {
+                    updateCreateForm({
+                      machineModelId: value,
+                      modelName: model?.name || model?.displayName || '',
+                      deviceName: model?.displayName || model?.name || '',
+                    });
+                  }}
+                  placeholder="VD: X-CUBE 50, X-CUBE 70..."
+                  required
+                  rowFilter={(model) => canEngineerSeeModel(user, model)}
+                  value={createForm.machineModelId}
+                />
+              </div>
+            ) : (
+              <div className="machine-picker">
+                <AsyncEntityPicker<PickerMachine>
+                  className="engineer-picker"
+                  disabled={loadingCreateOptions}
+                  endpoint={machinePickerEndpoint(createForm.kind)}
+                  formatOption={(machine) => ({
+                    label: machinePickerLabel(machine),
+                    row: machine,
+                    value: machine.id,
+                  })}
+                  initialOptions={machineOptions
+                    .filter((option) => isMachineEligibleForTicket(createForm.kind, option.row))}
+                  label="Thiết bị có sẵn"
+                  onChange={(value, machine) => {
+                    updateCreateForm({ machineId: value });
+                    if (machine) selectCreateMachine(machine);
+                  }}
+                  placeholder="Không bắt buộc, tìm mã máy, S/N, model hoặc khách hàng"
+                  rowFilter={(machine) => canEngineerSeeMachine(user, machine) && isMachineEligibleForTicket(createForm.kind, machine)}
+                  value={createForm.machineId}
+                />
+                <button className="task-secondary" onClick={() => setIsQuickMachineOpen((value) => !value)} type="button">
+                  <Plus size={16} />
+                  Thêm thiết bị
+                </button>
+              </div>
+            )}
 
             {isQuickMachineOpen ? (
               <div className="quick-machine-form">
@@ -1036,6 +1208,36 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   Lịch tiếp theo
                   <input onChange={(event) => updateCreateForm({ nextDueDate: event.target.value })} type="date" value={createForm.nextDueDate} />
                 </label>
+                <div className="create-form-section">Thông tin đơn vị sử dụng</div>
+                <label>
+                  Đơn vị sử dụng thiết bị
+                  <input onChange={(event) => updateCreateForm({ usingDepartment: event.target.value })} value={createForm.usingDepartment} />
+                </label>
+                <label>
+                  Người đại diện
+                  <input onChange={(event) => updateCreateForm({ representative: event.target.value })} value={createForm.representative} />
+                </label>
+                <label>
+                  Số điện thoại
+                  <input onChange={(event) => updateCreateForm({ contactPhone: event.target.value })} value={createForm.contactPhone} />
+                </label>
+                <label className="create-wide-field">
+                  Địa chỉ
+                  <input onChange={(event) => updateCreateForm({ address: event.target.value })} value={createForm.address} />
+                </label>
+                <div className="create-form-section">Thông tin thiết bị</div>
+                <label>
+                  Tên thiết bị
+                  <input onChange={(event) => updateCreateForm({ deviceName: event.target.value })} value={createForm.deviceName} />
+                </label>
+                <label>
+                  Model
+                  <input onChange={(event) => updateCreateForm({ modelName: event.target.value })} value={createForm.modelName} />
+                </label>
+                <label>
+                  S/N
+                  <input onChange={(event) => updateCreateForm({ serialNumber: event.target.value })} value={createForm.serialNumber} />
+                </label>
                 <label className="create-wide-field">
                   Checklist
                   <textarea
@@ -1087,16 +1289,50 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             <button className="task-primary create-submit" disabled={saving || loadingCreateOptions} type="submit">
               {saving ? 'Đang gửi' : 'Gửi phiếu về admin'}
             </button>
+            <button className="task-secondary create-cancel" onClick={backToAssignedWork} type="button">
+              Quay lại công việc
+            </button>
           </form>
         </section>
       ) : (
-        <section className="engineer-task-panel">
-          <div className="task-toolbar">
-            <div className="task-search">
+        <section className="min-w-0 overflow-hidden rounded-lg border border-[#e3eaf2] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-1 border-b border-[#edf1f6] bg-[#f8fafc] p-2" aria-label="Nhóm công việc">
+            {businessTabs.map((tab) => (
+              <button
+                className={[
+                  'flex min-h-12 min-w-0 items-center justify-between gap-2 rounded-lg border-0 px-3 text-left text-sm font-bold transition',
+                  businessTab === tab.value
+                    ? 'bg-white text-[#c92a1f] shadow-[0_1px_5px_rgba(15,23,42,0.08)]'
+                    : 'bg-transparent text-[#405064] hover:bg-white/70',
+                ].join(' ')}
+                key={tab.value}
+                onClick={() => {
+                  setBusinessTab(tab.value);
+                  setKindFilter('all');
+                }}
+                type="button"
+              >
+                <span className="min-w-0 truncate">{tab.label}</span>
+                <strong
+                  className={[
+                    'inline-flex min-w-7 items-center justify-center rounded-full border px-2 py-[3px] text-xs',
+                    businessTab === tab.value
+                      ? 'border-[#f0b7b1] bg-[#fff5f4] text-[#c92a1f]'
+                      : 'border-[#dfe7ef] bg-white text-[#657384]',
+                  ].join(' ')}
+                >
+                  {businessTabCounts[tab.value]}
+                </strong>
+              </button>
+            ))}
+          </div>
+
+          <div className="grid min-w-0 gap-3 border-b border-[#edf1f6] p-3 min-[1180px]:grid-cols-[minmax(220px,1fr)_auto_minmax(180px,220px)] min-[1180px]:items-end">
+            <div className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#ced8e3] bg-white px-3 text-[#657384] focus-within:border-[#c92a1f] focus-within:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]">
               <Search size={17} />
-              <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, mã máy, serial, khách hàng" value={query} />
+              <input className="min-w-0 flex-1 border-0 text-[#17202a] outline-none" onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, mã máy, serial, khách hàng" value={query} />
             </div>
-            <div className="task-tabs">
+            <div className="grid w-full grid-cols-2 gap-[3px] rounded-lg border border-[#dfe7ef] bg-[#f4f7fb] p-[3px] min-[560px]:inline-flex min-[560px]:w-auto">
               {[
                 ['open', 'Cần xử lý'],
                 ['progress', 'Đang làm'],
@@ -1104,7 +1340,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 ['all', 'Tất cả'],
               ].map(([value, label]) => (
                 <button
-                  className={filter === value ? 'active' : ''}
+                  className={[
+                    'min-h-8 min-w-0 flex-1 rounded-md border-0 px-2 text-xs font-bold leading-tight min-[560px]:flex-none min-[560px]:px-3 min-[560px]:text-sm',
+                    filter === value ? 'bg-white text-[#c92a1f] shadow-[0_1px_4px_rgba(15,23,42,0.08)]' : 'bg-transparent text-[#405064]',
+                  ].join(' ')}
                   key={value}
                   onClick={() => setFilter(value as TaskFilter)}
                   type="button"
@@ -1113,62 +1352,134 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 </button>
               ))}
             </div>
-            <label className="task-filter-select">
+            <label className="grid min-w-0 gap-1.5 text-xs font-bold text-[#405064]">
               <span>Loại công việc</span>
-              <select onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
-                <option value="all">Tất cả loại</option>
-                <option value="repair">Sửa chữa</option>
-                <option value="maintenance">Bảo trì</option>
-                <option value="installation">Lắp đặt</option>
+              <select className="h-10 w-full rounded-lg border border-[#ced8e3] bg-white px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]" onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
+                {businessTab === 'repair' ? (
+                  <>
+                    <option value="all">Sửa chữa</option>
+                    <option value="repair">Sửa chữa</option>
+                  </>
+                ) : businessTab === 'maintenance' ? (
+                  <>
+                    <option value="all">Bảo trì</option>
+                    <option value="maintenance">Bảo trì</option>
+                  </>
+                ) : businessTab === 'installation' ? (
+                  <>
+                    <option value="all">Lắp đặt</option>
+                    <option value="installation">Lắp đặt</option>
+                  </>
+                ) : businessTab === 'warranty' ? (
+                  <>
+                    <option value="all">Tất cả bảo hành</option>
+                    <option value="repair">Sửa chữa bảo hành</option>
+                    <option value="maintenance">Bảo trì bảo hành</option>
+                  </>
+                ) : (
+                  <option value="all">Lịch công việc</option>
+                )}
               </select>
             </label>
           </div>
 
-          <div className="task-list">
+          <div className="grid">
             {loading ? (
-              <div className="task-state">
+              <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#657384]">
                 <Loader2 className="spin-icon" size={18} />
                 Đang tải việc được giao...
               </div>
             ) : null}
 
-            {!loading && filteredTasks.length === 0 ? (
-              <div className="task-state empty">
-                <strong>Chưa có công việc phù hợp</strong>
-                <span>Thử đổi bộ lọc hoặc kiểm tra lại phiếu được admin phân công.</span>
+            {!loading && businessTab === 'calendar' ? (
+              <>
+                {loadingDailyWork ? (
+                  <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#657384]">
+                    <Loader2 className="spin-icon" size={18} />
+                    Đang tải lịch công việc...
+                  </div>
+                ) : null}
+
+                {!loadingDailyWork && filteredDailyWorkNotes.length === 0 ? (
+                  <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#657384]">
+                    <strong className="text-[#17202a]">Chưa có lịch công việc phù hợp</strong>
+                    <span className="text-sm">Lịch admin thêm cho bạn và ghi chú công việc cá nhân sẽ xuất hiện tại đây.</span>
+                  </div>
+                ) : null}
+
+                {!loadingDailyWork
+                  ? filteredDailyWorkNotes.map((note) => (
+                      <article className="grid min-w-0 items-center gap-3.5 border-b border-[#edf1f6] p-4 last:border-b-0 min-[640px]:grid-cols-[66px_minmax(0,1fr)]" key={note.id}>
+                        <div className="grid min-h-16 justify-items-center rounded-lg border border-l-4 bg-[#fffdfb] p-2" style={{ borderColor: note.color || '#c92a1f' }}>
+                          <strong className="text-2xl leading-none text-[#17202a]">{dayNumber(note.workDate)}</strong>
+                          <span className="text-xs font-extrabold text-[#657384]">{monthLabel(note.workDate)}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#657384]">
+                            <span>Lịch công việc</span>
+                            <span>{formatDailyWorkDate(note.workDate)}</span>
+                            <span>{formatDailyWorkTime(note)}</span>
+                          </div>
+                          <h2 className="mt-1 text-[17px] font-bold text-[#17202a] [overflow-wrap:anywhere]">{note.title}</h2>
+                          <p className="mt-1.5 leading-6 text-[#405064] [overflow-wrap:anywhere]">{note.note || 'Chưa có ghi chú chi tiết.'}</p>
+                        </div>
+                      </article>
+                    ))
+                  : null}
+              </>
+            ) : null}
+
+            {!loading && businessTab !== 'calendar' && filteredTasks.length === 0 ? (
+              <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#657384]">
+                <strong className="text-[#17202a]">Chưa có công việc phù hợp</strong>
+                <span className="text-sm">Thử đổi bộ lọc hoặc kiểm tra lại phiếu được admin phân công.</span>
               </div>
             ) : null}
 
-            {filteredTasks.map((task) => (
-              <article className="task-card" key={`${task.kind}-${task.id}`}>
-                <div className="task-card-main">
-                  <div className="task-icon">{taskIcon(task.kind)}</div>
-                  <div>
-                    <div className="task-card-meta">
+            {businessTab !== 'calendar' ? filteredTasks.map((task) => (
+              <article className="grid min-w-0 gap-3.5 border-b border-[#edf1f6] p-4 last:border-b-0 min-[860px]:grid-cols-[minmax(0,1fr)_auto] min-[860px]:items-center" key={`${task.kind}-${task.id}`}>
+                <div className="grid min-w-0 gap-3 min-[560px]:grid-cols-[40px_minmax(0,1fr)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#f0b7b1] bg-[#fff1ef] text-[#c92a1f]">{taskIcon(task.kind)}</div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#657384]">
                       <span>{taskKindLabel(task.kind)}</span>
                       <span>{task.code}</span>
                       {task.kind === 'repair' && task.createdBy?.fullName ? <span>Người tạo: {task.createdBy.fullName}</span> : null}
-                      {isOverdueTask(task) ? <span className="overdue-text">Quá hạn</span> : null}
+                      {isOverdueTask(task) ? <span className="font-bold text-[#b42318]">Quá hạn</span> : null}
                     </div>
-                    <h2>{taskTitle(task)}</h2>
-                    <p>{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
-                    <div className="task-machine-line">
-                      <span>{task.machine?.machineCode || task.machine?.serialNumber || taskSerialText(task) || 'Chưa có mã máy'}</span>
-                      <span>{task.machine?.modelName || taskModelText(task) || 'Chưa có model'}</span>
-                      <span>{taskCustomer(task) || 'Chưa có khách hàng'}</span>
+                    <h2 className="mt-1 text-[17px] font-bold text-[#17202a] [overflow-wrap:anywhere]">{taskTitle(task)}</h2>
+                    <p className="mt-1.5 line-clamp-2 leading-6 text-[#657384]">{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
+                    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-[13px] text-[#657384]">
+                      <span className="min-w-0 [overflow-wrap:anywhere]">{task.machine?.machineCode || task.machine?.serialNumber || taskSerialText(task) || 'Chưa có mã máy'}</span>
+                      <span className="min-w-0 [overflow-wrap:anywhere]">{task.machine?.modelName || taskModelText(task) || 'Chưa có model'}</span>
+                      <span className="min-w-0 [overflow-wrap:anywhere]">{taskCustomer(task) || 'Chưa có khách hàng'}</span>
                     </div>
                   </div>
                 </div>
-                <div className="task-card-side">
+                <div className="grid min-w-0 justify-items-start gap-2 min-[860px]:min-w-[150px] min-[860px]:justify-items-end">
                   <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
                   <span className={`task-badge ${secondaryTone(task)}`}>{secondaryLabel(task)}</span>
-                  <span className="task-date">{taskDate(task)}</span>
-                  <button className="task-action" onClick={() => openTask(task)} type="button">
-                    Cập nhật
-                  </button>
+                  <span className="text-[13px] text-[#657384]">{taskDate(task)}</span>
+                  {task.kind === 'installation' ? (
+                    <Link className="task-action" to={`/installations/${task.id}/update?returnTo=/my-tasks`}>
+                      Cập nhật
+                    </Link>
+                  ) : task.kind === 'repair' ? (
+                    <Link className="task-action" to={`/repairs/${task.id}/update?returnTo=/my-tasks`}>
+                      Cập nhật
+                    </Link>
+                  ) : task.kind === 'maintenance' ? (
+                    <Link className="task-action" to={`/maintenance/${task.id}/update?returnTo=/my-tasks`}>
+                      Cập nhật
+                    </Link>
+                  ) : (
+                    <button className="task-action" onClick={() => openTask(task)} type="button">
+                      Cập nhật
+                    </button>
+                  )}
                 </div>
               </article>
-            ))}
+            )) : null}
           </div>
         </section>
       )}
@@ -1252,6 +1563,42 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   <div className="wide-detail">
                     <dt>Phương pháp sửa chữa</dt>
                     <dd>{selectedTask.repairMethod || '-'}</dd>
+                  </div>
+                </dl>
+              </div>
+            ) : null}
+
+            {selectedTask.kind === 'maintenance' ? (
+              <div className="task-info-block">
+                <h3>Thông tin phiếu bảo trì</h3>
+                <dl className="task-repair-detail-grid">
+                  <div>
+                    <dt>Đơn vị sử dụng</dt>
+                    <dd>{selectedTask.usingDepartment || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>Người đại diện</dt>
+                    <dd>{selectedTask.representative || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>Số điện thoại</dt>
+                    <dd>{selectedTask.contactPhone || '-'}</dd>
+                  </div>
+                  <div className="wide-detail">
+                    <dt>Địa chỉ</dt>
+                    <dd>{selectedTask.address || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>Tên thiết bị</dt>
+                    <dd>{selectedTask.deviceName || selectedTask.machine?.modelName || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>Model</dt>
+                    <dd>{selectedTask.modelName || selectedTask.machine?.modelName || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>S/N</dt>
+                    <dd>{selectedTask.serialNumber || selectedTask.machine?.serialNumber || '-'}</dd>
                   </div>
                 </dl>
               </div>
@@ -1355,7 +1702,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               <form className="task-update-form" onSubmit={handleSubmit}>
                 <label>
                   Trạng thái
-                  <select onChange={(event) => setStatus(event.target.value)} required value={status}>
+                  <select disabled onChange={(event) => setStatus(event.target.value)} required value={status}>
                     {installationStatusOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -1371,6 +1718,30 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   Ghi chú lắp đặt
                   <textarea onChange={(event) => setResultNote(event.target.value)} value={resultNote} />
                 </label>
+                <label>
+                  Kết thúc bảo hành
+                  <input
+                    onChange={(event) => updateInstallationEditForm({ warrantyEndDate: event.target.value })}
+                    required
+                    type="date"
+                    value={installationEditForm.warrantyEndDate}
+                  />
+                </label>
+                <label className="create-wide-field">
+                  Ghi chú bảo hành
+                  <textarea
+                    onChange={(event) => updateInstallationEditForm({ description: event.target.value })}
+                    value={installationEditForm.description}
+                  />
+                </label>
+                <InstallationHandoverForm
+                  addDeviceItem={addInstallationEditDeviceItem}
+                  form={installationEditForm}
+                  removeDeviceItem={removeInstallationEditDeviceItem}
+                  updateDeviceItem={updateInstallationEditDeviceItem}
+                  updateForm={updateInstallationEditForm}
+                  user={user}
+                />
                 <div className="task-drawer-actions">
                   <button className="task-secondary" onClick={() => setSelectedTask(null)} type="button">
                     Hủy
@@ -1691,4 +2062,139 @@ function quickModelLabel(model: QuickMachineModel) {
 
 function isEngineerUser(user: ApiUser) {
   return user.roleName === 'engineer' || user.role?.name === 'engineer' || user.role?.name === 'kỹ sư';
+}
+
+function startOfDay(value: Date) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function addDays(value: Date, days: number) {
+  const date = new Date(value);
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+function toDateInput(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDailyWorkDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'short',
+  }).format(date);
+}
+
+function dayNumber(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+  return String(date.getDate()).padStart(2, '0');
+}
+
+function monthLabel(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '---';
+  return `T${date.getMonth() + 1}`;
+}
+
+function formatDailyWorkTime(note: DailyWorkNote) {
+  const range = [note.startTime, note.endTime].filter(Boolean).join(' - ');
+  return range || 'Cả ngày';
+}
+
+function matchesBusinessTab(task: EngineerTask, tab: BusinessTab) {
+  if (tab === 'repair') {
+    return task.kind === 'repair' && task.warrantyStatus !== 'IN_WARRANTY';
+  }
+
+  if (tab === 'maintenance') {
+    return task.kind === 'maintenance' && task.type !== 'WARRANTY';
+  }
+
+  if (tab === 'installation') {
+    return task.kind === 'installation';
+  }
+
+  if (tab === 'warranty') {
+    return (
+      (task.kind === 'repair' && task.warrantyStatus === 'IN_WARRANTY') ||
+      (task.kind === 'maintenance' && task.type === 'WARRANTY')
+    );
+  }
+
+  if (tab === 'calendar') {
+    return false;
+  }
+
+  return false;
+}
+
+function buildInstallationEditForm(task: InstallationTask): CreateTicketForm {
+  const installedAt = task.installedAt ? task.installedAt.slice(0, 10) : '';
+  const warrantyStartDate = task.warrantyCard?.startDate ? task.warrantyCard.startDate.slice(0, 10) : installedAt;
+  const warrantyEndDate = task.warrantyCard?.endDate ? task.warrantyCard.endDate.slice(0, 10) : '';
+  const installedDeviceItems = task.installedDeviceItems?.length
+    ? task.installedDeviceItems.map((item) => ({
+        itemName: item.itemName || '',
+        model: item.model || '',
+        serialNumber: item.serialNumber || '',
+        manufactureDate: item.manufactureDate ? item.manufactureDate.slice(0, 10) : '',
+        quantity: Number(item.quantity) || 1,
+        warrantyPeriod: item.warrantyPeriod || '',
+      }))
+    : [emptyInstallationDeviceItem()];
+
+  return {
+    ...emptyCreateTicketForm('installation'),
+    workDate: warrantyStartDate,
+    warrantyEndDate,
+    description: task.warrantyCard?.note || '',
+    handoverInstallerName: task.handoverInstallerName || '',
+    handoverInstallerPosition: task.handoverInstallerPosition || '',
+    handoverVehicle: task.handoverVehicle || '',
+    handoverDepartureDate: task.handoverDepartureDate ? task.handoverDepartureDate.slice(0, 10) : warrantyStartDate,
+    receiverInstallAddress: task.receiverInstallAddress || '',
+    receiverRepresentative: task.receiverRepresentative || '',
+    receiverPosition: task.receiverPosition || '',
+    receiverPhone: task.receiverPhone || '',
+    installedDeviceItems,
+    deviceCondition: task.deviceCondition || 'NEW_100',
+    deviceConditionNote: task.deviceConditionNote || '',
+  };
+}
+
+function defaultCreateKindForBusinessTab(tab: BusinessTab): TaskKind {
+  if (tab === 'installation') return 'installation';
+  return 'repair';
+}
+
+function createTicketHrefForTab(tab: BusinessTab) {
+  const returnTo = encodeURIComponent('/my-tasks');
+
+  if (tab === 'installation') {
+    return `/installations/create?returnTo=${returnTo}`;
+  }
+
+  if (tab === 'maintenance') {
+    return `/service-tickets/create?kind=maintenance&returnTo=${returnTo}`;
+  }
+
+  if (tab === 'warranty') {
+    return `/service-tickets/create?kind=repair&warrantyStatus=IN_WARRANTY&returnTo=${returnTo}`;
+  }
+
+  return `/service-tickets/create?kind=repair&returnTo=${returnTo}`;
+}
+
+function createTicketLabelForTab(tab: BusinessTab) {
+  if (tab === 'installation') return 'Tạo phiếu lắp đặt';
+  if (tab === 'maintenance') return 'Tạo phiếu bảo trì';
+  if (tab === 'warranty') return 'Tạo phiếu bảo hành';
+  return 'Tạo phiếu sửa chữa';
 }

@@ -1,6 +1,6 @@
-import { Edit3, ImageOff, Loader2, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Edit3, ImageOff, Loader2, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react';
 import { FormEvent, KeyboardEvent, MouseEvent, ReactNode, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { AdminCrudConfig, CrudField } from '../../config/adminCrud';
 import { Notice } from '../../components/Notice';
@@ -264,6 +264,11 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
                 <Plus size={17} />
                 Tạo phiếu
               </Link>
+            ) : adminCrudFormCreateHref(config.endpoint) ? (
+              <Link className="primary-button compact" to={adminCrudFormCreateHref(config.endpoint)!}>
+                <Plus size={17} />
+                Tạo mới
+              </Link>
             ) : (
               <button className="primary-button compact" onClick={startCreate} type="button">
                 <Plus size={17} />
@@ -299,14 +304,25 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
                     <td className="actions-cell">
                       <div className="row-actions">
                         {config.canUpdate !== false ? (
-                          <button
-                            className="icon-button"
-                            onClick={(event) => handleActionClick(event, () => startEdit(row))}
-                            title="Sửa"
-                            type="button"
-                          >
-                            <Edit3 size={16} />
-                          </button>
+                          adminCrudFormEditHref(config.endpoint, row) ? (
+                            <Link
+                              className="icon-button"
+                              onClick={(event) => event.stopPropagation()}
+                              title="Sửa"
+                              to={adminCrudFormEditHref(config.endpoint, row)!}
+                            >
+                              <Edit3 size={16} />
+                            </Link>
+                          ) : (
+                            <button
+                              className="icon-button"
+                              onClick={(event) => handleActionClick(event, () => startEdit(row))}
+                              title="Sửa"
+                              type="button"
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                          )
                         ) : null}
                         {config.canDelete !== false ? (
                           <button
@@ -413,10 +429,17 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
 
             <div className="drawer-actions">
               {config.canUpdate !== false ? (
-                <button className="primary-button" onClick={() => startEdit(selectedRow)} type="button">
-                  <Edit3 size={17} />
-                  Sửa thông tin
-                </button>
+                adminCrudFormEditHref(config.endpoint, selectedRow) ? (
+                  <Link className="primary-button" to={adminCrudFormEditHref(config.endpoint, selectedRow)!}>
+                    <Edit3 size={17} />
+                    Sửa thông tin
+                  </Link>
+                ) : (
+                  <button className="primary-button" onClick={() => startEdit(selectedRow)} type="button">
+                    <Edit3 size={17} />
+                    Sửa thông tin
+                  </button>
+                )
               ) : null}
               {config.canDelete !== false ? (
                 <button className="danger-button" onClick={() => setDeletingRow(selectedRow)} type="button">
@@ -496,6 +519,155 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
           </section>
         </div>
       ) : null}
+    </PageFrame>
+  );
+}
+
+export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
+  const navigate = useNavigate();
+  const { id = '' } = useParams();
+  const isEditing = Boolean(id);
+  const [options, setOptions] = useState<OptionMap>({});
+  const [row, setRow] = useState<TableRow | null>(null);
+  const [form, setForm] = useState<FormState>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const listPath = config.endpoint;
+
+  useEffect(() => {
+    void loadForm();
+  }, [config.endpoint, id]);
+
+  async function loadForm() {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const nextOptions = await loadOptions(config.fields);
+      const nextRow = isEditing ? await apiFetch<TableRow>(`${config.endpoint}/${id}`) : null;
+      setOptions(nextOptions);
+      setRow(nextRow);
+      setForm(buildInitialForm(visibleFields(config.fields, isEditing), nextRow, nextOptions, config.endpoint));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Không tải được ${config.entityLabel}.`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleFieldChange(field: CrudField, value: string, optionRow?: TableRow) {
+    setForm((current) => {
+      const next = { ...current, [field.name]: value };
+
+      if (field.name === 'machineId' && optionRow) {
+        const customerId = readPath(optionRow, 'customer.id');
+        const serialNumber = readPath(optionRow, 'serialNumber');
+        const modelName = readPath(optionRow, 'modelName');
+        const deviceName = readPath(optionRow, 'name');
+
+        if (customerId && 'customerId' in current && !current.customerId) next.customerId = String(customerId);
+        if (serialNumber && 'serialNumber' in current && !current.serialNumber) next.serialNumber = String(serialNumber);
+        if (modelName && 'modelName' in current && !current.modelName) next.modelName = String(modelName);
+        if (deviceName && 'deviceName' in current && !current.deviceName) next.deviceName = String(deviceName);
+      }
+
+      return next;
+    });
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const fields = visibleFields(config.fields, isEditing, form, options, config.endpoint, row);
+      const payload = isMachinesEndpoint(config.endpoint) ? buildMachinePayload(fields, form, row) : buildPayload(fields, form);
+
+      if (isEditing) {
+        await apiFetch(`${config.endpoint}/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        });
+        setSuccess(`Đã cập nhật ${config.entityLabel}.`);
+      } else {
+        await apiFetch(config.endpoint, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        setSuccess(`Đã tạo ${config.entityLabel}.`);
+      }
+
+      navigate(listPath);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Không lưu được ${config.entityLabel}.`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <PageFrame>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <PageTitle
+          eyebrow="Quản trị"
+          title={isEditing ? `Chỉnh sửa ${config.entityLabel}` : `Tạo mới ${config.entityLabel}`}
+          description={config.description}
+        />
+        <button className="secondary-button" onClick={() => navigate(listPath)} type="button">
+          <ArrowLeft size={17} />
+          Quay lại danh sách
+        </button>
+      </div>
+
+      {error ? <Notice message={error} /> : null}
+      {success ? <div className="success-notice">{success}</div> : null}
+
+      <section className="crud-form-page">
+        <div className="form-panel-heading">
+          <div>
+            <span>{isEditing ? 'Cập nhật' : 'Tạo mới'}</span>
+            <h2>{isEditing ? String(readPath(row ?? {}, config.columns[0]?.key || 'id') || config.title) : config.title}</h2>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="table-state">
+            <Loader2 className="spin-icon" size={18} />
+            Đang tải biểu mẫu...
+          </div>
+        ) : (
+          <form className="admin-crud-form" onSubmit={handleSubmit}>
+            <div className="form-grid">
+              {visibleFields(config.fields, isEditing, form, options, config.endpoint, row).map((field) => (
+                <FieldControl
+                  accessoryMode={field.type === 'accessories' && isUltrasoundMachineForm(form, options, row) ? 'probe' : 'generic'}
+                  field={field}
+                  key={field.name}
+                  onChange={(value, optionRow) => handleFieldChange(field, value, optionRow)}
+                  options={options[field.name] || field.options || []}
+                  row={row}
+                  value={form[field.name] ?? ''}
+                />
+              ))}
+            </div>
+
+            <div className="modal-actions">
+              <button className="secondary-button" onClick={() => navigate(listPath)} type="button">
+                Hủy
+              </button>
+              <button className="primary-button" disabled={saving} type="submit">
+                {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
+                {saving ? 'Đang lưu' : isEditing ? 'Lưu thay đổi' : 'Tạo mới'}
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
     </PageFrame>
   );
 }
@@ -1073,6 +1245,17 @@ function serviceCreateHref(endpoint?: string) {
   if (endpoint === '/maintenance') return '/service-tickets/create?kind=maintenance';
   if (endpoint === '/installations') return '/installations/create';
   return '';
+}
+
+function adminCrudFormCreateHref(endpoint?: string) {
+  if (endpoint === '/customers') return '/customers/new';
+  return '';
+}
+
+function adminCrudFormEditHref(endpoint: string | undefined, row: TableRow) {
+  if (endpoint !== '/customers') return '';
+  const id = readPath(row, 'id');
+  return id ? `/customers/${String(id)}/edit` : '';
 }
 
 function visibleFields(
