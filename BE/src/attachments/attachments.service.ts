@@ -218,9 +218,9 @@ export class AttachmentsService {
       type: query.type,
       OR: search
         ? [
-            { originalName: { contains: search, mode: 'insensitive' } },
-            { title: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } },
+            { originalName: { contains: search } },
+            { title: { contains: search } },
+            { description: { contains: search } },
           ]
         : undefined,
     };

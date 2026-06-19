@@ -86,7 +86,7 @@ export class AuditLogsService {
       actorEmail: query.actorEmail
         ? {
             contains: query.actorEmail.trim(),
-            mode: 'insensitive',
+            
           }
         : undefined,
       createdAt:

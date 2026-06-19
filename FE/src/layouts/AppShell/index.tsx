@@ -130,13 +130,13 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   }
 
   return (
-    <div className={`grid min-h-screen w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
-      <aside className={`flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#e3eaf2] bg-white/95 px-4 py-[22px] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-6 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-[22px] max-[980px]:gap-4'}`}>
+    <div className={`grid min-h-screen w-full overflow-x-hidden bg-[#f4f6f9] transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
+      <aside className={`flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#dde5ee] bg-white px-4 py-5 shadow-[1px_0_0_rgba(16,24,40,0.02)] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-5 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-5 max-[980px]:gap-4'}`}>
         <div className={`flex min-w-0 items-center gap-2.5 ${isSidebarCollapsed ? 'grid justify-items-center' : 'justify-between'} max-[980px]:flex max-[980px]:justify-between`}>
           <Brand compact={isSidebarCollapsed} />
           <button
             aria-label={isSidebarCollapsed ? 'Mở rộng thanh menu' : 'Thu gọn thanh menu'}
-            className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-[#e3eaf2] bg-white text-[#405064] hover:border-[#f0b7b1] hover:text-[#c92a1f] max-[980px]:hidden"
+            className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-[#dde5ee] bg-white text-[#344054] shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:border-[#fecdca] hover:bg-[#fff4f2] hover:text-[#d92d20] max-[980px]:hidden"
             onClick={() => setIsSidebarCollapsed((current) => !current)}
             title={isSidebarCollapsed ? 'Mở rộng' : 'Thu gọn'}
             type="button"
@@ -148,14 +148,14 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
         <nav className={`${isSidebarCollapsed ? 'grid w-full gap-3' : 'grid gap-4'} max-[980px]:flex max-[980px]:gap-2.5 max-[980px]:overflow-x-auto`}>
           {visibleNavGroups.map((group) => (
             <div className={`grid gap-1.5 max-[980px]:contents ${isSidebarCollapsed ? 'gap-1.5' : ''}`} key={group.label}>
-              <span className={`px-3 text-[11px] font-bold uppercase tracking-[0.04em] text-[#8a98aa] transition ${isSidebarCollapsed ? 'h-px overflow-hidden p-0 opacity-0' : ''} max-[980px]:hidden`}>{group.label}</span>
+              <span className={`px-3 text-[12px] font-medium text-[#98a2b3] transition ${isSidebarCollapsed ? 'h-px overflow-hidden p-0 opacity-0' : ''} max-[980px]:hidden`}>{group.label}</span>
               <div className="grid gap-1 max-[980px]:flex max-[980px]:gap-2">
                 {group.items.map((item) => {
                   const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
                   return (
                     <Link
-                      className={`relative flex min-h-[42px] items-center rounded-lg text-[#405064] transition hover:translate-x-0.5 hover:bg-[#fff5f4] hover:text-[#c92a1f] max-[980px]:shrink-0 max-[980px]:gap-2.5 max-[980px]:px-3 ${
-                        isActive ? 'bg-[#fff5f4] text-[#c92a1f] before:absolute before:left-0 before:h-[22px] before:w-[3px] before:rounded-full before:bg-[#c92a1f]' : ''
+                      className={`relative flex min-h-[42px] items-center rounded-lg text-[14px] font-medium text-[#475467] transition hover:bg-[#f8fafc] hover:text-[#d92d20] max-[980px]:shrink-0 max-[980px]:gap-2.5 max-[980px]:px-3 ${
+                        isActive ? 'bg-[#fff4f2] text-[#d92d20] shadow-[inset_0_0_0_1px_rgba(254,205,202,0.9)] before:absolute before:left-0 before:h-[22px] before:w-[3px] before:rounded-full before:bg-[#d92d20]' : ''
                       } ${isSidebarCollapsed ? 'justify-center gap-0 px-0 max-[980px]:justify-start' : 'gap-2.5 px-3'}`}
                       key={item.path}
                       title={item.label}
@@ -171,70 +171,70 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           ))}
         </nav>
 
-        <div className={`mt-auto grid gap-3 border-t border-[#e3eaf2] pt-[18px] max-[980px]:hidden ${isSidebarCollapsed ? 'w-full' : ''}`}>
-          <Link className={`grid items-center gap-2.5 rounded-[10px] p-1.5 hover:bg-[#f8fafc] ${isSidebarCollapsed ? 'flex justify-center' : 'grid-cols-[40px_minmax(0,1fr)]'}`} title="Thiết lập tài khoản" to="/account-settings">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#e4ebf3] bg-gradient-to-br from-[#fff5f4] to-[#eef4fb] text-[13px] font-extrabold text-[#253142]">{initials(user.fullName || user.email)}</div>
+        <div className={`mt-auto grid gap-3 border-t border-[#dde5ee] pt-[18px] max-[980px]:hidden ${isSidebarCollapsed ? 'w-full' : ''}`}>
+          <Link className={`grid items-center gap-2.5 rounded-lg p-1.5 hover:bg-[#f8fafc] ${isSidebarCollapsed ? 'flex justify-center' : 'grid-cols-[40px_minmax(0,1fr)]'}`} title="Thiết lập tài khoản" to="/account-settings">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dde5ee] bg-[#f8fafc] text-[13px] font-medium text-[#101828]">{initials(user.fullName || user.email)}</div>
             <div>
-              <strong className={`block overflow-hidden text-ellipsis whitespace-nowrap ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{user.fullName || user.email}</strong>
-              <span className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[#657384] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{roleLabel(role)}</span>
+              <strong className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-[#101828] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{user.fullName || user.email}</strong>
+              <span className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium text-[#667085] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{roleLabel(role)}</span>
             </div>
           </Link>
-          <button className={`inline-flex min-h-10 items-center justify-center rounded-lg bg-transparent px-2.5 text-[#405064] hover:bg-[#f8fafc] ${isSidebarCollapsed ? 'w-full px-0' : 'gap-2'}`} onClick={logout} title="Đăng xuất" type="button">
+          <button className={`inline-flex min-h-10 items-center justify-center rounded-lg bg-transparent px-2.5 text-[14px] font-medium text-[#475467] hover:bg-[#f8fafc] hover:text-[#d92d20] ${isSidebarCollapsed ? 'w-full px-0' : 'gap-2'}`} onClick={logout} title="Đăng xuất" type="button">
             <LogOut size={17} />
             <span className={`transition ${isSidebarCollapsed ? 'w-0 overflow-hidden opacity-0' : ''}`}>Đăng xuất</span>
           </button>
         </div>
       </aside>
 
-      <main ref={mainRef} className="min-w-0 overflow-x-hidden overscroll-contain bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0)_190px),#f5f7fb] [&>*]:min-w-0 min-[981px]:h-screen min-[981px]:overflow-y-auto">
-        <header className="sticky top-0 z-[2] flex min-h-[68px] items-center justify-between border-b border-white/80 bg-white/85 px-[30px] shadow-[inset_0_-1px_0_rgba(227,234,242,0.46),0_10px_32px_rgba(15,23,42,0.026)] backdrop-blur-md backdrop-saturate-150 [transform:translateZ(0)] [will-change:transform] max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:p-4">
+      <main ref={mainRef} className="min-w-0 overflow-x-hidden overscroll-contain bg-[#f4f6f9] [&>*]:min-w-0 min-[981px]:h-screen min-[981px]:overflow-y-auto">
+        <header className="sticky top-0 z-[2] flex min-h-[66px] items-center justify-between border-b border-[#dde5ee] bg-white/94 px-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)] backdrop-blur-md backdrop-saturate-150 [transform:translateZ(0)] [will-change:transform] max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:p-4">
           <div className="min-w-0">
-            <span className="block text-xs font-extrabold uppercase text-[#657384]">VietMed Kỹ Thuật</span>
-            <strong className="block text-lg leading-tight text-[#17202a]">{pageTitle}</strong>
+            <span className="block text-[12px] font-medium text-[#667085]">VietMed Kỹ Thuật</span>
+            <strong className="block text-[18px] leading-tight text-[#101828]">{pageTitle}</strong>
           </div>
           <div className="flex items-center gap-2.5 max-sm:w-full max-sm:flex-wrap">
-            <span className="inline-flex min-h-[34px] items-center whitespace-nowrap rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-2.5 py-[7px] text-[13px] font-semibold text-[#027a48] before:mr-[7px] before:h-[7px] before:w-[7px] before:rounded-full before:bg-[#12b76a] before:content-['']" title={getApiBaseUrl()}>
+            <span className="inline-flex min-h-[34px] items-center whitespace-nowrap rounded-lg border border-[#abefc6] bg-[#ecfdf3] px-2.5 py-[7px] text-[12px] font-medium text-[#067647] before:mr-[7px] before:h-[7px] before:w-[7px] before:rounded-full before:bg-[#17b26a] before:content-['']" title={getApiBaseUrl()}>
               API sẵn sàng
             </span>
-            <span className="min-h-[34px] rounded-lg border border-[#f0b7b1] bg-[#fff8f7] px-2.5 py-[7px] text-[13px] font-extrabold text-[#c92a1f]">{roleLabel(role)}</span>
+            <span className="min-h-[34px] rounded-lg border border-[#dde5ee] bg-[#f8fafc] px-2.5 py-[7px] text-[12px] font-medium text-[#344054]">{roleLabel(role)}</span>
             <div className="relative" ref={notificationRef}>
               <button
                 aria-label="Thông báo"
-                className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#f0b7b1] bg-[#fff5f4] text-[#c92a1f] shadow-[0_8px_18px_rgba(201,42,31,0.12)] hover:-translate-y-px hover:border-[#c92a1f] hover:bg-white"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#dde5ee] bg-white text-[#344054] shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:-translate-y-px hover:border-[#fecdca] hover:bg-[#fff4f2] hover:text-[#d92d20]"
                 onClick={() => setIsNotificationOpen((value) => !value)}
                 title="Thông báo"
                 type="button"
               >
                 <Bell size={18} />
                 {unreadCount ? (
-                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#c92a1f] px-1.5 text-[11px] font-extrabold leading-5 text-white">
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#d92d20] px-1.5 text-[11px] font-medium leading-5 text-white">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 ) : null}
               </button>
               {isNotificationOpen ? (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-30 grid w-[360px] max-w-[calc(100vw-32px)] gap-2 rounded-lg border border-[#dfe7ef] bg-white p-3 shadow-[0_18px_46px_rgba(15,23,42,0.16)]">
-                  <div className="flex items-center justify-between gap-3 border-b border-[#edf1f6] pb-2">
-                    <strong className="text-sm text-[#17202a]">Thông báo</strong>
-                    <button className="text-xs font-bold text-[#c92a1f]" onClick={markAllNotificationsRead} type="button">
+                <div className="absolute right-0 top-[calc(100%+8px)] z-30 grid w-[360px] max-w-[calc(100vw-32px)] gap-2 rounded-lg border border-[#dde5ee] bg-white p-3 shadow-[0_18px_46px_rgba(16,24,40,0.16)]">
+                  <div className="flex items-center justify-between gap-3 border-b border-[#edf2f7] pb-2">
+                    <strong className="text-sm text-[#101828]">Thông báo</strong>
+                    <button className="text-xs font-medium text-[#d92d20]" onClick={markAllNotificationsRead} type="button">
                       Đã đọc tất cả
                     </button>
                   </div>
                   <div className="grid max-h-[360px] gap-1 overflow-y-auto">
                     {notifications.map((notification) => (
                       <button
-                        className={`grid gap-1 rounded-lg p-3 text-left hover:bg-[#fff8f7] ${notification.readAt ? 'bg-white' : 'bg-[#fff5f4]'}`}
+                        className={`grid gap-1 rounded-lg p-3 text-left hover:bg-[#fff4f2] ${notification.readAt ? 'bg-white' : 'bg-[#fff4f2]'}`}
                         key={notification.id}
                         onClick={() => void openNotification(notification)}
                         type="button"
                       >
-                        <span className="text-sm font-bold text-[#17202a]">{notification.title}</span>
-                        <span className="text-[13px] leading-snug text-[#657384]">{notification.message}</span>
-                        <span className="text-xs font-semibold text-[#8a98aa]">{formatNotificationDate(notification.createdAt)}</span>
+                        <span className="text-sm font-medium text-[#101828]">{notification.title}</span>
+                        <span className="text-[13px] leading-snug text-[#667085]">{notification.message}</span>
+                        <span className="text-xs font-medium text-[#98a2b3]">{formatNotificationDate(notification.createdAt)}</span>
                       </button>
                     ))}
                     {notifications.length === 0 ? (
-                      <div className="grid min-h-24 place-items-center rounded-lg bg-[#f8fafc] text-sm text-[#657384]">
+                      <div className="grid min-h-24 place-items-center rounded-lg bg-[#f8fafc] text-sm text-[#667085]">
                         Chưa có thông báo.
                       </div>
                     ) : null}
@@ -243,14 +243,14 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
               ) : null}
             </div>
             <Link
-              className="inline-flex h-[38px] w-[38px] items-center justify-center overflow-hidden rounded-full border border-[#e3eaf2] bg-white text-[#253142] hover:-translate-y-px hover:border-[#f3c3be]"
+              className="inline-flex h-[38px] w-[38px] items-center justify-center overflow-hidden rounded-lg border border-[#dde5ee] bg-white text-[#101828] shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:-translate-y-px hover:border-[#fecdca]"
               title="Tài khoản"
               to="/account-settings"
             >
               {user.engineerProfile?.photoUrl ? (
                 <img alt={user.fullName || user.email} className="h-full w-full object-cover" src={user.engineerProfile.photoUrl} />
               ) : (
-                <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#fff5f4] to-[#eef4fb] text-[12px] font-extrabold">
+                <span className="flex h-full w-full items-center justify-center bg-[#f8fafc] text-[12px] font-medium">
                   {initials(user.fullName || user.email)}
                 </span>
               )}
@@ -268,7 +268,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <TechnicalMachinesPage />
+                <TechnicalMachinesPage currentRole={role} />
               </RequireRole>
             }
           />

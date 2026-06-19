@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -64,12 +64,12 @@ enum ExpertiseGroup {
 model ProductIndustry {
   id String @id @default(cuid())
 
-  code           String @unique
+  code           String             @unique
   name           String
   description    String?
   expertiseGroup ExpertiseGroup
   status         BusinessLineStatus @default(ACTIVE)
-  sortOrder      Int @default(0)
+  sortOrder      Int                @default(0)
 
   businessLines BusinessLine[]
 
@@ -214,23 +214,23 @@ model User {
   regionId String
   region   Region @relation(fields: [regionId], references: [id])
 
-  assignedRepairs      Repair[]                  @relation("RepairEngineer")
-  createdRepairs       Repair[]                  @relation("RepairCreatedBy")
-  maintenances         Maintenance[]
-  installedMachines    Machine[]                  @relation("MachineInstalledBy")
-  machineInstallations MachineInstallation[]      @relation("MachineInstallationEngineer")
-  issuedWarrantyCards  WarrantyCard[]             @relation("WarrantyCardIssuedBy")
-  responsibleMachines  Machine[]                  @relation("MachinePrimaryEngineer")
-  inventoryMovements   MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
+  assignedRepairs       Repair[]                   @relation("RepairEngineer")
+  createdRepairs        Repair[]                   @relation("RepairCreatedBy")
+  maintenances          Maintenance[]
+  installedMachines     Machine[]                  @relation("MachineInstalledBy")
+  machineInstallations  MachineInstallation[]      @relation("MachineInstallationEngineer")
+  issuedWarrantyCards   WarrantyCard[]             @relation("WarrantyCardIssuedBy")
+  responsibleMachines   Machine[]                  @relation("MachinePrimaryEngineer")
+  inventoryMovements    MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
   receivedNotifications Notification[]             @relation("NotificationRecipient")
   sentNotifications     Notification[]             @relation("NotificationSender")
-  managedBusinessLines BusinessLine[]             @relation("BusinessLineManager")
-  auditLogs            AuditLog[]                 @relation("AuditLogActor")
-  uploadedAttachments  Attachment[]               @relation("AttachmentUploadedBy")
-  engineerProfile      EngineerProfile?
-  dailyWorkNotes       DailyWorkNote[]            @relation("DailyWorkNoteUser")
-  weeklyReports        WeeklyReport[]             @relation("WeeklyReportUser")
-  reviewedWeeklyReports WeeklyReport[]            @relation("WeeklyReportReviewer")
+  managedBusinessLines  BusinessLine[]             @relation("BusinessLineManager")
+  auditLogs             AuditLog[]                 @relation("AuditLogActor")
+  uploadedAttachments   Attachment[]               @relation("AttachmentUploadedBy")
+  engineerProfile       EngineerProfile?
+  dailyWorkNotes        DailyWorkNote[]            @relation("DailyWorkNoteUser")
+  weeklyReports         WeeklyReport[]             @relation("WeeklyReportUser")
+  reviewedWeeklyReports WeeklyReport[]             @relation("WeeklyReportReviewer")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -287,14 +287,14 @@ model WeeklyReportRow {
   reportId String
   report   WeeklyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
-  workDate    DateTime
-  customer    String?
-  machine     String?
-  content     String?
-  result      String?
-  pending     String?
-  proposal    String?
-  sortOrder   Int      @default(0)
+  workDate  DateTime
+  customer  String?
+  machine   String?
+  content   String?
+  result    String?
+  pending   String?
+  proposal  String?
+  sortOrder Int      @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -361,16 +361,16 @@ model EngineerProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
 
-  employeeCode  String?   @unique
-  dateOfBirth   DateTime?
-  position      String?
-  department    String?
-  workStartDate DateTime?
-  specialties   String[]
+  employeeCode   String?         @unique
+  dateOfBirth    DateTime?
+  position       String?
+  department     String?
+  workStartDate  DateTime?
+  specialties    Json            @default("[]")
   expertiseGroup ExpertiseGroup?
-  certificateNo String?
-  photoUrl      String?
-  note          String?
+  certificateNo  String?
+  photoUrl       String?         @db.Text
+  note           String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -405,7 +405,7 @@ model Customer {
   address     String?
   fullAddress String?
 
-  note String?
+  note String? @db.Text
 
   regionId String
   region   Region @relation(fields: [regionId], references: [id])
@@ -426,7 +426,7 @@ model BusinessLine {
   name            String
   status          BusinessLineStatus     @default(ACTIVE)
   manufacturer    String?
-  imageUrl  String? 
+  imageUrl        String?                @db.Text
   productCategory MachineProductCategory @default(OTHER)
   countryOfOrigin String?
   website         String?
@@ -435,7 +435,7 @@ model BusinessLine {
   contactEmail    String?
   description     String?
   note            String?
-  expertiseGroup  ExpertiseGroup @default(IMAGING)
+  expertiseGroup  ExpertiseGroup         @default(IMAGING)
 
   productIndustryId String?
   productIndustry   ProductIndustry? @relation(fields: [productIndustryId], references: [id], onDelete: SetNull)
@@ -468,8 +468,8 @@ model MachineModel {
   description     String?
   note            String?
 
-  machines Machine[]
-  components MachineComponent[]
+  machines             Machine[]
+  components           MachineComponent[]
   plannedInstallations MachineInstallation[] @relation("PlannedInstallationModel")
 
   createdAt DateTime @default(now())
@@ -486,16 +486,18 @@ model MachineComponent {
   code        String
   name        String
   description String?
-  sortOrder   Int    @default(0)
+  sortOrder   Int                @default(0)
   status      BusinessLineStatus @default(ACTIVE)
 
   machineModelId String
   machineModel   MachineModel @relation(fields: [machineModelId], references: [id], onDelete: Cascade)
 
-  accessories String[]
+  accessories Json @default("[]")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  ComponentAccessory ComponentAccessory[]
 
   @@unique([machineModelId, code])
   @@index([machineModelId])
@@ -505,12 +507,12 @@ model MachineComponent {
 model ComponentAccessory {
   id String @id @default(cuid())
 
-  code             String
-  name             String
-  description      String?
-  requiresSerial   Boolean @default(true)
-  sortOrder        Int     @default(0)
-  status           BusinessLineStatus @default(ACTIVE)
+  code           String
+  name           String
+  description    String?
+  requiresSerial Boolean            @default(true)
+  sortOrder      Int                @default(0)
+  status         BusinessLineStatus @default(ACTIVE)
 
   componentId String
   component   MachineComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
@@ -532,16 +534,16 @@ model Machine {
   serialNumber String  @unique
 
   name            String?
-  imageUrl  String?  
+  imageUrl        String?                @db.Text
   modelName       String
   version         String?
   manufacturer    String
   productCategory MachineProductCategory @default(OTHER)
   productLine     String?
 
-  status          MachineStatus          @default(ACTIVE)
-  inventoryStatus MachineInventoryStatus @default(IN_STOCK)
-  dataStatus      OperationalDataStatus  @default(VERIFIED)
+  status          MachineStatus            @default(ACTIVE)
+  inventoryStatus MachineInventoryStatus   @default(IN_STOCK)
+  dataStatus      OperationalDataStatus    @default(VERIFIED)
   createdSource   OperationalCreatedSource @default(ADMIN)
 
   manufacturingDate   DateTime?
@@ -549,7 +551,7 @@ model Machine {
   installDate         DateTime?
   warrantyStartDate   DateTime?
   warrantyEndDate     DateTime?
-  accessoriesSnapshot Json @default("[]")
+  accessoriesSnapshot Json      @default("[]")
 
   businessLineId String?
   businessLine   BusinessLine? @relation(fields: [businessLineId], references: [id])
@@ -620,10 +622,10 @@ model MachineInstallation {
   businessLine   BusinessLine? @relation(fields: [businessLineId], references: [id], onDelete: SetNull)
 
   installedById String?
-  installedBy   User?  @relation("MachineInstallationEngineer", fields: [installedById], references: [id], onDelete: SetNull)
+  installedBy   User?   @relation("MachineInstallationEngineer", fields: [installedById], references: [id], onDelete: SetNull)
 
   installedAt DateTime
-  accessories   Json     @default("[]")
+  accessories Json     @default("[]")
   note        String?
 
   handoverInstallerName     String?
@@ -732,7 +734,7 @@ model Maintenance {
   startedAt     DateTime?
   completedAt   DateTime?
 
-  checklist     String[]
+  checklist   Json      @default("[]")
   resultNote  String?
   nextDueDate DateTime?
 
@@ -776,16 +778,16 @@ model Repair {
   resultNote       String?
   customerFeedback String?
 
-  usingDepartment      String?
-  representative       String?
-  address              String?
-  contactPhone         String?
-  deviceName           String?
-  modelName            String?
-  serialNumber         String?
-  warrantyStatus       String?
-  conditionAssessment  String?
-  repairMethod         String?
+  usingDepartment     String?
+  representative      String?
+  address             String?
+  contactPhone        String?
+  deviceName          String?
+  modelName           String?
+  serialNumber        String?
+  warrantyStatus      String?
+  conditionAssessment String?
+  repairMethod        String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

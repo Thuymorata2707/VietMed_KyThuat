@@ -380,11 +380,11 @@ export class UsersService {
   private shouldPaginate(query?: ListUsersQueryDto): boolean {
     return Boolean(
       query?.search ||
-        query?.limit ||
-        query?.page ||
-        query?.roleName ||
-        query?.regionId ||
-        query?.status,
+      query?.limit ||
+      query?.page ||
+      query?.roleName ||
+      query?.regionId ||
+      query?.status,
     );
   }
 
@@ -399,23 +399,23 @@ export class UsersService {
         ? {
             name: {
               equals: roleName,
-              mode: 'insensitive',
+              
             },
           }
         : undefined,
       OR: search
         ? [
-            { email: { contains: search, mode: 'insensitive' } },
-            { fullName: { contains: search, mode: 'insensitive' } },
-            { phone: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search,  } },
+            { fullName: { contains: search,  } },
+            { phone: { contains: search,  } },
             {
               region: {
-                name: { contains: search, mode: 'insensitive' },
+                name: { contains: search,  },
               },
             },
             {
               engineerProfile: {
-                employeeCode: { contains: search, mode: 'insensitive' },
+                employeeCode: { contains: search,  },
               },
             },
           ]

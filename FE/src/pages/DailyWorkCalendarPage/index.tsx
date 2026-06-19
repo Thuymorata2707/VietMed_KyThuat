@@ -31,8 +31,8 @@ type NoteForm = {
 };
 
 const colorOptions = [
-  { label: 'Đỏ', value: '#c92a1f' },
-  { label: 'Xanh lá', value: '#027a48' },
+  { label: 'Đỏ', value: '#d92d20' },
+  { label: 'Xanh lá', value: '#067647' },
   { label: 'Xanh dương', value: '#175cd3' },
   { label: 'Vàng', value: '#b54708' },
 ];
@@ -212,17 +212,17 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
   return (
     <PageFrame>
-      <section className="flex min-w-0 items-end justify-between gap-[18px] rounded-[18px] bg-[linear-gradient(135deg,#17202a_0%,#253142_56%,#a61f17_120%)] p-6 text-white max-[1180px]:grid max-[1180px]:items-stretch">
+      <section className="flex min-w-0 items-end justify-between gap-[18px] rounded-[18px] bg-[linear-gradient(135deg,#101828_0%,#202939_56%,#b42318_120%)] p-6 text-white max-[1180px]:grid max-[1180px]:items-stretch">
         <div className="min-w-0">
-          <span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.08em] text-[#ffd9d5]">Lịch công việc</span>
-          <h1 className="mb-2.5 text-[clamp(30px,4vw,46px)] font-bold leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Công việc hàng ngày của tôi'}</h1>
+          <span className="mb-2 block text-xs font-medium text-[#ffd9d5]">Lịch công việc</span>
+          <h1 className="mb-2.5 text-[clamp(30px,4vw,46px)] font-medium leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Công việc hàng ngày của tôi'}</h1>
           <p className="text-white/80">{isAdmin ? 'Admin chọn kỹ sư để xem lịch công việc cá nhân.' : 'Ghi lại kế hoạch, việc phát sinh và ghi chú theo ngày.'}</p>
         </div>
         {isAdmin ? (
-          <label className="grid min-w-0 gap-2 font-bold text-white/80 min-[1180px]:min-w-[min(360px,100%)]">
+          <label className="grid min-w-0 gap-2 font-medium text-white/80 min-[1180px]:min-w-[min(360px,100%)]">
             Chọn kỹ sư
             <select
-              className="min-h-11 rounded-[10px] border border-white/35 bg-white/95 px-3 text-[#17202a]"
+              className="min-h-11 rounded-[10px] border border-white/35 bg-white/95 px-3 text-[#101828]"
               onChange={(event) => {
                 setSelectedEngineerId(event.target.value);
                 setSelectedDayDate('');
@@ -242,11 +242,11 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="min-w-0 overflow-hidden rounded-[14px] border border-[#dfe7ef] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] max-[1180px]:overflow-x-auto">
-        <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[#edf1f6] p-4 max-[1180px]:grid max-[1180px]:items-stretch">
+      <section className="min-w-0 overflow-hidden rounded-[14px] border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] max-[1180px]:overflow-x-auto">
+        <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[#edf2f7] p-4 max-[1180px]:grid max-[1180px]:items-stretch">
           <div className="min-w-0">
-            <strong className="block text-xl capitalize text-[#17202a]">{monthLabel(viewDate)}</strong>
-            <span className="mt-1 block text-[#657384]">{loading ? 'Đang tải lịch...' : `${notes.length} ghi chú trong tháng`}</span>
+            <strong className="block text-xl capitalize text-[#101828]">{monthLabel(viewDate)}</strong>
+            <span className="mt-1 block text-[#667085]">{loading ? 'Đang tải lịch...' : `${notes.length} ghi chú trong tháng`}</span>
           </div>
           <div className="flex min-w-0 flex-wrap gap-2">
             <button className="secondary-button" onClick={() => setViewDate(addMonths(viewDate, -1))} type="button">
@@ -265,7 +265,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
         <div className="grid grid-cols-7 max-[1180px]:min-w-[760px]">
           {weekdayLabels.map((label) => (
-            <span className="border-b border-[#edf1f6] bg-[#f8fbfd] p-[11px] text-center text-xs font-extrabold text-[#657384]" key={label}>{label}</span>
+            <span className="border-b border-[#edf2f7] bg-[#f8fbfd] p-[11px] text-center text-xs font-medium text-[#667085]" key={label}>{label}</span>
           ))}
         </div>
 
@@ -276,20 +276,20 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
             return (
               <button
                 className={[
-                  'group relative grid min-h-[132px] gap-2 border-0 border-b border-r border-[#edf1f6] bg-white p-2.5 text-left text-[#17202a] hover:bg-[#fffdfb] max-[900px]:min-h-[116px]',
+                  'group relative grid min-h-[132px] gap-2 border-0 border-b border-r border-[#edf2f7] bg-white p-2.5 text-left text-[#101828] hover:bg-[#fffdfb] max-[900px]:min-h-[116px]',
                   day.date.getDay() === 6 ? 'border-r-0' : '',
                   day.inMonth ? '' : 'bg-[#fbfcfe] text-[#9aa6b5]',
-                  isSameDate(day.date, new Date()) ? 'shadow-[inset_0_0_0_2px_#c92a1f]' : '',
+                  isSameDate(day.date, new Date()) ? 'shadow-[inset_0_0_0_2px_#d92d20]' : '',
                 ].filter(Boolean).join(' ')}
                 key={key}
                 onClick={() => openDay(day.date)}
                 type="button"
               >
-                <span className="font-extrabold">{day.date.getDate()}</span>
+                <span className="font-bold">{day.date.getDate()}</span>
                 <div className="grid content-start gap-1">
                   {dayNotes.slice(0, 3).map((note) => (
                     <span
-                      className="overflow-hidden text-ellipsis whitespace-nowrap rounded-md border-l-[3px] bg-white px-[7px] py-[5px] text-xs leading-snug text-[#17202a] shadow-[0_1px_3px_rgba(15,23,42,0.08)]"
+                      className="overflow-hidden text-ellipsis whitespace-nowrap rounded-md border-l-[3px] bg-white px-[7px] py-[5px] text-xs leading-snug text-[#101828] shadow-[0_1px_3px_rgba(16,24,40,0.08)]"
                       key={note.id}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -300,9 +300,9 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                       {note.startTime ? `${note.startTime} ` : ''}{note.title}
                     </span>
                   ))}
-                  {dayNotes.length > 3 ? <small className="text-[#657384]">+{dayNotes.length - 3} việc khác</small> : null}
+                  {dayNotes.length > 3 ? <small className="text-[#667085]">+{dayNotes.length - 3} việc khác</small> : null}
                 </div>
-                {canCreate ? <Plus className="absolute right-2.5 top-2.5 text-[#c92a1f] opacity-0 group-hover:opacity-100" size={15} /> : null}
+                {canCreate ? <Plus className="absolute right-2.5 top-2.5 text-[#d92d20] opacity-0 group-hover:opacity-100" size={15} /> : null}
               </button>
             );
           })}
@@ -311,12 +311,12 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
       {selectedDayDate ? (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/30 p-5 backdrop-blur-[3px]" onClick={() => setSelectedDayDate('')} role="presentation">
-          <section aria-modal="true" className="grid w-full max-w-[720px] gap-4 rounded-[14px] border border-[#dfe7ef] bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.2)]" onClick={(event) => event.stopPropagation()} role="dialog">
+          <section aria-modal="true" className="grid w-full max-w-[720px] gap-4 rounded-[14px] border border-[#dde5ee] bg-white p-5 shadow-[0_24px_70px_rgba(16,24,40,0.2)]" onClick={(event) => event.stopPropagation()} role="dialog">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <span className="block text-xs font-extrabold uppercase text-[#c92a1f]">Công việc trong ngày</span>
-                <h2 className="mt-1 text-[#17202a]">{formatDateTitle(selectedDayDate)}</h2>
-                <p className="mt-1 text-sm text-[#657384]">{selectedEngineer?.fullName || selectedEngineer?.email || 'Kỹ sư'}</p>
+                <span className="block text-xs font-medium text-[#d92d20]">Công việc trong ngày</span>
+                <h2 className="mt-1 text-[#101828]">{formatDateTitle(selectedDayDate)}</h2>
+                <p className="mt-1 text-sm text-[#667085]">{selectedEngineer?.fullName || selectedEngineer?.email || 'Kỹ sư'}</p>
               </div>
               <button className="icon-button" onClick={() => setSelectedDayDate('')} type="button">
                 <X size={16} />
@@ -325,25 +325,25 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
             <div className="grid gap-2">
               {selectedDayNotes.map((note) => (
-                <article className="rounded-lg border border-[#edf1f6] bg-[#f8fbfd] p-3" key={note.id}>
+                <article className="rounded-lg border border-[#edf2f7] bg-[#f8fbfd] p-3" key={note.id}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="text-[#17202a]">{note.title}</strong>
-                    <span className="rounded-full border border-[#dfe7ef] bg-white px-2.5 py-1 text-xs font-bold text-[#657384]">
+                    <strong className="text-[#101828]">{note.title}</strong>
+                    <span className="rounded-full border border-[#dde5ee] bg-white px-2.5 py-1 text-xs font-medium text-[#667085]">
                       {[note.startTime, note.endTime].filter(Boolean).join(' - ') || 'Cả ngày'}
                     </span>
                   </div>
-                  {note.note ? <p className="mt-2 text-sm leading-relaxed text-[#405064]">{note.note}</p> : null}
+                  {note.note ? <p className="mt-2 text-sm leading-relaxed text-[#344054]">{note.note}</p> : null}
                 </article>
               ))}
 
               {selectedDayNotes.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-[#ced8e3] bg-[#f8fbfd] p-6 text-center text-sm text-[#657384]">
+                <div className="rounded-lg border border-dashed border-[#cfd8e3] bg-[#f8fbfd] p-6 text-center text-sm text-[#667085]">
                   Ngày này chưa có công việc nào.
                 </div>
               ) : null}
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-[#edf1f6] pt-4">
+            <div className="flex justify-end gap-2 border-t border-[#edf2f7] pt-4">
               <button className="secondary-button" onClick={() => setSelectedDayDate('')} type="button">Đóng</button>
               <button className="primary-button" disabled={!selectedEngineerId} onClick={() => openCreate(dateFromInput(selectedDayDate))} type="button">
                 <Plus size={16} />
@@ -356,18 +356,18 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
       {isModalOpen ? (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/30 p-5 backdrop-blur-[3px]" role="presentation">
-          <section aria-modal="true" className="grid w-full max-w-[720px] gap-[18px] rounded-[14px] border border-[#dfe7ef] bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.2)]" role="dialog">
+          <section aria-modal="true" className="grid w-full max-w-[720px] gap-[18px] rounded-[14px] border border-[#dde5ee] bg-white p-5 shadow-[0_24px_70px_rgba(16,24,40,0.2)]" role="dialog">
             <div className="flex items-start justify-between">
               <div>
-                <span className="block text-xs font-extrabold uppercase text-[#c92a1f]">{editingNote ? 'Sửa ghi chú' : isAdmin ? 'Thêm việc cho kỹ sư' : 'Thêm ghi chú'}</span>
-                <h2 className="mt-1 text-[#17202a]">{formatDateTitle(form.workDate)}</h2>
-                {isAdmin ? <p className="mt-1 text-sm text-[#657384]">{selectedEngineer?.fullName || selectedEngineer?.email}</p> : null}
+                <span className="block text-xs font-medium text-[#d92d20]">{editingNote ? 'Sửa ghi chú' : isAdmin ? 'Thêm việc cho kỹ sư' : 'Thêm ghi chú'}</span>
+                <h2 className="mt-1 text-[#101828]">{formatDateTitle(form.workDate)}</h2>
+                {isAdmin ? <p className="mt-1 text-sm text-[#667085]">{selectedEngineer?.fullName || selectedEngineer?.email}</p> : null}
               </div>
               <button className="icon-button" onClick={() => setIsModalOpen(false)} type="button">
                 <X size={16} />
               </button>
             </div>
-            <form className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1 [&_input]:min-h-[42px] [&_input]:rounded-lg [&_input]:border [&_input]:border-[#ced8e3] [&_input]:px-3 [&_input]:text-[#17202a] [&_input]:outline-none [&_input:focus]:border-[#c92a1f] [&_input:focus]:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] [&_label]:grid [&_label]:gap-2 [&_label]:font-bold [&_label]:text-[#405064] [&_select]:min-h-[42px] [&_select]:rounded-lg [&_select]:border [&_select]:border-[#ced8e3] [&_select]:px-3 [&_select]:text-[#17202a] [&_select]:outline-none [&_select:focus]:border-[#c92a1f] [&_select:focus]:shadow-[0_0_0_3px_rgba(201,42,31,0.1)] [&_textarea]:min-h-[110px] [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#ced8e3] [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#17202a] [&_textarea]:outline-none [&_textarea:focus]:border-[#c92a1f] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]" onSubmit={handleSubmit}>
+            <form className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1 [&_input]:min-h-[42px] [&_input]:rounded-lg [&_input]:border [&_input]:border-[#cfd8e3] [&_input]:px-3 [&_input]:text-[#101828] [&_input]:outline-none [&_input:focus]:border-[#d92d20] [&_input:focus]:shadow-[0_0_0_3px_rgba(217,45,32,0.12)] [&_label]:grid [&_label]:gap-2 [&_label]:font-medium [&_label]:text-[#344054] [&_select]:min-h-[42px] [&_select]:rounded-lg [&_select]:border [&_select]:border-[#cfd8e3] [&_select]:px-3 [&_select]:text-[#101828] [&_select]:outline-none [&_select:focus]:border-[#d92d20] [&_select:focus]:shadow-[0_0_0_3px_rgba(217,45,32,0.12)] [&_textarea]:min-h-[110px] [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#cfd8e3] [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#101828] [&_textarea]:outline-none [&_textarea:focus]:border-[#d92d20] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]" onSubmit={handleSubmit}>
               <label>
                 Tiêu đề công việc
                 <input onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required value={form.title} />
@@ -396,7 +396,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                 Ghi chú
                 <textarea onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))} value={form.note} />
               </label>
-              <div className="col-span-full flex justify-end gap-2.5 border-t border-[#edf1f6] pt-3.5">
+              <div className="col-span-full flex justify-end gap-2.5 border-t border-[#edf2f7] pt-3.5">
                 {editingNote && canEditExisting ? (
                   <button className="danger-button" disabled={saving} onClick={removeNote} type="button">
                     <Trash2 size={16} />

@@ -132,20 +132,17 @@ export class MachineModelsService {
     const machineModel = await this.prisma.machineModel.findUnique({
       where: { id },
       include: {
-        ...this.defaultInclude(),
         machines: {
           include: {
             customer: true,
-            _count: {
-              select: {
-                accessories: true,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: 'desc',
+            _count: { select: { accessories: true } }, // Chỗ _count này giữ nguyên nếu schema cũ của bảng khác có
           },
         },
+        businessLine: { include: { productIndustry: true } },
+        components: {
+          include: { ComponentAccessory: true }, //  Đổi thành ComponentAccessory
+        },
+        _count: { select: { components: true } },
       },
     });
 
@@ -345,13 +342,13 @@ export class MachineModelsService {
       productCategory: query.productCategory,
       OR: search
         ? [
-            { code: { contains: search, mode: 'insensitive' } },
-            { name: { contains: search, mode: 'insensitive' } },
-            { displayName: { contains: search, mode: 'insensitive' } },
-            { manufacturer: { contains: search, mode: 'insensitive' } },
+            { code: { contains: search } },
+            { name: { contains: search } },
+            { displayName: { contains: search } },
+            { manufacturer: { contains: search } },
             {
               businessLine: {
-                name: { contains: search, mode: 'insensitive' },
+                name: { contains: search },
               },
             },
           ]
@@ -362,27 +359,16 @@ export class MachineModelsService {
   private normalizeCode(code: string): string {
     return code.toUpperCase().trim();
   }
-
-  private defaultInclude() {
+  defaultInclude() {
     return {
-      businessLine: {
-        include: {
-          productIndustry: true,
-        },
-      },
+      businessLine: { include: { productIndustry: true } },
       components: {
         include: {
-          accessories: {
-            orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }],
-          },
+          ComponentAccessory: true, // Đã đơn giản hóa để không bị bắt bẻ kiểu dữ liệu
         },
         orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }],
       },
-      _count: {
-        select: {
-          machines: true,
-        },
-      },
+      _count: { select: { components: true } },
     };
   }
 }

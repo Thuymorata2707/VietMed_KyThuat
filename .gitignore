@@ -47,6 +47,8 @@ FE/vite.config.d.ts
 # Runtime/temp
 .temp/
 .tmp/
+backups/
+**/backups/
 pids/
 *.pid
 *.seed

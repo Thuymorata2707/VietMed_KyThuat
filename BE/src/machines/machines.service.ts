@@ -1224,15 +1224,15 @@ export class MachinesService {
     if (search) {
       filters.push({
         OR: [
-          { machineCode: { contains: search, mode: 'insensitive' } },
-          { serialNumber: { contains: search, mode: 'insensitive' } },
-          { name: { contains: search, mode: 'insensitive' } },
-          { imageUrl: { contains: search, mode: 'insensitive' } },
-          { modelName: { contains: search, mode: 'insensitive' } },
-          { manufacturer: { contains: search, mode: 'insensitive' } },
+          { machineCode: { contains: search,  } },
+          { serialNumber: { contains: search,  } },
+          { name: { contains: search,  } },
+          { imageUrl: { contains: search,  } },
+          { modelName: { contains: search,  } },
+          { manufacturer: { contains: search,  } },
           {
             customer: {
-              name: { contains: search, mode: 'insensitive' },
+              name: { contains: search,  },
             },
           },
         ],

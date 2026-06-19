@@ -680,28 +680,28 @@ export class RepairsService {
         : undefined,
       OR: search
         ? [
-            { code: { contains: search, mode: 'insensitive' } },
-            { title: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } },
-            { deviceName: { contains: search, mode: 'insensitive' } },
-            { modelName: { contains: search, mode: 'insensitive' } },
-            { serialNumber: { contains: search, mode: 'insensitive' } },
-            { usingDepartment: { contains: search, mode: 'insensitive' } },
-            { representative: { contains: search, mode: 'insensitive' } },
+            { code: { contains: search,  } },
+            { title: { contains: search,  } },
+            { description: { contains: search,  } },
+            { deviceName: { contains: search,  } },
+            { modelName: { contains: search,  } },
+            { serialNumber: { contains: search,  } },
+            { usingDepartment: { contains: search,  } },
+            { representative: { contains: search,  } },
             {
               machine: {
-                serialNumber: { contains: search, mode: 'insensitive' },
+                serialNumber: { contains: search,  },
               },
             },
             {
               machine: {
-                machineCode: { contains: search, mode: 'insensitive' },
+                machineCode: { contains: search,  },
               },
             },
             {
               machine: {
                 customer: {
-                  name: { contains: search, mode: 'insensitive' },
+                  name: { contains: search,  },
                 },
               },
             },

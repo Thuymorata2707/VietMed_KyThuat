@@ -33,27 +33,27 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#eef2f6] p-[22px] max-[980px]:p-3.5">
-      <section className="grid min-h-[calc(100vh-44px)] w-[min(100%,1460px)] max-w-[1460px] grid-cols-[minmax(420px,0.95fr)_minmax(520px,1.05fr)] overflow-hidden rounded-[28px] border border-[#dfe7ef] bg-white shadow-[0_24px_70px_rgba(15,23,42,0.12)] max-[980px]:min-h-[calc(100vh-28px)] max-[980px]:grid-cols-1">
+    <main className="flex min-h-screen items-center justify-center bg-[#f4f6f9] p-[22px] max-[980px]:p-3.5">
+      <section className="grid min-h-[calc(100vh-44px)] w-[min(100%,1460px)] max-w-[1460px] grid-cols-[minmax(420px,0.92fr)_minmax(520px,1.08fr)] overflow-hidden rounded-2xl border border-[#dde5ee] bg-white shadow-[0_24px_70px_rgba(16,24,40,0.12)] max-[980px]:min-h-[calc(100vh-28px)] max-[980px]:grid-cols-1">
         <div className="grid w-full max-w-[520px] content-center gap-6 justify-self-center bg-white p-12 max-[980px]:max-w-[620px] max-[980px]:px-6 max-[980px]:py-9">
           <div>
             <Brand compact size="large" />
           </div>
           <div className="grid gap-2">
-            <span className="text-[13px] font-semibold uppercase text-[#c92a1f]">VietMed service</span>
-            <h1 className="text-[38px] font-bold leading-[1.12] text-[#17202a] max-[560px]:text-[28px]">Đăng nhập</h1>
-            <p className="leading-relaxed text-[#657384]">Truy cập hệ thống điều phối kỹ thuật và dịch vụ sau bán hàng.</p>
+            <span className="text-[12px] font-medium text-[#d92d20]">VietMed service</span>
+            <h1 className="text-[34px] font-medium leading-[1.14] text-[#101828] max-[560px]:text-[28px]">Đăng nhập</h1>
+            <p className="text-[15px] leading-6 text-[#667085]">Truy cập hệ thống điều phối kỹ thuật và dịch vụ sau bán hàng.</p>
           </div>
 
           <form className="grid gap-4" onSubmit={handleSubmit}>
-            <label className="grid gap-2 font-medium text-[#405064]">
+            <label className="grid gap-2 text-[13px] font-medium text-[#344054]">
               Email
-              <input className="min-h-12 rounded-xl border border-[#e2e8f0] bg-white px-[18px] text-[#17202a] outline-none focus:border-[#e6aaa5] focus:shadow-[0_0_0_4px_rgba(201,42,31,0.08)]" autoComplete="email" onChange={(event) => setEmail(event.target.value)} type="email" value={email} />
+              <input className="min-h-12 rounded-lg border border-[#cfd8e3] bg-white px-[15px] text-[#101828] outline-none placeholder:text-[#98a2b3] focus:border-[#d92d20] focus:shadow-[0_0_0_4px_rgba(217,45,32,0.1)]" autoComplete="email" onChange={(event) => setEmail(event.target.value)} type="email" value={email} />
             </label>
-            <label className="grid gap-2 font-medium text-[#405064]">
+            <label className="grid gap-2 text-[13px] font-medium text-[#344054]">
               Mật khẩu
               <input
-                className="min-h-12 rounded-xl border border-[#e2e8f0] bg-white px-[18px] text-[#17202a] outline-none focus:border-[#e6aaa5] focus:shadow-[0_0_0_4px_rgba(201,42,31,0.08)]"
+                className="min-h-12 rounded-lg border border-[#cfd8e3] bg-white px-[15px] text-[#101828] outline-none placeholder:text-[#98a2b3] focus:border-[#d92d20] focus:shadow-[0_0_0_4px_rgba(217,45,32,0.1)]"
                 autoComplete="current-password"
                 onChange={(event) => setPassword(event.target.value)}
                 type="password"
@@ -61,20 +61,25 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               />
             </label>
             {error ? <p className="rounded-lg border border-[#fecdd3] bg-[#fff1f3] px-3 py-2.5 font-medium text-[#b42318]">{error}</p> : null}
-            <button className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-xl bg-[#d83a30] px-[18px] font-semibold text-white shadow-[0_10px_22px_rgba(201,42,31,0.14)] hover:bg-[#c92a1f]" disabled={submitting} type="submit">
+            <button className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-lg bg-[#d92d20] px-[18px] font-medium text-white shadow-[0_10px_22px_rgba(180,35,24,0.16)] hover:bg-[#b42318]" disabled={submitting} type="submit">
               {submitting ? 'Đang đăng nhập' : 'Đăng nhập'}
               <ChevronRight size={18} />
             </button>
           </form>
-          <p className="mt-1 text-[13px] leading-relaxed text-[#657384]">Truy cập dành cho nhân sự VietMed được phân quyền.</p>
+          <p className="mt-1 text-[13px] leading-6 text-[#667085]">Truy cập dành cho nhân sự VietMed được phân quyền.</p>
         </div>
 
-        <aside className="relative grid overflow-hidden bg-[linear-gradient(145deg,rgba(217,45,32,0.9)_0%,rgba(180,35,24,0.86)_50%,rgba(104,31,27,0.88)_100%)] p-7 before:absolute before:inset-0 before:bg-[linear-gradient(120deg,rgba(255,255,255,0.2),transparent_48%)] before:opacity-85 after:absolute after:right-[-190px] after:top-[-130px] after:h-[520px] after:w-[520px] after:rounded-full after:border after:border-white/10 max-[980px]:min-h-[420px] max-[980px]:p-6 max-[560px]:min-h-[340px] max-[560px]:p-3.5">
-          <div className="relative z-[1] grid min-h-full w-full content-center rounded-3xl border border-white/15 bg-white/5 p-14 text-white shadow-[0_28px_70px_rgba(74,16,13,0.22)] after:absolute after:bottom-14 after:left-14 after:h-px after:w-28 after:bg-white/10 after:content-[''] max-[980px]:min-h-[372px] max-[980px]:p-8 max-[980px]:after:bottom-8 max-[980px]:after:left-8 max-[560px]:min-h-[312px] max-[560px]:rounded-[18px] max-[560px]:px-5 max-[560px]:py-6 max-[560px]:after:bottom-6 max-[560px]:after:left-5 max-[560px]:after:w-[84px]">
-            <div className="grid max-w-[560px] gap-4">
-              <span className="text-xs font-bold uppercase tracking-[0.08em] text-white/70">VietMed Technical Service</span>
-              <h2 className="max-w-[560px] text-[46px] font-semibold leading-[1.08] text-white max-[980px]:text-4xl max-[560px]:text-[30px]">Hệ thống quản lý kỹ thuật nội bộ</h2>
-              <p className="max-w-[500px] text-base leading-relaxed text-white/70">Theo dõi thiết bị, lịch bảo trì, phiếu sửa chữa và phân công kỹ sư trong một không gian làm việc rõ ràng.</p>
+        <aside className="relative grid overflow-hidden bg-[#202939] p-7 max-[980px]:min-h-[420px] max-[980px]:p-6 max-[560px]:min-h-[340px] max-[560px]:p-3.5">
+          <div className="relative z-[1] grid min-h-full w-full content-center rounded-lg border border-white/10 bg-[#263244] p-14 text-white shadow-[0_28px_70px_rgba(16,24,40,0.24)] max-[980px]:min-h-[372px] max-[980px]:p-8 max-[560px]:min-h-[312px] max-[560px]:px-5 max-[560px]:py-6">
+            <div className="grid max-w-[620px] gap-5">
+              <span className="text-[12px] font-medium text-white/65">VietMed Technical Service</span>
+              <h2 className="max-w-[580px] text-[40px] font-medium leading-[1.12] text-white max-[980px]:text-4xl max-[560px]:text-[30px]">Quản lý thiết bị, lịch việc và phân công kỹ thuật</h2>
+              <p className="max-w-[540px] text-[15px] leading-7 text-white/72">Một không gian làm việc rõ ràng cho kỹ sư hiện trường, điều phối và admin: biết việc nào cần làm, ai phụ trách và dữ liệu nào cần xác nhận.</p>
+              <div className="grid grid-cols-3 gap-3 pt-3 max-[560px]:grid-cols-1">
+                <span className="rounded-lg border border-white/10 bg-white/8 px-3 py-3 text-sm font-semibold text-white/82">Ticket dịch vụ</span>
+                <span className="rounded-lg border border-white/10 bg-white/8 px-3 py-3 text-sm font-semibold text-white/82">Lịch bảo trì</span>
+                <span className="rounded-lg border border-white/10 bg-white/8 px-3 py-3 text-sm font-semibold text-white/82">Kho thiết bị</span>
+              </div>
             </div>
           </div>
         </aside>

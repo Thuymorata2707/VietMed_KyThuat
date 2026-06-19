@@ -34,8 +34,8 @@ export class ProductIndustriesService {
     const where: Prisma.ProductIndustryWhereInput = search
       ? {
           OR: [
-            { code: { contains: search, mode: 'insensitive' } },
-            { name: { contains: search, mode: 'insensitive' } },
+            { code: { contains: search,  } },
+            { name: { contains: search,  } },
           ],
         }
       : {};

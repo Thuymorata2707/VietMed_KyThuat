@@ -9,20 +9,20 @@
 
 @layer base {
 :root {
-  --color-brand: #c92a1f;
-  --color-brand-dark: #a61f17;
-  --color-brand-soft: #fff5f4;
-  --color-brand-border: #f3c3be;
+  --color-brand: #d92d20;
+  --color-brand-dark: #b42318;
+  --color-brand-soft: #fff4f2;
+  --color-brand-border: #fecdca;
   --color-surface: #ffffff;
-  --color-page: #f5f7fb;
-  --color-border: #e3eaf2;
-  --color-text: #17202a;
-  --color-muted: #657384;
-  --color-muted-strong: #405064;
-  --color-border-soft: #eef2f7;
-  --color-field-border: #ced8e3;
+  --color-page: #f4f6f9;
+  --color-border: #dde5ee;
+  --color-text: #101828;
+  --color-muted: #667085;
+  --color-muted-strong: #344054;
+  --color-border-soft: #edf2f7;
+  --color-field-border: #cfd8e3;
   --color-panel: #f8fafc;
-  --color-success: #027a48;
+  --color-success: #067647;
   --color-success-bg: #ecfdf3;
   --color-success-border: #abefc6;
   --color-warning: #b54708;
@@ -32,17 +32,19 @@
   --color-danger-bg: #fff1f3;
   --color-danger-border: #fecdd3;
   --radius-sm: 8px;
-  --radius-md: 10px;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-panel: 0 12px 30px rgba(15, 23, 42, 0.06);
-  --shadow-hover: 0 16px 34px rgba(15, 23, 42, 0.08);
-  --focus-ring: 0 0 0 3px rgba(201, 42, 31, 0.1);
-  --shadow-modal: 0 24px 70px rgba(15, 23, 42, 0.2);
-  color: #17202a;
+  --radius-md: 8px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-panel: 0 10px 26px rgba(16, 24, 40, 0.07);
+  --shadow-hover: 0 14px 32px rgba(16, 24, 40, 0.1);
+  --focus-ring: 0 0 0 3px rgba(217, 45, 32, 0.12);
+  --shadow-modal: 0 24px 70px rgba(16, 24, 40, 0.22);
+  color: var(--color-text);
   background: var(--color-page);
   font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
@@ -55,6 +57,9 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow-x: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(244, 246, 249, 0.92) 320px),
+    var(--color-page);
 }
 
 #root {
@@ -71,6 +76,7 @@ textarea,
 table {
   font: inherit;
   font-family: var(--font-sans);
+  letter-spacing: 0;
 }
 
 button {
@@ -87,6 +93,10 @@ button:disabled {
   opacity: 0.68;
 }
 
+::selection {
+  background: rgba(217, 45, 32, 0.14);
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -101,7 +111,7 @@ p {
 
 @layer app {
 .list-toolbar {
-  @apply flex items-center gap-3 border-b border-[#eef2f7] p-3.5;
+  @apply flex items-center gap-3 border-b border-[#edf2f7] p-3.5;
 }
 
 .list-toolbar input {
@@ -111,13 +121,13 @@ p {
 .list-toolbar input,
 .admin-role-form input,
 .admin-region-form input {
-  @apply min-h-10 rounded-lg border border-[#ced8e3] px-3 text-[#17202a] outline-none;
+  @apply min-h-10 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none placeholder:text-[#98a2b3];
 }
 
 .list-toolbar input:focus,
 .admin-role-form input:focus,
 .admin-region-form input:focus {
-  @apply border-[#c92a1f] shadow-[0_0_0_3px_rgba(201,42,31,0.1)];
+  @apply border-[#d92d20] shadow-[0_0_0_3px_rgba(217,45,32,0.12)];
 }
 
 .icon-button,
@@ -135,12 +145,12 @@ p {
 }
 
 .icon-button {
-  @apply h-[34px] w-[34px] rounded-lg border border-[#e3eaf2] bg-[#f8fafc] text-[#405064];
+  @apply h-[34px] w-[34px] rounded-lg border border-[#dde5ee] bg-white text-[#344054] shadow-[0_1px_2px_rgba(16,24,40,0.05)];
 }
 
 .icon-button:hover,
 .secondary-button:hover {
-  @apply border-[#f3c3be] text-[#c92a1f];
+  @apply border-[#fecdca] bg-[#fff4f2] text-[#d92d20];
 }
 
 .icon-button.danger:hover {
@@ -150,19 +160,19 @@ p {
 .secondary-button,
 .primary-button,
 .danger-button {
-  @apply min-h-10 gap-2 whitespace-nowrap rounded-lg px-[13px] font-medium;
+  @apply min-h-10 gap-2 whitespace-nowrap rounded-lg px-[13px] text-[14px] font-medium;
 }
 
 .secondary-button {
-  @apply border border-[#e3eaf2] bg-white text-[#405064];
+  @apply border border-[#dde5ee] bg-white text-[#344054] shadow-[0_1px_2px_rgba(16,24,40,0.05)];
 }
 
 .primary-button {
-  @apply bg-[#c92a1f] text-white shadow-[0_1px_2px_rgba(166,31,23,0.18)];
+  @apply bg-[#d92d20] text-white shadow-[0_1px_2px_rgba(180,35,24,0.22)];
 }
 
 .primary-button:hover {
-  @apply bg-[#a61f17];
+  @apply bg-[#b42318];
 }
 
 .danger-button {
@@ -170,24 +180,28 @@ p {
 }
 
 .surface-card {
-  @apply rounded-lg border border-[#e3eaf2] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)];
+  @apply rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+}
+
+.metric-icon {
+  @apply inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#fecdca] bg-[#fff4f2] text-[#d92d20];
 }
 
 .weekly-cell {
-  @apply min-h-10 w-full resize-y rounded-md border border-transparent bg-transparent px-2 py-2 text-[#17202a] outline-none;
+  @apply min-h-10 w-full resize-y rounded-md border border-transparent bg-transparent px-2 py-2 text-[#101828] outline-none;
 }
 
 .weekly-cell:focus {
-  @apply border-[#c92a1f] bg-white shadow-[0_0_0_3px_rgba(201,42,31,0.1)];
+  @apply border-[#d92d20] bg-white shadow-[0_0_0_3px_rgba(217,45,32,0.12)];
 }
 
 .weekly-cell:disabled {
-  @apply cursor-default text-[#405064] opacity-100;
+  @apply cursor-default text-[#344054] opacity-100;
 }
 
 .skeleton-line {
   animation: skeleton-pulse 1.2s ease-in-out infinite;
-  background: linear-gradient(90deg, #eef2f7 0%, #f8fafc 48%, #eef2f7 100%);
+  background: linear-gradient(90deg, #edf2f7 0%, #f8fafc 48%, #edf2f7 100%);
   background-size: 220% 100%;
   border-radius: 999px;
   display: block;
@@ -217,7 +231,7 @@ p {
 
 .crud-modal-backdrop {
   align-items: center;
-  background: rgba(15, 23, 42, 0.42);
+  background: rgba(16, 24, 40, 0.42);
   display: flex;
   inset: 0;
   justify-content: center;
@@ -229,7 +243,7 @@ p {
 .crud-modal {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-modal);
   display: grid;
   gap: 18px;
@@ -247,13 +261,15 @@ p {
 
 .form-panel-heading span {
   color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform:;
 }
 
 .form-panel-heading h2 {
+  color: var(--color-text);
   font-size: 20px;
+  line-height: 1.25;
   margin-top: 4px;
 }
 
@@ -277,7 +293,7 @@ p {
 
 .pagination-bar {
   align-items: center;
-  background: #fbfcfe;
+  background: #f8fafc;
   border-top: 1px solid var(--color-border-soft);
   color: var(--color-muted);
   display: flex;
@@ -333,11 +349,11 @@ p {
 }
 
 .success-notice {
-  @apply flex min-h-11 items-center rounded-lg border border-[#abefc6] bg-[#ecfdf3] px-3.5 font-medium text-[#027a48];
+  @apply flex min-h-11 items-center rounded-lg border border-[#abefc6] bg-[#ecfdf3] px-3.5 text-[14px] font-medium text-[#067647];
 }
 
 .field-label {
-  @apply mb-2 block text-[13px] font-semibold text-[#405064];
+  @apply mb-2 block text-[13px] font-medium text-[#475467];
 }
 
 .machine-accessory-editor {

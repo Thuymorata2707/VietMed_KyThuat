@@ -73,17 +73,17 @@ export class DashboardService {
     if (search) {
       baseFilters.push({
         OR: [
-          { machineCode: { contains: search, mode: 'insensitive' } },
-          { serialNumber: { contains: search, mode: 'insensitive' } },
-          { name: { contains: search, mode: 'insensitive' } },
-          { modelName: { contains: search, mode: 'insensitive' } },
-          { manufacturer: { contains: search, mode: 'insensitive' } },
+          { machineCode: { contains: search,  } },
+          { serialNumber: { contains: search,  } },
+          { name: { contains: search,  } },
+          { modelName: { contains: search,  } },
+          { manufacturer: { contains: search,  } },
           {
             customer: {
               OR: [
-                { name: { contains: search, mode: 'insensitive' } },
-                { hospitalName: { contains: search, mode: 'insensitive' } },
-                { customerCode: { contains: search, mode: 'insensitive' } },
+                { name: { contains: search,  } },
+                { hospitalName: { contains: search,  } },
+                { customerCode: { contains: search,  } },
               ],
             },
           },
@@ -92,17 +92,17 @@ export class DashboardService {
               some: {
                 customer: {
                   OR: [
-                    { name: { contains: search, mode: 'insensitive' } },
+                    { name: { contains: search,  } },
                     {
                       hospitalName: {
                         contains: search,
-                        mode: 'insensitive',
+                        
                       },
                     },
                     {
                       customerCode: {
                         contains: search,
-                        mode: 'insensitive',
+                        
                       },
                     },
                   ],
@@ -114,9 +114,9 @@ export class DashboardService {
             accessories: {
               some: {
                 OR: [
-                  { name: { contains: search, mode: 'insensitive' } },
-                  { code: { contains: search, mode: 'insensitive' } },
-                  { serialNumber: { contains: search, mode: 'insensitive' } },
+                  { name: { contains: search,  } },
+                  { code: { contains: search,  } },
+                  { serialNumber: { contains: search,  } },
                 ],
               },
             },
@@ -173,12 +173,15 @@ export class DashboardService {
           id: true,
           machineCode: true,
           serialNumber: true,
+          machineModelId: true,
           modelName: true,
           name: true,
           manufacturer: true,
           productCategory: true,
           status: true,
           inventoryStatus: true,
+          dataStatus: true,
+          createdSource: true,
           installDate: true,
           warrantyStartDate: true,
           warrantyEndDate: true,
@@ -359,12 +362,15 @@ export class DashboardService {
           id: machine.id,
           machineCode: machine.machineCode,
           serialNumber: machine.serialNumber,
+          machineModelId: machine.machineModelId,
           modelName: machine.modelName,
           name: machine.name,
           manufacturer: machine.manufacturer,
           productCategory: machine.productCategory,
           status: machine.status,
           inventoryStatus: machine.inventoryStatus,
+          dataStatus: machine.dataStatus,
+          createdSource: machine.createdSource,
           installDate: installedAt,
           warrantyStartDate:
             latestInstallation?.warrantyCard?.startDate ??
@@ -636,6 +642,8 @@ export class DashboardService {
       inactiveBusinessLines,
       totalInventoryMovements,
       totalMachines,
+      verifiedMachines,
+      unverifiedMachines,
       pendingReviewMachines,
       engineerCreatedMachines,
       totalUsers,
@@ -672,6 +680,12 @@ export class DashboardService {
       overdueMaintenances,
       cancelledMaintenances,
       upcomingMaintenances,
+      repairsWithoutMachine,
+      openRepairsWithoutMachine,
+      maintenancesWithoutMachine,
+      openMaintenancesWithoutMachine,
+      returnedMachines,
+      returnedRepairingMachines,
     ] = await Promise.all([
       this.prisma.customer.count({
         where: this.customerWhere(customerScope),
@@ -728,6 +742,14 @@ export class DashboardService {
         where: this.inventoryMovementWhere(inventoryMovementScope),
       }),
       this.prisma.machine.count({ where: this.machineWhere(machineScope) }),
+      this.prisma.machine.count({
+        where: this.machineWhere(machineScope, { dataStatus: 'VERIFIED' }),
+      }),
+      this.prisma.machine.count({
+        where: this.machineWhere(machineScope, {
+          dataStatus: { not: 'VERIFIED' },
+        }),
+      }),
       this.prisma.machine.count({
         where: this.machineWhere(machineScope, {
           dataStatus: 'PENDING_REVIEW',
@@ -860,6 +882,37 @@ export class DashboardService {
           },
         }),
       }),
+      this.prisma.repair.count({
+        where: this.repairWhere(repairScope, { machineId: null }),
+      }),
+      this.prisma.repair.count({
+        where: this.repairWhere(repairScope, {
+          machineId: null,
+          status: {
+            in: ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS'],
+          },
+        }),
+      }),
+      this.prisma.maintenance.count({
+        where: this.maintenanceWhere(maintenanceScope, { machineId: null }),
+      }),
+      this.prisma.maintenance.count({
+        where: this.maintenanceWhere(maintenanceScope, {
+          machineId: null,
+          status: {
+            in: ['SCHEDULED', 'ASSIGNED', 'IN_PROGRESS', 'OVERDUE'],
+          },
+        }),
+      }),
+      this.prisma.machine.count({
+        where: this.machineWhere(machineScope, { inventoryStatus: 'RETURNED' }),
+      }),
+      this.prisma.machine.count({
+        where: this.machineWhere(machineScope, {
+          inventoryStatus: 'RETURNED',
+          status: 'REPAIRING',
+        }),
+      }),
     ]);
 
     const machineStatusCounts: Record<MachineStatusValue, number> = {
@@ -933,6 +986,8 @@ export class DashboardService {
       inactiveBusinessLines,
       totalInventoryMovements,
       totalMachines,
+      verifiedMachines,
+      unverifiedMachines,
       pendingReviewMachines,
       engineerCreatedMachines,
       totalUsers,
@@ -945,11 +1000,19 @@ export class DashboardService {
       maintenanceStatusCounts,
       machinesInMaintenance,
       machinesRepairing,
+      returnedMachines,
+      returnedRepairingMachines,
       pendingRepairs,
       activeRepairs: assignedRepairs + inProgressRepairs + waitingPartsRepairs,
       activeMaintenances: assignedMaintenances + inProgressMaintenances,
       overdueMaintenances,
       upcomingMaintenances,
+      repairsWithoutMachine,
+      openRepairsWithoutMachine,
+      maintenancesWithoutMachine,
+      openMaintenancesWithoutMachine,
+      openTicketsWithoutMachine:
+        openRepairsWithoutMachine + openMaintenancesWithoutMachine,
     };
   }
 

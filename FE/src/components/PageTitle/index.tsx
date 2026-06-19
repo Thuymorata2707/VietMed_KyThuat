@@ -7,9 +7,9 @@ type PageTitleProps = {
 export function PageTitle({ eyebrow, title, description }: PageTitleProps) {
   return (
     <div className="max-w-[760px]">
-      <span className="inline-block text-xs font-extrabold uppercase text-[#657384]">{eyebrow}</span>
-      <h1 className="mt-1.5 text-[32px] font-bold leading-[1.15] text-[#111827] max-sm:text-[26px]">{title}</h1>
-      <p className="mt-2.5 leading-relaxed text-[#657384]">{description}</p>
+      <span className="inline-block text-[11px] font-medium text-[#667085]">{eyebrow}</span>
+      <h1 className="mt-1 text-[27px] font-medium leading-[1.18] text-[#101828] max-sm:text-[23px]">{title}</h1>
+      <p className="mt-2 max-w-[700px] text-[14px] leading-6 text-[#667085]">{description}</p>
     </div>
   );
 }

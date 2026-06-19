@@ -1,1066 +1,182 @@
-import {
-  CustomerStatus,
-  CustomerType,
-  BusinessLineStatus,
-  ExpertiseGroup,
-  InventoryMovementType,
-  MachineInventoryStatus,
-  MachineProductCategory,
-  MachineStatus,
-  MaintenanceStatus,
-  MaintenanceType,
-  PrismaClient,
-  RepairPriority,
-  RepairStatus,
-} from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { PrismaClient } from '@prisma/client';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const prisma = new PrismaClient();
 
-const date = (value: string) => new Date(value);
+type SeedTable =
+  | 'Region'
+  | 'Role'
+  | 'User'
+  | 'EngineerProfile'
+  | 'ProductIndustry'
+  | 'Customer'
+  | 'BusinessLine'
+  | 'MachineModel'
+  | 'MachineComponent'
+  | 'ComponentAccessory'
+  | 'Machine'
+  | 'MachineAccessory'
+  | 'MachineInventoryMovement'
+  | 'Repair'
+  | 'Maintenance'
+  | 'MachineInstallation'
+  | 'WarrantyCard'
+  | 'Attachment'
+  | 'AuditLog'
+  | 'DailyWorkNote'
+  | 'WeeklyReport'
+  | 'WeeklyReportRow'
+  | 'Notification';
+
+type SeedSnapshot = {
+  source: string;
+  generatedAt: string;
+  tables: Record<SeedTable, Record<string, unknown>[]>;
+};
+
+const snapshot = JSON.parse(
+  readFileSync(join(__dirname, 'snapshot-data.json'), 'utf8'),
+) as SeedSnapshot;
+
+const createOrder: SeedTable[] = [
+  'Region',
+  'Role',
+  'User',
+  'EngineerProfile',
+  'ProductIndustry',
+  'Customer',
+  'BusinessLine',
+  'MachineModel',
+  'MachineComponent',
+  'ComponentAccessory',
+  'Machine',
+  'MachineAccessory',
+  'MachineInventoryMovement',
+  'Repair',
+  'Maintenance',
+  'MachineInstallation',
+  'WarrantyCard',
+  'Attachment',
+  'AuditLog',
+  'DailyWorkNote',
+  'WeeklyReport',
+  'WeeklyReportRow',
+  'Notification',
+];
+
+const deleteOrder: SeedTable[] = [...createOrder].reverse();
+
+type SeedDelegate = {
+  createMany: (args: { data: unknown[] }) => Promise<unknown>;
+  deleteMany: () => Promise<unknown>;
+};
+
+const delegate = (value: unknown) => value as SeedDelegate;
+
+const delegates: Record<SeedTable, SeedDelegate> = {
+  Region: delegate(prisma.region),
+  Role: delegate(prisma.role),
+  User: delegate(prisma.user),
+  EngineerProfile: delegate(prisma.engineerProfile),
+  ProductIndustry: delegate(prisma.productIndustry),
+  Customer: delegate(prisma.customer),
+  BusinessLine: delegate(prisma.businessLine),
+  MachineModel: delegate(prisma.machineModel),
+  MachineComponent: delegate(prisma.machineComponent),
+  ComponentAccessory: delegate(prisma.componentAccessory),
+  Machine: delegate(prisma.machine),
+  MachineAccessory: delegate(prisma.machineAccessory),
+  MachineInventoryMovement: delegate(prisma.machineInventoryMovement),
+  Repair: delegate(prisma.repair),
+  Maintenance: delegate(prisma.maintenance),
+  MachineInstallation: delegate(prisma.machineInstallation),
+  WarrantyCard: delegate(prisma.warrantyCard),
+  Attachment: delegate(prisma.attachment),
+  AuditLog: delegate(prisma.auditLog),
+  DailyWorkNote: delegate(prisma.dailyWorkNote),
+  WeeklyReport: delegate(prisma.weeklyReport),
+  WeeklyReportRow: delegate(prisma.weeklyReportRow),
+  Notification: delegate(prisma.notification),
+};
+
+const dateFields = new Set([
+  'createdAt',
+  'updatedAt',
+  'deletedAt',
+  'dateOfBirth',
+  'workStartDate',
+  'manufacturingDate',
+  'warehouseImportDate',
+  'installDate',
+  'warrantyStartDate',
+  'warrantyEndDate',
+  'installedAt',
+  'handoverDepartureDate',
+  'issuedAt',
+  'startDate',
+  'endDate',
+  'occurredAt',
+  'scheduledDate',
+  'assignedAt',
+  'startedAt',
+  'completedAt',
+  'nextDueDate',
+  'reportedAt',
+  'workDate',
+  'weekStart',
+  'submittedAt',
+  'reviewedAt',
+  'readAt',
+]);
 
 async function main() {
-  const hashedPassword = await bcrypt.hash('123456', 10);
-
-  const regions = await Promise.all(
-    [
-      { name: 'Ha Noi', code: 'HN' },
-      { name: 'Ho Chi Minh', code: 'HCM' },
-      { name: 'Da Nang', code: 'DN' },
-      { name: 'Can Tho', code: 'CT' },
-      { name: 'Hai Phong', code: 'HP' },
-    ].map((region) =>
-      prisma.region.upsert({
-        where: { code: region.code },
-        update: region,
-        create: region,
-      }),
-    ),
-  );
-
-  const [adminRole, engineerRole, managerRole] = await Promise.all(
-    ['admin', 'engineer', 'manager'].map((name) =>
-      prisma.role.upsert({
-        where: { name },
-        update: {},
-        create: { name },
-      }),
-    ),
-  );
-
-  const users = await Promise.all(
-    [
-      {
-        email: 'admin@vietmed.vn',
-        fullName: 'System Admin',
-        phone: '0901000001',
-        roleId: adminRole.id,
-        regionId: regions[0].id,
-      },
-      {
-        email: 'nguyen.van.an@vietmed.vn',
-        fullName: 'Nguyen Van An',
-        phone: '0901000002',
-        roleId: engineerRole.id,
-        regionId: regions[0].id,
-      },
-      {
-        email: 'tran.thi.binh@vietmed.vn',
-        fullName: 'Tran Thi Binh',
-        phone: '0901000003',
-        roleId: engineerRole.id,
-        regionId: regions[1].id,
-      },
-      {
-        email: 'le.quoc.cuong@vietmed.vn',
-        fullName: 'Le Quoc Cuong',
-        phone: '0901000004',
-        roleId: engineerRole.id,
-        regionId: regions[2].id,
-      },
-      {
-        email: 'pham.minh.duc@vietmed.vn',
-        fullName: 'Pham Minh Duc',
-        phone: '0901000005',
-        roleId: managerRole.id,
-        regionId: regions[3].id,
-      },
-    ].map((user) =>
-      prisma.user.upsert({
-        where: { email: user.email },
-        update: {
-          fullName: user.fullName,
-          phone: user.phone,
-          roleId: user.roleId,
-          regionId: user.regionId,
-        },
-        create: {
-          ...user,
-          password: hashedPassword,
-        },
-      }),
-    ),
-  );
-
-  const engineerProfiles = [
-      {
-        userId: users[0].id,
-        employeeCode: 'VT-ADMIN-001',
-        dateOfBirth: date('1990-01-01'),
-        position: 'System Admin',
-        department: 'Technical',
-        workStartDate: date('2020-01-01'),
-        specialties: ['SYSTEM', 'ADMIN'],
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        certificateNo: 'CERT-ADMIN-001',
-      },
-      {
-        userId: users[1].id,
-        employeeCode: 'VT-KT-001',
-        dateOfBirth: date('1992-03-12'),
-        position: 'Ky su sieu am',
-        department: 'Phong ky thuat',
-        workStartDate: date('2018-06-01'),
-        specialties: ['ULTRASOUND', 'ENDOSCOPY'],
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        certificateNo: 'CERT-US-001',
-      },
-      {
-        userId: users[2].id,
-        employeeCode: 'VT-KT-002',
-        dateOfBirth: date('1994-07-22'),
-        position: 'Ky su xet nghiem',
-        department: 'Phong ky thuat',
-        workStartDate: date('2019-09-15'),
-        specialties: ['LAB_TESTING', 'IMMUNOLOGY'],
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        certificateNo: 'CERT-LAB-002',
-      },
-      {
-        userId: users[3].id,
-        employeeCode: 'VT-KT-003',
-        dateOfBirth: date('1991-11-08'),
-        position: 'Ky su sinh hoa',
-        department: 'Phong ky thuat',
-        workStartDate: date('2017-04-20'),
-        specialties: ['BIOCHEMISTRY', 'HEMATOLOGY'],
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        certificateNo: 'CERT-BIO-003',
-      },
-      {
-        userId: users[4].id,
-        employeeCode: 'VT-QL-001',
-        dateOfBirth: date('1988-02-18'),
-        position: 'Truong nhom ky thuat',
-        department: 'Phong ky thuat',
-        workStartDate: date('2016-01-10'),
-        specialties: ['MANAGEMENT', 'FIELD_SERVICE'],
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        certificateNo: 'CERT-MGR-001',
-      },
-    ];
-
-  await prisma.engineerProfile.deleteMany({
-    where: {
-      employeeCode: {
-        in: engineerProfiles.map((profile) => profile.employeeCode),
-      },
-    },
-  });
-
-  await Promise.all(
-    engineerProfiles.map((profile) =>
-      prisma.engineerProfile.upsert({
-        where: { userId: profile.userId },
-        update: profile,
-        create: profile,
-      }),
-    ),
-  );
-
-  const customers = await Promise.all(
-    [
-      {
-        customerCode: 'KH-001',
-        name: 'Benh vien Bach Mai',
-        shortName: 'Bach Mai',
-        hospitalName: 'Benh vien Bach Mai',
-        customerType: CustomerType.HOSPITAL,
-        status: CustomerStatus.ACTIVE,
-        taxCode: '0100000001',
-        email: 'contact@bachmai.example',
-        website: 'https://bachmai.example',
-        phone: '0243000001',
-        contactPerson: 'Nguyen Thi Lan',
-        contactPosition: 'Truong phong vat tu',
-        contactPhone: '0912000001',
-        contactEmail: 'lan.nt@bachmai.example',
-        province: 'Ha Noi',
-        district: 'Dong Da',
-        ward: 'Phuong Mai',
-        address: '78 Giai Phong',
-        fullAddress: '78 Giai Phong, Phuong Mai, Dong Da, Ha Noi',
-        note: 'Khach hang trong diem khu vuc mien Bac',
-        regionId: regions[0].id,
-      },
-      {
-        customerCode: 'KH-002',
-        name: 'Benh vien Cho Ray',
-        shortName: 'Cho Ray',
-        hospitalName: 'Benh vien Cho Ray',
-        customerType: CustomerType.HOSPITAL,
-        status: CustomerStatus.ACTIVE,
-        taxCode: '0300000002',
-        email: 'contact@choray.example',
-        website: 'https://choray.example',
-        phone: '0283000002',
-        contactPerson: 'Tran Van Nam',
-        contactPosition: 'Phong trang thiet bi',
-        contactPhone: '0912000002',
-        contactEmail: 'nam.tv@choray.example',
-        province: 'Ho Chi Minh',
-        district: 'Quan 5',
-        ward: 'Phuong 12',
-        address: '201B Nguyen Chi Thanh',
-        fullAddress: '201B Nguyen Chi Thanh, Phuong 12, Quan 5, Ho Chi Minh',
-        note: 'Can theo doi hop dong bao tri nam',
-        regionId: regions[1].id,
-      },
-      {
-        customerCode: 'KH-003',
-        name: 'Trung tam Xet nghiem Da Nang',
-        shortName: 'Lab DN',
-        hospitalName: 'Trung tam Xet nghiem Da Nang',
-        customerType: CustomerType.LAB,
-        status: CustomerStatus.ACTIVE,
-        taxCode: '0400000003',
-        email: 'labdanang@example.vn',
-        website: 'https://labdanang.example',
-        phone: '02363000003',
-        contactPerson: 'Le Thi Hoa',
-        contactPosition: 'Quan ly lab',
-        contactPhone: '0912000003',
-        contactEmail: 'hoa.lt@labdanang.example',
-        province: 'Da Nang',
-        district: 'Hai Chau',
-        ward: 'Hai Chau 1',
-        address: '12 Bach Dang',
-        fullAddress: '12 Bach Dang, Hai Chau 1, Hai Chau, Da Nang',
-        note: 'Khach hang lab tu nhan',
-        regionId: regions[2].id,
-      },
-      {
-        customerCode: 'KH-004',
-        name: 'Phong kham Mekong',
-        shortName: 'Mekong Clinic',
-        hospitalName: 'Phong kham Mekong',
-        customerType: CustomerType.CLINIC,
-        status: CustomerStatus.POTENTIAL,
-        taxCode: '1800000004',
-        email: 'info@mekongclinic.example',
-        website: 'https://mekongclinic.example',
-        phone: '02923000004',
-        contactPerson: 'Pham Quoc Huy',
-        contactPosition: 'Giam doc phong kham',
-        contactPhone: '0912000004',
-        contactEmail: 'huy.pq@mekongclinic.example',
-        province: 'Can Tho',
-        district: 'Ninh Kieu',
-        ward: 'An Khanh',
-        address: '45 Nguyen Van Cu',
-        fullAddress: '45 Nguyen Van Cu, An Khanh, Ninh Kieu, Can Tho',
-        note: 'Dang tu van goi bao tri',
-        regionId: regions[3].id,
-      },
-      {
-        customerCode: 'KH-005',
-        name: 'Dai ly Thiet bi Y te Hai Phong',
-        shortName: 'Dai ly HP',
-        hospitalName: 'Dai ly Thiet bi Y te Hai Phong',
-        customerType: CustomerType.DISTRIBUTOR,
-        status: CustomerStatus.ACTIVE,
-        taxCode: '0200000005',
-        email: 'sales@haiphongmedical.example',
-        website: 'https://haiphongmedical.example',
-        phone: '02253000005',
-        contactPerson: 'Do Minh Khoa',
-        contactPosition: 'Quan ly kinh doanh',
-        contactPhone: '0912000005',
-        contactEmail: 'khoa.dm@haiphongmedical.example',
-        province: 'Hai Phong',
-        district: 'Ngo Quyen',
-        ward: 'May To',
-        address: '88 Lach Tray',
-        fullAddress: '88 Lach Tray, May To, Ngo Quyen, Hai Phong',
-        note: 'Dai ly khu vuc duyen hai',
-        regionId: regions[4].id,
-      },
-    ].map((customer) =>
-      prisma.customer.upsert({
-        where: { customerCode: customer.customerCode },
-        update: customer,
-        create: customer,
-      }),
-    ),
-  );
-
-  const businessLines = await Promise.all(
-    [
-      {
-        code: 'NSX-ULTRASOUND',
-        name: 'Nganh hang Sieu am',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'SonoTech',
-        productCategory: MachineProductCategory.ULTRASOUND,
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        countryOfOrigin: 'Japan',
-        website: 'https://sonotech.example',
-        contactPerson: 'Mr. Sato',
-        contactPhone: '+81-03-0000-0001',
-        contactEmail: 'support@sonotech.example',
-        description: 'Cac dong may sieu am chan doan hinh anh',
-        note: 'Nganh hang co so luong lap dat cao',
-        managerId: users[1].id,
-      },
-      {
-        code: 'NSX-BIOCHEMISTRY',
-        name: 'Nganh hang Sinh hoa',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'BioLab',
-        productCategory: MachineProductCategory.BIOCHEMISTRY,
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        countryOfOrigin: 'Germany',
-        website: 'https://biolab.example',
-        contactPerson: 'Ms. Anna',
-        contactPhone: '+49-30-0000-0002',
-        contactEmail: 'service@biolab.example',
-        description: 'Cac dong may sinh hoa tu dong',
-        note: 'Can theo doi vat tu tieu hao va QC',
-        managerId: users[3].id,
-      },
-      {
-        code: 'NSX-IMMUNOLOGY',
-        name: 'Nganh hang Mien dich',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'ImmuMed',
-        productCategory: MachineProductCategory.IMMUNOLOGY,
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        countryOfOrigin: 'USA',
-        website: 'https://immumed.example',
-        contactPerson: 'Mr. John',
-        contactPhone: '+1-212-000-0003',
-        contactEmail: 'support@immumed.example',
-        description: 'Cac dong may mien dich va hoa phat quang',
-        note: 'Uu tien dao tao ky su mien Nam',
-        managerId: users[2].id,
-      },
-      {
-        code: 'NSX-HEMATOLOGY',
-        name: 'Nganh hang Huyet hoc',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'HemaCare',
-        productCategory: MachineProductCategory.HEMATOLOGY,
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        countryOfOrigin: 'Korea',
-        website: 'https://hemacare.example',
-        contactPerson: 'Ms. Kim',
-        contactPhone: '+82-02-0000-0004',
-        contactEmail: 'care@hemacare.example',
-        description: 'Cac dong may huyet hoc va phan tich te bao mau',
-        note: 'Co lich bao tri dinh ky hang quy',
-        managerId: users[3].id,
-      },
-      {
-        code: 'NSX-XRAY',
-        name: 'Nganh hang X-quang',
-        status: BusinessLineStatus.INACTIVE,
-        manufacturer: 'RadVision',
-        productCategory: MachineProductCategory.X_RAY,
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        countryOfOrigin: 'China',
-        website: 'https://radvision.example',
-        contactPerson: 'Mr. Li',
-        contactPhone: '+86-21-0000-0005',
-        contactEmail: 'support@radvision.example',
-        description: 'Cac dong may X-quang ky thuat so',
-        note: 'Tam ngung nhap dong may cu',
-        managerId: users[4].id,
-      },
-    ].map((businessLine) =>
-      prisma.businessLine.upsert({
-        where: { code: businessLine.code },
-        update: businessLine,
-        create: businessLine,
-      }),
-    ),
-  );
-
-  const requestedBusinessLines = await Promise.all(
-    [
-      {
-        code: 'ALPINION-ULTRASOUND',
-        name: 'Siêu Âm Alpinion',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'Alpinion',
-        productCategory: MachineProductCategory.ULTRASOUND,
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        countryOfOrigin: 'Korea',
-        description: 'Danh mục máy siêu âm Alpinion',
-        managerId: users[1].id,
-      },
-      {
-        code: 'FUJIREBIO',
-        name: 'Fujirebio',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'Fujirebio',
-        productCategory: MachineProductCategory.IMMUNOLOGY,
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        countryOfOrigin: 'Japan',
-        description: 'Danh mục máy xét nghiệm Fujirebio',
-        managerId: users[2].id,
-      },
-      {
-        code: 'MINDRAY',
-        name: 'Mindray',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'Mindray',
-        productCategory: MachineProductCategory.OTHER,
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        countryOfOrigin: 'China',
-        description: 'Danh mục máy Mindray',
-        managerId: users[3].id,
-      },
-      {
-        code: 'MINATO',
-        name: 'Minato',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'Minato',
-        productCategory: MachineProductCategory.OTHER,
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        countryOfOrigin: 'Japan',
-        description: 'Danh mục máy Minato',
-        managerId: users[4].id,
-      },
-    ].map((businessLine) =>
-      prisma.businessLine.upsert({
-        where: { code: businessLine.code },
-        update: businessLine,
-        create: businessLine,
-      }),
-    ),
-  );
-
-  const productIndustries = await Promise.all(
-    [
-      {
-        code: 'IMAGING',
-        name: 'Chẩn đoán hình ảnh',
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        status: BusinessLineStatus.ACTIVE,
-        sortOrder: 1,
-        description: 'Ngành hàng chẩn đoán hình ảnh',
-      },
-      {
-        code: 'LAB_TESTING',
-        name: 'Xét nghiệm',
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        status: BusinessLineStatus.ACTIVE,
-        sortOrder: 2,
-        description: 'Ngành hàng xét nghiệm',
-      },
-      {
-        code: 'PHYSIOTHERAPY',
-        name: 'VLTL',
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        status: BusinessLineStatus.ACTIVE,
-        sortOrder: 3,
-        description: 'Ngành hàng vật lý trị liệu do kỹ sư chẩn đoán hình ảnh quản lý',
-      },
-      {
-        code: 'ICU',
-        name: 'ICU',
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        status: BusinessLineStatus.ACTIVE,
-        sortOrder: 4,
-        description: 'Ngành hàng ICU do kỹ sư chẩn đoán hình ảnh quản lý',
-      },
-    ].map((industry) =>
-      prisma.productIndustry.upsert({
-        where: { code: industry.code },
-        update: industry,
-        create: industry,
-      }),
-    ),
-  );
-
-  const industryByCode = Object.fromEntries(
-    productIndustries.map((industry) => [industry.code, industry]),
-  );
-
-  const productBusinessLines = await Promise.all(
-    [
-      {
-        code: 'PRODUCT-ULTRASOUND',
-        name: 'Máy siêu âm',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'Alpinion',
-        productCategory: MachineProductCategory.ULTRASOUND,
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        productIndustryId: industryByCode.IMAGING.id,
-        description: 'Sản phẩm chẩn đoán hình ảnh - máy siêu âm',
-        managerId: users[1].id,
-      },
-      {
-        code: 'PRODUCT-XRAY',
-        name: 'Máy X-Quang',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'RadVision',
-        productCategory: MachineProductCategory.X_RAY,
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        productIndustryId: industryByCode.IMAGING.id,
-        description: 'Sản phẩm chẩn đoán hình ảnh - X-Quang',
-        managerId: users[1].id,
-      },
-      {
-        code: 'PRODUCT-MONITOR',
-        name: 'Monitor',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'VietMed',
-        productCategory: MachineProductCategory.OTHER,
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        productIndustryId: industryByCode.IMAGING.id,
-        description: 'Sản phẩm chẩn đoán hình ảnh - monitor theo dõi',
-        managerId: users[1].id,
-      },
-      {
-        code: 'PRODUCT-ICU',
-        name: 'ICU',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'VietMed',
-        productCategory: MachineProductCategory.OTHER,
-        expertiseGroup: ExpertiseGroup.IMAGING,
-        productIndustryId: industryByCode.ICU.id,
-        description: 'Sản phẩm chẩn đoán hình ảnh - thiết bị ICU',
-        managerId: users[1].id,
-      },
-      {
-        code: 'PRODUCT-BIOCHEMISTRY',
-        name: 'Máy xét nghiệm sinh hóa',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'Mindray',
-        productCategory: MachineProductCategory.BIOCHEMISTRY,
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        productIndustryId: industryByCode.LAB_TESTING.id,
-        description: 'Sản phẩm xét nghiệm - máy sinh hóa',
-        managerId: users[3].id,
-      },
-      {
-        code: 'PRODUCT-HEMATOLOGY',
-        name: 'Máy xét nghiệm huyết học',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'Mindray',
-        productCategory: MachineProductCategory.HEMATOLOGY,
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        productIndustryId: industryByCode.LAB_TESTING.id,
-        description: 'Sản phẩm xét nghiệm - máy huyết học',
-        managerId: users[3].id,
-      },
-      {
-        code: 'PRODUCT-IMMUNOLOGY',
-        name: 'Máy miễn dịch',
-        status: BusinessLineStatus.ACTIVE,
-        manufacturer: 'Fujirebio',
-        productCategory: MachineProductCategory.IMMUNOLOGY,
-        expertiseGroup: ExpertiseGroup.LAB_TESTING,
-        productIndustryId: industryByCode.LAB_TESTING.id,
-        description: 'Sản phẩm xét nghiệm - máy miễn dịch',
-        managerId: users[2].id,
-      },
-    ].map((businessLine) =>
-      prisma.businessLine.upsert({
-        where: { code: businessLine.code },
-        update: businessLine,
-        create: businessLine,
-      }),
-    ),
-  );
-
-  await Promise.all(
-    [
-      {
-        businessLineId: productBusinessLines[0].id,
-        models: ['X-CUBE 60', 'X-CUBE 70', 'X-CUBE 90'],
-        productCategory: MachineProductCategory.ULTRASOUND,
-        productLine: 'X-CUBE',
-        manufacturer: 'Alpinion',
-      },
-      {
-        businessLineId: requestedBusinessLines[0].id,
-        models: ['XCube 50', 'XCube 60', 'XCube 70', 'XCube 90'],
-        productCategory: MachineProductCategory.ULTRASOUND,
-        productLine: 'XCube',
-        manufacturer: 'Alpinion',
-      },
-      {
-        businessLineId: requestedBusinessLines[1].id,
-        models: ['Lumipulse G600II', 'Lumipulse G1200', 'Lumipulse G3000'],
-        productCategory: MachineProductCategory.IMMUNOLOGY,
-        productLine: 'Lumipulse',
-        manufacturer: 'Fujirebio',
-      },
-      {
-        businessLineId: requestedBusinessLines[2].id,
-        models: ['BC-30s', 'BC-60s', 'BS-240', 'BS-430', 'CL-900i'],
-        productCategory: MachineProductCategory.OTHER,
-        manufacturer: 'Mindray',
-      },
-      {
-        businessLineId: requestedBusinessLines[3].id,
-        models: ['Autospiro AS-507', 'Autospiro AS-407', 'Minato AE-310S'],
-        productCategory: MachineProductCategory.OTHER,
-        manufacturer: 'Minato',
-      },
-    ]
-      .flatMap((group) =>
-        group.models.map((model) => ({
-          businessLineId: group.businessLineId,
-          code: model
-            .toUpperCase()
-            .replace(/[^A-Z0-9]+/g, '-')
-            .replace(/^-|-$/g, ''),
-          name: model,
-          displayName: model,
-          status: BusinessLineStatus.ACTIVE,
-          manufacturer: group.manufacturer,
-          productCategory: group.productCategory,
-          productLine: group.productLine ?? null,
-        })),
-      )
-      .map((machineModel) =>
-        prisma.machineModel.upsert({
-          where: {
-            businessLineId_code: {
-              businessLineId: machineModel.businessLineId,
-              code: machineModel.code,
-            },
-          },
-          update: machineModel,
-          create: machineModel,
-        }),
-      ),
-  );
-
-  const xCube90 = await prisma.machineModel.findUnique({
-    where: {
-      businessLineId_code: {
-        businessLineId: productBusinessLines[0].id,
-        code: 'X-CUBE-90',
-      },
-    },
-  });
-
-  if (xCube90) {
-    const xCube90Components = await Promise.all(
-      [
-        { code: 'MAINBOARD', name: 'Mainboard', sortOrder: 1 },
-        { code: 'MONITOR', name: 'Monitor', sortOrder: 2 },
-        { code: 'KEYBOARD', name: 'Keyboard', sortOrder: 3 },
-        { code: 'POWER-SUPPLY', name: 'Power Supply', sortOrder: 4 },
-        { code: 'PROBE-PORT', name: 'Probe Port', sortOrder: 5 },
-      ].map((component) =>
-        prisma.machineComponent.upsert({
-          where: {
-            machineModelId_code: {
-              machineModelId: xCube90.id,
-              code: component.code,
-            },
-          },
-          update: component,
-          create: {
-            ...component,
-            machineModelId: xCube90.id,
-            status: BusinessLineStatus.ACTIVE,
-          },
-        }),
-      ),
-    );
-
-    const probePort = xCube90Components.find(
-      (component) => component.code === 'PROBE-PORT',
-    );
-
-    if (probePort) {
-      await Promise.all(
-        [
-          { code: 'CONVEX-PROBE', name: 'Convex Probe', sortOrder: 1 },
-          { code: 'LINEAR-PROBE', name: 'Linear Probe', sortOrder: 2 },
-          { code: 'CARDIAC-PROBE', name: 'Cardiac Probe', sortOrder: 3 },
-          { code: 'ENDOCAVITY-PROBE', name: 'Endocavity Probe', sortOrder: 4 },
-          { code: 'MICRO-CONVEX-PROBE', name: 'Micro Convex Probe', sortOrder: 5 },
-          { code: 'VOLUME-PROBE', name: 'Volume Probe', sortOrder: 6 },
-        ].map((accessory) =>
-          prisma.componentAccessory.upsert({
-            where: {
-              componentId_code: {
-                componentId: probePort.id,
-                code: accessory.code,
-              },
-            },
-            update: accessory,
-            create: {
-              ...accessory,
-              componentId: probePort.id,
-              requiresSerial: true,
-              status: BusinessLineStatus.ACTIVE,
-            },
-          }),
-        ),
-      );
-    }
+  for (const table of deleteOrder) {
+    await delegates[table].deleteMany();
   }
 
-  const machines = await Promise.all(
-    [
+  for (const table of createOrder) {
+    const rows = (snapshot.tables[table] ?? []).map(hydrateDates);
+
+    if (rows.length === 0) {
+      continue;
+    }
+
+    await delegates[table].createMany({ data: rows });
+  }
+
+  console.log(
+    JSON.stringify(
       {
-        machineCode: 'MAY-001',
-        serialNumber: 'US-VM-0001',
-        name: 'May sieu am tong quat',
-        modelName: 'SonoPro X7',
-        version: 'v3.2',
-        manufacturer: 'SonoTech',
-        productCategory: MachineProductCategory.ULTRASOUND,
-        productLine: 'SonoPro',
-        status: MachineStatus.ACTIVE,
-        inventoryStatus: MachineInventoryStatus.INSTALLED,
-        manufacturingDate: date('2022-10-10'),
-        warehouseImportDate: date('2022-12-20'),
-        installDate: date('2023-01-15'),
-        warrantyStartDate: date('2023-01-15'),
-        warrantyEndDate: date('2026-01-15'),
-        businessLineId: businessLines[0].id,
-        customerId: customers[0].id,
-        installedById: users[1].id,
-        primaryEngineerId: users[1].id,
+        seededFrom: snapshot.source,
+        generatedAt: snapshot.generatedAt,
+        counts: Object.fromEntries(
+          createOrder.map((table) => [
+            table,
+            snapshot.tables[table]?.length ?? 0,
+          ]),
+        ),
       },
-      {
-        machineCode: 'MAY-002',
-        serialNumber: 'BIO-VM-0002',
-        name: 'May sinh hoa tu dong',
-        modelName: 'BioMax 800',
-        version: 'v2.1',
-        manufacturer: 'BioLab',
-        productCategory: MachineProductCategory.BIOCHEMISTRY,
-        productLine: 'BioMax',
-        status: MachineStatus.MAINTENANCE,
-        inventoryStatus: MachineInventoryStatus.INSTALLED,
-        manufacturingDate: date('2022-04-12'),
-        warehouseImportDate: date('2022-07-01'),
-        installDate: date('2022-08-20'),
-        warrantyStartDate: date('2022-08-20'),
-        warrantyEndDate: date('2025-08-20'),
-        businessLineId: businessLines[1].id,
-        customerId: customers[1].id,
-        installedById: users[2].id,
-        primaryEngineerId: users[1].id,
-      },
-      {
-        machineCode: 'MAY-003',
-        serialNumber: 'IMM-VM-0003',
-        name: 'May mien dich tu dong',
-        modelName: 'ImmuStar 500',
-        version: 'v1.8',
-        manufacturer: 'ImmuMed',
-        productCategory: MachineProductCategory.IMMUNOLOGY,
-        productLine: 'ImmuStar',
-        status: MachineStatus.REPAIRING,
-        inventoryStatus: MachineInventoryStatus.ACCESSORY_SPLIT,
-        manufacturingDate: date('2021-05-05'),
-        warehouseImportDate: date('2021-09-15'),
-        installDate: date('2021-11-05'),
-        warrantyStartDate: date('2021-11-05'),
-        warrantyEndDate: date('2024-11-05'),
-        businessLineId: businessLines[2].id,
-        customerId: customers[2].id,
-        installedById: users[2].id,
-        primaryEngineerId: users[2].id,
-      },
-      {
-        machineCode: 'MAY-004',
-        serialNumber: 'HEM-VM-0004',
-        name: 'May huyet hoc',
-        modelName: 'HemaCount 60',
-        version: 'v4.0',
-        manufacturer: 'HemaCare',
-        productCategory: MachineProductCategory.HEMATOLOGY,
-        productLine: 'HemaCount',
-        status: MachineStatus.ACTIVE,
-        inventoryStatus: MachineInventoryStatus.IN_STOCK,
-        manufacturingDate: date('2023-11-18'),
-        warehouseImportDate: date('2024-01-15'),
-        installDate: date('2024-02-10'),
-        warrantyStartDate: date('2024-02-10'),
-        warrantyEndDate: date('2027-02-10'),
-        businessLineId: businessLines[3].id,
-        customerId: customers[3].id,
-        installedById: users[3].id,
-        primaryEngineerId: users[3].id,
-      },
-      {
-        machineCode: 'MAY-005',
-        serialNumber: 'XR-VM-0005',
-        name: 'May X-quang ky thuat so',
-        modelName: 'XR Vision DR',
-        version: 'v5.5',
-        manufacturer: 'RadVision',
-        productCategory: MachineProductCategory.X_RAY,
-        productLine: 'XR Vision',
-        status: MachineStatus.INACTIVE,
-        inventoryStatus: MachineInventoryStatus.RESERVED,
-        manufacturingDate: date('2020-01-20'),
-        warehouseImportDate: date('2020-04-10'),
-        installDate: date('2020-05-30'),
-        warrantyStartDate: date('2020-05-30'),
-        warrantyEndDate: date('2023-05-30'),
-        businessLineId: businessLines[4].id,
-        customerId: customers[4].id,
-        installedById: users[1].id,
-        primaryEngineerId: users[4].id,
-      },
-    ].map((machine) =>
-      prisma.machine.upsert({
-        where: { serialNumber: machine.serialNumber },
-        update: machine,
-        create: machine,
-      }),
+      null,
+      2,
     ),
   );
+}
 
-  await Promise.all(
-    [
-      {
-        code: 'INV-20260529-0001',
-        type: InventoryMovementType.IMPORT,
-        machineId: machines[0].id,
-        fromStatus: null,
-        toStatus: MachineInventoryStatus.IN_STOCK,
-        occurredAt: date('2022-12-20'),
-        note: 'Nhap kho may sieu am SonoPro X7',
-        customerId: null,
-        createdById: users[0].id,
-      },
-      {
-        code: 'INV-20260529-0002',
-        type: InventoryMovementType.INSTALL,
-        machineId: machines[0].id,
-        fromStatus: MachineInventoryStatus.IN_STOCK,
-        toStatus: MachineInventoryStatus.INSTALLED,
-        occurredAt: date('2023-01-15'),
-        note: 'Lap dat tai Benh vien Bach Mai',
-        customerId: customers[0].id,
-        createdById: users[1].id,
-      },
-      {
-        code: 'INV-20260529-0003',
-        type: InventoryMovementType.SPLIT_ACCESSORY,
-        machineId: machines[2].id,
-        fromStatus: MachineInventoryStatus.INSTALLED,
-        toStatus: MachineInventoryStatus.ACCESSORY_SPLIT,
-        occurredAt: date('2026-05-20'),
-        note: 'Tam tach phu kien de xu ly loi module',
-        customerId: customers[2].id,
-        createdById: users[2].id,
-      },
-      {
-        code: 'INV-20260529-0004',
-        type: InventoryMovementType.RESERVE,
-        machineId: machines[4].id,
-        fromStatus: MachineInventoryStatus.IN_STOCK,
-        toStatus: MachineInventoryStatus.RESERVED,
-        occurredAt: date('2026-05-22'),
-        note: 'Giu may cho dai ly Hai Phong',
-        customerId: customers[4].id,
-        createdById: users[0].id,
-      },
-      {
-        code: 'INV-20260529-0005',
-        type: InventoryMovementType.IMPORT,
-        machineId: machines[3].id,
-        fromStatus: null,
-        toStatus: MachineInventoryStatus.IN_STOCK,
-        occurredAt: date('2024-01-15'),
-        note: 'Nhap kho may HemaCount 60',
-        customerId: null,
-        createdById: users[0].id,
-      },
-    ].map((movement) =>
-      prisma.machineInventoryMovement.upsert({
-        where: { code: movement.code },
-        update: movement,
-        create: movement,
-      }),
-    ),
+function hydrateDates(row: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [
+      key,
+      dateFields.has(key) && typeof value === 'string'
+        ? new Date(value)
+        : value,
+    ]),
   );
-
-  await Promise.all(
-    [
-      {
-        code: 'RP-20260529-0001',
-        title: 'Man hinh sieu am bi nhieu',
-        description: 'Kiem tra dau do va tin hieu man hinh',
-        status: RepairStatus.PENDING,
-        priority: RepairPriority.HIGH,
-        machineId: machines[0].id,
-        engineerId: null,
-        reportedAt: date('2026-05-25'),
-      },
-      {
-        code: 'RP-20260529-0002',
-        title: 'May sinh hoa bao loi kim hut mau',
-        description: 'Can can chinh cum kim va ve sinh he thong',
-        status: RepairStatus.ASSIGNED,
-        priority: RepairPriority.NORMAL,
-        machineId: machines[1].id,
-        engineerId: users[1].id,
-        reportedAt: date('2026-05-24'),
-        assignedAt: date('2026-05-24'),
-      },
-      {
-        code: 'RP-20260529-0003',
-        title: 'May mien dich dung giua qua trinh chay',
-        description: 'Kiem tra module dieu khien va nguon',
-        status: RepairStatus.IN_PROGRESS,
-        priority: RepairPriority.URGENT,
-        machineId: machines[2].id,
-        engineerId: users[2].id,
-        reportedAt: date('2026-05-23'),
-        assignedAt: date('2026-05-23'),
-        startedAt: date('2026-05-24'),
-      },
-      {
-        code: 'RP-20260529-0004',
-        title: 'May huyet hoc can thay sensor',
-        description: 'Dang cho linh kien sensor tu kho',
-        status: RepairStatus.WAITING_PARTS,
-        priority: RepairPriority.HIGH,
-        machineId: machines[3].id,
-        engineerId: users[3].id,
-        reportedAt: date('2026-05-20'),
-        assignedAt: date('2026-05-20'),
-        startedAt: date('2026-05-21'),
-        resultNote: 'Da xac dinh can thay sensor',
-      },
-      {
-        code: 'RP-20260529-0005',
-        title: 'May X-quang da sua xong loi ket noi',
-        description: 'Kiem tra ket noi workstation',
-        status: RepairStatus.COMPLETED,
-        priority: RepairPriority.LOW,
-        machineId: machines[4].id,
-        engineerId: users[1].id,
-        reportedAt: date('2026-05-18'),
-        assignedAt: date('2026-05-18'),
-        startedAt: date('2026-05-19'),
-        completedAt: date('2026-05-20'),
-        resultNote: 'Da cau hinh lai ket noi DICOM',
-        customerFeedback: 'May hoat dong on dinh',
-      },
-    ].map((repair) =>
-      prisma.repair.upsert({
-        where: { code: repair.code },
-        update: repair,
-        create: repair,
-      }),
-    ),
-  );
-
-  await Promise.all(
-    [
-      {
-        code: 'MT-20260529-0001',
-        title: 'Bao tri dinh ky may sieu am',
-        description: 'Ve sinh dau do, kiem tra hinh anh, cap nhat log',
-        type: MaintenanceType.PERIODIC,
-        status: MaintenanceStatus.SCHEDULED,
-        machineId: machines[0].id,
-        engineerId: null,
-        scheduledDate: date('2026-06-05'),
-        checklist: ['Ve sinh dau do', 'Kiem tra cable', 'Kiem tra hinh anh'],
-        nextDueDate: date('2026-12-05'),
-      },
-      {
-        code: 'MT-20260529-0002',
-        title: 'Bao tri hop dong may sinh hoa',
-        description: 'Kiem tra kim hut, bom, duong ong',
-        type: MaintenanceType.CONTRACT,
-        status: MaintenanceStatus.ASSIGNED,
-        machineId: machines[1].id,
-        engineerId: users[1].id,
-        scheduledDate: date('2026-06-02'),
-        assignedAt: date('2026-05-29'),
-        checklist: ['Ve sinh kim hut', 'Kiem tra bom', 'Chay QC'],
-        nextDueDate: date('2026-09-02'),
-      },
-      {
-        code: 'MT-20260529-0003',
-        title: 'Bao tri dang thuc hien may mien dich',
-        description: 'Kiem tra buong phan ung va module nap mau',
-        type: MaintenanceType.PERIODIC,
-        status: MaintenanceStatus.IN_PROGRESS,
-        machineId: machines[2].id,
-        engineerId: users[2].id,
-        scheduledDate: date('2026-05-29'),
-        assignedAt: date('2026-05-28'),
-        startedAt: date('2026-05-29'),
-        checklist: ['Kiem tra module mau', 'Ve sinh buong phan ung'],
-        nextDueDate: date('2026-08-29'),
-      },
-      {
-        code: 'MT-20260529-0004',
-        title: 'Bao tri qua han may huyet hoc',
-        description: 'Lich qua han can dieu phoi lai',
-        type: MaintenanceType.WARRANTY,
-        status: MaintenanceStatus.OVERDUE,
-        machineId: machines[3].id,
-        engineerId: users[3].id,
-        scheduledDate: date('2026-05-10'),
-        assignedAt: date('2026-05-08'),
-        checklist: ['Ve sinh buong dem', 'Kiem tra reagent', 'Chay mau QC'],
-      },
-      {
-        code: 'MT-20260529-0005',
-        title: 'Bao tri hoan thanh may X-quang',
-        description: 'Kiem tra detector va workstation',
-        type: MaintenanceType.INTERNAL,
-        status: MaintenanceStatus.COMPLETED,
-        machineId: machines[4].id,
-        engineerId: users[1].id,
-        scheduledDate: date('2026-05-12'),
-        assignedAt: date('2026-05-10'),
-        startedAt: date('2026-05-12'),
-        completedAt: date('2026-05-12'),
-        checklist: [
-          'Kiem tra detector',
-          'Kiem tra workstation',
-          'Backup cau hinh',
-        ],
-        resultNote: 'Bao tri hoan thanh',
-        nextDueDate: date('2026-11-12'),
-      },
-    ].map((maintenance) =>
-      prisma.maintenance.upsert({
-        where: { code: maintenance.code },
-        update: maintenance,
-        create: maintenance,
-      }),
-    ),
-  );
-
-  console.log('Seed data created!');
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
+  .catch((error) => {
+    console.error(error);
     process.exit(1);
   })
   .finally(async () => {

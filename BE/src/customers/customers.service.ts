@@ -365,14 +365,14 @@ export class CustomersService {
       regionId: query.regionId,
       OR: search
         ? [
-            { customerCode: { contains: search, mode: 'insensitive' } },
-            { name: { contains: search, mode: 'insensitive' } },
-            { shortName: { contains: search, mode: 'insensitive' } },
-            { hospitalName: { contains: search, mode: 'insensitive' } },
-            { phone: { contains: search, mode: 'insensitive' } },
-            { taxCode: { contains: search, mode: 'insensitive' } },
-            { contactPerson: { contains: search, mode: 'insensitive' } },
-            { fullAddress: { contains: search, mode: 'insensitive' } },
+            { customerCode: { contains: search,  } },
+            { name: { contains: search,  } },
+            { shortName: { contains: search,  } },
+            { hospitalName: { contains: search,  } },
+            { phone: { contains: search,  } },
+            { taxCode: { contains: search,  } },
+            { contactPerson: { contains: search,  } },
+            { fullAddress: { contains: search,  } },
           ]
         : undefined,
     };

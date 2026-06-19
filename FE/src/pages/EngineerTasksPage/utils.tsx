@@ -100,6 +100,10 @@ export function taskSerialText(task: EngineerTask) {
   return task.kind === 'repair' || task.kind === 'maintenance' ? task.serialNumber : undefined;
 }
 
+export function needsMachineProfile(task: EngineerTask) {
+  return (task.kind === 'repair' || task.kind === 'maintenance') && !task.machine;
+}
+
 export function createTicketTitle(kind: TaskKind) {
   if (kind === 'repair') return 'Phiếu sửa chữa tại chỗ';
   if (kind === 'maintenance') return 'Phiếu bảo trì';

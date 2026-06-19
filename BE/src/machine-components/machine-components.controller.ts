@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -33,7 +43,10 @@ export class MachineComponentsController {
 
   @Roles('admin')
   @Patch('machine-components/:id')
-  updateComponent(@Param('id') id: string, @Body() dto: UpdateMachineComponentDto) {
+  updateComponent(
+    @Param('id') id: string,
+    @Body() dto: UpdateMachineComponentDto,
+  ) {
     return this.service.updateComponent(id, dto);
   }
 
@@ -61,7 +74,10 @@ export class MachineComponentsController {
 
   @Roles('admin')
   @Patch('component-accessories/:id')
-  updateAccessory(@Param('id') id: string, @Body() dto: UpdateComponentAccessoryDto) {
+  updateAccessory(
+    @Param('id') id: string,
+    @Body() dto: UpdateComponentAccessoryDto,
+  ) {
     return this.service.updateAccessory(id, dto);
   }
 

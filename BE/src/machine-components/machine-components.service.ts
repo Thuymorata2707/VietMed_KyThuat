@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { BusinessLineStatus, Prisma } from '@prisma/client';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { PrismaService } from '../prisma/prisma.service';
@@ -30,7 +35,9 @@ export class MachineComponentsService {
     });
   }
 
-  async findComponents(query: ListMachineComponentsQueryDto): Promise<PaginatedResult<unknown>> {
+  async findComponents(
+    query: ListMachineComponentsQueryDto,
+  ): Promise<PaginatedResult<unknown>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 100;
     const search = query.search?.trim();
@@ -39,9 +46,9 @@ export class MachineComponentsService {
       status: query.status,
       OR: search
         ? [
-            { code: { contains: search, mode: 'insensitive' } },
-            { name: { contains: search, mode: 'insensitive' } },
-            { machineModel: { name: { contains: search, mode: 'insensitive' } } },
+            { code: { contains: search } },
+            { name: { contains: search } },
+            { machineModel: { name: { contains: search } } },
           ]
         : undefined,
     };
@@ -50,14 +57,21 @@ export class MachineComponentsService {
       this.prisma.machineComponent.findMany({
         where,
         include: this.componentInclude(),
-        orderBy: [{ machineModel: { name: 'asc' } }, { sortOrder: 'asc' }, { name: 'asc' }],
+        orderBy: [
+          { machineModel: { name: 'asc' } },
+          { sortOrder: 'asc' },
+          { name: 'asc' },
+        ],
         skip: (page - 1) * limit,
         take: limit,
       }),
       this.prisma.machineComponent.count({ where }),
     ]);
 
-    return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return {
+      data,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findComponent(id: string) {
@@ -73,8 +87,14 @@ export class MachineComponentsService {
   async updateComponent(id: string, dto: UpdateMachineComponentDto) {
     const current = await this.findComponent(id);
     const machineModelId = dto.machineModelId ?? current.machineModelId;
-    if (dto.machineModelId) await this.ensureMachineModelExists(dto.machineModelId);
-    if (dto.code || dto.machineModelId) await this.ensureComponentCodeAvailable(machineModelId, dto.code ?? current.code, id);
+    if (dto.machineModelId)
+      await this.ensureMachineModelExists(dto.machineModelId);
+    if (dto.code || dto.machineModelId)
+      await this.ensureComponentCodeAvailable(
+        machineModelId,
+        dto.code ?? current.code,
+        id,
+      );
 
     return this.prisma.machineComponent.update({
       where: { id },
@@ -82,7 +102,10 @@ export class MachineComponentsService {
         machineModelId: dto.machineModelId,
         code: dto.code ? this.normalizeCode(dto.code) : undefined,
         name: dto.name?.trim(),
-        description: dto.description === undefined ? undefined : dto.description?.trim() || null,
+        description:
+          dto.description === undefined
+            ? undefined
+            : dto.description?.trim() || null,
         sortOrder: dto.sortOrder,
         status: dto.status,
       },
@@ -114,7 +137,9 @@ export class MachineComponentsService {
     });
   }
 
-  async findAccessories(query: ListComponentAccessoriesQueryDto): Promise<PaginatedResult<unknown>> {
+  async findAccessories(
+    query: ListComponentAccessoriesQueryDto,
+  ): Promise<PaginatedResult<unknown>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 100;
     const search = query.search?.trim();
@@ -123,9 +148,9 @@ export class MachineComponentsService {
       status: query.status,
       OR: search
         ? [
-            { code: { contains: search, mode: 'insensitive' } },
-            { name: { contains: search, mode: 'insensitive' } },
-            { component: { name: { contains: search, mode: 'insensitive' } } },
+            { code: { contains: search } },
+            { name: { contains: search } },
+            { component: { name: { contains: search } } },
           ]
         : undefined,
     };
@@ -134,14 +159,21 @@ export class MachineComponentsService {
       this.prisma.componentAccessory.findMany({
         where,
         include: this.accessoryInclude(),
-        orderBy: [{ component: { name: 'asc' } }, { sortOrder: 'asc' }, { name: 'asc' }],
+        orderBy: [
+          { component: { name: 'asc' } },
+          { sortOrder: 'asc' },
+          { name: 'asc' },
+        ],
         skip: (page - 1) * limit,
         take: limit,
       }),
       this.prisma.componentAccessory.count({ where }),
     ]);
 
-    return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return {
+      data,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findAccessory(id: string) {
@@ -150,7 +182,8 @@ export class MachineComponentsService {
       include: this.accessoryInclude(),
     });
 
-    if (!accessory) throw new NotFoundException('Component accessory not found');
+    if (!accessory)
+      throw new NotFoundException('Component accessory not found');
     return accessory;
   }
 
@@ -158,7 +191,12 @@ export class MachineComponentsService {
     const current = await this.findAccessory(id);
     const componentId = dto.componentId ?? current.componentId;
     if (dto.componentId) await this.ensureComponentExists(dto.componentId);
-    if (dto.code || dto.componentId) await this.ensureAccessoryCodeAvailable(componentId, dto.code ?? current.code, id);
+    if (dto.code || dto.componentId)
+      await this.ensureAccessoryCodeAvailable(
+        componentId,
+        dto.code ?? current.code,
+        id,
+      );
 
     return this.prisma.componentAccessory.update({
       where: { id },
@@ -166,7 +204,10 @@ export class MachineComponentsService {
         componentId: dto.componentId,
         code: dto.code ? this.normalizeCode(dto.code) : undefined,
         name: dto.name?.trim(),
-        description: dto.description === undefined ? undefined : dto.description?.trim() || null,
+        description:
+          dto.description === undefined
+            ? undefined
+            : dto.description?.trim() || null,
         requiresSerial: dto.requiresSerial,
         sortOrder: dto.sortOrder,
         status: dto.status,
@@ -182,27 +223,47 @@ export class MachineComponentsService {
   }
 
   private async ensureMachineModelExists(id: string) {
-    const machineModel = await this.prisma.machineModel.findUnique({ where: { id } });
-    if (!machineModel) throw new BadRequestException('Machine model does not exist');
+    const machineModel = await this.prisma.machineModel.findUnique({
+      where: { id },
+    });
+    if (!machineModel)
+      throw new BadRequestException('Machine model does not exist');
   }
 
   private async ensureComponentExists(id: string) {
-    const component = await this.prisma.machineComponent.findUnique({ where: { id } });
-    if (!component) throw new BadRequestException('Machine component does not exist');
-  }
-
-  private async ensureComponentCodeAvailable(machineModelId: string, code: string, currentId?: string) {
     const component = await this.prisma.machineComponent.findUnique({
-      where: { machineModelId_code: { machineModelId, code: this.normalizeCode(code) } },
+      where: { id },
     });
-    if (component && component.id !== currentId) throw new ConflictException('Machine component code already exists');
+    if (!component)
+      throw new BadRequestException('Machine component does not exist');
   }
 
-  private async ensureAccessoryCodeAvailable(componentId: string, code: string, currentId?: string) {
-    const accessory = await this.prisma.componentAccessory.findUnique({
-      where: { componentId_code: { componentId, code: this.normalizeCode(code) } },
+  private async ensureComponentCodeAvailable(
+    machineModelId: string,
+    code: string,
+    currentId?: string,
+  ) {
+    const component = await this.prisma.machineComponent.findUnique({
+      where: {
+        machineModelId_code: { machineModelId, code: this.normalizeCode(code) },
+      },
     });
-    if (accessory && accessory.id !== currentId) throw new ConflictException('Component accessory code already exists');
+    if (component && component.id !== currentId)
+      throw new ConflictException('Machine component code already exists');
+  }
+
+  private async ensureAccessoryCodeAvailable(
+    componentId: string,
+    code: string,
+    currentId?: string,
+  ) {
+    const accessory = await this.prisma.componentAccessory.findUnique({
+      where: {
+        componentId_code: { componentId, code: this.normalizeCode(code) },
+      },
+    });
+    if (accessory && accessory.id !== currentId)
+      throw new ConflictException('Component accessory code already exists');
   }
 
   private normalizeCode(code: string) {
@@ -212,7 +273,9 @@ export class MachineComponentsService {
   private componentInclude() {
     return {
       machineModel: { include: { businessLine: true } },
-      accessories: { orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }] },
+      accessories: {
+        orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }],
+      },
     };
   }
 

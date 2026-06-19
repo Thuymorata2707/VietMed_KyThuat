@@ -40,6 +40,7 @@ import {
   isOverdueTask,
   isTodayTask,
   isUpcomingTask,
+  needsMachineProfile,
   matchesFilter,
   nextDefaultStatus,
   normalizeInstallationDeviceItems,
@@ -255,9 +256,23 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       today: tasks.filter(isTodayTask).length,
       overdue: tasks.filter(isOverdueTask).length,
       upcoming: tasks.filter(isUpcomingTask).length,
+      missingMachine: tasks.filter(needsMachineProfile).length,
     }),
     [tasks],
   );
+
+  const priorityTasks = useMemo(() => {
+    return tasks
+      .filter((task) => !['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status))
+      .filter((task) => isOverdueTask(task) || isTodayTask(task) || needsMachineProfile(task))
+      .sort((a, b) => {
+        const priorityA = taskPriorityScore(a);
+        const priorityB = taskPriorityScore(b);
+        if (priorityB !== priorityA) return priorityB - priorityA;
+        return compareTasks(a, b);
+      })
+      .slice(0, 5);
+  }, [tasks]);
 
   async function loadTasks() {
     setLoading(true);
@@ -846,7 +861,27 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         <SummaryTile label="Sắp tới" value={taskStats.upcoming} />
         <SummaryTile label="Chờ xử lý" value={taskStats.open} />
         <SummaryTile label="Đang xử lý" value={taskStats.progress} />
-        <SummaryTile label="Đã hoàn tất" value={taskStats.done} />
+        <SummaryTile label="Thiếu hồ sơ máy" value={taskStats.missingMachine} tone={taskStats.missingMachine > 0 ? 'danger' : 'neutral'} />
+      </section>
+
+      <section className="rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
+          <div>
+            <span className="text-[12px] font-medium text-[#667085]">Ưu tiên hôm nay</span>
+            <h2 className="mt-1 text-lg font-medium text-[#101828]">Việc cần mở trước</h2>
+          </div>
+          <button className="secondary-button" onClick={openCreateRequest} type="button">
+            <Plus size={16} />
+            Tạo phiếu mới
+          </button>
+        </div>
+        <div className="grid divide-y divide-[#edf2f7]">
+          {priorityTasks.length ? priorityTasks.map((task) => (
+            <PriorityTaskRow key={`${task.kind}-${task.id}`} task={task} />
+          )) : (
+            <div className="px-4 py-5 text-sm text-[#667085]">Không có việc quá hạn, việc hôm nay hoặc phiếu thiếu hồ sơ máy.</div>
+          )}
+        </div>
       </section>
 
       {false ? (
@@ -1295,15 +1330,15 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           </form>
         </section>
       ) : (
-        <section className="min-w-0 overflow-hidden rounded-lg border border-[#e3eaf2] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-1 border-b border-[#edf1f6] bg-[#f8fafc] p-2" aria-label="Nhóm công việc">
+        <section className="min-w-0 overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-1 border-b border-[#edf2f7] bg-[#f8fafc] p-2" aria-label="Nhóm công việc">
             {businessTabs.map((tab) => (
               <button
                 className={[
-                  'flex min-h-12 min-w-0 items-center justify-between gap-2 rounded-lg border-0 px-3 text-left text-sm font-bold transition',
+                  'flex min-h-12 min-w-0 items-center justify-between gap-2 rounded-lg border-0 px-3 text-left text-sm font-medium transition',
                   businessTab === tab.value
-                    ? 'bg-white text-[#c92a1f] shadow-[0_1px_5px_rgba(15,23,42,0.08)]'
-                    : 'bg-transparent text-[#405064] hover:bg-white/70',
+                    ? 'bg-white text-[#d92d20] shadow-[0_1px_5px_rgba(16,24,40,0.08)]'
+                    : 'bg-transparent text-[#344054] hover:bg-white/70',
                 ].join(' ')}
                 key={tab.value}
                 onClick={() => {
@@ -1317,8 +1352,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   className={[
                     'inline-flex min-w-7 items-center justify-center rounded-full border px-2 py-[3px] text-xs',
                     businessTab === tab.value
-                      ? 'border-[#f0b7b1] bg-[#fff5f4] text-[#c92a1f]'
-                      : 'border-[#dfe7ef] bg-white text-[#657384]',
+                      ? 'border-[#fecdca] bg-[#fff4f2] text-[#d92d20]'
+                      : 'border-[#dde5ee] bg-white text-[#667085]',
                   ].join(' ')}
                 >
                   {businessTabCounts[tab.value]}
@@ -1327,12 +1362,12 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ))}
           </div>
 
-          <div className="grid min-w-0 gap-3 border-b border-[#edf1f6] p-3 min-[1180px]:grid-cols-[minmax(220px,1fr)_auto_minmax(180px,220px)] min-[1180px]:items-end">
-            <div className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#ced8e3] bg-white px-3 text-[#657384] focus-within:border-[#c92a1f] focus-within:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]">
+          <div className="grid min-w-0 gap-3 border-b border-[#edf2f7] p-3 min-[1180px]:grid-cols-[minmax(220px,1fr)_auto_minmax(180px,220px)] min-[1180px]:items-end">
+            <div className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#667085] focus-within:border-[#d92d20] focus-within:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]">
               <Search size={17} />
-              <input className="min-w-0 flex-1 border-0 text-[#17202a] outline-none" onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, mã máy, serial, khách hàng" value={query} />
+              <input className="min-w-0 flex-1 border-0 text-[#101828] outline-none" onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, mã máy, serial, khách hàng" value={query} />
             </div>
-            <div className="grid w-full grid-cols-2 gap-[3px] rounded-lg border border-[#dfe7ef] bg-[#f4f7fb] p-[3px] min-[560px]:inline-flex min-[560px]:w-auto">
+            <div className="grid w-full grid-cols-2 gap-[3px] rounded-lg border border-[#dde5ee] bg-[#f4f7fb] p-[3px] min-[560px]:inline-flex min-[560px]:w-auto">
               {[
                 ['open', 'Cần xử lý'],
                 ['progress', 'Đang làm'],
@@ -1341,8 +1376,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               ].map(([value, label]) => (
                 <button
                   className={[
-                    'min-h-8 min-w-0 flex-1 rounded-md border-0 px-2 text-xs font-bold leading-tight min-[560px]:flex-none min-[560px]:px-3 min-[560px]:text-sm',
-                    filter === value ? 'bg-white text-[#c92a1f] shadow-[0_1px_4px_rgba(15,23,42,0.08)]' : 'bg-transparent text-[#405064]',
+                    'min-h-8 min-w-0 flex-1 rounded-md border-0 px-2 text-xs font-medium leading-tight min-[560px]:flex-none min-[560px]:px-3 min-[560px]:text-sm',
+                    filter === value ? 'bg-white text-[#d92d20] shadow-[0_1px_4px_rgba(16,24,40,0.08)]' : 'bg-transparent text-[#344054]',
                   ].join(' ')}
                   key={value}
                   onClick={() => setFilter(value as TaskFilter)}
@@ -1352,9 +1387,9 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 </button>
               ))}
             </div>
-            <label className="grid min-w-0 gap-1.5 text-xs font-bold text-[#405064]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-medium text-[#344054]">
               <span>Loại công việc</span>
-              <select className="h-10 w-full rounded-lg border border-[#ced8e3] bg-white px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]" onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
+              <select className="h-10 w-full rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]" onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
                 {businessTab === 'repair' ? (
                   <>
                     <option value="all">Sửa chữa</option>
@@ -1385,7 +1420,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
           <div className="grid">
             {loading ? (
-              <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#657384]">
+              <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#667085]">
                 <Loader2 className="spin-icon" size={18} />
                 Đang tải việc được giao...
               </div>
@@ -1394,34 +1429,34 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             {!loading && businessTab === 'calendar' ? (
               <>
                 {loadingDailyWork ? (
-                  <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#657384]">
+                  <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#667085]">
                     <Loader2 className="spin-icon" size={18} />
                     Đang tải lịch công việc...
                   </div>
                 ) : null}
 
                 {!loadingDailyWork && filteredDailyWorkNotes.length === 0 ? (
-                  <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#657384]">
-                    <strong className="text-[#17202a]">Chưa có lịch công việc phù hợp</strong>
+                  <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#667085]">
+                    <strong className="text-[#101828]">Chưa có lịch công việc phù hợp</strong>
                     <span className="text-sm">Lịch admin thêm cho bạn và ghi chú công việc cá nhân sẽ xuất hiện tại đây.</span>
                   </div>
                 ) : null}
 
                 {!loadingDailyWork
                   ? filteredDailyWorkNotes.map((note) => (
-                      <article className="grid min-w-0 items-center gap-3.5 border-b border-[#edf1f6] p-4 last:border-b-0 min-[640px]:grid-cols-[66px_minmax(0,1fr)]" key={note.id}>
-                        <div className="grid min-h-16 justify-items-center rounded-lg border border-l-4 bg-[#fffdfb] p-2" style={{ borderColor: note.color || '#c92a1f' }}>
-                          <strong className="text-2xl leading-none text-[#17202a]">{dayNumber(note.workDate)}</strong>
-                          <span className="text-xs font-extrabold text-[#657384]">{monthLabel(note.workDate)}</span>
+                      <article className="grid min-w-0 items-center gap-3.5 border-b border-[#edf2f7] p-4 last:border-b-0 min-[640px]:grid-cols-[66px_minmax(0,1fr)]" key={note.id}>
+                        <div className="grid min-h-16 justify-items-center rounded-lg border border-l-4 bg-[#fffdfb] p-2" style={{ borderColor: note.color || '#d92d20' }}>
+                          <strong className="text-2xl leading-none text-[#101828]">{dayNumber(note.workDate)}</strong>
+                          <span className="text-xs font-medium text-[#667085]">{monthLabel(note.workDate)}</span>
                         </div>
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#657384]">
+                          <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#667085]">
                             <span>Lịch công việc</span>
                             <span>{formatDailyWorkDate(note.workDate)}</span>
                             <span>{formatDailyWorkTime(note)}</span>
                           </div>
-                          <h2 className="mt-1 text-[17px] font-bold text-[#17202a] [overflow-wrap:anywhere]">{note.title}</h2>
-                          <p className="mt-1.5 leading-6 text-[#405064] [overflow-wrap:anywhere]">{note.note || 'Chưa có ghi chú chi tiết.'}</p>
+                          <h2 className="mt-1 text-[17px] font-medium text-[#101828] [overflow-wrap:anywhere]">{note.title}</h2>
+                          <p className="mt-1.5 leading-6 text-[#344054] [overflow-wrap:anywhere]">{note.note || 'Chưa có ghi chú chi tiết.'}</p>
                         </div>
                       </article>
                     ))
@@ -1430,26 +1465,27 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ) : null}
 
             {!loading && businessTab !== 'calendar' && filteredTasks.length === 0 ? (
-              <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#657384]">
-                <strong className="text-[#17202a]">Chưa có công việc phù hợp</strong>
+              <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#667085]">
+                <strong className="text-[#101828]">Chưa có công việc phù hợp</strong>
                 <span className="text-sm">Thử đổi bộ lọc hoặc kiểm tra lại phiếu được admin phân công.</span>
               </div>
             ) : null}
 
             {businessTab !== 'calendar' ? filteredTasks.map((task) => (
-              <article className="grid min-w-0 gap-3.5 border-b border-[#edf1f6] p-4 last:border-b-0 min-[860px]:grid-cols-[minmax(0,1fr)_auto] min-[860px]:items-center" key={`${task.kind}-${task.id}`}>
+              <article className="grid min-w-0 gap-3.5 border-b border-[#edf2f7] p-4 last:border-b-0 min-[860px]:grid-cols-[minmax(0,1fr)_auto] min-[860px]:items-center" key={`${task.kind}-${task.id}`}>
                 <div className="grid min-w-0 gap-3 min-[560px]:grid-cols-[40px_minmax(0,1fr)]">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#f0b7b1] bg-[#fff1ef] text-[#c92a1f]">{taskIcon(task.kind)}</div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#fecdca] bg-[#fff4f2] text-[#d92d20]">{taskIcon(task.kind)}</div>
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#657384]">
+                    <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#667085]">
                       <span>{taskKindLabel(task.kind)}</span>
                       <span>{task.code}</span>
                       {task.kind === 'repair' && task.createdBy?.fullName ? <span>Người tạo: {task.createdBy.fullName}</span> : null}
-                      {isOverdueTask(task) ? <span className="font-bold text-[#b42318]">Quá hạn</span> : null}
+                      {isOverdueTask(task) ? <span className="font-medium text-[#b42318]">Quá hạn</span> : null}
+                      {needsMachineProfile(task) ? <span className="font-medium text-[#b54708]">Cần tạo hồ sơ máy</span> : null}
                     </div>
-                    <h2 className="mt-1 text-[17px] font-bold text-[#17202a] [overflow-wrap:anywhere]">{taskTitle(task)}</h2>
-                    <p className="mt-1.5 line-clamp-2 leading-6 text-[#657384]">{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
-                    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-[13px] text-[#657384]">
+                    <h2 className="mt-1 text-[17px] font-medium text-[#101828] [overflow-wrap:anywhere]">{taskTitle(task)}</h2>
+                    <p className="mt-1.5 line-clamp-2 leading-6 text-[#667085]">{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
+                    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-[13px] text-[#667085]">
                       <span className="min-w-0 [overflow-wrap:anywhere]">{task.machine?.machineCode || task.machine?.serialNumber || taskSerialText(task) || 'Chưa có mã máy'}</span>
                       <span className="min-w-0 [overflow-wrap:anywhere]">{task.machine?.modelName || taskModelText(task) || 'Chưa có model'}</span>
                       <span className="min-w-0 [overflow-wrap:anywhere]">{taskCustomer(task) || 'Chưa có khách hàng'}</span>
@@ -1459,7 +1495,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <div className="grid min-w-0 justify-items-start gap-2 min-[860px]:min-w-[150px] min-[860px]:justify-items-end">
                   <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
                   <span className={`task-badge ${secondaryTone(task)}`}>{secondaryLabel(task)}</span>
-                  <span className="text-[13px] text-[#657384]">{taskDate(task)}</span>
+                  <span className="text-[13px] text-[#667085]">{taskDate(task)}</span>
                   {task.kind === 'installation' ? (
                     <Link className="task-action" to={`/installations/${task.id}/update?returnTo=/my-tasks`}>
                       Cập nhật
@@ -2172,6 +2208,51 @@ function buildInstallationEditForm(task: InstallationTask): CreateTicketForm {
 function defaultCreateKindForBusinessTab(tab: BusinessTab): TaskKind {
   if (tab === 'installation') return 'installation';
   return 'repair';
+}
+
+function PriorityTaskRow({ task }: { task: EngineerTask }) {
+  const href =
+    task.kind === 'installation'
+      ? `/installations/${task.id}/update?returnTo=/my-tasks`
+      : task.kind === 'repair'
+        ? `/repairs/${task.id}/update?returnTo=/my-tasks`
+        : `/maintenance/${task.id}/update?returnTo=/my-tasks`;
+  const reason = isOverdueTask(task)
+    ? 'Quá hạn'
+    : needsMachineProfile(task)
+      ? 'Cần tạo hồ sơ máy'
+      : isTodayTask(task)
+        ? 'Hôm nay'
+        : 'Cần xử lý';
+
+  return (
+    <Link className="grid min-w-0 gap-3 px-4 py-3 transition hover:bg-[#f8fafc] min-[760px]:grid-cols-[minmax(0,1fr)_auto] min-[760px]:items-center" to={href}>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#667085]">
+          <span>{taskKindLabel(task.kind)}</span>
+          <span>{task.code}</span>
+          <span className={reason === 'Quá hạn' ? 'font-medium text-[#b42318]' : reason === 'Cần tạo hồ sơ máy' ? 'font-medium text-[#b54708]' : 'font-medium text-[#344054]'}>
+            {reason}
+          </span>
+        </div>
+        <strong className="mt-1 block truncate text-[15px] font-medium text-[#101828]">{taskTitle(task)}</strong>
+        <span className="mt-1 block truncate text-[13px] text-[#667085]">
+          {[task.machine?.machineCode || taskSerialText(task) || 'Chưa có mã máy', task.machine?.modelName || taskModelText(task) || 'Chưa có model', taskCustomer(task) || 'Chưa có khách hàng'].join(' - ')}
+        </span>
+      </div>
+      <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
+    </Link>
+  );
+}
+
+function taskPriorityScore(task: EngineerTask) {
+  let score = 0;
+  if (isOverdueTask(task)) score += 100;
+  if (isTodayTask(task)) score += 50;
+  if (needsMachineProfile(task)) score += 30;
+  if (task.kind === 'repair' && task.priority === 'URGENT') score += 25;
+  if (task.kind === 'repair' && task.priority === 'HIGH') score += 15;
+  return score;
 }
 
 function createTicketHrefForTab(tab: BusinessTab) {

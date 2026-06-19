@@ -1006,31 +1006,31 @@ export class InstallationsService {
           : undefined,
       OR: search
         ? [
-            { code: { contains: search, mode: 'insensitive' } },
-            { note: { contains: search, mode: 'insensitive' } },
+            { code: { contains: search,  } },
+            { note: { contains: search,  } },
             {
               machine: {
-                serialNumber: { contains: search, mode: 'insensitive' },
+                serialNumber: { contains: search,  },
               },
             },
             {
               machine: {
-                modelName: { contains: search, mode: 'insensitive' },
+                modelName: { contains: search,  },
               },
             },
             {
               customer: {
-                name: { contains: search, mode: 'insensitive' },
+                name: { contains: search,  },
               },
             },
             {
               businessLine: {
-                name: { contains: search, mode: 'insensitive' },
+                name: { contains: search,  },
               },
             },
             {
               businessLine: {
-                manufacturer: { contains: search, mode: 'insensitive' },
+                manufacturer: { contains: search,  },
               },
             },
           ]

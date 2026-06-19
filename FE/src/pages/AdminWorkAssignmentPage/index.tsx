@@ -238,7 +238,7 @@ export function AdminWorkAssignmentPage() {
           description="Quản trị viên chọn kỹ sư xử lý cho phiếu sửa chữa và bảo trì, đồng thời theo dõi phiếu lắp đặt đã có người phụ trách."
         />
         <button
-          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#dfe7ef] bg-white px-4 text-sm font-bold text-[#405064] shadow-sm hover:border-[#c92a1f] hover:text-[#c92a1f] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
+          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#dde5ee] bg-white px-4 text-sm font-medium text-[#344054] shadow-sm hover:border-[#d92d20] hover:text-[#d92d20] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
           disabled={loading}
           onClick={loadData}
           type="button"
@@ -250,31 +250,31 @@ export function AdminWorkAssignmentPage() {
 
       <div className="grid gap-3.5 min-[821px]:grid-cols-3">
         <div className={summaryCardClass}>
-          <span className="text-[13px] text-[#657384]">Chưa phân</span>
-          <strong className="text-[28px] leading-none text-[#17202a]">{unassignedCount}</strong>
+          <span className="text-[13px] text-[#667085]">Chưa phân</span>
+          <strong className="text-[28px] leading-none text-[#101828]">{unassignedCount}</strong>
         </div>
         <div className={summaryCardClass}>
-          <span className="text-[13px] text-[#657384]">Đang mở</span>
-          <strong className="text-[28px] leading-none text-[#17202a]">{openCount}</strong>
+          <span className="text-[13px] text-[#667085]">Đang mở</span>
+          <strong className="text-[28px] leading-none text-[#101828]">{openCount}</strong>
         </div>
         <div className={summaryCardClass}>
-          <span className="text-[13px] text-[#657384]">Kỹ sư hoạt động</span>
-          <strong className="text-[28px] leading-none text-[#17202a]">{engineers.length}</strong>
+          <span className="text-[13px] text-[#667085]">Kỹ sư hoạt động</span>
+          <strong className="text-[28px] leading-none text-[#101828]">{engineers.length}</strong>
         </div>
       </div>
 
       {error ? <Notice message={error} /> : null}
       {success ? <Notice message={success} /> : null}
 
-      <section className="overflow-hidden rounded-lg border border-[#dfe7ef] bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf1f6] p-3.5">
-          <div className="inline-flex gap-[3px] rounded-lg border border-[#dfe7ef] bg-[#f4f7fb] p-[3px]" aria-label="Lọc công việc">
+      <section className="overflow-hidden rounded-lg border border-[#dde5ee] bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] p-3.5">
+          <div className="inline-flex gap-[3px] rounded-lg border border-[#dde5ee] bg-[#f4f7fb] p-[3px]" aria-label="Lọc công việc">
             {filterOptions.map((option) => (
               <button
-                className={`min-h-8 whitespace-nowrap rounded-md px-3 text-sm font-bold ${
+                className={`min-h-8 whitespace-nowrap rounded-md px-3 text-sm font-medium ${
                   filter === option.value
-                    ? 'bg-white text-[#c92a1f] shadow-[0_1px_4px_rgba(15,23,42,0.08)]'
-                    : 'bg-transparent text-[#405064] hover:text-[#c92a1f]'
+                    ? 'bg-white text-[#d92d20] shadow-[0_1px_4px_rgba(16,24,40,0.08)]'
+                    : 'bg-transparent text-[#344054] hover:text-[#d92d20]'
                 }`}
                 key={option.value}
                 onClick={() => setFilter(option.value)}
@@ -284,30 +284,30 @@ export function AdminWorkAssignmentPage() {
               </button>
             ))}
           </div>
-          <label className="flex h-10 min-w-60 flex-[1_1_320px] items-center gap-2 rounded-lg border border-[#ced8e3] bg-white px-3 text-[#657384] focus-within:border-[#c92a1f] focus-within:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]">
+          <label className="flex h-10 min-w-60 flex-[1_1_320px] items-center gap-2 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#667085] focus-within:border-[#d92d20] focus-within:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]">
             <Search size={16} />
             <input
-              className="min-w-0 flex-1 border-0 text-[#17202a] outline-none"
+              className="min-w-0 flex-1 border-0 text-[#101828] outline-none"
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Tìm mã phiếu, S/N, mã máy, khách hàng"
               value={query}
             />
           </label>
-          <span className="text-[13px] font-semibold text-[#657384]">{loading ? 'Đang tải dữ liệu' : `${items.length} công việc`}</span>
+          <span className="text-[13px] font-medium text-[#667085]">{loading ? 'Đang tải dữ liệu' : `${items.length} công việc`}</span>
         </div>
 
         <div className="grid">
           {loading ? (
-            <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-sm font-semibold text-[#657384]">
+            <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-sm font-semibold text-[#667085]">
               <Loader2 className="animate-spin" size={18} />
               <span>Đang tải danh sách phân việc</span>
             </div>
           ) : null}
 
           {!loading && items.length === 0 ? (
-            <div className="grid min-h-52 place-items-center gap-2 p-8 text-center text-[#657384]">
+            <div className="grid min-h-52 place-items-center gap-2 p-8 text-center text-[#667085]">
               <UserCheck size={22} />
-              <strong className="text-[#17202a]">Không có công việc phù hợp</strong>
+              <strong className="text-[#101828]">Không có công việc phù hợp</strong>
               <span className="text-sm">Thử đổi bộ lọc hoặc làm mới dữ liệu.</span>
             </div>
           ) : null}
@@ -315,7 +315,7 @@ export function AdminWorkAssignmentPage() {
           {!loading
             ? items.map((item) => (
                 <article
-                  className="grid items-start gap-3.5 border-b border-[#edf1f6] px-4 py-[15px] last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(220px,320px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(140px,190px)_minmax(260px,330px)]"
+                  className="grid items-start gap-3.5 border-b border-[#edf2f7] px-4 py-[15px] last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(220px,320px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(140px,190px)_minmax(260px,330px)]"
                   key={item.key}
                 >
                   <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
@@ -326,7 +326,7 @@ export function AdminWorkAssignmentPage() {
                       {item.date ? <span>{formatDate(item.date)}</span> : null}
                       {item.createdBy?.fullName ? <span>Người tạo: {item.createdBy.fullName}</span> : null}
                     </div>
-                    <h2 className="[overflow-wrap:anywhere] text-[17px] font-bold text-[#17202a]">{item.title}</h2>
+                    <h2 className="[overflow-wrap:anywhere] text-[17px] font-medium text-[#101828]">{item.title}</h2>
                     <div className={metaClass}>
                       <span>{machineText(item)}</span>
                       <span>{customerText(item)}</span>
@@ -337,14 +337,14 @@ export function AdminWorkAssignmentPage() {
                       <span className={badgeDotClass(statusTone(item.status))} />
                       {statusLabel(item.status)}
                     </span>
-                    <span className="[overflow-wrap:anywhere] text-[13px] font-semibold text-[#405064]">
+                    <span className="[overflow-wrap:anywhere] text-[13px] font-medium text-[#344054]">
                       {item.engineer?.fullName || item.engineer?.email || 'Chưa có kỹ sư'}
                     </span>
                   </div>
                   <div className="col-span-full grid gap-2.5 max-[560px]:grid-cols-1 min-[561px]:grid-cols-[minmax(0,1fr)_auto] min-[821px]:col-start-3 min-[821px]:col-span-1 min-[821px]:row-span-2 min-[821px]:row-start-1 min-[1181px]:col-auto min-[1181px]:row-auto">
                     <select
                       aria-label={`Chọn kỹ sư cho ${item.code}`}
-                      className="h-10 min-w-0 rounded-lg border border-[#ced8e3] bg-white px-3 text-[#17202a] outline-none focus:border-[#c92a1f] focus:shadow-[0_0_0_3px_rgba(201,42,31,0.1)]"
+                      className="h-10 min-w-0 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
                       onChange={(event) => setAssignmentByKey((current) => ({ ...current, [item.key]: event.target.value }))}
                       value={assignmentByKey[item.key] ?? ''}
                     >
@@ -356,7 +356,7 @@ export function AdminWorkAssignmentPage() {
                       ))}
                     </select>
                     <button
-                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border-0 bg-[#c92a1f] px-4 text-sm font-bold text-white shadow-sm hover:bg-[#a61f17] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border-0 bg-[#d92d20] px-4 text-sm font-medium text-white shadow-sm hover:bg-[#b42318] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
                       disabled={!assignmentByKey[item.key] || assigningKey === item.key}
                       onClick={() => assignWork(item)}
                       type="button"
@@ -374,26 +374,26 @@ export function AdminWorkAssignmentPage() {
   );
 }
 
-const summaryCardClass = 'grid gap-[7px] rounded-lg border border-[#dfe7ef] bg-white p-4';
-const metaClass = 'flex flex-wrap items-center gap-[7px] text-[13px] text-[#657384] [&>span]:[overflow-wrap:anywhere]';
+const summaryCardClass = 'grid gap-[7px] rounded-lg border border-[#dde5ee] bg-white p-4';
+const metaClass = 'flex flex-wrap items-center gap-[7px] text-[13px] text-[#667085] [&>span]:[overflow-wrap:anywhere]';
 
 function kindIconClass(kind: WorkKind) {
   const base = 'flex h-[42px] w-[42px] items-center justify-center rounded-lg border';
   const tones: Record<WorkKind, string> = {
-    repair: 'border-[#f0b7b1] bg-[#fff1ef] text-[#c92a1f]',
-    maintenance: 'border-[#abefc6] bg-[#ecfdf3] text-[#027a48]',
+    repair: 'border-[#fecdca] bg-[#fff4f2] text-[#d92d20]',
+    maintenance: 'border-[#abefc6] bg-[#ecfdf3] text-[#067647]',
     installation: 'border-[#b2ccff] bg-[#eef4ff] text-[#175cd3]',
   };
   return `${base} ${tones[kind]}`;
 }
 
 function badgeClass(tone: Tone) {
-  const base = 'inline-flex min-h-7 items-center gap-[7px] whitespace-nowrap rounded-full border px-2.5 py-[7px] text-xs font-bold';
+  const base = 'inline-flex min-h-7 items-center gap-[7px] whitespace-nowrap rounded-full border px-2.5 py-[7px] text-xs font-medium';
   const tones: Record<Tone, string> = {
-    good: 'border-[#abefc6] bg-[#ecfdf3] text-[#027a48]',
+    good: 'border-[#abefc6] bg-[#ecfdf3] text-[#067647]',
     warn: 'border-[#fedf89] bg-[#fff7ed] text-[#b54708]',
     danger: 'border-[#fecdd3] bg-[#fff1f3] text-[#b42318]',
-    neutral: 'border-[#dfe7ef] bg-[#f4f7fb] text-[#405064]',
+    neutral: 'border-[#dde5ee] bg-[#f4f7fb] text-[#344054]',
   };
   return `${base} ${tones[tone]}`;
 }
