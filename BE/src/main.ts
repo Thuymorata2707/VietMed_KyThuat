@@ -47,7 +47,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:5173',
       'http://localhost:3000',
-      'https://vietmed-system.vercel.app',
+      'https://viet-med-ky-thuat.vercel.app',
     ],
     credentials: true,
   });
