@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Download, Loader2, Plus, RefreshCw, Save, Send, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
@@ -102,10 +102,13 @@ const statusLabels: Record<WeeklyReportStatus, string> = {
 
 export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps) {
   const isAdmin = currentRole === 'admin';
-  const [weekStart, setWeekStart] = useState(() => toDateInput(startOfWeek(new Date())));
-  const [selectedEngineerId, setSelectedEngineerId] = useState(isAdmin ? '' : user.id);
-  const [summaryFrom, setSummaryFrom] = useState(() => toDateInput(startOfWeek(new Date())));
-  const [summaryTo, setSummaryTo] = useState(() => toDateInput(addDays(startOfWeek(new Date()), 6)));
+  const [searchParams] = useSearchParams();
+  const initialWeekStart = searchParams.get('weekStart') || toDateInput(startOfWeek(new Date()));
+  const initialEngineerId = searchParams.get('engineerId') || searchParams.get('userId') || '';
+  const [weekStart, setWeekStart] = useState(() => initialWeekStart);
+  const [selectedEngineerId, setSelectedEngineerId] = useState(isAdmin ? initialEngineerId : user.id);
+  const [summaryFrom, setSummaryFrom] = useState(() => initialWeekStart);
+  const [summaryTo, setSummaryTo] = useState(() => toDateInput(addDays(new Date(`${initialWeekStart}T00:00:00`), 6)));
   const [engineers, setEngineers] = useState<ApiUser[]>([]);
   const [report, setReport] = useState<WeeklyReport | null>(null);
   const [summary, setSummary] = useState<EngineerWorkSummary | null>(null);

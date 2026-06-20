@@ -66,6 +66,24 @@ type EngineerWorkSummary = {
       businessLine?: string | null;
     };
   }>;
+  weeklyReports: Array<{
+    id: string;
+    weekStart: string;
+    status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'NEEDS_REVISION';
+    note?: string | null;
+    submittedAt?: string | null;
+    rows: Array<{
+      id: string;
+      workDate: string;
+      customer?: string | null;
+      machine?: string | null;
+      content?: string | null;
+      result?: string | null;
+      pending?: string | null;
+      proposal?: string | null;
+      sortOrder?: number;
+    }>;
+  }>;
 };
 
 const today = new Date();
@@ -276,6 +294,51 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       </section>
 
       <section className="overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
+          <PanelHeader eyebrow="Báo cáo tuần" title="Nội dung kỹ sư tự báo cáo" subtitle={`${summary?.weeklyReports?.reduce((sum, report) => sum + report.rows.length, 0) ?? 0} dòng báo cáo trong khoảng này`} />
+          <Link className="secondary-button" to={buildWeeklyReportHref(from, isAdmin ? engineerId : '')}>
+            Mở báo cáo tuần
+          </Link>
+        </div>
+        <div className="grid gap-3 p-4">
+          {summary?.weeklyReports?.length ? summary.weeklyReports.map((report) => (
+            <div className="overflow-hidden rounded-lg border border-[#edf2f7]" key={report.id}>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] bg-white px-3 py-2">
+                <div>
+                  <strong className="text-sm text-[#101828]">Tuần {formatDate(report.weekStart)}</strong>
+                  {report.note ? <span className="ml-2 text-xs text-[#667085]">{report.note}</span> : null}
+                </div>
+                <span className="rounded-lg bg-[#f8fafc] px-2 py-1 text-xs font-medium text-[#344054]">{weeklyStatusLabel(report.status)}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="bg-[#fbfdff] text-xs text-[#667085]">
+                      {['Ngày', 'Khách hàng', 'Máy', 'Nội dung', 'Kết quả', 'Tồn đọng'].map((header) => (
+                        <th className="border-b border-[#edf2f7] px-3 py-2 font-medium" key={header}>{header}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.rows.map((row) => (
+                      <tr key={row.id}>
+                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#344054]">{formatDate(row.workDate)}</td>
+                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#101828]">{row.customer || '-'}</td>
+                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#344054]">{row.machine || '-'}</td>
+                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#344054]">{row.content || '-'}</td>
+                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#344054]">{row.result || '-'}</td>
+                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#344054]">{row.pending || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )) : <EmptyState text="Chưa có dòng báo cáo tuần trong khoảng này." />}
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
           <PanelHeader eyebrow="Timeline" title="Công việc đã hoàn thành" subtitle={`${summary?.activities.length ?? 0} đầu việc`} />
         </div>
@@ -429,6 +492,22 @@ function displayCustomerStatus(value?: string | null) {
     BLACKLISTED: 'Hạn chế',
   };
   return value ? labels[value] ?? value : 'Chưa rõ';
+}
+
+function weeklyStatusLabel(value: EngineerWorkSummary['weeklyReports'][number]['status']) {
+  const labels: Record<EngineerWorkSummary['weeklyReports'][number]['status'], string> = {
+    DRAFT: 'Nháp',
+    SUBMITTED: 'Đã gửi',
+    APPROVED: 'Đã duyệt',
+    NEEDS_REVISION: 'Cần sửa',
+  };
+  return labels[value] ?? value;
+}
+
+function buildWeeklyReportHref(weekStart: string, engineerId?: string) {
+  const params = new URLSearchParams({ weekStart: toDateInput(startOfWeek(new Date(`${weekStart}T00:00:00`))) });
+  if (engineerId) params.set('userId', engineerId);
+  return `/weekly-reports?${params.toString()}`;
 }
 
 function toneText(tone: 'good' | 'warn' | 'neutral') {

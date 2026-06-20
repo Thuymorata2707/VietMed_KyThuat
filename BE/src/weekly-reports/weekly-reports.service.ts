@@ -36,7 +36,7 @@ export class WeeklyReportsService {
       throw new BadRequestException('to must be after from');
     }
 
-    const [engineer, installations, repairs, maintenances] = await Promise.all([
+    const [engineer, installations, repairs, maintenances, weeklyReports] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: targetUserId },
         select: {
@@ -96,6 +96,41 @@ export class WeeklyReportsService {
           },
         },
         orderBy: { completedAt: 'asc' },
+      }),
+      this.prisma.weeklyReport.findMany({
+        where: {
+          userId: targetUserId,
+          rows: {
+            some: {
+              workDate: { gte: startDate, lte: endDate },
+            },
+          },
+        },
+        select: {
+          id: true,
+          weekStart: true,
+          status: true,
+          note: true,
+          submittedAt: true,
+          rows: {
+            where: {
+              workDate: { gte: startDate, lte: endDate },
+            },
+            orderBy: [{ workDate: 'asc' }, { sortOrder: 'asc' }],
+            select: {
+              id: true,
+              workDate: true,
+              customer: true,
+              machine: true,
+              content: true,
+              result: true,
+              pending: true,
+              proposal: true,
+              sortOrder: true,
+            },
+          },
+        },
+        orderBy: { weekStart: 'asc' },
       }),
     ]);
 
@@ -224,6 +259,14 @@ export class WeeklyReportsService {
         left.name.localeCompare(right.name),
       ),
       activities,
+      weeklyReports: weeklyReports.map((report) => ({
+        id: report.id,
+        weekStart: report.weekStart,
+        status: report.status,
+        note: report.note,
+        submittedAt: report.submittedAt,
+        rows: report.rows,
+      })),
     };
   }
 
