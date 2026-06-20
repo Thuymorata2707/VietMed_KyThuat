@@ -69,14 +69,23 @@ export class InventoryMovementsService {
         where: { id: dto.machineId },
         data: {
           inventoryStatus: dto.toStatus,
-          customerId:
-            dto.toStatus === MachineInventoryStatus.INSTALLED
-              ? dto.customerId || machine.customerId
-              : machine.customerId,
+          customerId: this.getNextMachineCustomerId(
+            dto.toStatus,
+            dto.customerId,
+            machine.customerId,
+          ),
           installDate:
             dto.toStatus === MachineInventoryStatus.INSTALLED
               ? movement.occurredAt
-              : undefined,
+              : this.shouldClearInstallationFields(dto.toStatus)
+                ? null
+                : undefined,
+          warrantyStartDate: this.shouldClearInstallationFields(dto.toStatus)
+            ? null
+            : undefined,
+          warrantyEndDate: this.shouldClearInstallationFields(dto.toStatus)
+            ? null
+            : undefined,
           status: getMachineStatusForInventoryStatus(dto.toStatus),
         },
       });
@@ -130,6 +139,39 @@ export class InventoryMovementsService {
 
   getTypes() {
     return Object.values(InventoryMovementType);
+  }
+
+  private getNextMachineCustomerId(
+    toStatus: MachineInventoryStatus,
+    movementCustomerId?: string | null,
+    currentCustomerId?: string | null,
+  ) {
+    if (
+      toStatus === MachineInventoryStatus.INSTALLED ||
+      toStatus === MachineInventoryStatus.RESERVED ||
+      toStatus === MachineInventoryStatus.SOLD
+    ) {
+      return movementCustomerId || currentCustomerId || null;
+    }
+
+    if (
+      toStatus === MachineInventoryStatus.RETURNED ||
+      toStatus === MachineInventoryStatus.IN_STOCK ||
+      toStatus === MachineInventoryStatus.ACCESSORY_SPLIT
+    ) {
+      return null;
+    }
+
+    return currentCustomerId ?? null;
+  }
+
+  private shouldClearInstallationFields(toStatus: MachineInventoryStatus) {
+    return (
+      toStatus === MachineInventoryStatus.RETURNED ||
+      toStatus === MachineInventoryStatus.IN_STOCK ||
+      toStatus === MachineInventoryStatus.ACCESSORY_SPLIT ||
+      toStatus === MachineInventoryStatus.SOLD
+    );
   }
 
   private validateCreate(dto: CreateInventoryMovementDto) {

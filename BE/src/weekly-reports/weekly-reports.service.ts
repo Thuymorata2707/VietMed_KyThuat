@@ -15,6 +15,218 @@ import { WeeklyReportRowDto } from './dto/weekly-report-row.dto';
 export class WeeklyReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getEngineerSummary({
+    user,
+    from,
+    to,
+    userId,
+  }: {
+    user: RequestUser;
+    from?: string;
+    to?: string;
+    userId?: string;
+  }) {
+    this.assertCanUseWeeklyReports(user);
+    const targetUserId = this.resolveTargetUserId(user, userId);
+    await this.ensureUserExists(targetUserId);
+    const startDate = this.parseDate(from || this.currentWeekStart(), 'from');
+    const endDate = this.endOfDay(this.parseDate(to || from || this.currentWeekStart(), 'to'));
+
+    if (endDate < startDate) {
+      throw new BadRequestException('to must be after from');
+    }
+
+    const [engineer, installations, repairs, maintenances] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          engineerProfile: {
+            select: {
+              employeeCode: true,
+              position: true,
+              department: true,
+              expertiseGroup: true,
+            },
+          },
+        },
+      }),
+      this.prisma.machineInstallation.findMany({
+        where: {
+          installedById: targetUserId,
+          status: 'INSTALLED',
+          installedAt: { gte: startDate, lte: endDate },
+        },
+        include: {
+          customer: true,
+          machine: true,
+          businessLine: true,
+          plannedMachineModel: true,
+        },
+        orderBy: { installedAt: 'asc' },
+      }),
+      this.prisma.repair.findMany({
+        where: {
+          engineerId: targetUserId,
+          completedAt: { gte: startDate, lte: endDate },
+        },
+        include: {
+          machine: {
+            include: {
+              customer: true,
+              businessLine: true,
+            },
+          },
+        },
+        orderBy: { completedAt: 'asc' },
+      }),
+      this.prisma.maintenance.findMany({
+        where: {
+          engineerId: targetUserId,
+          completedAt: { gte: startDate, lte: endDate },
+        },
+        include: {
+          machine: {
+            include: {
+              customer: true,
+              businessLine: true,
+            },
+          },
+        },
+        orderBy: { completedAt: 'asc' },
+      }),
+    ]);
+
+    const activities = [
+      ...installations.map((item) => ({
+        id: item.id,
+        kind: 'installation' as const,
+        code: item.code,
+        date: item.installedAt,
+        status: item.status,
+        customer: this.customerSummary(item.customer),
+        machine: this.machineSummary(item.machine, {
+          modelName:
+            item.machine?.modelName ??
+            item.plannedMachineModel?.name ??
+            item.plannedModelName,
+          serialNumber: item.machine?.serialNumber,
+          productCategory:
+            item.machine?.productCategory ??
+            item.businessLine?.productCategory ??
+            item.plannedMachineModel?.productCategory,
+        }),
+        title: 'Lắp đặt máy',
+        result: item.note,
+      })),
+      ...repairs.map((item) => ({
+        id: item.id,
+        kind: 'repair' as const,
+        code: item.code,
+        date: item.completedAt ?? item.reportedAt,
+        status: item.status,
+        customer: this.customerSummary(item.machine?.customer, {
+          name: item.representative || item.usingDepartment,
+          phone: item.contactPhone,
+          address: item.address,
+        }),
+        machine: this.machineSummary(item.machine, {
+          modelName: item.modelName,
+          serialNumber: item.serialNumber,
+          name: item.deviceName,
+        }),
+        title: item.title,
+        result: item.resultNote || item.repairMethod,
+      })),
+      ...maintenances.map((item) => ({
+        id: item.id,
+        kind: 'maintenance' as const,
+        code: item.code,
+        date: item.completedAt ?? item.scheduledDate,
+        status: item.status,
+        customer: this.customerSummary(item.machine?.customer, {
+          name: item.representative || item.usingDepartment,
+          phone: item.contactPhone,
+          address: item.address,
+        }),
+        machine: this.machineSummary(item.machine, {
+          modelName: item.modelName,
+          serialNumber: item.serialNumber,
+          name: item.deviceName,
+        }),
+        title: item.title,
+        result: item.resultNote,
+      })),
+    ].sort((left, right) => left.date.getTime() - right.date.getTime());
+
+    const customerMap = new Map<string, {
+      id: string;
+      code?: string | null;
+      name: string;
+      status?: string | null;
+      province?: string | null;
+      phone?: string | null;
+      installationCount: number;
+      repairCount: number;
+      maintenanceCount: number;
+      machineIds: Set<string>;
+    }>();
+
+    for (const activity of activities) {
+      const key = activity.customer.id || activity.customer.name || 'unknown';
+      const current = customerMap.get(key) ?? {
+        id: activity.customer.id,
+        code: activity.customer.code,
+        name: activity.customer.name || 'Chưa rõ khách hàng',
+        status: activity.customer.status,
+        province: activity.customer.province,
+        phone: activity.customer.phone,
+        installationCount: 0,
+        repairCount: 0,
+        maintenanceCount: 0,
+        machineIds: new Set<string>(),
+      };
+
+      if (activity.kind === 'installation') current.installationCount += 1;
+      if (activity.kind === 'repair') current.repairCount += 1;
+      if (activity.kind === 'maintenance') current.maintenanceCount += 1;
+      if (activity.machine.id) current.machineIds.add(activity.machine.id);
+      customerMap.set(key, current);
+    }
+
+    const customerSummaries = Array.from(customerMap.values()).map((item) => ({
+      ...item,
+      machineCount: item.machineIds.size,
+      machineIds: undefined,
+    }));
+
+    const uniqueMachineIds = new Set(
+      activities.map((item) => item.machine.id).filter(Boolean),
+    );
+
+    return {
+      engineer,
+      range: {
+        from: startDate.toISOString(),
+        to: endDate.toISOString(),
+      },
+      totals: {
+        installations: installations.length,
+        repairs: repairs.length,
+        maintenances: maintenances.length,
+        activities: activities.length,
+        customers: customerSummaries.length,
+        machines: uniqueMachineIds.size,
+      },
+      customers: customerSummaries.sort((left, right) =>
+        left.name.localeCompare(right.name),
+      ),
+      activities,
+    };
+  }
+
   async findByWeek({
     user,
     weekStart,
@@ -186,6 +398,12 @@ export class WeeklyReportsService {
     return date;
   }
 
+  private endOfDay(date: Date) {
+    const next = new Date(date);
+    next.setUTCHours(23, 59, 59, 999);
+    return next;
+  }
+
   private currentWeekStart() {
     const now = new Date();
     const day = now.getDay() || 7;
@@ -204,6 +422,68 @@ export class WeeklyReportsService {
 
   private cleanOptional(value?: string | null) {
     return value?.trim() || null;
+  }
+
+  private customerSummary(
+    customer?: {
+      id?: string | null;
+      customerCode?: string | null;
+      name?: string | null;
+      hospitalName?: string | null;
+      status?: string | null;
+      province?: string | null;
+      phone?: string | null;
+      contactPhone?: string | null;
+      fullAddress?: string | null;
+      address?: string | null;
+    } | null,
+    fallback: {
+      name?: string | null;
+      phone?: string | null;
+      address?: string | null;
+    } = {},
+  ) {
+    return {
+      id: customer?.id ?? '',
+      code: customer?.customerCode ?? null,
+      name:
+        customer?.hospitalName ??
+        customer?.name ??
+        fallback.name ??
+        'Chưa rõ khách hàng',
+      status: customer?.status ?? null,
+      province: customer?.province ?? null,
+      phone: customer?.contactPhone ?? customer?.phone ?? fallback.phone ?? null,
+      address: customer?.fullAddress ?? customer?.address ?? fallback.address ?? null,
+    };
+  }
+
+  private machineSummary(
+    machine?: {
+      id?: string | null;
+      machineCode?: string | null;
+      serialNumber?: string | null;
+      modelName?: string | null;
+      name?: string | null;
+      productCategory?: string | null;
+      businessLine?: { name?: string | null } | null;
+    } | null,
+    fallback: {
+      modelName?: string | null;
+      serialNumber?: string | null;
+      name?: string | null;
+      productCategory?: string | null;
+    } = {},
+  ) {
+    return {
+      id: machine?.id ?? '',
+      code: machine?.machineCode ?? null,
+      serialNumber: machine?.serialNumber ?? fallback.serialNumber ?? null,
+      modelName: machine?.modelName ?? fallback.modelName ?? null,
+      name: machine?.name ?? fallback.name ?? null,
+      productCategory: machine?.productCategory ?? fallback.productCategory ?? null,
+      businessLine: machine?.businessLine?.name ?? null,
+    };
   }
 
   private defaultInclude() {

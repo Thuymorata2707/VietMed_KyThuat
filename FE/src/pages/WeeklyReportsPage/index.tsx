@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Download, Loader2, Plus, Save, Send, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Loader2, Plus, RefreshCw, Save, Send, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
@@ -36,6 +36,62 @@ type WeeklyReport = {
   rows: Array<WeeklyReportRow & { id: string }>;
 };
 
+type EngineerWorkSummary = {
+  engineer?: {
+    id: string;
+    email?: string | null;
+    fullName?: string | null;
+    engineerProfile?: {
+      employeeCode?: string | null;
+      position?: string | null;
+      department?: string | null;
+      expertiseGroup?: string | null;
+    } | null;
+  } | null;
+  totals: {
+    installations: number;
+    repairs: number;
+    maintenances: number;
+    activities: number;
+    customers: number;
+    machines: number;
+  };
+  customers: Array<{
+    id?: string;
+    code?: string | null;
+    name: string;
+    status?: string | null;
+    province?: string | null;
+    phone?: string | null;
+    installationCount: number;
+    repairCount: number;
+    maintenanceCount: number;
+    machineCount: number;
+  }>;
+  activities: Array<{
+    id: string;
+    kind: 'installation' | 'repair' | 'maintenance';
+    code: string;
+    date: string;
+    status: string;
+    title: string;
+    result?: string | null;
+    customer: {
+      name: string;
+      status?: string | null;
+      province?: string | null;
+      phone?: string | null;
+    };
+    machine: {
+      code?: string | null;
+      serialNumber?: string | null;
+      modelName?: string | null;
+      name?: string | null;
+      businessLine?: string | null;
+    };
+  }>;
+};
+
 const statusLabels: Record<WeeklyReportStatus, string> = {
   DRAFT: 'Nháp',
   SUBMITTED: 'Đã gửi',
@@ -47,8 +103,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const isAdmin = currentRole === 'admin';
   const [weekStart, setWeekStart] = useState(() => toDateInput(startOfWeek(new Date())));
   const [selectedEngineerId, setSelectedEngineerId] = useState(isAdmin ? '' : user.id);
+  const [summaryFrom, setSummaryFrom] = useState(() => toDateInput(startOfWeek(new Date())));
+  const [summaryTo, setSummaryTo] = useState(() => toDateInput(addDays(startOfWeek(new Date()), 6)));
   const [engineers, setEngineers] = useState<ApiUser[]>([]);
   const [report, setReport] = useState<WeeklyReport | null>(null);
+  const [summary, setSummary] = useState<EngineerWorkSummary | null>(null);
   const [rows, setRows] = useState<WeeklyReportRow[]>(() => defaultRows(weekStart));
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
@@ -64,6 +123,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   useEffect(() => {
     void loadReport();
   }, [weekStart, selectedEngineerId, isAdmin]);
+
+  useEffect(() => {
+    if (isAdmin && !selectedEngineerId) return;
+    void loadSummary();
+  }, [summaryFrom, summaryTo, selectedEngineerId, isAdmin]);
 
   const reportStatus = report?.status ?? 'DRAFT';
   const canSubmit = !isAdmin && Boolean(report?.id) && rows.some(rowHasReportData);
@@ -102,6 +166,25 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       setRows(defaultRows(weekStart));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadSummary() {
+    if (isAdmin && !selectedEngineerId) return;
+
+    setError('');
+    const query = new URLSearchParams({
+      from: summaryFrom,
+      to: summaryTo,
+    });
+    if (isAdmin && selectedEngineerId) query.set('userId', selectedEngineerId);
+
+    try {
+      const result = await apiFetch<EngineerWorkSummary>(`/weekly-reports/summary?${query.toString()}`);
+      setSummary(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không tải được tổng hợp công việc.');
+      setSummary(null);
     }
   }
 
@@ -197,6 +280,82 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
+
+      <section className="grid gap-4 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <span className="text-xs font-medium text-[#d92d20]">Tổng hợp theo khoảng thời gian</span>
+            <h2 className="mt-1 text-xl text-[#101828]">Hiệu suất kỹ sư</h2>
+            <p className="mt-1 text-sm text-[#667085]">Tự động tổng hợp từ phiếu lắp đặt, sửa chữa và bảo trì đã hoàn thành.</p>
+          </div>
+          <button className="secondary-button" onClick={loadSummary} type="button">
+            <RefreshCw size={16} />
+            Cập nhật
+          </button>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(0,1fr))_auto]">
+          <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
+            Từ ngày
+            <input className="min-h-10 rounded-lg border border-[#cfd8e3] px-3 text-[#101828]" onChange={(event) => setSummaryFrom(event.target.value)} type="date" value={summaryFrom} />
+          </label>
+          <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
+            Đến ngày
+            <input className="min-h-10 rounded-lg border border-[#cfd8e3] px-3 text-[#101828]" onChange={(event) => setSummaryTo(event.target.value)} type="date" value={summaryTo} />
+          </label>
+          <div className="grid content-end text-sm text-[#667085]">
+            {summary?.engineer?.engineerProfile?.department || summary?.engineer?.engineerProfile?.position ? (
+              <span>{[summary.engineer.engineerProfile.department, summary.engineer.engineerProfile.position].filter(Boolean).join(' - ')}</span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-6 gap-3 max-[1180px]:grid-cols-3 max-sm:grid-cols-2">
+          <SummaryMetric label="Lắp đặt" value={summary?.totals.installations ?? 0} />
+          <SummaryMetric label="Sửa chữa" value={summary?.totals.repairs ?? 0} />
+          <SummaryMetric label="Bảo trì" value={summary?.totals.maintenances ?? 0} />
+          <SummaryMetric label="Tổng việc" value={summary?.totals.activities ?? 0} />
+          <SummaryMetric label="Máy tác động" value={summary?.totals.machines ?? 0} />
+          <SummaryMetric label="Khách hàng" value={summary?.totals.customers ?? 0} />
+        </div>
+
+        <div className="grid grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-4 max-[1100px]:grid-cols-1">
+          <div className="overflow-hidden rounded-lg border border-[#edf2f7]">
+            <div className="border-b border-[#edf2f7] bg-[#f8fafc] px-3 py-2 text-sm font-medium text-[#344054]">Khách hàng đã xử lý</div>
+            <div className="max-h-[360px] overflow-y-auto">
+              {summary?.customers.length ? summary.customers.map((customer) => (
+                <div className="grid gap-1 border-b border-[#edf2f7] px-3 py-2.5 last:border-b-0" key={customer.id || customer.name}>
+                  <div className="flex items-center justify-between gap-3">
+                    <strong className="text-sm text-[#101828]">{customer.name}</strong>
+                    <span className="rounded-lg bg-[#f8fafc] px-2 py-1 text-xs font-medium text-[#344054]">{customer.status ? displayCustomerStatus(customer.status) : 'Chưa rõ'}</span>
+                  </div>
+                  <span className="text-xs text-[#667085]">{[customer.code, customer.province, customer.phone].filter(Boolean).join(' - ') || '-'}</span>
+                  <span className="text-xs text-[#667085]">
+                    {customer.installationCount} lắp đặt, {customer.repairCount} sửa chữa, {customer.maintenanceCount} bảo trì, {customer.machineCount} máy
+                  </span>
+                </div>
+              )) : <EmptySummary text="Chưa có khách hàng trong khoảng này." />}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-[#edf2f7]">
+            <div className="border-b border-[#edf2f7] bg-[#f8fafc] px-3 py-2 text-sm font-medium text-[#344054]">Công việc thực hiện</div>
+            <div className="max-h-[360px] overflow-y-auto">
+              {summary?.activities.length ? summary.activities.map((activity) => (
+                <div className="grid gap-1 border-b border-[#edf2f7] px-3 py-2.5 last:border-b-0" key={`${activity.kind}-${activity.id}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-sm text-[#101828]">{activityKindLabel(activity.kind)} - {activity.code}</strong>
+                    <span className="text-xs font-medium text-[#667085]">{formatDate(activity.date)}</span>
+                  </div>
+                  <span className="text-sm text-[#344054]">{activity.title}</span>
+                  <span className="text-xs text-[#667085]">{activity.customer.name} - {machineSummaryLabel(activity.machine)}</span>
+                  {activity.result ? <span className="text-xs text-[#667085]">Kết quả: {activity.result}</span> : null}
+                </div>
+              )) : <EmptySummary text="Chưa có việc hoàn thành trong khoảng này." />}
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="grid min-w-0 gap-4 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -396,6 +555,39 @@ function normalizeRow(row: WeeklyReportRow & { id?: string }): WeeklyReportRow {
 
 function rowHasReportData(row: WeeklyReportRow) {
   return [row.customer, row.machine, row.content, row.result, row.pending, row.proposal].some((value) => value.trim());
+}
+
+function SummaryMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="grid gap-1 rounded-lg border border-[#edf2f7] bg-[#f8fafc] p-3">
+      <span className="text-xs font-medium text-[#667085]">{label}</span>
+      <strong className="text-2xl leading-none text-[#101828]">{value}</strong>
+    </div>
+  );
+}
+
+function EmptySummary({ text }: { text: string }) {
+  return <div className="p-4 text-sm text-[#667085]">{text}</div>;
+}
+
+function activityKindLabel(kind: EngineerWorkSummary['activities'][number]['kind']) {
+  if (kind === 'installation') return 'Lắp đặt';
+  if (kind === 'repair') return 'Sửa chữa';
+  return 'Bảo trì';
+}
+
+function machineSummaryLabel(machine: EngineerWorkSummary['activities'][number]['machine']) {
+  return [machine.code, machine.serialNumber, machine.modelName || machine.name, machine.businessLine].filter(Boolean).join(' - ') || 'Chưa rõ máy';
+}
+
+function displayCustomerStatus(value: string) {
+  const labels: Record<string, string> = {
+    ACTIVE: 'Đang hoạt động',
+    INACTIVE: 'Ngưng hoạt động',
+    POTENTIAL: 'Tiềm năng',
+    BLACKLISTED: 'Hạn chế',
+  };
+  return labels[value] ?? value;
 }
 
 function startOfWeek(value: Date) {

@@ -390,7 +390,7 @@ function MachineTable({
                     </>
                   ) : (
                     <>
-                      {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RETURNED') ? (
+                      {canManageInventory && machine.inventoryStatus === 'IN_STOCK' ? (
                         <button className="secondary-button" onClick={() => onMove(machine, movementActions.reserve)} type="button">
                           <ClipboardCheck size={15} />
                           Giữ máy
@@ -408,13 +408,19 @@ function MachineTable({
                           Sửa/kiểm tra
                         </Link>
                       ) : null}
+                      {canManageInventory && (machine.inventoryStatus === 'RETURNED' || machine.inventoryStatus === 'ACCESSORY_SPLIT') ? (
+                        <button className="primary-button" onClick={() => onMove(machine, movementActions.import)} type="button">
+                          <PackageCheck size={15} />
+                          Nhập lại kho
+                        </button>
+                      ) : null}
                       {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || (machine.inventoryStatus === 'RETURNED' && machine.status !== 'REPAIRING')) ? (
                         <button className="secondary-button" onClick={() => onMove(machine, movementActions.splitAccessory)} type="button">
                           <Split size={15} />
                           Tách phụ kiện
                         </button>
                       ) : null}
-                      {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RESERVED' || machine.inventoryStatus === 'RETURNED') ? (
+                      {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RESERVED') ? (
                         <button className="secondary-button" onClick={() => onMove(machine, movementActions.sell)} type="button">
                           <ShoppingCart size={15} />
                           Bán
@@ -528,7 +534,7 @@ function compareInventoryMachines(a: Machine, b: Machine) {
 
 function canInstallFromInventory(machine: Machine) {
   if (machine.status === 'REPAIRING') return false;
-  return ['IN_STOCK', 'RESERVED', 'RETURNED'].includes(machine.inventoryStatus);
+  return ['IN_STOCK', 'RESERVED'].includes(machine.inventoryStatus);
 }
 
 function machineLabel(machine: Machine) {
@@ -553,9 +559,10 @@ function buildInventorySearch(tab: InventoryTab, query: string) {
 }
 
 const movementActions = {
-  reserve: { label: 'Giữ máy cho khách/dự án', type: 'RESERVE', toStatus: 'RESERVED', note: 'Giữ máy từ kho.', requiresCustomer: false },
-  return: { label: 'Thu hồi máy về kho', type: 'RETURN', toStatus: 'RETURNED', note: 'Thu hồi máy từ khách hàng.' },
-  sell: { label: 'Bán/Thanh lý máy', type: 'SELL', toStatus: 'SOLD', note: 'Xuất bán hoặc thanh lý máy.' },
+  import: { label: 'Nhập lại kho sẵn sàng', type: 'IMPORT', toStatus: 'IN_STOCK', note: 'Đã kiểm tra và nhập lại kho sẵn sàng.' },
+  reserve: { label: 'Giữ máy cho khách/dự án', type: 'RESERVE', toStatus: 'RESERVED', note: 'Giữ máy từ kho cho khách hàng/dự án.', requiresCustomer: true },
+  return: { label: 'Thu hồi máy chờ kiểm tra', type: 'RETURN', toStatus: 'RETURNED', note: 'Thu hồi máy từ khách hàng, chờ kiểm tra tình trạng.' },
+  sell: { label: 'Bán/Thanh lý máy', type: 'SELL', toStatus: 'SOLD', note: 'Xuất bán hoặc thanh lý máy.', requiresCustomer: true },
   splitAccessory: { label: 'Tách phụ kiện khỏi máy', type: 'SPLIT_ACCESSORY', toStatus: 'ACCESSORY_SPLIT', note: 'Tách phụ kiện khỏi máy để quản lý riêng.' },
 } satisfies Record<string, MovementAction>;
 

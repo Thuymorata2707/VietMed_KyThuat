@@ -11,6 +11,7 @@ const allowedInventoryTransitions: Record<
 > = {
   [InventoryMovementType.IMPORT]: {
     [MachineInventoryStatus.RETURNED]: [MachineInventoryStatus.IN_STOCK],
+    [MachineInventoryStatus.ACCESSORY_SPLIT]: [MachineInventoryStatus.IN_STOCK],
   },
   [InventoryMovementType.SPLIT_ACCESSORY]: {
     [MachineInventoryStatus.IN_STOCK]: [
@@ -22,23 +23,18 @@ const allowedInventoryTransitions: Record<
   },
   [InventoryMovementType.RESERVE]: {
     [MachineInventoryStatus.IN_STOCK]: [MachineInventoryStatus.RESERVED],
-    [MachineInventoryStatus.RETURNED]: [MachineInventoryStatus.RESERVED],
   },
   [InventoryMovementType.INSTALL]: {
     [MachineInventoryStatus.IN_STOCK]: [MachineInventoryStatus.INSTALLED],
     [MachineInventoryStatus.RESERVED]: [MachineInventoryStatus.INSTALLED],
-    [MachineInventoryStatus.RETURNED]: [MachineInventoryStatus.INSTALLED],
   },
   [InventoryMovementType.RETURN]: {
-    [MachineInventoryStatus.ACCESSORY_SPLIT]: [MachineInventoryStatus.RETURNED],
     [MachineInventoryStatus.RESERVED]: [MachineInventoryStatus.RETURNED],
     [MachineInventoryStatus.INSTALLED]: [MachineInventoryStatus.RETURNED],
-    [MachineInventoryStatus.SOLD]: [MachineInventoryStatus.RETURNED],
   },
   [InventoryMovementType.SELL]: {
     [MachineInventoryStatus.IN_STOCK]: [MachineInventoryStatus.SOLD],
     [MachineInventoryStatus.RESERVED]: [MachineInventoryStatus.SOLD],
-    [MachineInventoryStatus.RETURNED]: [MachineInventoryStatus.SOLD],
   },
   [InventoryMovementType.ADJUST_STATUS]: {},
 };
@@ -65,6 +61,10 @@ export function getMachineStatusForInventoryStatus(
 ): MachineStatus {
   if (inventoryStatus === MachineInventoryStatus.SOLD) {
     return MachineStatus.INACTIVE;
+  }
+
+  if (inventoryStatus === MachineInventoryStatus.RETURNED) {
+    return MachineStatus.REPAIRING;
   }
 
   return MachineStatus.ACTIVE;
@@ -102,6 +102,18 @@ export function validateInventoryMovement(
   }
 
   validateMachineInventoryRequirements(nextStatus, customerId);
+
+  if (type === InventoryMovementType.RESERVE && !customerId) {
+    throw new BadRequestException(
+      'customerId is required when reserving a machine',
+    );
+  }
+
+  if (type === InventoryMovementType.SELL && !customerId) {
+    throw new BadRequestException(
+      'customerId is required when selling a machine',
+    );
+  }
 }
 
 export function validateMachineState(
@@ -133,6 +145,15 @@ export function validateMachineState(
   }
 
   if (
+    inventoryStatus === MachineInventoryStatus.RETURNED &&
+    status !== MachineStatus.REPAIRING
+  ) {
+    throw new BadRequestException(
+      'RETURNED machines must have status REPAIRING',
+    );
+  }
+
+  if (
     inventoryStatus === MachineInventoryStatus.SOLD &&
     status !== MachineStatus.INACTIVE
   ) {
@@ -149,6 +170,18 @@ function validateMachineInventoryRequirements(
   if (inventoryStatus === MachineInventoryStatus.INSTALLED && !customerId) {
     throw new BadRequestException(
       'customerId is required when inventoryStatus is INSTALLED',
+    );
+  }
+
+  if (inventoryStatus === MachineInventoryStatus.RESERVED && !customerId) {
+    throw new BadRequestException(
+      'customerId is required when inventoryStatus is RESERVED',
+    );
+  }
+
+  if (inventoryStatus === MachineInventoryStatus.SOLD && !customerId) {
+    throw new BadRequestException(
+      'customerId is required when inventoryStatus is SOLD',
     );
   }
 }

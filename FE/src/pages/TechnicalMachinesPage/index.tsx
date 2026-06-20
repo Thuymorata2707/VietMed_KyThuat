@@ -613,7 +613,14 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               </label>
               <label className={editLabelClass}>
                 Trạng thái kho
-                <select className={editFieldClass} onChange={(event) => updateEditForm({ inventoryStatus: event.target.value })} value={editForm.inventoryStatus}>
+                <select
+                  className={editFieldClass}
+                  onChange={(event) => updateEditForm({
+                    inventoryStatus: event.target.value,
+                    ...inventoryStatusFormPatch(event.target.value),
+                  })}
+                  value={editForm.inventoryStatus}
+                >
                   {['IN_STOCK', 'ACCESSORY_SPLIT', 'INSTALLED', 'RESERVED', 'RETURNED', 'SOLD'].map((value) => (
                     <option key={value} value={value}>{displayLabel(value)}</option>
                   ))}
@@ -1001,6 +1008,38 @@ function hasAccessoryContent(accessory: EditMachineAccessoryForm) {
 
 function isUltrasoundMachine(machine?: DashboardMachine | null) {
   return machine?.productCategory === 'ULTRASOUND';
+}
+
+function inventoryStatusFormPatch(inventoryStatus: string): Partial<EditMachineForm> {
+  if (['IN_STOCK', 'ACCESSORY_SPLIT', 'RETURNED'].includes(inventoryStatus)) {
+    return {
+      status: inventoryStatus === 'RETURNED' ? 'REPAIRING' : 'ACTIVE',
+      customerId: '',
+      installDate: '',
+      warrantyStartDate: '',
+      warrantyEndDate: '',
+    };
+  }
+
+  if (inventoryStatus === 'RESERVED') {
+    return {
+      status: 'ACTIVE',
+      installDate: '',
+      warrantyStartDate: '',
+      warrantyEndDate: '',
+    };
+  }
+
+  if (inventoryStatus === 'SOLD') {
+    return {
+      status: 'INACTIVE',
+      installDate: '',
+      warrantyStartDate: '',
+      warrantyEndDate: '',
+    };
+  }
+
+  return {};
 }
 
 function createAccessoryClientId() {

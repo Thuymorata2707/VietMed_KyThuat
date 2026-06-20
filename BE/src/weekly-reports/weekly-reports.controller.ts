@@ -11,6 +11,16 @@ import { WeeklyReportsService } from './weekly-reports.service';
 export class WeeklyReportsController {
   constructor(private readonly weeklyReportsService: WeeklyReportsService) {}
 
+  @Get('summary')
+  getEngineerSummary(
+    @CurrentUser() user: RequestUser,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('userId') userId?: string,
+  ) {
+    return this.weeklyReportsService.getEngineerSummary({ user, from, to, userId });
+  }
+
   @Get()
   findByWeek(
     @CurrentUser() user: RequestUser,

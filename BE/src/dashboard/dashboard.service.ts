@@ -352,11 +352,13 @@ export class DashboardService {
       businessLines: businessLineGroups,
       machines: machines.map((machine) => {
         const latestInstallation = machine.installations[0] ?? null;
+        const currentInstallation =
+          machine.inventoryStatus === 'INSTALLED' ? latestInstallation : null;
         const installedCustomer =
-          latestInstallation?.customer ??
+          currentInstallation?.customer ??
           (machine.inventoryStatus === 'INSTALLED' ? machine.customer : null);
         const installedAt =
-          latestInstallation?.installedAt ?? machine.installDate;
+          currentInstallation?.installedAt ?? machine.installDate;
 
         return {
           id: machine.id,
@@ -373,26 +375,26 @@ export class DashboardService {
           createdSource: machine.createdSource,
           installDate: installedAt,
           warrantyStartDate:
-            latestInstallation?.warrantyCard?.startDate ??
+            currentInstallation?.warrantyCard?.startDate ??
             machine.warrantyStartDate,
           warrantyEndDate:
-            latestInstallation?.warrantyCard?.endDate ??
+            currentInstallation?.warrantyCard?.endDate ??
             machine.warrantyEndDate,
           businessLine: machine.businessLine,
-          installedBy: latestInstallation?.installedBy ?? machine.installedBy,
+          installedBy: currentInstallation?.installedBy ?? machine.installedBy,
           primaryEngineer: machine.primaryEngineer,
-          installation: latestInstallation
+          installation: currentInstallation
             ? {
-                id: latestInstallation.id,
-                code: latestInstallation.code,
-                status: latestInstallation.status,
-                installedAt: latestInstallation.installedAt,
+                id: currentInstallation.id,
+                code: currentInstallation.code,
+                status: currentInstallation.status,
+                installedAt: currentInstallation.installedAt,
                 receiverInstallAddress:
-                  latestInstallation.receiverInstallAddress,
+                  currentInstallation.receiverInstallAddress,
                 receiverRepresentative:
-                  latestInstallation.receiverRepresentative,
-                receiverPhone: latestInstallation.receiverPhone,
-                warrantyCard: latestInstallation.warrantyCard,
+                  currentInstallation.receiverRepresentative,
+                receiverPhone: currentInstallation.receiverPhone,
+                warrantyCard: currentInstallation.warrantyCard,
               }
             : null,
           customer: installedCustomer,
@@ -549,10 +551,13 @@ export class DashboardService {
       const businessLine = machine.businessLine;
       const groupKey = businessLine?.id ?? '__unassigned__';
       const latestInstallation = machine.installations[0] ?? null;
+      const currentInstallation =
+        machine.inventoryStatus === 'INSTALLED' ? latestInstallation : null;
       const installedCustomer =
-        latestInstallation?.customer ??
+        currentInstallation?.customer ??
         (machine.inventoryStatus === 'INSTALLED' ? machine.customer : null);
-      const installedAt = latestInstallation?.installedAt ?? machine.installDate;
+      const installedAt =
+        currentInstallation?.installedAt ?? machine.installDate;
 
       if (!groups.has(groupKey)) {
         groups.set(groupKey, {
@@ -582,23 +587,23 @@ export class DashboardService {
         inventoryStatus: machine.inventoryStatus,
         installDate: installedAt,
         warrantyStartDate:
-          latestInstallation?.warrantyCard?.startDate ??
+          currentInstallation?.warrantyCard?.startDate ??
           machine.warrantyStartDate,
         warrantyEndDate:
-          latestInstallation?.warrantyCard?.endDate ?? machine.warrantyEndDate,
+          currentInstallation?.warrantyCard?.endDate ?? machine.warrantyEndDate,
         businessLine: machine.businessLine,
-        installedBy: latestInstallation?.installedBy ?? machine.installedBy,
+        installedBy: currentInstallation?.installedBy ?? machine.installedBy,
         primaryEngineer: machine.primaryEngineer,
-        installation: latestInstallation
+        installation: currentInstallation
           ? {
-              id: latestInstallation.id,
-              code: latestInstallation.code,
-              status: latestInstallation.status,
-              installedAt: latestInstallation.installedAt,
-              receiverInstallAddress: latestInstallation.receiverInstallAddress,
-              receiverRepresentative: latestInstallation.receiverRepresentative,
-              receiverPhone: latestInstallation.receiverPhone,
-              warrantyCard: latestInstallation.warrantyCard,
+              id: currentInstallation.id,
+              code: currentInstallation.code,
+              status: currentInstallation.status,
+              installedAt: currentInstallation.installedAt,
+              receiverInstallAddress: currentInstallation.receiverInstallAddress,
+              receiverRepresentative: currentInstallation.receiverRepresentative,
+              receiverPhone: currentInstallation.receiverPhone,
+              warrantyCard: currentInstallation.warrantyCard,
             }
           : null,
         customer: installedCustomer,

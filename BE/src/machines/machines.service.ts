@@ -546,6 +546,37 @@ export class MachinesService {
       await this.ensureBusinessLineExists(nextBusinessLineId);
     }
 
+    const nextInstallDate =
+      dto.installDate === undefined
+        ? undefined
+        : this.parseOptionalDate(dto.installDate);
+    const nextWarrantyStartDate =
+      dto.warrantyStartDate === undefined
+        ? undefined
+        : this.parseOptionalDate(dto.warrantyStartDate);
+    const nextWarrantyEndDate =
+      dto.warrantyEndDate === undefined
+        ? undefined
+        : this.parseOptionalDate(dto.warrantyEndDate);
+    const effectiveWarrantyStartDate =
+      nextWarrantyStartDate === undefined
+        ? currentMachine.warrantyStartDate
+        : nextWarrantyStartDate;
+    const effectiveWarrantyEndDate =
+      nextWarrantyEndDate === undefined
+        ? currentMachine.warrantyEndDate
+        : nextWarrantyEndDate;
+
+    if (
+      effectiveWarrantyStartDate &&
+      effectiveWarrantyEndDate &&
+      effectiveWarrantyEndDate < effectiveWarrantyStartDate
+    ) {
+      throw new BadRequestException(
+        'warrantyEndDate must be after warrantyStartDate',
+      );
+    }
+
     validateMachineState(
       dto.status ?? currentMachine.status,
       dto.inventoryStatus ?? currentMachine.inventoryStatus,
@@ -588,18 +619,9 @@ export class MachinesService {
           dto.warehouseImportDate === undefined
             ? undefined
             : this.parseOptionalDate(dto.warehouseImportDate),
-        installDate:
-          dto.installDate === undefined
-            ? undefined
-            : this.parseOptionalDate(dto.installDate),
-        warrantyStartDate:
-          dto.warrantyStartDate === undefined
-            ? undefined
-            : this.parseOptionalDate(dto.warrantyStartDate),
-        warrantyEndDate:
-          dto.warrantyEndDate === undefined
-            ? undefined
-            : this.parseOptionalDate(dto.warrantyEndDate),
+        installDate: nextInstallDate,
+        warrantyStartDate: nextWarrantyStartDate,
+        warrantyEndDate: nextWarrantyEndDate,
         businessLineId: machineModel
           ? machineModel.businessLineId
           : dto.businessLineId === undefined
@@ -630,6 +652,13 @@ export class MachinesService {
           dto.accessories,
         );
         await this.refreshMachineAccessoriesSnapshot(tx, id);
+      }
+
+      if (
+        dto.warrantyStartDate !== undefined ||
+        dto.warrantyEndDate !== undefined
+      ) {
+        await this.syncLatestInstallationWarrantyCard(tx, id, updated, actor);
       }
 
       await this.auditLogsService.create(
@@ -1119,6 +1148,98 @@ export class MachinesService {
         })) as Prisma.InputJsonValue,
       },
     });
+  }
+
+  private async syncLatestInstallationWarrantyCard(
+    tx: Prisma.TransactionClient,
+    machineId: string,
+    machine: {
+      customerId?: string | null;
+      installDate?: Date | null;
+      warrantyStartDate?: Date | null;
+      warrantyEndDate?: Date | null;
+    },
+    actor?: RequestUser,
+  ) {
+    const latestInstallation = await tx.machineInstallation.findFirst({
+      where: { machineId },
+      include: { warrantyCard: true },
+      orderBy: { installedAt: 'desc' },
+    });
+
+    if (!latestInstallation) return;
+
+    if (!machine.warrantyEndDate) {
+      if (latestInstallation.warrantyCard) {
+        await tx.warrantyCard.delete({
+          where: { installationId: latestInstallation.id },
+        });
+      }
+      return;
+    }
+
+    const startDate =
+      machine.warrantyStartDate ??
+      latestInstallation.warrantyCard?.startDate ??
+      machine.installDate ??
+      latestInstallation.installedAt;
+
+    if (machine.warrantyEndDate < startDate) {
+      throw new BadRequestException(
+        'warrantyEndDate must be after warrantyStartDate',
+      );
+    }
+
+    if (latestInstallation.warrantyCard) {
+      await tx.warrantyCard.update({
+        where: { installationId: latestInstallation.id },
+        data: {
+          machineId,
+          customerId: machine.customerId ?? latestInstallation.customerId,
+          startDate,
+          endDate: machine.warrantyEndDate,
+        },
+      });
+      return;
+    }
+
+    await tx.warrantyCard.create({
+      data: {
+        code: await this.generateWarrantyCode(tx),
+        installationId: latestInstallation.id,
+        machineId,
+        customerId: machine.customerId ?? latestInstallation.customerId,
+        issuedAt: new Date(),
+        startDate,
+        endDate: machine.warrantyEndDate,
+        issuedById: actor?.id || null,
+        issuedByEmail: actor?.email || null,
+      },
+    });
+  }
+
+  private async generateWarrantyCode(
+    tx: Prisma.TransactionClient,
+  ): Promise<string> {
+    const prefix = this.getDailyCodePrefix('WAR');
+    const count = await tx.warrantyCard.count({
+      where: {
+        code: {
+          startsWith: prefix,
+        },
+      },
+    });
+
+    return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+  }
+
+  private getDailyCodePrefix(prefix: string) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+
+    return `${prefix}-${year}${month}${day}`;
   }
 
   private async ensureComponentAccessoryBelongsToModel(
