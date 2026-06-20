@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Download, Loader2, Plus, RefreshCw, Save, Send, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
@@ -292,6 +293,9 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             <RefreshCw size={16} />
             Cập nhật
           </button>
+          <Link className="primary-button" to={buildPerformanceHref(summaryFrom, summaryTo, isAdmin ? selectedEngineerId : '')}>
+            Mở dashboard hiệu suất
+          </Link>
         </div>
 
         <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(0,1fr))_auto]">
@@ -588,6 +592,12 @@ function displayCustomerStatus(value: string) {
     BLACKLISTED: 'Hạn chế',
   };
   return labels[value] ?? value;
+}
+
+function buildPerformanceHref(from: string, to: string, engineerId?: string) {
+  const params = new URLSearchParams({ from, to });
+  if (engineerId) params.set('engineerId', engineerId);
+  return `/engineer-performance?${params.toString()}`;
 }
 
 function startOfWeek(value: Date) {

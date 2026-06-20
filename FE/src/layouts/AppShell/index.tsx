@@ -18,6 +18,7 @@ import { AdminWorkAssignmentPage } from '../../pages/AdminWorkAssignmentPage';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { DailyWorkCalendarPage } from '../../pages/DailyWorkCalendarPage';
 import { EngineerTasksPage } from '../../pages/EngineerTasksPage';
+import { EngineerPerformancePage } from '../../pages/EngineerPerformancePage';
 import { InstallationUpdatePage } from '../../pages/InstallationUpdatePage';
 import { InventoryMovementsPage } from '../../pages/InventoryMovementsPage';
 import { MaintenanceUpdatePage } from '../../pages/MaintenanceUpdatePage';
@@ -283,6 +284,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <WeeklyReportsPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/engineer-performance"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <EngineerPerformancePage currentRole={role} user={user} />
               </RequireRole>
             }
           />

@@ -1,5 +1,6 @@
 import {
   Boxes,
+  BarChart3,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
@@ -35,6 +36,7 @@ export const navItems: NavItem[] = [
   { path: '/service-tickets', label: 'Sửa chữa / Bảo trì', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/daily-work', label: 'Lịch công việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
   { path: '/weekly-reports', label: 'Báo cáo tuần', icon: <ClipboardList size={18} />, roles: ['admin', 'engineer'] },
+  { path: '/engineer-performance', label: 'Hiệu suất kỹ sư', icon: <BarChart3 size={18} />, roles: ['admin', 'engineer'] },
   { path: '/inventory-movements', label: 'Kho máy', icon: <Boxes size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/business-lines', label: 'Sản phẩm & Thiết bị', icon: <BriefcaseBusiness size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/product-industries', label: 'Ngành hàng', icon: <BriefcaseBusiness size={18} />, roles: ['admin'] },
@@ -65,6 +67,7 @@ export const navGroups: NavGroup[] = [
       { path: '/installations', label: 'Lắp đặt', icon: <PackageCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
       { path: '/daily-work', label: 'Lịch công việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
       { path: '/weekly-reports', label: 'Báo cáo tuần', icon: <ClipboardList size={18} />, roles: ['admin', 'engineer'] },
+      { path: '/engineer-performance', label: 'Hiệu suất kỹ sư', icon: <BarChart3 size={18} />, roles: ['admin', 'engineer'] },
       { path: '/inventory-movements', label: 'Kho máy', icon: <Boxes size={18} />, roles: ['admin', 'manager', 'engineer'] },
     ],
   },
