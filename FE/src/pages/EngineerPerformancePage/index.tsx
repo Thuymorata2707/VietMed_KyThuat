@@ -1,4 +1,4 @@
-import { ArrowLeft, BarChart3, CalendarDays, Download, Loader2, RefreshCw, Users } from 'lucide-react';
+import { BarChart3, CalendarDays, Download, FileText, Loader2, RefreshCw, Users } from 'lucide-react';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
@@ -117,6 +117,9 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
     { label: 'Bảo trì', value: summary?.totals.maintenances ?? 0, tone: 'neutral' as const },
   ];
   const maxWorkValue = Math.max(1, ...workMix.map((item) => item.value));
+  const selectedEngineerName = selectedEngineer?.fullName || summary?.engineer?.fullName || summary?.engineer?.email || user.fullName || user.email;
+  const weeklyRowCount = summary?.weeklyReports?.reduce((sum, report) => sum + report.rows.length, 0) ?? 0;
+  const currentWeeklyReportHref = buildWeeklyReportHref(from, isAdmin ? engineerId : '');
   const topCustomers = useMemo(
     () =>
       [...(summary?.customers ?? [])]
@@ -195,9 +198,9 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
           title="Dashboard hiệu suất kỹ sư"
           description="Xem trực quan khối lượng lắp đặt, sửa chữa, bảo trì, khách hàng và máy đã xử lý theo khoảng thời gian."
         />
-        <Link className="secondary-button" to="/weekly-reports">
-          <ArrowLeft size={16} />
-          Báo cáo tuần
+        <Link className="primary-button" to={currentWeeklyReportHref}>
+          <FileText size={16} />
+          Mở báo cáo tuần
         </Link>
       </div>
 
@@ -239,6 +242,18 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             CSV
           </button>
         </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#edf2f7] bg-[#fbfdff] px-3 py-2">
+          <div>
+            <span className="text-xs font-medium text-[#667085]">Báo cáo tuần tương ứng</span>
+            <p className="mt-0.5 text-sm text-[#344054]">
+              Mở nhanh tuần bắt đầu từ {formatDate(startOfWeekValue(from))} cho {selectedEngineerName || 'kỹ sư đang chọn'}.
+            </p>
+          </div>
+          <Link className="secondary-button" to={currentWeeklyReportHref}>
+            <FileText size={16} />
+            Xem / nhập báo cáo
+          </Link>
+        </div>
       </section>
 
       <section className="grid grid-cols-6 gap-3 max-[1180px]:grid-cols-3 max-sm:grid-cols-2">
@@ -252,7 +267,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
       <section className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-4 max-[1120px]:grid-cols-1">
         <div className="rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-          <PanelHeader eyebrow="Cơ cấu công việc" title="Tỷ trọng theo loại việc" subtitle={selectedEngineer?.fullName || summary?.engineer?.fullName || summary?.engineer?.email || ''} />
+          <PanelHeader eyebrow="Cơ cấu công việc" title="Tỷ trọng theo loại việc" subtitle={selectedEngineerName || ''} />
           <div className="mt-4 grid gap-3">
             {workMix.map((item) => (
               <div className="grid gap-1.5" key={item.label}>
@@ -295,8 +310,9 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
       <section className="overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
-          <PanelHeader eyebrow="Báo cáo tuần" title="Nội dung kỹ sư tự báo cáo" subtitle={`${summary?.weeklyReports?.reduce((sum, report) => sum + report.rows.length, 0) ?? 0} dòng báo cáo trong khoảng này`} />
-          <Link className="secondary-button" to={buildWeeklyReportHref(from, isAdmin ? engineerId : '')}>
+          <PanelHeader eyebrow="Báo cáo tuần" title="Nội dung kỹ sư tự báo cáo" subtitle={`${weeklyRowCount} dòng báo cáo trong khoảng này`} />
+          <Link className="primary-button" to={currentWeeklyReportHref}>
+            <FileText size={16} />
             Mở báo cáo tuần
           </Link>
         </div>
@@ -308,7 +324,13 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
                   <strong className="text-sm text-[#101828]">Tuần {formatDate(report.weekStart)}</strong>
                   {report.note ? <span className="ml-2 text-xs text-[#667085]">{report.note}</span> : null}
                 </div>
-                <span className="rounded-lg bg-[#f8fafc] px-2 py-1 text-xs font-medium text-[#344054]">{weeklyStatusLabel(report.status)}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-lg bg-[#f8fafc] px-2 py-1 text-xs font-medium text-[#344054]">{weeklyStatusLabel(report.status)}</span>
+                  <Link className="secondary-button !min-h-8 !px-2 !text-xs" to={buildWeeklyReportHref(report.weekStart, isAdmin ? engineerId : '')}>
+                    <FileText size={14} />
+                    Mở tuần này
+                  </Link>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[900px] border-collapse text-left text-sm">
@@ -508,6 +530,10 @@ function buildWeeklyReportHref(weekStart: string, engineerId?: string) {
   const params = new URLSearchParams({ weekStart: toDateInput(startOfWeek(new Date(`${weekStart}T00:00:00`))) });
   if (engineerId) params.set('userId', engineerId);
   return `/weekly-reports?${params.toString()}`;
+}
+
+function startOfWeekValue(value: string) {
+  return toDateInput(startOfWeek(new Date(`${value}T00:00:00`)));
 }
 
 function toneText(tone: 'good' | 'warn' | 'neutral') {
