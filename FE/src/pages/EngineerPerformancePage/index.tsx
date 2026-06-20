@@ -120,6 +120,10 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const selectedEngineerName = selectedEngineer?.fullName || summary?.engineer?.fullName || summary?.engineer?.email || user.fullName || user.email;
   const weeklyRowCount = summary?.weeklyReports?.reduce((sum, report) => sum + report.rows.length, 0) ?? 0;
   const currentWeeklyReportHref = buildWeeklyReportHref(from, isAdmin ? engineerId : '');
+  const sortedWeeklyReports = useMemo(
+    () => [...(summary?.weeklyReports ?? [])].sort((left, right) => right.weekStart.localeCompare(left.weekStart)),
+    [summary],
+  );
   const topCustomers = useMemo(
     () =>
       [...(summary?.customers ?? [])]
@@ -192,17 +196,11 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
   return (
     <PageFrame>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageTitle
-          eyebrow="Báo cáo vận hành"
-          title="Dashboard hiệu suất kỹ sư"
-          description="Xem trực quan khối lượng lắp đặt, sửa chữa, bảo trì, khách hàng và máy đã xử lý theo khoảng thời gian."
-        />
-        <Link className="primary-button" to={currentWeeklyReportHref}>
-          <FileText size={16} />
-          Mở báo cáo tuần
-        </Link>
-      </div>
+      <PageTitle
+        eyebrow="Báo cáo vận hành"
+        title="Dashboard hiệu suất kỹ sư"
+        description="Xem trực quan khối lượng lắp đặt, sửa chữa, bảo trì, khách hàng và máy đã xử lý theo khoảng thời gian."
+      />
 
       {error ? <Notice message={error} /> : null}
 
@@ -241,18 +239,6 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             <Download size={16} />
             CSV
           </button>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#edf2f7] bg-[#fbfdff] px-3 py-2">
-          <div>
-            <span className="text-xs font-medium text-[#667085]">Báo cáo tuần tương ứng</span>
-            <p className="mt-0.5 text-sm text-[#344054]">
-              Mở nhanh tuần bắt đầu từ {formatDate(startOfWeekValue(from))} cho {selectedEngineerName || 'kỹ sư đang chọn'}.
-            </p>
-          </div>
-          <Link className="secondary-button" to={currentWeeklyReportHref}>
-            <FileText size={16} />
-            Xem / nhập báo cáo
-          </Link>
         </div>
       </section>
 
@@ -310,51 +296,30 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
       <section className="overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
-          <PanelHeader eyebrow="Báo cáo tuần" title="Nội dung kỹ sư tự báo cáo" subtitle={`${weeklyRowCount} dòng báo cáo trong khoảng này`} />
+          <PanelHeader eyebrow="Báo cáo tuần" title="Theo dõi báo cáo đã gửi" subtitle={`${sortedWeeklyReports.length} tuần, ${weeklyRowCount} dòng báo cáo trong khoảng này`} />
           <Link className="primary-button" to={currentWeeklyReportHref}>
             <FileText size={16} />
-            Mở báo cáo tuần
+            Mở tuần đang xem
           </Link>
         </div>
         <div className="grid gap-3 p-4">
-          {summary?.weeklyReports?.length ? summary.weeklyReports.map((report) => (
-            <div className="overflow-hidden rounded-lg border border-[#edf2f7]" key={report.id}>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] bg-white px-3 py-2">
-                <div>
-                  <strong className="text-sm text-[#101828]">Tuần {formatDate(report.weekStart)}</strong>
-                  {report.note ? <span className="ml-2 text-xs text-[#667085]">{report.note}</span> : null}
-                </div>
+          {sortedWeeklyReports.length ? sortedWeeklyReports.map((report) => (
+            <div className="grid gap-3 rounded-lg border border-[#edf2f7] bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto]" key={report.id}>
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
+                  <strong className="text-sm text-[#101828]">Tuần {formatDate(report.weekStart)}</strong>
                   <span className="rounded-lg bg-[#f8fafc] px-2 py-1 text-xs font-medium text-[#344054]">{weeklyStatusLabel(report.status)}</span>
-                  <Link className="secondary-button !min-h-8 !px-2 !text-xs" to={buildWeeklyReportHref(report.weekStart, isAdmin ? engineerId : '')}>
-                    <FileText size={14} />
-                    Mở tuần này
-                  </Link>
+                  <span className="text-xs text-[#667085]">{report.rows.length} dòng</span>
                 </div>
+                <p className="mt-1 line-clamp-2 text-sm text-[#667085]">
+                  {report.note || firstWeeklyReportSummary(report) || 'Chưa có ghi chú hoặc nội dung báo cáo.'}
+                </p>
+                {report.submittedAt ? <span className="mt-1 block text-xs text-[#98a2b3]">Gửi ngày {formatDate(report.submittedAt)}</span> : null}
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="bg-[#fbfdff] text-xs text-[#667085]">
-                      {['Ngày', 'Khách hàng', 'Máy', 'Nội dung', 'Kết quả', 'Tồn đọng'].map((header) => (
-                        <th className="border-b border-[#edf2f7] px-3 py-2 font-medium" key={header}>{header}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.rows.map((row) => (
-                      <tr key={row.id}>
-                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#344054]">{formatDate(row.workDate)}</td>
-                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#101828]">{row.customer || '-'}</td>
-                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#344054]">{row.machine || '-'}</td>
-                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#344054]">{row.content || '-'}</td>
-                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#344054]">{row.result || '-'}</td>
-                        <td className="border-b border-[#edf2f7] px-3 py-2 text-[#344054]">{row.pending || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Link className="secondary-button self-center" to={buildWeeklyReportHref(report.weekStart, isAdmin ? engineerId : '')}>
+                <FileText size={16} />
+                Mở báo cáo
+              </Link>
             </div>
           )) : <EmptyState text="Chưa có dòng báo cáo tuần trong khoảng này." />}
         </div>
@@ -532,10 +497,6 @@ function buildWeeklyReportHref(weekStart: string, engineerId?: string) {
   return `/weekly-reports?${params.toString()}`;
 }
 
-function startOfWeekValue(value: string) {
-  return toDateInput(startOfWeek(new Date(`${value}T00:00:00`)));
-}
-
 function toneText(tone: 'good' | 'warn' | 'neutral') {
   if (tone === 'good') return 'text-[#067647]';
   if (tone === 'warn') return 'text-[#b54708]';
@@ -584,6 +545,11 @@ function formatDate(value: string) {
 
 function csvCell(value: string) {
   return `"${value.replaceAll('"', '""')}"`;
+}
+
+function firstWeeklyReportSummary(report: EngineerWorkSummary['weeklyReports'][number]) {
+  const row = report.rows.find((item) => item.content || item.result || item.pending || item.proposal);
+  return [row?.content, row?.result, row?.pending, row?.proposal].filter(Boolean).join(' - ');
 }
 
 const fieldClass = 'min-h-11 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]';
