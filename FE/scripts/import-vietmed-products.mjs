@@ -6,6 +6,7 @@ const source = 'https://vietmed.vn/collections/all';
 
 const businessLines = [
   { code: 'NSX-ALPINION', name: 'Alpinion', productCategory: 'ULTRASOUND', manufacturer: 'Alpinion' },
+  { code: 'NSX-MINDRAY-ULTRASOUND', name: 'Mindray Ultrasound', productCategory: 'ULTRASOUND', manufacturer: 'Mindray' },
   { code: 'NSX-BIOCHEMISTRY', name: 'Mindray', productCategory: 'BIOCHEMISTRY', manufacturer: 'Mindray' },
   { code: 'NSX-IMMUNOLOGY', name: 'Fujirebio', productCategory: 'IMMUNOLOGY', manufacturer: 'Fujirebio' },
   { code: 'NSX-MINATO', name: 'Minato', productCategory: 'OTHER', manufacturer: 'Minato' },
@@ -22,18 +23,26 @@ const products = [
   product('NSX-ALPINION', 'X-CUBE-I8', 'Máy siêu âm xách tay X-CUBE i8', 'ULTRASOUND', 'Alpinion', 'Máy siêu âm xách tay'),
   product('NSX-ALPINION', 'X-CUBE-I9', 'Máy siêu âm xách tay X-CUBE i9', 'ULTRASOUND', 'Alpinion', 'Máy siêu âm xách tay'),
   product('NSX-ALPINION', 'MINISONO', 'Siêu âm Minisono', 'ULTRASOUND', 'Alpinion', 'Máy siêu âm xách tay'),
+  product('NSX-MINDRAY-ULTRASOUND', 'DC-60', 'Máy siêu âm DC-60', 'ULTRASOUND', 'Mindray', 'Máy siêu âm'),
 
   // Máy xét nghiệm - Mindray
   product('NSX-BIOCHEMISTRY', 'BA-88A', 'Máy xét nghiệm sinh hoá bán tự động BA-88A', 'BIOCHEMISTRY', 'Mindray', 'Sinh hoá'),
+  product('NSX-BIOCHEMISTRY', 'BS-120', 'Máy xét nghiệm sinh hoá tự động BS-120', 'BIOCHEMISTRY', 'Mindray', 'Sinh hoá'),
+  product('NSX-BIOCHEMISTRY', 'BS-200E', 'Máy xét nghiệm sinh hoá tự động BS-200E', 'BIOCHEMISTRY', 'Mindray', 'Sinh hoá'),
   product('NSX-BIOCHEMISTRY', 'BS-1000M', 'Máy xét nghiệm sinh hoá tự động BS-1000M', 'BIOCHEMISTRY', 'Mindray', 'Sinh hoá'),
+  product('NSX-BIOCHEMISTRY', 'BS-240', 'Máy xét nghiệm sinh hoá tự động BS-240', 'BIOCHEMISTRY', 'Mindray', 'Sinh hoá'),
   product('NSX-BIOCHEMISTRY', 'BS-240E', 'Máy xét nghiệm sinh hoá tự động BS-240E', 'BIOCHEMISTRY', 'Mindray', 'Sinh hoá'),
   product('NSX-BIOCHEMISTRY', 'BS-360E', 'Máy xét nghiệm sinh hoá tự động BS-360E', 'BIOCHEMISTRY', 'Mindray', 'Sinh hoá'),
   product('NSX-BIOCHEMISTRY', 'BS-430', 'Máy xét nghiệm sinh hoá tự động BS-430', 'BIOCHEMISTRY', 'Mindray', 'Sinh hoá'),
+  product('NSX-BIOCHEMISTRY', 'BS-480', 'Máy xét nghiệm sinh hoá tự động BS-480', 'BIOCHEMISTRY', 'Mindray', 'Sinh hoá'),
   product('NSX-BIOCHEMISTRY', 'BS-600M', 'Máy xét nghiệm sinh hoá tự động BS-600M', 'BIOCHEMISTRY', 'Mindray', 'Sinh hoá'),
+  product('NSX-BIOCHEMISTRY', 'BC-2800', 'Máy xét nghiệm huyết học tự động BC-2800', 'HEMATOLOGY', 'Mindray', 'Huyết học'),
   product('NSX-BIOCHEMISTRY', 'BC-6800-PLUS', 'Máy xét nghiệm huyết học 5 thành phần BC-6800 Plus', 'HEMATOLOGY', 'Mindray', 'Huyết học'),
   product('NSX-BIOCHEMISTRY', 'BC-6000', 'Máy xét nghiệm huyết học 6 thành phần BC-6000', 'HEMATOLOGY', 'Mindray', 'Huyết học'),
   product('NSX-BIOCHEMISTRY', 'BC-20S', 'Máy xét nghiệm huyết học tự động BC-20s', 'HEMATOLOGY', 'Mindray', 'Huyết học'),
   product('NSX-BIOCHEMISTRY', 'BC-30S', 'Máy xét nghiệm huyết học tự động BC-30s', 'HEMATOLOGY', 'Mindray', 'Huyết học'),
+  product('NSX-BIOCHEMISTRY', 'BC-31S', 'Máy xét nghiệm huyết học tự động BC-31s', 'HEMATOLOGY', 'Mindray', 'Huyết học'),
+  product('NSX-BIOCHEMISTRY', 'BC-3000P', 'Máy xét nghiệm huyết học tự động BC-3000 Plus', 'HEMATOLOGY', 'Mindray', 'Huyết học'),
   product('NSX-BIOCHEMISTRY', 'BC-5380', 'Máy xét nghiệm huyết học tự động BC-5380', 'HEMATOLOGY', 'Mindray', 'Huyết học'),
   product('NSX-BIOCHEMISTRY', 'BC-700B', 'Máy xét nghiệm huyết học tự động BC-700(B)', 'HEMATOLOGY', 'Mindray', 'Huyết học'),
   product('NSX-BIOCHEMISTRY', 'BC-760B', 'Máy xét nghiệm huyết học tự động BC-760(B)', 'HEMATOLOGY', 'Mindray', 'Huyết học'),
@@ -45,6 +54,9 @@ const products = [
   product('NSX-BIOCHEMISTRY', 'UA-5600', 'Máy xét nghiệm nước tiểu UA-5600', 'LAB_TESTING', 'Mindray', 'Nước tiểu'),
   product('NSX-BIOCHEMISTRY', 'UA-600', 'Máy xét nghiệm nước tiểu UA-600', 'LAB_TESTING', 'Mindray', 'Nước tiểu'),
   product('NSX-BIOCHEMISTRY', 'UA-66', 'Máy xét nghiệm nước tiểu UA-66', 'LAB_TESTING', 'Mindray', 'Nước tiểu'),
+  product('NSX-BIOCHEMISTRY', 'CCU-1500', 'Máy xét nghiệm nước tiểu CCU-1500', 'LAB_TESTING', 'Chưa rõ', 'Nước tiểu'),
+  product('NSX-BIOCHEMISTRY', 'CCU-2400', 'Máy xét nghiệm nước tiểu CCU-2400', 'LAB_TESTING', 'Chưa rõ', 'Nước tiểu'),
+  product('NSX-BIOCHEMISTRY', 'CLINITEK-STATUS', 'Máy xét nghiệm nước tiểu Clinitek Status', 'LAB_TESTING', 'Siemens', 'Nước tiểu'),
 
   // Fujirebio
   product('NSX-IMMUNOLOGY', 'LUMIPULSE-G1200', 'Máy xét nghiệm miễn dịch tự động Lumipulse G1200', 'IMMUNOLOGY', 'Fujirebio', 'Miễn dịch Fujirebio'),
@@ -67,6 +79,7 @@ const products = [
   product('NSX-MINATO', 'WTS-02', 'Thiết bị tập vận động Weltonic WTS-02', 'OTHER', 'Minato', 'Phục hồi chức năng'),
   product('NSX-MINATO', 'WTS-03', 'Thiết bị tập vận động Weltonic WTS-03', 'OTHER', 'Minato', 'Phục hồi chức năng'),
   product('NSX-MINATO', 'WTS-04', 'Thiết bị tập vận động Weltonic WTS-04', 'OTHER', 'Minato', 'Phục hồi chức năng'),
+  product('NSX-MINATO', 'ENPULS-VERSION-2', 'Máy điều trị xung áp lực EnPuls Version 2.0', 'OTHER', 'Chưa rõ', 'Vật lý trị liệu'),
 
   // Nội soi - SonoScape
   product('NSX-SONOSCAPE', 'HD-350', 'Máy nội soi HD-350', 'ENDOSCOPY', 'SonoScape', 'Nội soi tiêu hoá'),
@@ -75,6 +88,8 @@ const products = [
   product('NSX-SONOSCAPE', 'HD-650', 'Máy nội soi HD-650', 'ENDOSCOPY', 'SonoScape', 'Nội soi tiêu hoá'),
   product('NSX-SONOSCAPE', 'X-2200', 'Máy nội soi X-2200', 'ENDOSCOPY', 'SonoScape', 'Nội soi tiêu hoá'),
   product('NSX-SONOSCAPE', 'X-2600', 'Máy nội soi X-2600', 'ENDOSCOPY', 'SonoScape', 'Nội soi tiêu hoá'),
+  product('NSX-SONOSCAPE', 'THORAX', 'Thiết bị Thorax', 'OTHER', 'Chưa rõ', 'Thiết bị khác'),
+  product('NSX-SONOSCAPE', 'BB-1153', 'Thiết bị BB-1153', 'OTHER', 'Chưa rõ', 'Thiết bị khác'),
 
   // Tách chiết tế bào - nếu cần dùng sau
   product('NSX-CELLTRAZONE', 'HURO-PATH-T', 'Máy tách chiết tế bào HURO PATH T', 'OTHER', 'CelltraZone', 'Tách chiết tế bào'),

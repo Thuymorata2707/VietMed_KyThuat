@@ -7,6 +7,8 @@ const apply = args.has('--apply');
 const reset = args.has('--reset');
 const repairsOnly = args.has('--repairs-only');
 const installationsOnly = args.has('--installations-only');
+const resetCatalog = args.has('--reset-catalog');
+const resetOnly = args.has('--reset-only');
 const root = path.resolve('..');
 const installationFile = path.join(root, 'DS lắp máy.xlsx');
 const repairFile = path.join(root, 'DS sửa chữa.xlsx');
@@ -27,11 +29,15 @@ if (!apply) {
 const prisma = new PrismaClient();
 
 try {
-  if (reset) await resetOperationalData(prisma);
-  const context = await loadContext(prisma);
-  const result = await importRows(prisma, context, installationRows, repairRows);
-  console.log('\nImport completed:');
-  console.log(JSON.stringify(result, null, 2));
+  if (reset) await resetOperationalData(prisma, { resetCatalog });
+  if (resetOnly) {
+    console.log('\nReset completed. Import skipped because --reset-only was provided.');
+  } else {
+    const context = await loadContext(prisma);
+    const result = await importRows(prisma, context, installationRows, repairRows);
+    console.log('\nImport completed:');
+    console.log(JSON.stringify(result, null, 2));
+  }
 } finally {
   await prisma.$disconnect();
 }
@@ -122,8 +128,8 @@ function parseRepairWorkbook(file) {
   return rows;
 }
 
-async function resetOperationalData(prisma) {
-  console.log('\nDeleting operational data. Keeping users, roles, regions, engineer profiles.');
+async function resetOperationalData(prisma, options = {}) {
+  console.log('\nDeleting operational data. Keeping users, roles, regions, engineer profiles, and fixed product catalog.');
   await prisma.$transaction([
     prisma.weeklyReportRow.deleteMany(),
     prisma.weeklyReport.deleteMany(),
@@ -138,25 +144,36 @@ async function resetOperationalData(prisma) {
     prisma.machineInstallation.deleteMany(),
     prisma.machineAccessory.deleteMany(),
     prisma.machine.deleteMany(),
-    prisma.componentAccessory.deleteMany(),
-    prisma.machineComponent.deleteMany(),
-    prisma.machineModel.deleteMany(),
-    prisma.businessLine.deleteMany(),
-    prisma.productIndustry.deleteMany(),
     prisma.customer.deleteMany(),
   ]);
+
+  if (options.resetCatalog) {
+    console.log('Deleting fixed product catalog as requested.');
+    await prisma.$transaction([
+      prisma.componentAccessory.deleteMany(),
+      prisma.machineComponent.deleteMany(),
+      prisma.machineModel.deleteMany(),
+      prisma.businessLine.deleteMany(),
+      prisma.productIndustry.deleteMany(),
+    ]);
+  }
 }
 
 async function loadContext(prisma) {
-  const [regions, users] = await Promise.all([
+  const [regions, users, machineModels, businessLines] = await Promise.all([
     prisma.region.findMany(),
     prisma.user.findMany({ include: { role: true, engineerProfile: true } }),
+    prisma.machineModel.findMany({ include: { businessLine: true } }),
+    prisma.businessLine.findMany(),
   ]);
   if (!regions.length) throw new Error('No regions found. Cannot import customers because regionId is required.');
+  if (!machineModels.length) throw new Error('No fixed machine models found. Run FE/scripts/import-vietmed-products.mjs first.');
 
   return {
     regions,
     users,
+    machineModels,
+    businessLines,
     customerCache: new Map(),
     businessLineCache: new Map(),
     machineModelCache: new Map(),
@@ -182,18 +199,18 @@ async function importRows(prisma, context, installationRows, repairRows) {
   };
 
   if (!repairsOnly) for (const row of installationRows) {
-    const businessLine = await getBusinessLine(prisma, context, row.sourceSheet, categoryForSheet(row.sourceSheet), manufacturerForSheet(row.sourceSheet), result);
-    const machineModel = await getMachineModel(prisma, context, businessLine, row.modelName, categoryForSheet(row.sourceSheet), result);
+    const machineModel = findMachineModel(context.machineModels, row.modelName);
+    const businessLine = machineModel?.businessLine || findBusinessLine(context.businessLines, row.sourceSheet, row.modelName);
     const customer = await getCustomer(prisma, context, customerFromInstallation(row), result);
     const engineer = findUser(context.users, row.installerName);
     const serialNumber = uniqueSerial(row.serialNumber, row.sourceSheet, row.stt);
     const machine = await getMachine(prisma, context, {
       serialNumber,
       modelName: row.modelName,
-      manufacturer: businessLine.manufacturer || manufacturerForSheet(row.sourceSheet),
-      productCategory: categoryForSheet(row.sourceSheet),
-      businessLineId: businessLine.id,
-      machineModelId: machineModel.id,
+      manufacturer: machineModel?.manufacturer || businessLine?.manufacturer || manufacturerForSheet(row.sourceSheet),
+      productCategory: machineModel?.productCategory || businessLine?.productCategory || categoryForSheet(row.sourceSheet),
+      businessLineId: businessLine?.id,
+      machineModelId: machineModel?.id,
       customerId: customer.id,
       installedById: engineer?.id,
       primaryEngineerId: engineer?.id,
@@ -209,10 +226,10 @@ async function importRows(prisma, context, installationRows, repairRows) {
         code: nextCode('INSTALL-IMPORT', context.counters.installation++),
         status: 'INSTALLED',
         machineId: machine.id,
-        plannedMachineModelId: machineModel.id,
+        plannedMachineModelId: machineModel?.id,
         plannedModelName: row.modelName,
         customerId: customer.id,
-        businessLineId: businessLine.id,
+        businessLineId: businessLine?.id,
         installedById: engineer?.id,
         installedAt: row.installedAt,
         receiverInstallAddress: row.address || customer.fullAddress || customer.address,
@@ -244,17 +261,17 @@ async function importRows(prisma, context, installationRows, repairRows) {
   }
 
   if (!installationsOnly) for (const row of repairRows) {
-    const businessLine = await getBusinessLine(prisma, context, 'Sửa chữa', 'OTHER', 'Chưa rõ', result);
-    const machineModel = await getMachineModel(prisma, context, businessLine, row.modelName, 'OTHER', result);
+    const machineModel = findMachineModel(context.machineModels, row.modelName);
+    const businessLine = machineModel?.businessLine || findBusinessLine(context.businessLines, 'Sửa chữa', row.modelName);
     const customer = await getCustomer(prisma, context, customerFromRepair(row), result);
     const engineer = findUser(context.users, row.engineerName);
     const machine = await getMachine(prisma, context, {
       serialNumber: uniqueSerial(row.serialNumber, 'repair', row.stt),
       modelName: row.modelName,
-      manufacturer: 'Chưa rõ',
-      productCategory: 'OTHER',
-      businessLineId: businessLine.id,
-      machineModelId: machineModel.id,
+      manufacturer: machineModel?.manufacturer || businessLine?.manufacturer || 'Chưa rõ',
+      productCategory: machineModel?.productCategory || businessLine?.productCategory || 'OTHER',
+      businessLineId: businessLine?.id,
+      machineModelId: machineModel?.id,
       customerId: customer.id,
       primaryEngineerId: engineer?.id,
       inventoryStatus: 'INSTALLED',
@@ -332,69 +349,6 @@ async function getCustomer(prisma, context, data, result) {
   context.customerCache.set(key, customer);
   result.customers += 1;
   return customer;
-}
-
-async function getBusinessLine(prisma, context, name, productCategory, manufacturer, result) {
-  const normalizedName = cleanText(name) || 'Khác';
-  const key = normalizeKey(normalizedName);
-  const cached = context.businessLineCache.get(key);
-  if (cached) return cached;
-  const code = `IMPORT-${slug(normalizedName).slice(0, 36)}`;
-
-  const existing = await prisma.businessLine.findFirst({
-    where: { OR: [{ code }, { name: normalizedName }] },
-  });
-  if (existing) {
-    context.businessLineCache.set(key, existing);
-    return existing;
-  }
-
-  const businessLine = await prisma.businessLine.create({
-    data: {
-      code,
-      name: normalizedName,
-      status: 'ACTIVE',
-      manufacturer,
-      productCategory,
-      expertiseGroup: productCategory === 'LAB_TESTING' ? 'LAB_TESTING' : 'IMAGING',
-      note: 'Tạo tự động từ file Excel import.',
-    },
-  });
-  context.businessLineCache.set(key, businessLine);
-  result.businessLines += 1;
-  return businessLine;
-}
-
-async function getMachineModel(prisma, context, businessLine, modelName, productCategory, result) {
-  const name = cleanText(modelName) || 'Chưa rõ model';
-  const key = `${businessLine.id}:${normalizeKey(name)}`;
-  const cached = context.machineModelCache.get(key);
-  if (cached) return cached;
-  const code = slug(name).slice(0, 60) || `MODEL-${context.machineModelCache.size + 1}`;
-
-  const existing = await prisma.machineModel.findFirst({
-    where: { businessLineId: businessLine.id, code },
-  });
-  if (existing) {
-    context.machineModelCache.set(key, existing);
-    return existing;
-  }
-
-  const machineModel = await prisma.machineModel.create({
-    data: {
-      code,
-      name,
-      displayName: name,
-      status: 'ACTIVE',
-      businessLineId: businessLine.id,
-      manufacturer: businessLine.manufacturer,
-      productCategory,
-      note: 'Tạo tự động từ file Excel import.',
-    },
-  });
-  context.machineModelCache.set(key, machineModel);
-  result.machineModels += 1;
-  return machineModel;
 }
 
 async function getMachine(prisma, context, data, result) {
@@ -494,6 +448,47 @@ function categoryForSheet(sheetName) {
   if (key.includes('sieu am')) return 'ULTRASOUND';
   if (key.includes('xet nghiem')) return 'LAB_TESTING';
   return 'OTHER';
+}
+
+function findMachineModel(machineModels, modelName) {
+  const wanted = normalizeModel(modelName);
+  if (!wanted) return undefined;
+  const exact = machineModels.find((model) => modelAliases(model).some((alias) => alias === wanted));
+  if (exact) return exact;
+  return machineModels.find((model) => modelAliases(model).some((alias) => alias.includes(wanted) || wanted.includes(alias)));
+}
+
+function findBusinessLine(businessLines, sourceSheet, modelName) {
+  const modelKey = normalizeModel(modelName);
+  const sourceKey = normalizeKey(sourceSheet);
+  if (sourceKey.includes('sieu am') || modelKey.includes('XCUBE') || modelKey.includes('MINISONO')) {
+    return businessLines.find((line) => line.productCategory === 'ULTRASOUND') || undefined;
+  }
+  if (sourceKey.includes('xet nghiem') || ['BC', 'BS', 'CL', 'BA', 'UA', 'EU'].some((prefix) => modelKey.startsWith(prefix))) {
+    return businessLines.find((line) => ['BIOCHEMISTRY', 'HEMATOLOGY', 'IMMUNOLOGY', 'LAB_TESTING'].includes(line.productCategory)) || undefined;
+  }
+  if (sourceKey.includes('minato') || ['KT', 'WTS', 'QZ', 'ST', 'TC', 'MHR', 'ALB', 'HC', 'MT'].some((prefix) => modelKey.startsWith(prefix))) {
+    return businessLines.find((line) => normalizeKey(line.manufacturer).includes('minato')) || undefined;
+  }
+  if (['HD', 'X2200', 'X2600'].some((prefix) => modelKey.startsWith(prefix))) {
+    return businessLines.find((line) => line.productCategory === 'ENDOSCOPY') || undefined;
+  }
+  return undefined;
+}
+
+function modelAliases(model) {
+  return [model.code, model.name, model.displayName]
+    .filter(Boolean)
+    .flatMap((value) => {
+      const normalized = normalizeModel(value);
+      const compactName = normalized
+        .replace(/^MAYXETNGHIEM/, '')
+        .replace(/^MAYSIEUAMXACHTAY/, '')
+        .replace(/^MAYSIEUAM/, '')
+        .replace(/^MAYNOISOI/, '')
+        .replace(/^MAY/, '');
+      return [normalized, compactName].filter(Boolean);
+    });
 }
 
 function manufacturerForSheet(sheetName) {
@@ -678,6 +673,16 @@ function normalizeKey(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
+}
+
+function normalizeModel(value) {
+  return normalizeKey(value)
+    .replace(/\benpuuls\b/g, 'enpuls')
+    .replace(/\bplus\b/g, 'PLUS')
+    .replace(/\bpro\b/g, 'PRO')
+    .replace(/\s+/g, '')
+    .replace(/-/g, '')
+    .toUpperCase();
 }
 
 function slug(value) {
