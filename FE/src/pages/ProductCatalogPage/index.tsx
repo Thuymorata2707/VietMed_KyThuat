@@ -291,55 +291,60 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <IndustryStockCard icon={<Boxes size={18} />} label="Tổng máy" value={catalogTotals.machines} subLabel={`${catalogTotals.inStock} máy còn kho`} />
-          <IndustryStockCard icon={<Layers3 size={18} />} label="Model" value={catalogTotals.models} subLabel={`${catalogTotals.businessLines} dòng sản phẩm`} />
-          {visibleIndustries.slice(0, 2).map((industry) => {
-            const stock = stockByIndustry[industry.id] ?? { inStock: 0, total: 0 };
-            return <IndustryStockCard icon={<BarChart3 size={18} />} key={industry.id} label={industry.name} value={stock.total} subLabel={`${stock.inStock} máy còn kho`} />;
-          })}
+      <section className="grid overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_18px_44px_rgba(47,95,152,0.10)] xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="grid content-between gap-6 bg-[#f7fafc] p-5 md:p-6">
+          <div>
+            <span className="inline-flex min-h-8 items-center rounded-lg border border-[#d8e0ea] bg-white px-2.5 text-xs font-semibold text-[#2f5f98]">
+              Catalog overview
+            </span>
+            <h2 className="mt-4 max-w-2xl text-[clamp(24px,3vw,38px)] font-semibold leading-tight text-[#101828]">
+              Danh mục sản phẩm theo ngành hàng
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#667085]">
+              Theo dõi model cố định, số máy thực tế và tình trạng còn kho trong cùng một màn.
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <IndustryStockCard icon={<Boxes size={18} />} label="Tổng máy" value={catalogTotals.machines} subLabel={`${catalogTotals.inStock} còn kho`} />
+            <IndustryStockCard icon={<Layers3 size={18} />} label="Model" value={catalogTotals.models} subLabel={`${catalogTotals.businessLines} dòng`} />
+            <IndustryStockCard icon={<BarChart3 size={18} />} label="Đang xem" value={visibleModels.length} subLabel="model sau lọc" />
+          </div>
         </div>
         <IndustryMachineChart industries={visibleIndustries} stockByIndustry={stockByIndustry} />
       </section>
 
-      <section className="grid gap-4 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-medium text-[#101828]">Danh mục model</h2>
-            <p className="mt-1 text-sm text-[#667085]">{visibleModels.length} model theo bộ lọc hiện tại</p>
+      <section className="grid gap-4">
+        <div className="sticky top-0 z-10 grid gap-3 rounded-lg border border-[#d8e0ea] bg-white/95 p-3 shadow-[0_10px_30px_rgba(16,24,40,0.06)] backdrop-blur md:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
+          <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
+            <button
+              className={industryTabClass(selectedIndustryId === allIndustriesKey)}
+              onClick={() => updateCatalogState(allIndustriesKey, query)}
+              type="button"
+            >
+              <span>Tất cả</span>
+              <StockPill stock={visibleIndustryStock} />
+            </button>
+            {visibleIndustries.map((industry) => (
+              <button
+                className={industryTabClass(industry.id === selectedIndustryId)}
+                key={industry.id}
+                onClick={() => updateCatalogState(industry.id, query)}
+                type="button"
+              >
+                <span>{industry.name}</span>
+                <StockPill stock={stockByIndustry[industry.id] ?? { inStock: 0, total: 0 }} />
+              </button>
+            ))}
           </div>
-          <label className="flex h-10 min-w-60 flex-[1_1_320px] items-center gap-2 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#667085] focus-within:border-[#d92d20] focus-within:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]">
+          <label className="flex h-11 min-w-0 items-center gap-2 rounded-lg border border-[#cfd8e3] bg-[#f8fafc] px-3 text-[#667085] focus-within:border-[#d92d20] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]">
             <Search size={16} />
             <input
-              className="min-w-0 flex-1 border-0 text-[#101828] outline-none"
+              className="min-w-0 flex-1 border-0 bg-transparent text-[#101828] outline-none"
               onChange={(event) => updateCatalogState(selectedIndustryId, event.target.value)}
               placeholder="Tìm model, hãng, nhóm sản phẩm"
               value={query}
             />
           </label>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            className={industryTabClass(selectedIndustryId === allIndustriesKey)}
-            onClick={() => updateCatalogState(allIndustriesKey, query)}
-            type="button"
-          >
-            <span>Tất cả</span>
-            <StockPill stock={visibleIndustryStock} />
-          </button>
-          {visibleIndustries.map((industry) => (
-            <button
-              className={industryTabClass(industry.id === selectedIndustryId)}
-              key={industry.id}
-              onClick={() => updateCatalogState(industry.id, query)}
-              type="button"
-            >
-              <span>{industry.name}</span>
-              <StockPill stock={stockByIndustry[industry.id] ?? { inStock: 0, total: 0 }} />
-            </button>
-          ))}
         </div>
 
         {loading ? (
@@ -828,11 +833,11 @@ function ModelIndustryGroup({
   const inStock = group.models.reduce((sum, model) => sum + (stockByModel[model.id]?.inStock ?? 0), 0);
 
   return (
-    <section className="grid gap-3 rounded-lg border border-[#edf2f7] bg-[#fbfdff] p-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <section className="overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
         <div>
-          <span className="text-[12px] font-medium text-[#667085]">{group.expertise || 'Ngành hàng'}</span>
-          <h3 className="mt-1 text-lg font-medium text-[#101828]">{group.name}</h3>
+          <span className="text-[12px] font-semibold text-[#667085]">{group.expertise || 'Ngành hàng'}</span>
+          <h3 className="mt-1 text-xl font-semibold text-[#101828]">{group.name}</h3>
         </div>
         <div className="flex flex-wrap gap-2 text-xs font-medium">
           <span className="rounded-full border border-[#dde5ee] bg-white px-2.5 py-1 text-[#344054]">{group.models.length} model</span>
@@ -840,7 +845,7 @@ function ModelIndustryGroup({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 min-[1440px]:grid-cols-3">
+      <div className="divide-y divide-[#edf2f7]">
         {group.models.map((model) => (
           <ModelCard
             canAddProduct={canAddProduct}
@@ -866,32 +871,41 @@ function ModelCard({
   model: MachineModel;
   stock?: ModelStock;
 }) {
+  const total = stock?.total ?? 0;
+  const inStock = stock?.inStock ?? 0;
+  const ratio = total ? Math.round((inStock / total) * 100) : 0;
+
   return (
-    <article className="grid min-w-0 gap-3 rounded-lg border border-[#dde5ee] bg-white p-4 transition hover:-translate-y-px hover:border-[#b8cbe1] hover:shadow-[0_10px_28px_rgba(47,95,152,0.10)]">
+    <article className="grid min-w-0 gap-4 px-4 py-3 transition hover:bg-[#fbfdff] min-[1120px]:grid-cols-[minmax(320px,1fr)_180px_220px_auto] min-[1120px]:items-center">
       <Link className="flex min-w-0 gap-3" to={`/business-lines/models/${model.id}${catalogSearch}`}>
         <ModelImage model={model} />
         <div className="min-w-0">
           <strong className="block truncate text-base font-semibold text-[#101828]">{modelShortLabel(model)}</strong>
-          <span className="mt-1 block line-clamp-2 text-sm leading-5 text-[#667085]">{modelDetailLabel(model)}</span>
+          <span className="mt-1 block truncate text-sm leading-5 text-[#667085]">{modelDetailLabel(model)}</span>
+          <span className="mt-1 block text-xs font-medium text-[#2f5f98]">{model.businessLine?.name || 'Chưa có dòng sản phẩm'}</span>
         </div>
       </Link>
 
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        <div className="rounded-lg bg-[#f8fafc] p-2.5">
-          <span className="block text-[12px] font-medium text-[#667085]">Hãng</span>
-          <strong className="mt-1 block truncate text-[#344054]">{model.manufacturer || 'Chưa có'}</strong>
+      <div className="grid gap-1 text-sm">
+        <span className="text-[12px] font-medium text-[#667085]">Hãng / loại</span>
+        <strong className="truncate text-[#344054]">{model.manufacturer || 'Chưa có hãng'}</strong>
+        <span className="truncate text-xs text-[#667085]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</span>
+      </div>
+
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="font-medium text-[#667085]">Tồn kho</span>
+          <strong className="tabular-nums text-[#101828]">{inStock}/{total}</strong>
         </div>
-        <div className="rounded-lg bg-[#f8fafc] p-2.5">
-          <span className="block text-[12px] font-medium text-[#667085]">Loại</span>
-          <strong className="mt-1 block truncate text-[#344054]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</strong>
+        <div className="h-2 overflow-hidden rounded-full bg-[#edf2f7]">
+          <div className="h-full rounded-full bg-[#2f5f98]" style={{ width: `${Math.max(ratio, total ? 7 : 0)}%` }} />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#edf2f7] pt-3">
-        <div className="flex flex-wrap gap-2 text-xs font-medium">
-          <span className="rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2.5 py-1 text-[#067647]">Còn kho {stock?.inStock ?? 0}</span>
-          <span className="rounded-full border border-[#dde5ee] bg-[#f4f7fb] px-2.5 py-1 text-[#344054]">Tổng {stock?.total ?? 0}</span>
-        </div>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Link className="secondary-button compact" to={`/business-lines/models/${model.id}${catalogSearch}`}>
+          Xem
+        </Link>
         {canAddProduct ? (
           <Link className="primary-button compact" to={`/business-lines/add-product?modelId=${model.id}`}>
             <PackagePlus size={16} />
@@ -1097,7 +1111,7 @@ function IndustryMachineChart({
   const maxTotal = Math.max(1, ...items.map((item) => item.stock.total));
 
   return (
-    <section className="rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+    <section className="grid gap-4 border-l border-[#d8e0ea] bg-white p-5 md:p-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <span className="text-[12px] font-medium text-[#667085]">Biểu đồ ngành hàng</span>
@@ -1105,7 +1119,7 @@ function IndustryMachineChart({
         </div>
         <BarChart3 className="text-[#2f5f98]" size={20} />
       </div>
-      <div className="grid gap-3">
+      <div className="grid gap-4">
         {items.map((item) => {
           const width = Math.max(6, Math.round((item.stock.total / maxTotal) * 100));
           return (
@@ -1114,8 +1128,8 @@ function IndustryMachineChart({
                 <span className="font-medium text-[#344054]">{item.name}</span>
                 <span className="font-semibold tabular-nums text-[#101828]">{item.stock.total}</span>
               </div>
-              <div className="h-3 overflow-hidden rounded-full bg-[#edf2f7]">
-                <div className="h-full rounded-full bg-[#2f5f98]" style={{ width: `${width}%` }} />
+              <div className="h-2.5 overflow-hidden rounded-full bg-[#edf2f7]">
+                <div className="h-full rounded-full bg-[#2f5f98] transition-[width] duration-300" style={{ width: `${width}%` }} />
               </div>
               <span className="text-xs text-[#667085]">{item.stock.inStock} máy còn kho</span>
             </div>
@@ -1129,13 +1143,13 @@ function IndustryMachineChart({
 
 function IndustryStockCard({ icon, label, subLabel, value }: { icon: ReactNode; label: string; subLabel: string; value: number }) {
   return (
-    <div className="grid gap-2 rounded-lg border border-[#dde5ee] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+    <div className="grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold text-[#667085]">{label}</span>
         <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#eef6ff] text-[#2f5f98]">{icon}</span>
       </div>
-      <div className="flex items-end justify-between gap-3">
-        <strong className="text-3xl leading-none text-[#101828]">{value}</strong>
+      <div className="grid gap-1">
+        <strong className="text-3xl font-semibold leading-none text-[#101828]">{value}</strong>
         <span className="text-xs font-medium text-[#667085]">{subLabel}</span>
       </div>
     </div>
@@ -1152,8 +1166,8 @@ function StockPill({ stock }: { stock: ModelStock }) {
 }
 
 function industryTabClass(active: boolean) {
-  return `inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium ${
-    active ? 'border-[#fecdca] bg-[#fff4f2] text-[#d92d20]' : 'border-[#dde5ee] bg-[#f4f7fb] text-[#344054] hover:border-[#d92d20]'
+  return `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition ${
+    active ? 'border-[#d92d20] bg-[#fff4f2] text-[#d92d20] shadow-[0_6px_18px_rgba(217,45,32,0.10)]' : 'border-[#dde5ee] bg-[#f8fafc] text-[#344054] hover:border-[#b8cbe1] hover:bg-white'
   }`;
 }
 
