@@ -226,6 +226,16 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const machineStatusSummary = useMemo(() => {
+    const machines = technicalMachines?.machines ?? [];
+    return {
+      total: technicalMachines?.filteredTotal ?? 0,
+      installed: machines.filter((machine) => machine.inventoryStatus === 'INSTALLED').length,
+      inStock: machines.filter((machine) => machine.inventoryStatus === 'IN_STOCK').length,
+      returned: machines.filter((machine) => machine.inventoryStatus === 'RETURNED').length,
+    };
+  }, [technicalMachines]);
+
   useEffect(() => {
     if (currentRole !== 'admin') return;
     void loadCustomers();
@@ -573,170 +583,162 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="grid min-w-0 gap-3 rounded-lg border border-[#dde5ee] bg-white p-4 min-[1320px]:grid-cols-[minmax(220px,1fr)_180px_150px_auto]">
-        <label className="relative grid min-w-0 gap-2 text-sm font-semibold text-[#344054]">
-          Tìm kiếm
-          <Search className="pointer-events-none absolute bottom-[11px] left-3 text-[#98a2b3]" size={17} />
-          <input
-            className="h-11 min-w-0 rounded-lg border border-[#cfd8e3] pl-9 pr-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="S/N máy, model, khách hàng, S/N đầu dò..."
-            value={searchInput}
-          />
-        </label>
-        <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#344054]">
-          Trạng thái lắp
-          <select
-            className="h-11 min-w-0 rounded-lg border border-[#cfd8e3] px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
-            onChange={(event) => {
-              setInstallState(event.target.value);
-              setPage(1);
-              setSelectedMachineId(null);
-            }}
-            value={installState}
-          >
-            <option value="ALL">Tất cả</option>
-            <option value="INSTALLED">Đã lắp</option>
-            <option value="UNINSTALLED">Chưa lắp</option>
-          </select>
-        </label>
-        <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#344054]">
-          Số dòng
-          <select
-            className="h-11 min-w-0 rounded-lg border border-[#cfd8e3] px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
-            onChange={(event) => {
-              setLimit(Number(event.target.value));
-              setPage(1);
-              setSelectedMachineId(null);
-            }}
-            value={limit}
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-          </select>
-        </label>
-        <button className="secondary-button self-end" onClick={resetFilters} type="button">
-          <RotateCcw size={17} />
-          Đặt lại
-        </button>
-      </section>
+      <section className="grid gap-4">
+        <div className="grid gap-3 md:grid-cols-4">
+          <MachineSummaryCard label="Tổng kết quả" value={machineStatusSummary.total} />
+          <MachineSummaryCard label="Đã lắp" tone="green" value={machineStatusSummary.installed} />
+          <MachineSummaryCard label="Trong kho" tone="blue" value={machineStatusSummary.inStock} />
+          <MachineSummaryCard label="Thu hồi" tone="amber" value={machineStatusSummary.returned} />
+        </div>
 
-      <section className="grid min-w-0 gap-4 min-[1320px]:grid-cols-[280px_minmax(0,1fr)] min-[1680px]:grid-cols-[300px_minmax(0,1fr)]">
-        <div className="grid min-w-0 gap-4">
-          <div className="rounded-lg border border-[#dde5ee] bg-white p-4">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-base font-medium text-[#101828]">Máy theo ngành hàng</h2>
-                <p className="text-sm text-[#667085]">
-                  {loading ? 'Đang tải dữ liệu máy.' : `${technicalMachines?.businessLines.length ?? 0} ngành hàng`}
-                </p>
-              </div>
-              <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-[#f8fafc] px-2.5 text-sm font-medium text-[#2f5f98]">
-                {loading ? <Loader2 className="spin-icon" size={17} /> : <PackageSearch size={17} />}
-                {loading ? '-' : technicalMachines?.total ?? 0}
-              </span>
-            </div>
-
-            <div className="grid gap-2">
+        <div className="grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-3 shadow-[0_10px_28px_rgba(16,24,40,0.05)]">
+          <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
+            <button
+              className={machineFilterChipClass(selectedBusinessLineKey === 'ALL')}
+              onClick={() => {
+                setSelectedBusinessLineKey('ALL');
+                setSelectedMachineId(null);
+                setPage(1);
+              }}
+              type="button"
+            >
+              <span>Tất cả</span>
+              <b>{technicalMachines?.businessLines.reduce((sum, item) => sum + item.count, 0) ?? 0}</b>
+            </button>
+            {technicalMachines?.businessLines.map((businessLine) => (
               <button
-                className={`grid min-h-[54px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition ${selectedBusinessLineKey === 'ALL' ? 'border-[#b8cbe1] bg-[#f3f8ff]' : 'border-[#edf2f7] bg-white hover:border-[#d7e0eb] hover:bg-[#fbfdff]'}`}
+                className={machineFilterChipClass(businessLineKey(businessLine) === selectedBusinessLineKey)}
+                key={businessLineKey(businessLine)}
                 onClick={() => {
-                  setSelectedBusinessLineKey('ALL');
+                  setSelectedBusinessLineKey(businessLineKey(businessLine));
                   setSelectedMachineId(null);
                   setPage(1);
                 }}
                 type="button"
               >
-                <span className="grid min-w-0 gap-1">
-                  <strong className="truncate text-sm text-[#101828]">Tất cả ngành hàng</strong>
-                  <span className="text-[12px] text-[#667085]">Theo bộ lọc hiện tại</span>
-                </span>
-                <b className="text-lg text-[#2f5f98]">{technicalMachines?.businessLines.reduce((sum, item) => sum + item.count, 0) ?? 0}</b>
+                <span>{businessLine.name}</span>
+                <b>{businessLine.count}</b>
               </button>
-              {technicalMachines?.businessLines.length ? (
-                technicalMachines.businessLines.map((businessLine) => {
-                  const isActive = businessLineKey(businessLine) === selectedBusinessLineKey;
-                  return (
-                    <button
-                      className={`grid min-h-[54px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition ${isActive ? 'border-[#b8cbe1] bg-[#f3f8ff]' : 'border-[#edf2f7] bg-white hover:border-[#d7e0eb] hover:bg-[#fbfdff]'}`}
-                      key={businessLineKey(businessLine)}
-                      onClick={() => {
-                        setSelectedBusinessLineKey(businessLineKey(businessLine));
-                        setSelectedMachineId(null);
-                        setPage(1);
-                      }}
-                      type="button"
-                    >
-                      <span className="grid min-w-0 gap-1">
-                        <strong className="truncate text-sm text-[#101828]">{businessLine.name}</strong>
-                        <span className="text-[12px] text-[#667085]">{businessLine.code || displayProductCategory(businessLine.productCategory)}</span>
-                      </span>
-                      <b className="text-lg text-[#2f5f98]">{businessLine.count}</b>
-                      </button>
-                  );
-                })
-              ) : (
-                <EmptyState text={loading ? 'Đang tải dữ liệu máy.' : 'Chưa có máy trong phạm vi dữ liệu.'} />
-              )}
-            </div>
+            ))}
           </div>
 
-          <div className="rounded-lg border border-[#dde5ee] bg-white p-4">
-            <div className="mb-4">
-              <h2 className="text-base font-medium text-[#101828]">Số S/N</h2>
-              <p className="text-sm text-[#667085]">
-                {selectedBusinessLine?.name ?? 'Tất cả ngành hàng'} - {technicalMachines?.filteredTotal ?? 0} kết quả
-              </p>
-            </div>
-            <div className="grid max-h-[520px] gap-2 overflow-auto pr-1">
-              {technicalMachines?.machines.length ? (
-                technicalMachines.machines.map((machine) => (
-                  <button
-                    className={`grid min-h-[50px] gap-1 rounded-lg border px-2.5 py-2 text-left transition ${machine.id === selectedMachine?.id ? 'border-[#b8cbe1] bg-[#f3f8ff]' : 'border-[#edf2f7] bg-white hover:border-[#d7e0eb] hover:bg-[#fbfdff]'}`}
-                    key={machine.id}
-                    onClick={() => navigate(`/technical-machines/${machine.id}`)}
-                    type="button"
-                  >
-                    <span className="flex min-w-0 items-center justify-between gap-2">
-                      <strong className="truncate text-[13px] text-[#2f5f98]">{machine.serialNumber}</strong>
-                      <Eye size={15} className="shrink-0 text-[#98a2b3]" />
-                    </span>
-                    <span className="truncate text-[12px] text-[#667085]">{machine.machineCode || machine.modelName}</span>
-                  </button>
-                ))
-              ) : (
-                <EmptyState text={loading ? 'Đang tải danh sách máy.' : 'Không có máy phù hợp bộ lọc.'} />
-              )}
-            </div>
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#edf2f7] pt-3">
-              <button
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#dde5ee] bg-white px-2.5 text-sm font-medium text-[#344054] disabled:cursor-not-allowed disabled:opacity-45"
-                disabled={loading || page <= 1}
-                onClick={() => setPage((current) => Math.max(current - 1, 1))}
-                type="button"
-              >
-                <ChevronLeft size={16} />
-                Trước
-              </button>
-              <span className="text-sm font-semibold text-[#667085]">
-                {technicalMachines?.page ?? page}/{technicalMachines?.totalPages ?? 1}
-              </span>
-              <button
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#dde5ee] bg-white px-2.5 text-sm font-medium text-[#344054] disabled:cursor-not-allowed disabled:opacity-45"
-                disabled={loading || page >= (technicalMachines?.totalPages ?? 1)}
-                onClick={() => setPage((current) => current + 1)}
-                type="button"
-              >
-                Sau
-                <ChevronRight size={16} />
-              </button>
-            </div>
+          <div className="grid gap-3 min-[1120px]:grid-cols-[minmax(260px,1fr)_180px_150px_auto]">
+            <label className="relative min-w-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#98a2b3]" size={17} />
+              <input
+                className="h-11 w-full min-w-0 rounded-lg border border-[#cfd8e3] bg-[#f8fafc] pl-9 pr-3 text-[#101828] outline-none focus:border-[#d92d20] focus:bg-white focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Tìm S/N, model, khách hàng, đầu dò..."
+                value={searchInput}
+              />
+            </label>
+            <select
+              className="h-11 min-w-0 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
+              onChange={(event) => {
+                setInstallState(event.target.value);
+                setPage(1);
+                setSelectedMachineId(null);
+              }}
+              value={installState}
+            >
+              <option value="ALL">Tất cả trạng thái lắp</option>
+              <option value="INSTALLED">Đã lắp</option>
+              <option value="UNINSTALLED">Chưa lắp</option>
+            </select>
+            <select
+              className="h-11 min-w-0 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
+              onChange={(event) => {
+                setLimit(Number(event.target.value));
+                setPage(1);
+                setSelectedMachineId(null);
+              }}
+              value={limit}
+            >
+              <option value={10}>10 dòng</option>
+              <option value={25}>25 dòng</option>
+              <option value={50}>50 dòng</option>
+              <option value={100}>100 dòng</option>
+            </select>
+            <button className="secondary-button justify-center" onClick={resetFilters} type="button">
+              <RotateCcw size={17} />
+              Đặt lại
+            </button>
           </div>
         </div>
 
-        <MachineListActionPanel canEdit={currentRole === 'admin'} machine={selectedMachine} />
+        <section className="overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_12px_34px_rgba(16,24,40,0.06)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
+            <div>
+              <h2 className="text-base font-semibold text-[#101828]">Danh sách máy</h2>
+              <p className="mt-1 text-sm text-[#667085]">
+                {selectedBusinessLine?.name ?? 'Tất cả ngành hàng'} - {technicalMachines?.filteredTotal ?? 0} kết quả
+              </p>
+            </div>
+            <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-white px-2.5 text-sm font-medium text-[#2f5f98]">
+              {loading ? <Loader2 className="spin-icon" size={17} /> : <PackageSearch size={17} />}
+              {loading ? '-' : technicalMachines?.total ?? 0}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1040px] border-collapse">
+              <thead>
+                <tr className="border-b border-[#edf2f7] text-left text-xs font-semibold text-[#667085]">
+                  <th className="px-4 py-3">Máy</th>
+                  <th className="px-4 py-3">Khách hàng</th>
+                  <th className="px-4 py-3">Trạng thái</th>
+                  <th className="px-4 py-3">Bảo hành</th>
+                  <th className="px-4 py-3">Kỹ sư</th>
+                  <th className="px-4 py-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {technicalMachines?.machines.map((machine) => (
+                  <MachineTableRow canEdit={currentRole === 'admin'} key={machine.id} machine={machine} />
+                ))}
+                {loading ? (
+                  <tr>
+                    <td className="px-4 py-10 text-center text-sm font-semibold text-[#667085]" colSpan={6}>
+                      <Loader2 className="spin-icon mx-auto mb-2" size={20} />
+                      Đang tải danh sách máy
+                    </td>
+                  </tr>
+                ) : null}
+                {!loading && !technicalMachines?.machines.length ? (
+                  <tr>
+                    <td className="px-4 py-10 text-center text-sm text-[#667085]" colSpan={6}>
+                      Không có máy phù hợp bộ lọc.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-[#edf2f7] px-4 py-3">
+            <button
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#dde5ee] bg-white px-2.5 text-sm font-medium text-[#344054] disabled:cursor-not-allowed disabled:opacity-45"
+              disabled={loading || page <= 1}
+              onClick={() => setPage((current) => Math.max(current - 1, 1))}
+              type="button"
+            >
+              <ChevronLeft size={16} />
+              Trước
+            </button>
+            <span className="text-sm font-semibold text-[#667085]">
+              Trang {technicalMachines?.page ?? page}/{technicalMachines?.totalPages ?? 1}
+            </span>
+            <button
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#dde5ee] bg-white px-2.5 text-sm font-medium text-[#344054] disabled:cursor-not-allowed disabled:opacity-45"
+              disabled={loading || page >= (technicalMachines?.totalPages ?? 1)}
+              onClick={() => setPage((current) => current + 1)}
+              type="button"
+            >
+              Sau
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </section>
       </section>
 
       {editingMachine && !machineId ? (
@@ -1125,6 +1127,110 @@ function MachineListActionPanel({ canEdit, machine }: { canEdit: boolean; machin
       )}
     </aside>
   );
+}
+
+function MachineSummaryCard({ label, tone = 'neutral', value }: { label: string; tone?: 'neutral' | 'green' | 'blue' | 'amber'; value: number }) {
+  const toneClass = {
+    neutral: 'bg-[#f8fafc] text-[#344054]',
+    green: 'bg-[#ecfdf3] text-[#067647]',
+    blue: 'bg-[#eef6ff] text-[#2f5f98]',
+    amber: 'bg-[#fff7ed] text-[#b54708]',
+  }[tone];
+
+  return (
+    <div className="grid gap-2 rounded-lg border border-[#d8e0ea] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <span className="text-sm font-medium text-[#667085]">{label}</span>
+      <div className="flex items-end justify-between gap-3">
+        <strong className="text-3xl font-semibold leading-none text-[#101828]">{value}</strong>
+        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${toneClass}`}>
+          <PackageSearch size={16} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function MachineTableRow({ canEdit, machine }: { canEdit: boolean; machine: DashboardMachine }) {
+  const customerName = machine.customer?.hospitalName || machine.customer?.name || '';
+  const warrantyText = machine.warrantyEndDate ? formatDashboardDate(machine.warrantyEndDate) : '';
+  const engineerName = machine.primaryEngineer?.fullName || machine.installedBy?.fullName || machine.primaryEngineer?.email || machine.installedBy?.email || '';
+
+  return (
+    <tr className="border-b border-[#edf2f7] transition hover:bg-[#fbfdff]">
+      <td className="px-4 py-3">
+        <div className="grid gap-1">
+          <Link className="font-semibold text-[#2f5f98] hover:underline" to={`/technical-machines/${machine.id}`}>
+            {machine.serialNumber}
+          </Link>
+          <span className="text-sm text-[#101828]">{machine.machineCode || machine.name || 'Chưa có mã máy'}</span>
+          <span className="text-xs text-[#667085]">{machine.modelName}</span>
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <div className="grid gap-1 text-sm">
+          <strong className="max-w-[240px] truncate text-[#101828]">{customerName || 'Chưa gắn khách hàng'}</strong>
+          <span className="text-xs text-[#667085]">{[machine.customer?.province, machine.customer?.phone || machine.customer?.contactPhone].filter(Boolean).join(' - ') || '-'}</span>
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-1.5">
+          <StatusPill value={machine.inventoryStatus || ''} />
+          <StatusPill subtle value={machine.status || ''} />
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <div className="grid gap-1 text-sm">
+          <strong className={warrantyClass(machine.warrantyEndDate)}>{warrantyText || 'Chưa có hạn'}</strong>
+          <span className="text-xs text-[#667085]">{machine.installDate ? `Lắp ${formatDashboardDate(machine.installDate)}` : 'Chưa có ngày lắp'}</span>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-sm text-[#344054]">{engineerName || '-'}</td>
+      <td className="px-4 py-3">
+        <div className="flex justify-end gap-2">
+          <Link className="secondary-button compact" to={`/technical-machines/${machine.id}`}>
+            <Eye size={16} />
+            Xem
+          </Link>
+          {canEdit ? (
+            <Link className="primary-button compact" to={`/technical-machines/${machine.id}/edit`}>
+              <Edit3 size={16} />
+              Sửa
+            </Link>
+          ) : null}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function StatusPill({ subtle, value }: { subtle?: boolean; value: string }) {
+  if (!value) return null;
+  const color = subtle ? 'border-[#dde5ee] bg-[#f8fafc] text-[#344054]' : statusPillTone(value);
+  return <span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-semibold ${color}`}>{displayLabel(value)}</span>;
+}
+
+function statusPillTone(value: string) {
+  if (value === 'INSTALLED' || value === 'ACTIVE') return 'border-[#abefc6] bg-[#ecfdf3] text-[#067647]';
+  if (value === 'IN_STOCK' || value === 'RESERVED') return 'border-[#b8cbe1] bg-[#eef6ff] text-[#2f5f98]';
+  if (value === 'RETURNED' || value === 'REPAIRING' || value === 'MAINTENANCE') return 'border-[#fedf89] bg-[#fff7ed] text-[#b54708]';
+  if (value === 'SOLD' || value === 'INACTIVE') return 'border-[#fecdca] bg-[#fff4f2] text-[#d92d20]';
+  return 'border-[#dde5ee] bg-[#f8fafc] text-[#344054]';
+}
+
+function warrantyClass(value?: string | null) {
+  if (!value) return 'text-[#667085]';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'text-[#101828]';
+  const daysLeft = Math.ceil((date.getTime() - Date.now()) / 86_400_000);
+  if (daysLeft < 0) return 'text-[#d92d20]';
+  if (daysLeft <= 30) return 'text-[#b54708]';
+  return 'text-[#067647]';
+}
+
+function machineFilterChipClass(active: boolean) {
+  return `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition ${
+    active ? 'border-[#d92d20] bg-[#fff4f2] text-[#d92d20] shadow-[0_6px_18px_rgba(217,45,32,0.10)]' : 'border-[#dde5ee] bg-[#f8fafc] text-[#344054] hover:border-[#b8cbe1] hover:bg-white'
+  } [&_b]:tabular-nums`;
 }
 
 function MachineEditForm({
