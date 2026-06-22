@@ -332,8 +332,8 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
       {role === 'admin' ? (
         <section className="grid gap-3.5">
           <div>
-            <span className="text-xs font-medium text-[#667085]">Quản trị hệ thống</span>
-            <h2 className="mt-1 text-lg font-medium text-[#101828]">Thao tác nhanh</h2>
+            <span className="text-xs font-medium text-[#657386]">Quản trị hệ thống</span>
+            <h2 className="mt-1 text-lg font-medium text-[#142033]">Thao tác nhanh</h2>
           </div>
           <div className="grid grid-cols-3 gap-3 max-[1180px]:grid-cols-2 max-[860px]:grid-cols-1">
             <AdminShortcut to="/users" icon={<Users size={19} />} title="Nhân sự" detail="Tài khoản, vai trò, khu vực và trạng thái." />
@@ -662,10 +662,10 @@ function QueueBars({ items, loading }: { items: Array<{ label: string; value: nu
         return (
           <div className="grid gap-1.5" key={item.label}>
             <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="font-semibold text-[#344054]">{item.label}</span>
+              <span className="font-semibold text-[#334155]">{item.label}</span>
               <strong className={style.text}>{loading ? '-' : item.value}</strong>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-[#edf2f7]">
+            <div className="h-2.5 overflow-hidden rounded-full bg-[#e8edf3]">
               <span className={`block h-full rounded-full ${style.bar}`} style={{ width: `${width}%` }} />
             </div>
           </div>
@@ -696,7 +696,7 @@ function ActionLink({ icon, label, to }: { icon: ReactNode; label: string; to: s
 function toneClass(tone: Tone) {
   if (tone === 'good') return { panel: 'border-[#b9e8ca] bg-[#eefaf3]', text: 'text-[#177245]', icon: 'text-[#177245]', bar: 'bg-[#177245]', hex: '#177245' };
   if (tone === 'warn') return { panel: 'border-[#efd8a8] bg-[#fff8ed]', text: 'text-[#9b5a17]', icon: 'text-[#9b5a17]', bar: 'bg-[#9b5a17]', hex: '#9b5a17' };
-  if (tone === 'danger') return { panel: 'border-[#f4c9c4] bg-[#fff4f2]', text: 'text-[#a3342b]', icon: 'text-[#a3342b]', bar: 'bg-[#a3342b]', hex: '#a3342b' };
+  if (tone === 'danger') return { panel: 'border-[#f4c9c4] bg-[#fff6f4]', text: 'text-[#a3342b]', icon: 'text-[#a3342b]', bar: 'bg-[#a3342b]', hex: '#a3342b' };
   return { panel: 'border-[#c9d9ee] bg-[#eef5ff]', text: 'text-[#2f5f98]', icon: 'text-[#2f5f98]', bar: 'bg-[#2f5f98]', hex: '#2f5f98' };
 }
 

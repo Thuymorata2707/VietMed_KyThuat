@@ -176,8 +176,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           <Link className={`grid items-center gap-2.5 rounded-lg p-1.5 hover:bg-white ${isSidebarCollapsed ? 'flex justify-center' : 'grid-cols-[40px_minmax(0,1fr)]'}`} title="Thiết lập tài khoản" to="/account-settings">
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#d9e1ea] bg-white text-[13px] font-medium text-[#142033]">{initials(user.fullName || user.email)}</div>
             <div>
-              <strong className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-[#101828] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{user.fullName || user.email}</strong>
-              <span className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium text-[#667085] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{roleLabel(role)}</span>
+              <strong className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-[#142033] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{user.fullName || user.email}</strong>
+              <span className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium text-[#657386] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{roleLabel(role)}</span>
             </div>
           </Link>
           <button className={`inline-flex min-h-10 items-center justify-center rounded-lg bg-transparent px-2.5 text-[14px] font-medium text-[#526173] hover:bg-white hover:text-[#2f5f98] ${isSidebarCollapsed ? 'w-full px-0' : 'gap-2'}`} onClick={logout} title="Đăng xuất" type="button">
@@ -190,7 +190,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       <main ref={mainRef} className="min-w-0 overflow-x-hidden overscroll-contain bg-[#f5f7fa] [&>*]:min-w-0 min-[981px]:h-screen min-[981px]:overflow-y-auto">
         <header className="sticky top-0 z-[2] flex min-h-[66px] items-center justify-between border-b border-[#d9e1ea] bg-white/88 px-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)] backdrop-blur-md backdrop-saturate-150 [transform:translateZ(0)] [will-change:transform] max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:p-4">
           <div className="min-w-0">
-            <span className="block text-[12px] font-medium text-[#667085]">VietMed Kỹ Thuật</span>
+            <span className="block text-[12px] font-medium text-[#657386]">VietMed Kỹ Thuật</span>
             <strong className="block text-[18px] leading-tight text-[#142033]">{pageTitle}</strong>
           </div>
           <div className="flex items-center gap-2.5 max-sm:w-full max-sm:flex-wrap">
@@ -214,9 +214,9 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 ) : null}
               </button>
               {isNotificationOpen ? (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-30 grid w-[360px] max-w-[calc(100vw-32px)] gap-2 rounded-lg border border-[#dde5ee] bg-white p-3 shadow-[0_18px_46px_rgba(16,24,40,0.16)]">
-                  <div className="flex items-center justify-between gap-3 border-b border-[#edf2f7] pb-2">
-                    <strong className="text-sm text-[#101828]">Thông báo</strong>
+                <div className="absolute right-0 top-[calc(100%+8px)] z-30 grid w-[360px] max-w-[calc(100vw-32px)] gap-2 rounded-lg border border-[#d9e1ea] bg-white p-3 shadow-[0_18px_46px_rgba(20,32,51,0.16)]">
+                  <div className="flex items-center justify-between gap-3 border-b border-[#e8edf3] pb-2">
+                    <strong className="text-sm text-[#142033]">Thông báo</strong>
                     <button className="text-xs font-medium text-[#2f5f98]" onClick={markAllNotificationsRead} type="button">
                       Đã đọc tất cả
                     </button>
@@ -229,13 +229,13 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                         onClick={() => void openNotification(notification)}
                         type="button"
                       >
-                        <span className="text-sm font-medium text-[#101828]">{notification.title}</span>
-                        <span className="text-[13px] leading-snug text-[#667085]">{notification.message}</span>
-                        <span className="text-xs font-medium text-[#98a2b3]">{formatNotificationDate(notification.createdAt)}</span>
+                        <span className="text-sm font-medium text-[#142033]">{notification.title}</span>
+                        <span className="text-[13px] leading-snug text-[#657386]">{notification.message}</span>
+                        <span className="text-xs font-medium text-[#7b8797]">{formatNotificationDate(notification.createdAt)}</span>
                       </button>
                     ))}
                     {notifications.length === 0 ? (
-                      <div className="grid min-h-24 place-items-center rounded-lg bg-[#f8fafc] text-sm text-[#667085]">
+                      <div className="grid min-h-24 place-items-center rounded-lg bg-[#f8fafc] text-sm text-[#657386]">
                         Chưa có thông báo.
                       </div>
                     ) : null}

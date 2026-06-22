@@ -11,14 +11,14 @@
 }
 
 .admin-crud-list {
-  @apply overflow-hidden rounded-lg border border-[#dde5ee] bg-white font-sans shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+  @apply overflow-hidden rounded-lg border border-[#d9e1ea] bg-white font-sans shadow-[0_1px_2px_rgba(20,32,51,0.05)];
   transition:
     border-color 140ms ease,
     box-shadow 140ms ease;
 }
 
 .admin-crud-list:hover {
-  @apply border-[#cfd8e3] shadow-[0_12px_30px_rgba(16,24,40,0.07)];
+  @apply border-[#cbd5e1] shadow-[0_12px_30px_rgba(20,32,51,0.07)];
 }
 
 .list-toolbar {
@@ -32,9 +32,9 @@
 .admin-crud-form textarea,
 .searchable-select input,
 .service-kind-select select {
-  @apply h-10 min-w-0 rounded-lg border border-[#cfd8e3] px-3 text-[#101828] outline-none;
+  @apply h-10 min-w-0 rounded-lg border border-[#cbd5e1] px-3 text-[#142033] outline-none;
   background-color: #ffffff;
-  color: #101828;
+  color: #142033;
   transition:
     background-color 140ms ease,
     border-color 140ms ease,
@@ -50,8 +50,8 @@
   appearance: none;
   background-color: #ffffff;
   background-image:
-    linear-gradient(45deg, transparent 50%, #344054 50%),
-    linear-gradient(135deg, #344054 50%, transparent 50%);
+    linear-gradient(45deg, transparent 50%, #334155 50%),
+    linear-gradient(135deg, #334155 50%, transparent 50%);
   background-position:
     calc(100% - 18px) 17px,
     calc(100% - 12px) 17px;
@@ -64,7 +64,7 @@
 }
 
 .service-kind-select {
-  @apply grid min-w-[190px] gap-1.5 text-[12px] font-medium text-[#344054];
+  @apply grid min-w-[190px] gap-1.5 text-[12px] font-medium text-[#334155];
 }
 
 .service-kind-select span {
@@ -75,8 +75,8 @@
   appearance: none;
   background-color: #ffffff;
   background-image:
-    linear-gradient(45deg, transparent 50%, #344054 50%),
-    linear-gradient(135deg, #344054 50%, transparent 50%);
+    linear-gradient(45deg, transparent 50%, #334155 50%),
+    linear-gradient(135deg, #334155 50%, transparent 50%);
   background-position:
     calc(100% - 18px) 17px,
     calc(100% - 12px) 17px;
@@ -89,7 +89,7 @@
 }
 
 .pagination-controls select {
-  @apply min-h-9 cursor-pointer appearance-none rounded-lg border border-[#cfd8e3] bg-white py-0 pr-[30px] pl-2.5 text-[#101828] outline-none;
+  @apply min-h-9 cursor-pointer appearance-none rounded-lg border border-[#cbd5e1] bg-white py-0 pr-[30px] pl-2.5 text-[#142033] outline-none;
 }
 
 .admin-crud-form select:hover {
@@ -124,8 +124,8 @@
   appearance: none;
   background-color: #ffffff;
   background-image:
-    linear-gradient(45deg, transparent 50%, #344054 50%),
-    linear-gradient(135deg, #344054 50%, transparent 50%);
+    linear-gradient(45deg, transparent 50%, #334155 50%),
+    linear-gradient(135deg, #334155 50%, transparent 50%);
   background-position:
     calc(100% - 16px) 17px,
     calc(100% - 10px) 17px;
@@ -151,13 +151,13 @@
 .searchable-select:focus-within input,
 .service-kind-select select:focus {
   background-color: #ffffff;
-  border-color: #d92d20;
-  box-shadow: 0 0 0 3px rgba(217, 45, 32, 0.12);
+  border-color: #c83f34;
+  box-shadow: 0 0 0 3px rgba(200, 63, 52, 0.12);
   transform: translateY(-1px);
 }
 
 .searchable-field {
-  color: #344054;
+  color: #334155;
   display: grid;
   font-weight: 500;
   gap: 7px;
@@ -172,7 +172,7 @@
 }
 
 .searchable-menu button span {
-  color: #667085;
+  color: #657386;
   font-size: 12px;
 }
 
@@ -194,9 +194,9 @@
 
 .searchable-menu {
   background: #ffffff;
-  border: 1px solid #dde5ee;
+  border: 1px solid #d9e1ea;
   border-radius: 8px;
-  box-shadow: 0 18px 46px rgba(16, 24, 40, 0.16);
+  box-shadow: 0 18px 46px rgba(20, 32, 51, 0.16);
   display: grid;
   gap: 4px;
   left: 0;
@@ -213,7 +213,7 @@
   background: transparent;
   border: 0;
   border-radius: 8px;
-  color: #101828;
+  color: #142033;
   cursor: pointer;
   display: grid;
   font-weight: 500;
@@ -225,7 +225,7 @@
 
 .searchable-menu button:hover,
 .searchable-menu button.active {
-  background: #fff4f2;
+  background: #fff6f4;
 }
 
 .searchable-menu button strong {
@@ -233,7 +233,7 @@
 }
 
 .searchable-state {
-  color: #667085;
+  color: #657386;
   padding: 12px;
 }
 
@@ -257,7 +257,7 @@
 
 .crud-table-wrap th,
 .crud-table-wrap td {
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid #e8edf3;
   max-width: 260px;
   padding: 13px 14px;
   text-align: left;
@@ -266,7 +266,7 @@
 
 .crud-table-wrap th {
   background: #f8fafc;
-  color: #667085;
+  color: #657386;
   font-size: 11px;
   font-weight: 800;
   position: sticky;
@@ -294,7 +294,7 @@
 
 .table-image {
   background: #f4f7fb;
-  border: 1px solid #dde5ee;
+  border: 1px solid #d9e1ea;
   border-radius: 8px;
   display: inline-flex;
   height: 44px;
@@ -324,9 +324,9 @@
 }
 
 .status-badge.good {
-  background: #ecfdf3;
-  border-color: #abefc6;
-  color: #067647;
+  background: #eefaf3;
+  border-color: #b9e8ca;
+  color: #177245;
 }
 
 .status-badge.good::before {
@@ -334,9 +334,9 @@
 }
 
 .status-badge.warn {
-  background: #fff7ed;
-  border-color: #fedf89;
-  color: #b54708;
+  background: #fff8ed;
+  border-color: #efd8a8;
+  color: #9b5a17;
 }
 
 .status-badge.warn::before {
@@ -346,7 +346,7 @@
 .status-badge.danger {
   background: #fff1f3;
   border-color: #fecdd3;
-  color: #b42318;
+  color: #a3342b;
 }
 
 .status-badge.danger::before {
@@ -355,12 +355,12 @@
 
 .status-badge.neutral {
   background: #f8fafc;
-  border-color: #dde5ee;
-  color: #344054;
+  border-color: #d9e1ea;
+  color: #334155;
 }
 
 .status-badge.neutral::before {
-  background: #98a2b3;
+  background: #7b8797;
 }
 
 .table-image img,
@@ -399,7 +399,7 @@
 }
 
 .clickable-row:focus-visible {
-  box-shadow: inset 3px 0 0 #d92d20;
+  box-shadow: inset 3px 0 0 #c83f34;
 }
 
 .row-actions {
@@ -430,14 +430,14 @@
 
 .expanded-crud-modal .form-panel-heading {
   background: #f8fafc;
-  border: 1px solid #edf2f7;
+  border: 1px solid #e8edf3;
   border-radius: 8px;
   margin-bottom: 18px;
   padding: 18px;
 }
 
 .expanded-crud-modal .form-panel-heading span {
-  color: #d92d20;
+  color: #c83f34;
   font-size: 11px;
   font-weight: 800;
   text-transform:;
@@ -478,7 +478,7 @@
 
 .crud-form-page {
   background: #ffffff;
-  border: 1px solid #dde5ee;
+  border: 1px solid #d9e1ea;
   border-radius: 8px;
   display: grid;
   gap: 18px;
@@ -488,14 +488,14 @@
 
 .crud-form-page .form-panel-heading {
   background: #f8fafc;
-  border: 1px solid #edf2f7;
+  border: 1px solid #e8edf3;
   border-radius: 8px;
   margin-bottom: 0;
   padding: 18px;
 }
 
 .crud-form-page .form-panel-heading span {
-  color: #d92d20;
+  color: #c83f34;
   font-size: 11px;
   font-weight: 800;
   text-transform:;
@@ -533,9 +533,9 @@
 .user-form-page-grid input,
 .user-form-page-grid select,
 .user-form-page-grid textarea {
-  border: 1px solid #cfd8e3;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  color: #101828;
+  color: #142033;
   min-height: 46px;
   min-width: 0;
   outline: none;
@@ -549,7 +549,7 @@
 }
 
 .user-form-page-grid label {
-  color: #344054;
+  color: #334155;
   display: grid;
   font-size: 13px;
   font-weight: 700;
@@ -559,8 +559,8 @@
 .user-form-page-grid input:focus,
 .user-form-page-grid select:focus,
 .user-form-page-grid textarea:focus {
-  border-color: #d92d20;
-  box-shadow: 0 0 0 3px rgba(217, 45, 32, 0.12);
+  border-color: #c83f34;
+  box-shadow: 0 0 0 3px rgba(200, 63, 52, 0.12);
 }
 
 @media (max-width: 760px) {
@@ -575,9 +575,9 @@
 
 .confirm-modal {
   background: #ffffff;
-  border: 1px solid #dde5ee;
+  border: 1px solid #d9e1ea;
   border-radius: 8px;
-  box-shadow: 0 24px 70px rgba(16, 24, 40, 0.2);
+  box-shadow: 0 24px 70px rgba(20, 32, 51, 0.2);
   display: grid;
   gap: 18px;
   max-width: 460px;
@@ -586,7 +586,7 @@
 }
 
 .confirm-eyebrow {
-  color: #b42318;
+  color: #a3342b;
   display: block;
   font-size: 12px;
   font-weight: 600;
@@ -599,13 +599,13 @@
 }
 
 .confirm-modal p {
-  color: #667085;
+  color: #657386;
   line-height: 1.55;
   margin-top: 8px;
 }
 
 .detail-drawer-backdrop {
-  background: rgba(16, 24, 40, 0.3);
+  background: rgba(20, 32, 51, 0.3);
   display: flex;
   inset: 0;
   justify-content: flex-end;
@@ -616,9 +616,9 @@
 
 .detail-drawer {
   background: #ffffff;
-  border: 1px solid #dde5ee;
+  border: 1px solid #d9e1ea;
   border-radius: 8px;
-  box-shadow: 0 24px 70px rgba(16, 24, 40, 0.22);
+  box-shadow: 0 24px 70px rgba(20, 32, 51, 0.22);
   display: grid;
   gap: 18px;
   max-width: min(560px, calc(100vw - 28px));
@@ -636,7 +636,7 @@
 
 .detail-item {
   background: #f8fbfd;
-  border: 1px solid #edf2f7;
+  border: 1px solid #e8edf3;
   border-radius: 8px;
   display: grid;
   gap: 5px;
@@ -644,14 +644,14 @@
 }
 
 .detail-item dt {
-  color: #667085;
+  color: #657386;
   font-size: 12px;
   font-weight: 600;
   text-transform:;
 }
 
 .detail-item dd {
-  color: #101828;
+  color: #142033;
   line-height: 1.45;
   margin: 0;
   overflow-wrap: anywhere;
@@ -665,7 +665,7 @@
 .detail-image-frame {
   aspect-ratio: 16 / 9;
   background: #eef3f8;
-  border: 1px solid #dde5ee;
+  border: 1px solid #d9e1ea;
   border-radius: 8px;
   display: flex;
   max-width: 340px;
@@ -675,12 +675,12 @@
 
 .image-fallback {
   align-items: center;
-  color: #667085;
+  color: #657386;
   justify-content: center;
 }
 
 .drawer-actions {
-  border-top: 1px solid #edf2f7;
+  border-top: 1px solid #e8edf3;
   display: flex;
   gap: 10px;
   justify-content: flex-end;
@@ -694,7 +694,7 @@
 }
 
 .admin-crud-form label {
-  color: #344054;
+  color: #334155;
   display: grid;
   font-size: 13px;
   font-weight: 650;
@@ -705,7 +705,7 @@
 
 .image-field-preview {
   background: #f4f7fb;
-  border: 1px solid #dde5ee;
+  border: 1px solid #d9e1ea;
   border-radius: 8px;
   display: block;
   max-width: 320px;
@@ -789,7 +789,7 @@
 }
 
 .empty-crud {
-  color: #667085;
+  color: #657386;
   padding: 34px;
   text-align: center;
 }

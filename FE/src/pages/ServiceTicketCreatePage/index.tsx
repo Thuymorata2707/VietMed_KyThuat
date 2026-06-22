@@ -413,7 +413,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       {success ? <div className="success-notice">{success}</div> : null}
 
       {role === 'engineer' ? (
-        <div className="rounded-lg border border-[#fedf89] bg-[#fffbeb] px-4 py-3 text-sm font-semibold leading-relaxed text-[#92400e]">
+        <div className="rounded-lg border border-[#efd8a8] bg-[#fffbeb] px-4 py-3 text-sm font-semibold leading-relaxed text-[#92400e]">
           Phiếu và dữ liệu mới bạn tạo sẽ được lưu vào hệ thống để admin theo dõi, kiểm tra và duyệt dữ liệu vận hành.
         </div>
       ) : null}
@@ -421,13 +421,13 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       <form className="grid min-w-0 gap-4 font-sans min-[1320px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
         <section className="grid min-w-0 gap-4">
           <div className={panelClass}>
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[#edf2f7] pb-4">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[#e8edf3] pb-4">
               <div>
-                <span className="text-xs font-medium text-[#d92d20]">Bước 1</span>
-                <h2 className="mt-1 text-lg font-medium text-[#101828]">Thông tin phiếu</h2>
-                <p className="mt-1 text-sm text-[#667085]">Chọn đúng loại phiếu, thiết bị và kỹ sư phụ trách trước khi nhập chi tiết.</p>
+                <span className="text-xs font-medium text-[#c83f34]">Bước 1</span>
+                <h2 className="mt-1 text-lg font-medium text-[#142033]">Thông tin phiếu</h2>
+                <p className="mt-1 text-sm text-[#657386]">Chọn đúng loại phiếu, thiết bị và kỹ sư phụ trách trước khi nhập chi tiết.</p>
               </div>
-              <label className="grid min-w-[220px] max-sm:min-w-0 max-sm:w-full gap-2 text-sm font-semibold text-[#344054]">
+              <label className="grid min-w-[220px] max-sm:min-w-0 max-sm:w-full gap-2 text-sm font-semibold text-[#334155]">
                 Loại phiếu
                 <select className={fieldClass} onChange={(event) => setKind(event.target.value as TicketKind)} value={kind}>
                   {scope === 'installation' ? (
@@ -525,11 +525,11 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           </div>
 
           <div className={panelClass}>
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[#edf2f7] pb-4">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[#e8edf3] pb-4">
               <div>
-                <span className="text-xs font-medium text-[#d92d20]">Bước 2</span>
-                <h2 className="text-lg font-medium text-[#101828]">Dữ liệu chưa có</h2>
-                <p className="mt-1 text-sm text-[#667085]">Chỉ mở phần này khi tìm không thấy khách hàng hoặc thiết bị trong danh sách.</p>
+                <span className="text-xs font-medium text-[#c83f34]">Bước 2</span>
+                <h2 className="text-lg font-medium text-[#142033]">Dữ liệu chưa có</h2>
+                <p className="mt-1 text-sm text-[#657386]">Chỉ mở phần này khi tìm không thấy khách hàng hoặc thiết bị trong danh sách.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button className="secondary-button" onClick={() => setShowQuickCustomer((value) => !value)} type="button">
@@ -574,9 +574,9 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
         <aside className="grid min-w-0 gap-4 self-start">
           <div className={panelClass}>
-            <span className="text-xs font-medium text-[#d92d20]">Kiểm tra</span>
-            <h2 className="mb-4 mt-1 text-lg font-medium text-[#101828]">Tóm tắt</h2>
-            <div className="grid gap-3 text-sm text-[#344054]">
+            <span className="text-xs font-medium text-[#c83f34]">Kiểm tra</span>
+            <h2 className="mb-4 mt-1 text-lg font-medium text-[#142033]">Tóm tắt</h2>
+            <div className="grid gap-3 text-sm text-[#334155]">
               <SummaryRow label="Loại phiếu" value={ticketKindLabel(kind)} />
               <SummaryRow label="Thiết bị" value={selectedMachine ? machineLabel(selectedMachine) : 'Chưa chọn'} />
               <SummaryRow label="Khách hàng" value={customerNameForSummary(selectedMachine, customers, form.customerId)} />
@@ -754,15 +754,15 @@ function QuickCustomerPanel({
   updateForm: (patch: Partial<QuickCustomerForm>) => void;
 }) {
   return (
-    <div className="mb-4 grid gap-4 rounded-lg border border-[#edf2f7] bg-[#f8fbfd] p-4 md:grid-cols-2">
+    <div className="mb-4 grid gap-4 rounded-lg border border-[#e8edf3] bg-[#f8fbfd] p-4 md:grid-cols-2">
       <label className={labelClass}>
         Tên khách hàng
         <input className={fieldClass} onChange={(event) => updateForm({ name: event.target.value })} value={form.name} />
       </label>
       {isEngineer ? (
-        <div className="grid min-w-0 gap-2 rounded-lg border border-[#dde5ee] bg-white px-3 py-2 text-sm">
-          <span className="font-bold text-[#344054]">Khu vực</span>
-          <strong className="text-[#101828]">{regions[0]?.name || 'Theo khu vực tài khoản'}</strong>
+        <div className="grid min-w-0 gap-2 rounded-lg border border-[#d9e1ea] bg-white px-3 py-2 text-sm">
+          <span className="font-bold text-[#334155]">Khu vực</span>
+          <strong className="text-[#142033]">{regions[0]?.name || 'Theo khu vực tài khoản'}</strong>
         </div>
       ) : (
         <label className={labelClass}>
@@ -824,9 +824,9 @@ function QuickMachinePanel({
   updateForm: (patch: Partial<QuickMachineForm>) => void;
 }) {
   return (
-    <div className="grid gap-4 rounded-lg border border-[#edf2f7] bg-[#f8fbfd] p-4 md:grid-cols-2">
+    <div className="grid gap-4 rounded-lg border border-[#e8edf3] bg-[#f8fbfd] p-4 md:grid-cols-2">
       <div className="md:col-span-2">
-        <span className="rounded-full border border-[#dde5ee] bg-white px-2.5 py-1 text-xs font-medium text-[#344054]">
+        <span className="rounded-full border border-[#d9e1ea] bg-white px-2.5 py-1 text-xs font-medium text-[#334155]">
           {kind === 'installation' ? 'Tạo máy trong kho' : 'Tạo máy đã lắp'}
         </span>
       </div>
@@ -897,20 +897,20 @@ function QuickMachinePanel({
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-[#edf2f7] pb-2 last:border-b-0 last:pb-0">
+    <div className="flex items-start justify-between gap-3 border-b border-[#e8edf3] pb-2 last:border-b-0 last:pb-0">
       <span>{label}</span>
-      <strong className="text-right text-[#101828]">{value || '-'}</strong>
+      <strong className="text-right text-[#142033]">{value || '-'}</strong>
     </div>
   );
 }
 
-const panelClass = 'rounded-lg border border-[#dde5ee] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]';
-const labelClass = 'grid min-w-0 content-start gap-2 font-sans text-sm font-medium leading-snug text-[#344054]';
+const panelClass = 'rounded-lg border border-[#d9e1ea] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]';
+const labelClass = 'grid min-w-0 content-start gap-2 font-sans text-sm font-medium leading-snug text-[#334155]';
 const wideLabelClass = `${labelClass} md:col-span-2`;
 const fieldClass =
-  'h-11 w-full min-w-0 rounded-lg border border-[#cfd8e3] bg-white px-3 font-sans text-sm font-medium text-[#101828] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)] disabled:cursor-not-allowed disabled:bg-[#f8fafc] disabled:text-[#98a2b3]';
+  'h-11 w-full min-w-0 rounded-lg border border-[#cbd5e1] bg-white px-3 font-sans text-sm font-medium text-[#142033] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)] disabled:cursor-not-allowed disabled:bg-[#f8fafc] disabled:text-[#7b8797]';
 const textareaClass =
-  'min-h-28 w-full min-w-0 resize-y rounded-lg border border-[#cfd8e3] bg-white px-3 py-2.5 font-sans text-sm font-medium leading-relaxed text-[#101828] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)] disabled:cursor-not-allowed disabled:bg-[#f8fafc] disabled:text-[#98a2b3]';
+  'min-h-28 w-full min-w-0 resize-y rounded-lg border border-[#cbd5e1] bg-white px-3 py-2.5 font-sans text-sm font-medium leading-relaxed text-[#142033] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)] disabled:cursor-not-allowed disabled:bg-[#f8fafc] disabled:text-[#7b8797]';
 
 function normalizeKind(value: string | null): TicketKind {
   if (value === 'maintenance' || value === 'installation') return value;

@@ -95,7 +95,7 @@ export function AdminRolesPage() {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="overflow-hidden rounded-lg border border-[#dde5ee] bg-white">
+      <section className="overflow-hidden rounded-lg border border-[#d9e1ea] bg-white">
         <div className="list-toolbar">
           <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm vai trò" value={query} />
           <button className="primary-button compact" onClick={openCreateModal} type="button">
@@ -108,22 +108,22 @@ export function AdminRolesPage() {
           <table className="w-full min-w-[640px] border-collapse">
             <thead>
               <tr>
-                <th className="border-b border-[#edf2f7] px-3.5 py-[13px] text-left text-xs font-medium text-[#667085]">Vai trò</th>
-                <th className="border-b border-[#edf2f7] px-3.5 py-[13px] text-left text-xs font-medium text-[#667085]">Ngày tạo</th>
-                <th className="border-b border-[#edf2f7] px-3.5 py-[13px] text-left text-xs font-medium text-[#667085]">Cập nhật</th>
+                <th className="border-b border-[#e8edf3] px-3.5 py-[13px] text-left text-xs font-medium text-[#657386]">Vai trò</th>
+                <th className="border-b border-[#e8edf3] px-3.5 py-[13px] text-left text-xs font-medium text-[#657386]">Ngày tạo</th>
+                <th className="border-b border-[#e8edf3] px-3.5 py-[13px] text-left text-xs font-medium text-[#657386]">Cập nhật</th>
               </tr>
             </thead>
             <tbody>
               {filteredRoles.map((role) => (
                 <tr key={role.id}>
-                  <td className="border-b border-[#edf2f7] px-3.5 py-[13px]">
-                    <div className="flex items-center gap-2 text-[#101828]">
+                  <td className="border-b border-[#e8edf3] px-3.5 py-[13px]">
+                    <div className="flex items-center gap-2 text-[#142033]">
                       <ShieldCheck size={17} />
                       <strong>{role.name}</strong>
                     </div>
                   </td>
-                  <td className="border-b border-[#edf2f7] px-3.5 py-[13px]">{formatDate(role.createdAt)}</td>
-                  <td className="border-b border-[#edf2f7] px-3.5 py-[13px]">{formatDate(role.updatedAt)}</td>
+                  <td className="border-b border-[#e8edf3] px-3.5 py-[13px]">{formatDate(role.createdAt)}</td>
+                  <td className="border-b border-[#e8edf3] px-3.5 py-[13px]">{formatDate(role.updatedAt)}</td>
                 </tr>
               ))}
               {loading ? (

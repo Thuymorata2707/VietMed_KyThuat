@@ -207,10 +207,10 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="grid gap-4 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <section className="grid gap-4 rounded-lg border border-[#d9e1ea] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
         <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_160px_160px_auto_auto]">
           {isAdmin ? (
-            <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
+            <label className="grid gap-1.5 text-sm font-medium text-[#334155]">
               Kỹ sư
               <select className={fieldClass} onChange={(event) => setEngineerId(event.target.value)} value={engineerId}>
                 {engineers.map((engineer) => (
@@ -222,15 +222,15 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             </label>
           ) : (
             <div className="grid content-end gap-1.5">
-              <span className="text-xs font-medium text-[#667085]">Kỹ sư</span>
-              <strong className="min-h-11 rounded-lg border border-[#dde5ee] bg-[#f8fafc] px-3 py-2.5 text-[#101828]">{user.fullName || user.email}</strong>
+              <span className="text-xs font-medium text-[#657386]">Kỹ sư</span>
+              <strong className="min-h-11 rounded-lg border border-[#d9e1ea] bg-[#f8fafc] px-3 py-2.5 text-[#142033]">{user.fullName || user.email}</strong>
             </div>
           )}
-          <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
+          <label className="grid gap-1.5 text-sm font-medium text-[#334155]">
             Từ ngày
             <input className={fieldClass} onChange={(event) => setFrom(event.target.value)} type="date" value={from} />
           </label>
-          <label className="grid gap-1.5 text-sm font-medium text-[#344054]">
+          <label className="grid gap-1.5 text-sm font-medium text-[#334155]">
             Đến ngày
             <input className={fieldClass} onChange={(event) => setTo(event.target.value)} type="date" value={to} />
           </label>
@@ -243,7 +243,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             CSV
           </button>
         </div>
-        <div className="flex flex-wrap gap-2 border-t border-[#edf2f7] pt-3">
+        <div className="flex flex-wrap gap-2 border-t border-[#e8edf3] pt-3">
           <button className="secondary-button" onClick={() => setDateRange(addDays(today, -60), today)} type="button">60 ngày</button>
           <button className="secondary-button" onClick={() => setDateRange(startOfMonth(today), today)} type="button">Tháng này</button>
           <button className="secondary-button" onClick={() => setDateRange(new Date('2026-05-01T00:00:00'), new Date('2026-05-31T00:00:00'))} type="button">Dữ liệu T05/2026</button>
@@ -260,16 +260,16 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       </section>
 
       <section className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-4 max-[1120px]:grid-cols-1">
-        <div className="rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <div className="rounded-lg border border-[#d9e1ea] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
           <PanelHeader eyebrow="Cơ cấu công việc" title="Tỷ trọng theo loại việc" subtitle={selectedEngineerName || ''} />
           <div className="mt-4 grid gap-3">
             {workMix.map((item) => (
               <div className="grid gap-1.5" key={item.label}>
                 <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-[#344054]">{item.label}</span>
+                  <span className="font-medium text-[#334155]">{item.label}</span>
                   <strong className={toneText(item.tone)}>{item.value}</strong>
                 </div>
-                <div className="h-3 overflow-hidden rounded-full bg-[#edf2f7]">
+                <div className="h-3 overflow-hidden rounded-full bg-[#e8edf3]">
                   <span className={`block h-full rounded-full ${toneBar(item.tone)}`} style={{ width: `${Math.round((item.value / maxWorkValue) * 100)}%` }} />
                 </div>
               </div>
@@ -278,7 +278,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
           <WorkDonut items={workMix} />
         </div>
 
-        <div className="rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <div className="rounded-lg border border-[#d9e1ea] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
           <PanelHeader eyebrow="Khách hàng" title="Khách hàng xử lý nhiều nhất" subtitle={`${summary?.totals.customers ?? 0} khách trong khoảng này`} />
           <div className="mt-4 grid gap-2">
             {topCustomers.length ? topCustomers.map((customer) => {
@@ -286,15 +286,15 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
               const maxCustomer = Math.max(1, ...topCustomers.map((item) => item.installationCount + item.repairCount + item.maintenanceCount));
 
               return (
-                <div className="grid gap-2 rounded-lg border border-[#edf2f7] bg-[#fbfdff] p-3" key={customer.id || customer.name}>
+                <div className="grid gap-2 rounded-lg border border-[#e8edf3] bg-[#fbfdff] p-3" key={customer.id || customer.name}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="text-sm text-[#101828]">{customer.name}</strong>
-                    <span className="rounded-lg bg-white px-2 py-1 text-xs font-medium text-[#344054]">{displayCustomerStatus(customer.status)}</span>
+                    <strong className="text-sm text-[#142033]">{customer.name}</strong>
+                    <span className="rounded-lg bg-white px-2 py-1 text-xs font-medium text-[#334155]">{displayCustomerStatus(customer.status)}</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-[#edf2f7]">
-                    <span className="block h-full rounded-full bg-[#d92d20]" style={{ width: `${Math.round((total / maxCustomer) * 100)}%` }} />
+                  <div className="h-2 overflow-hidden rounded-full bg-[#e8edf3]">
+                    <span className="block h-full rounded-full bg-[#c83f34]" style={{ width: `${Math.round((total / maxCustomer) * 100)}%` }} />
                   </div>
-                  <span className="text-xs text-[#667085]">{total} việc, {customer.machineCount} máy - {[customer.code, customer.province, customer.phone].filter(Boolean).join(' - ') || '-'}</span>
+                  <span className="text-xs text-[#657386]">{total} việc, {customer.machineCount} máy - {[customer.code, customer.province, customer.phone].filter(Boolean).join(' - ') || '-'}</span>
                 </div>
               );
             }) : <EmptyState text="Chưa có khách hàng trong khoảng này." />}
@@ -302,8 +302,8 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
+      <section className="overflow-hidden rounded-lg border border-[#d9e1ea] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#e8edf3] bg-[#f8fafc] px-4 py-3">
           <PanelHeader eyebrow="Báo cáo tuần" title="Theo dõi báo cáo đã gửi" subtitle={`${sortedWeeklyReports.length} tuần, ${weeklyRowCount} dòng báo cáo trong khoảng này`} />
           <Link className="primary-button" to={currentWeeklyReportHref}>
             <FileText size={16} />
@@ -312,17 +312,17 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
         </div>
         <div className="grid gap-3 p-4">
           {sortedWeeklyReports.length ? sortedWeeklyReports.map((report) => (
-            <div className="grid gap-3 rounded-lg border border-[#edf2f7] bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto]" key={report.id}>
+            <div className="grid gap-3 rounded-lg border border-[#e8edf3] bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto]" key={report.id}>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <strong className="text-sm text-[#101828]">Tuần {formatDate(report.weekStart)}</strong>
-                  <span className="rounded-lg bg-[#f8fafc] px-2 py-1 text-xs font-medium text-[#344054]">{weeklyStatusLabel(report.status)}</span>
-                  <span className="text-xs text-[#667085]">{report.rows.length} dòng</span>
+                  <strong className="text-sm text-[#142033]">Tuần {formatDate(report.weekStart)}</strong>
+                  <span className="rounded-lg bg-[#f8fafc] px-2 py-1 text-xs font-medium text-[#334155]">{weeklyStatusLabel(report.status)}</span>
+                  <span className="text-xs text-[#657386]">{report.rows.length} dòng</span>
                 </div>
-                <p className="mt-1 line-clamp-2 text-sm text-[#667085]">
+                <p className="mt-1 line-clamp-2 text-sm text-[#657386]">
                   {report.note || firstWeeklyReportSummary(report) || 'Chưa có ghi chú hoặc nội dung báo cáo.'}
                 </p>
-                {report.submittedAt ? <span className="mt-1 block text-xs text-[#98a2b3]">Gửi ngày {formatDate(report.submittedAt)}</span> : null}
+                {report.submittedAt ? <span className="mt-1 block text-xs text-[#7b8797]">Gửi ngày {formatDate(report.submittedAt)}</span> : null}
               </div>
               <Link className="secondary-button self-center" to={buildWeeklyReportHref(report.weekStart, isAdmin ? engineerId : '')}>
                 <FileText size={16} />
@@ -333,16 +333,16 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        <div className="border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
+      <section className="overflow-hidden rounded-lg border border-[#d9e1ea] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <div className="border-b border-[#e8edf3] bg-[#f8fafc] px-4 py-3">
           <PanelHeader eyebrow="Timeline" title="Công việc đã hoàn thành" subtitle={`${summary?.activities.length ?? 0} đầu việc`} />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] border-collapse text-left text-sm">
             <thead>
-              <tr className="text-xs text-[#667085]">
+              <tr className="text-xs text-[#657386]">
                 {['Ngày', 'Loại', 'Mã phiếu', 'Khách hàng', 'Máy', 'Kết quả'].map((header) => (
-                  <th className="border-b border-[#edf2f7] px-4 py-3 font-medium" key={header}>{header}</th>
+                  <th className="border-b border-[#e8edf3] px-4 py-3 font-medium" key={header}>{header}</th>
                 ))}
               </tr>
             </thead>
@@ -351,11 +351,11 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
               {!loading && summary?.activities.length ? summary.activities.map((activity) => (
                 <tr key={`${activity.kind}-${activity.id}`}>
                   <td className={cellClass}>{formatDate(activity.date)}</td>
-                  <td className={cellClass}><span className="rounded-lg bg-[#f8fafc] px-2 py-1 text-xs font-medium text-[#344054]">{activityKindLabel(activity.kind)}</span></td>
-                  <td className={`${cellClass} font-medium text-[#101828]`}>{activity.code}</td>
+                  <td className={cellClass}><span className="rounded-lg bg-[#f8fafc] px-2 py-1 text-xs font-medium text-[#334155]">{activityKindLabel(activity.kind)}</span></td>
+                  <td className={`${cellClass} font-medium text-[#142033]`}>{activity.code}</td>
                   <td className={cellClass}>
-                    <strong className="block text-[#101828]">{activity.customer.name}</strong>
-                    <span className="text-xs text-[#667085]">{displayCustomerStatus(activity.customer.status)}</span>
+                    <strong className="block text-[#142033]">{activity.customer.name}</strong>
+                    <span className="text-xs text-[#657386]">{displayCustomerStatus(activity.customer.status)}</span>
                   </td>
                   <td className={cellClass}>{machineSummaryLabel(activity.machine)}</td>
                   <td className={cellClass}>{activity.result || activity.title}</td>
@@ -363,7 +363,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
               )) : null}
               {!loading && !summary?.activities.length ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-sm text-[#667085]" colSpan={6}>Chưa có công việc hoàn thành trong khoảng này.</td>
+                  <td className="px-4 py-8 text-center text-sm text-[#657386]" colSpan={6}>Chưa có công việc hoàn thành trong khoảng này.</td>
                 </tr>
               ) : null}
             </tbody>
@@ -381,12 +381,12 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
 function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
   return (
-    <div className="grid min-h-[104px] gap-2 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+    <div className="grid min-h-[104px] gap-2 rounded-lg border border-[#d9e1ea] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-[#667085]">{label}</span>
-        <span className="text-[#d92d20]">{icon}</span>
+        <span className="text-sm font-medium text-[#657386]">{label}</span>
+        <span className="text-[#c83f34]">{icon}</span>
       </div>
-      <strong className="text-3xl leading-none text-[#101828]">{value}</strong>
+      <strong className="text-3xl leading-none text-[#142033]">{value}</strong>
     </div>
   );
 }
@@ -394,9 +394,9 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
 function PanelHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle?: string }) {
   return (
     <div>
-      <span className="text-[12px] font-medium text-[#667085]">{eyebrow}</span>
-      <h2 className="mt-1 text-lg font-medium text-[#101828]">{title}</h2>
-      {subtitle ? <p className="mt-1 text-sm text-[#667085]">{subtitle}</p> : null}
+      <span className="text-[12px] font-medium text-[#657386]">{eyebrow}</span>
+      <h2 className="mt-1 text-lg font-medium text-[#142033]">{title}</h2>
+      {subtitle ? <p className="mt-1 text-sm text-[#657386]">{subtitle}</p> : null}
     </div>
   );
 }
@@ -408,7 +408,7 @@ function WorkDonut({ items }: { items: Array<{ label: string; value: number; ton
   let offset = 0;
 
   return (
-    <div className="mt-5 grid grid-cols-[132px_minmax(0,1fr)] items-center gap-4 rounded-lg border border-[#edf2f7] bg-[#fbfdff] p-3 max-sm:grid-cols-1">
+    <div className="mt-5 grid grid-cols-[132px_minmax(0,1fr)] items-center gap-4 rounded-lg border border-[#e8edf3] bg-[#fbfdff] p-3 max-sm:grid-cols-1">
       <div className="relative h-[132px] w-[132px] justify-self-center">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 132 132" role="img" aria-label="Biểu đồ tỷ trọng công việc">
           <circle cx="66" cy="66" fill="none" r={radius} stroke="#e8eef6" strokeWidth="16" />
@@ -434,15 +434,15 @@ function WorkDonut({ items }: { items: Array<{ label: string; value: number; ton
         </svg>
         <div className="absolute inset-0 grid place-items-center text-center">
           <span>
-            <strong className="block text-2xl leading-none text-[#101828]">{total}</strong>
-            <small className="text-xs font-medium text-[#667085]">việc</small>
+            <strong className="block text-2xl leading-none text-[#142033]">{total}</strong>
+            <small className="text-xs font-medium text-[#657386]">việc</small>
           </span>
         </div>
       </div>
       <div className="grid gap-2">
         {items.map((item) => (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm" key={item.label}>
-            <span className="inline-flex items-center gap-2 font-medium text-[#344054]">
+            <span className="inline-flex items-center gap-2 font-medium text-[#334155]">
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: toneHex(item.tone) }} />
               {item.label}
             </span>
@@ -461,7 +461,7 @@ function LoadingRows() {
         <tr key={index}>
           {Array.from({ length: 6 }, (_, cell) => (
             <td className={cellClass} key={cell}>
-              <span className="block h-4 animate-pulse rounded bg-[#edf2f7]" />
+              <span className="block h-4 animate-pulse rounded bg-[#e8edf3]" />
             </td>
           ))}
         </tr>
@@ -471,7 +471,7 @@ function LoadingRows() {
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="rounded-lg border border-dashed border-[#dde5ee] bg-[#fbfdff] p-4 text-sm text-[#667085]">{text}</div>;
+  return <div className="rounded-lg border border-dashed border-[#d9e1ea] bg-[#fbfdff] p-4 text-sm text-[#657386]">{text}</div>;
 }
 
 function activityKindLabel(kind: EngineerWorkSummary['activities'][number]['kind']) {
@@ -511,21 +511,21 @@ function buildWeeklyReportHref(weekStart: string, engineerId?: string) {
 }
 
 function toneText(tone: 'good' | 'warn' | 'neutral') {
-  if (tone === 'good') return 'text-[#067647]';
-  if (tone === 'warn') return 'text-[#b54708]';
-  return 'text-[#175cd3]';
+  if (tone === 'good') return 'text-[#177245]';
+  if (tone === 'warn') return 'text-[#9b5a17]';
+  return 'text-[#2f5f98]';
 }
 
 function toneBar(tone: 'good' | 'warn' | 'neutral') {
-  if (tone === 'good') return 'bg-[#067647]';
-  if (tone === 'warn') return 'bg-[#b54708]';
-  return 'bg-[#175cd3]';
+  if (tone === 'good') return 'bg-[#177245]';
+  if (tone === 'warn') return 'bg-[#9b5a17]';
+  return 'bg-[#2f5f98]';
 }
 
 function toneHex(tone: 'good' | 'warn' | 'neutral') {
-  if (tone === 'good') return '#067647';
-  if (tone === 'warn') return '#b54708';
-  return '#175cd3';
+  if (tone === 'good') return '#177245';
+  if (tone === 'warn') return '#9b5a17';
+  return '#2f5f98';
 }
 
 function startOfWeek(value: Date) {
@@ -569,5 +569,5 @@ function firstWeeklyReportSummary(report: EngineerWorkSummary['weeklyReports'][n
   return [row?.content, row?.result, row?.pending, row?.proposal].filter(Boolean).join(' - ');
 }
 
-const fieldClass = 'min-h-11 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]';
-const cellClass = 'border-b border-[#edf2f7] px-4 py-3 align-top text-[#344054]';
+const fieldClass = 'min-h-11 rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]';
+const cellClass = 'border-b border-[#e8edf3] px-4 py-3 align-top text-[#334155]';

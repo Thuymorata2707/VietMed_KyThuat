@@ -32,7 +32,7 @@
   --color-warning-bg: #fff8ed;
   --color-warning-border: #efd8a8;
   --color-danger: #a3342b;
-  --color-danger-bg: #fff4f2;
+  --color-danger-bg: #fff6f4;
   --color-danger-border: #f4c9c4;
   --radius-sm: 8px;
   --radius-md: 8px;
@@ -114,7 +114,7 @@ p {
 
 @layer app {
 .list-toolbar {
-  @apply flex items-center gap-3 border-b border-[#edf2f7] p-3.5;
+  @apply flex items-center gap-3 border-b border-[#e8edf3] p-3.5;
 }
 
 .list-toolbar input {
@@ -124,7 +124,7 @@ p {
 .list-toolbar input,
 .admin-role-form input,
 .admin-region-form input {
-  @apply min-h-10 rounded-lg border bg-white px-3 outline-none placeholder:text-[#98a2b3];
+  @apply min-h-10 rounded-lg border bg-white px-3 outline-none placeholder:text-[#7b8797];
   border-color: var(--color-field-border);
   color: var(--color-text);
 }
@@ -151,7 +151,7 @@ p {
 }
 
 .icon-button {
-  @apply h-[34px] w-[34px] rounded-lg border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+  @apply h-[34px] w-[34px] rounded-lg border bg-white shadow-[0_1px_2px_rgba(20,32,51,0.05)];
   border-color: var(--color-border);
   color: var(--color-muted-strong);
 }
@@ -175,7 +175,7 @@ p {
 }
 
 .secondary-button {
-  @apply border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+  @apply border bg-white shadow-[0_1px_2px_rgba(20,32,51,0.05)];
   border-color: var(--color-border);
   color: var(--color-muted-strong);
 }
@@ -196,7 +196,7 @@ p {
 }
 
 .surface-card {
-  @apply rounded-lg border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+  @apply rounded-lg border bg-white shadow-[0_1px_2px_rgba(20,32,51,0.05)];
   border-color: var(--color-border);
 }
 
@@ -219,12 +219,12 @@ p {
 }
 
 .weekly-cell:disabled {
-  @apply cursor-default text-[#344054] opacity-100;
+  @apply cursor-default text-[#334155] opacity-100;
 }
 
 .skeleton-line {
   animation: skeleton-pulse 1.2s ease-in-out infinite;
-  background: linear-gradient(90deg, #edf2f7 0%, #f8fafc 48%, #edf2f7 100%);
+  background: linear-gradient(90deg, #e8edf3 0%, #f8fafc 48%, #e8edf3 100%);
   background-size: 220% 100%;
   border-radius: 999px;
   display: block;
@@ -254,7 +254,7 @@ p {
 
 .crud-modal-backdrop {
   align-items: center;
-  background: rgba(16, 24, 40, 0.42);
+  background: rgba(20, 32, 51, 0.42);
   display: flex;
   inset: 0;
   justify-content: center;
@@ -372,11 +372,11 @@ p {
 }
 
 .success-notice {
-  @apply flex min-h-11 items-center rounded-lg border border-[#abefc6] bg-[#ecfdf3] px-3.5 text-[14px] font-medium text-[#067647];
+  @apply flex min-h-11 items-center rounded-lg border border-[#b9e8ca] bg-[#eefaf3] px-3.5 text-[14px] font-medium text-[#177245];
 }
 
 .field-label {
-  @apply mb-2 block text-[13px] font-medium text-[#475467];
+  @apply mb-2 block text-[13px] font-medium text-[#526173];
 }
 
 .machine-accessory-editor {

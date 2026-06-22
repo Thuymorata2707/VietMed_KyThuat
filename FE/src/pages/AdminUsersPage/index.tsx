@@ -342,7 +342,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="min-w-0 overflow-hidden rounded-lg border border-[#dde5ee] bg-white">
+      <section className="min-w-0 overflow-hidden rounded-lg border border-[#d9e1ea] bg-white">
           <div className="list-toolbar">
             <input
               onChange={(event) => handleSearchChange(event.target.value)}
@@ -359,37 +359,37 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
             <table className="w-full min-w-[780px] border-collapse">
               <thead>
                 <tr>
-                  <th className="border-b border-[#edf2f7] px-3.5 py-[13px] text-left text-xs font-medium text-[#667085]">Nhân sự</th>
-                  <th className="border-b border-[#edf2f7] px-3.5 py-[13px] text-left text-xs font-medium text-[#667085]">Vai trò</th>
-                  <th className="border-b border-[#edf2f7] px-3.5 py-[13px] text-left text-xs font-medium text-[#667085]">Khu vực</th>
-                  <th className="border-b border-[#edf2f7] px-3.5 py-[13px] text-left text-xs font-medium text-[#667085]">Trạng thái</th>
-                  <th className="sticky right-0 z-[2] border-b border-[#edf2f7] bg-white px-3.5 py-[13px] text-left text-xs font-medium text-[#667085]"></th>
+                  <th className="border-b border-[#e8edf3] px-3.5 py-[13px] text-left text-xs font-medium text-[#657386]">Nhân sự</th>
+                  <th className="border-b border-[#e8edf3] px-3.5 py-[13px] text-left text-xs font-medium text-[#657386]">Vai trò</th>
+                  <th className="border-b border-[#e8edf3] px-3.5 py-[13px] text-left text-xs font-medium text-[#657386]">Khu vực</th>
+                  <th className="border-b border-[#e8edf3] px-3.5 py-[13px] text-left text-xs font-medium text-[#657386]">Trạng thái</th>
+                  <th className="sticky right-0 z-[2] border-b border-[#e8edf3] bg-white px-3.5 py-[13px] text-left text-xs font-medium text-[#657386]"></th>
                 </tr>
               </thead>
               <tbody>
                 {visibleUsers.map((user) => (
                   <tr key={user.id}>
-                    <td className="border-b border-[#edf2f7] px-3.5 py-[13px]">
+                    <td className="border-b border-[#e8edf3] px-3.5 py-[13px]">
                       <div className="flex min-w-0 items-center gap-[11px]">
                         <UserPhoto name={user.fullName || user.email} photoUrl={user.engineerProfile?.photoUrl} />
                         <div className="min-w-0">
                           <strong className="block font-semibold">{user.fullName}</strong>
-                          <span className="mt-1 block text-[#667085]">{user.email}</span>
+                          <span className="mt-1 block text-[#657386]">{user.email}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="border-b border-[#edf2f7] px-3.5 py-[13px]">{user.role?.name ?? 'Chưa gán'}</td>
-                    <td className="border-b border-[#edf2f7] px-3.5 py-[13px]">{user.region?.name ?? 'Chưa gán'}</td>
-                    <td className="border-b border-[#edf2f7] px-3.5 py-[13px]">
+                    <td className="border-b border-[#e8edf3] px-3.5 py-[13px]">{user.role?.name ?? 'Chưa gán'}</td>
+                    <td className="border-b border-[#e8edf3] px-3.5 py-[13px]">{user.region?.name ?? 'Chưa gán'}</td>
+                    <td className="border-b border-[#e8edf3] px-3.5 py-[13px]">
                       <span className={`inline-flex min-h-7 items-center gap-[7px] whitespace-nowrap rounded-full border px-2.5 py-[7px] text-xs font-medium leading-none before:h-[7px] before:w-[7px] before:rounded-full before:content-[''] ${
                         user.status === 'ACTIVE'
-                          ? 'border-[#abefc6] bg-[#ecfdf3] text-[#067647] before:bg-[#12b76a]'
-                          : 'border-[#fecdd3] bg-[#fff1f3] text-[#b42318] before:bg-[#f04438]'
+                          ? 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245] before:bg-[#12b76a]'
+                          : 'border-[#fecdd3] bg-[#fff1f3] text-[#a3342b] before:bg-[#f04438]'
                       }`}>
                         {user.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm khóa'}
                       </span>
                     </td>
-                    <td className="sticky right-0 z-[1] border-b border-[#edf2f7] bg-white px-3.5 py-[13px]">
+                    <td className="sticky right-0 z-[1] border-b border-[#e8edf3] bg-white px-3.5 py-[13px]">
                       <div className="flex justify-end gap-1.5">
                         <Link className="icon-button" to={`/users/${user.id}/edit`} title="Sửa">
                           <Edit3 size={16} />
@@ -636,10 +636,10 @@ function UserForm({
         </label>
 
         {shouldShowEngineerProfile ? (
-          <div className="col-span-full grid gap-3.5 rounded-lg border border-[#edf2f7] bg-[#f8fbfd] p-3.5">
+          <div className="col-span-full grid gap-3.5 rounded-lg border border-[#e8edf3] bg-[#f8fbfd] p-3.5">
             <div className="grid gap-1">
-              <span className="text-sm font-semibold text-[#101828]">Hồ sơ kỹ sư</span>
-              <p className="leading-snug text-[#667085]">Thông tin chuyên môn dùng cho phân công lắp đặt, bảo trì và sửa chữa.</p>
+              <span className="text-sm font-semibold text-[#142033]">Hồ sơ kỹ sư</span>
+              <p className="leading-snug text-[#657386]">Thông tin chuyên môn dùng cho phân công lắp đặt, bảo trì và sửa chữa.</p>
             </div>
 
             <div className="form-grid compact-grid">
@@ -682,7 +682,7 @@ function UserForm({
                   value={form.photoUrl}
                 />
                 {form.photoUrl ? (
-                  <span className="mt-0.5 block overflow-hidden rounded-lg border border-[#dde5ee] bg-[#f4f7fb]">
+                  <span className="mt-0.5 block overflow-hidden rounded-lg border border-[#d9e1ea] bg-[#f4f7fb]">
                     <img alt="" className="aspect-video w-full object-cover" src={form.photoUrl} />
                   </span>
                 ) : null}
@@ -786,11 +786,11 @@ function UserPhoto({ name, photoUrl }: { name: string; photoUrl?: string | null 
 
   if (photoUrl) {
     return (
-      <span className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#dde5ee] bg-[#f4f7fb] text-xs font-medium text-[#d92d20]">
+      <span className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#d9e1ea] bg-[#f4f7fb] text-xs font-medium text-[#c83f34]">
         {hasError ? <ImageOff size={18} /> : <img alt="" className="h-full w-full object-cover" onError={() => setHasError(true)} src={photoUrl} />}
       </span>
     );
   }
 
-  return <span className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#dde5ee] bg-[#f4f7fb] text-xs font-medium text-[#d92d20]">{initials(name)}</span>;
+  return <span className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#d9e1ea] bg-[#f4f7fb] text-xs font-medium text-[#c83f34]">{initials(name)}</span>;
 }

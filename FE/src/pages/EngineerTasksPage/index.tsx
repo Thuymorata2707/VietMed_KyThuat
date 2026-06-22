@@ -106,11 +106,11 @@ const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
 };
 
 const dailyWorkStatusMeta: Record<DailyWorkStatus, { label: string; className: string }> = {
-  DRAFT: { label: 'Nháp', className: 'border-[#dde5ee] bg-white text-[#667085]' },
-  PENDING: { label: 'Chờ duyệt', className: 'border-[#fedf89] bg-[#fffaeb] text-[#b54708]' },
-  APPROVED: { label: 'Đã duyệt', className: 'border-[#abefc6] bg-[#ecfdf3] text-[#067647]' },
-  REJECTED: { label: 'Từ chối', className: 'border-[#fecdca] bg-[#fff4f2] text-[#b42318]' },
-  CANCELLED: { label: 'Đã hủy', className: 'border-[#dde5ee] bg-[#f8fafc] text-[#667085]' },
+  DRAFT: { label: 'Nháp', className: 'border-[#d9e1ea] bg-white text-[#657386]' },
+  PENDING: { label: 'Chờ duyệt', className: 'border-[#efd8a8] bg-[#fffaeb] text-[#9b5a17]' },
+  APPROVED: { label: 'Đã duyệt', className: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]' },
+  REJECTED: { label: 'Từ chối', className: 'border-[#f4c9c4] bg-[#fff6f4] text-[#a3342b]' },
+  CANCELLED: { label: 'Đã hủy', className: 'border-[#d9e1ea] bg-[#f8fafc] text-[#657386]' },
 };
 
 type QuickCustomerForm = {
@@ -924,22 +924,22 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
+        <div className="rounded-lg border border-[#d9e1ea] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8edf3] bg-[#f8fafc] px-4 py-3">
             <div>
-              <span className="text-[12px] font-medium text-[#667085]">Ưu tiên hôm nay</span>
-              <h2 className="mt-1 text-lg font-medium text-[#101828]">Việc cần mở trước</h2>
+              <span className="text-[12px] font-medium text-[#657386]">Ưu tiên hôm nay</span>
+              <h2 className="mt-1 text-lg font-medium text-[#142033]">Việc cần mở trước</h2>
             </div>
             <button className="secondary-button" onClick={openCreateRequest} type="button">
               <Plus size={16} />
               Tạo phiếu mới
             </button>
           </div>
-          <div className="grid divide-y divide-[#edf2f7]">
+          <div className="grid divide-y divide-[#e8edf3]">
             {priorityTasks.length ? priorityTasks.map((task) => (
               <PriorityTaskRow key={`${task.kind}-${task.id}`} task={task} />
             )) : (
-              <div className="px-4 py-5 text-sm text-[#667085]">Không có việc quá hạn, việc hôm nay hoặc phiếu thiếu hồ sơ máy.</div>
+              <div className="px-4 py-5 text-sm text-[#657386]">Không có việc quá hạn, việc hôm nay hoặc phiếu thiếu hồ sơ máy.</div>
             )}
           </div>
         </div>
@@ -1392,15 +1392,15 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           </form>
         </section>
       ) : (
-        <section className="min-w-0 overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-          <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-1 border-b border-[#edf2f7] bg-[#f8fafc] p-2" aria-label="Nhóm công việc">
+        <section className="min-w-0 overflow-hidden rounded-lg border border-[#d9e1ea] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+          <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-1 border-b border-[#e8edf3] bg-[#f8fafc] p-2" aria-label="Nhóm công việc">
             {businessTabs.map((tab) => (
               <button
                 className={[
                   'flex min-h-12 min-w-0 items-center justify-between gap-2 rounded-lg border-0 px-3 text-left text-sm font-medium transition',
                   businessTab === tab.value
-                    ? 'bg-white text-[#d92d20] shadow-[0_1px_5px_rgba(16,24,40,0.08)]'
-                    : 'bg-transparent text-[#344054] hover:bg-white/70',
+                    ? 'bg-white text-[#c83f34] shadow-[0_1px_5px_rgba(20,32,51,0.08)]'
+                    : 'bg-transparent text-[#334155] hover:bg-white/70',
                 ].join(' ')}
                 key={tab.value}
                 onClick={() => {
@@ -1414,8 +1414,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   className={[
                     'inline-flex min-w-7 items-center justify-center rounded-full border px-2 py-[3px] text-xs',
                     businessTab === tab.value
-                      ? 'border-[#fecdca] bg-[#fff4f2] text-[#d92d20]'
-                      : 'border-[#dde5ee] bg-white text-[#667085]',
+                      ? 'border-[#f4c9c4] bg-[#fff6f4] text-[#c83f34]'
+                      : 'border-[#d9e1ea] bg-white text-[#657386]',
                   ].join(' ')}
                 >
                   {businessTabCounts[tab.value]}
@@ -1424,12 +1424,12 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ))}
           </div>
 
-          <div className="grid min-w-0 gap-3 border-b border-[#edf2f7] p-3 min-[1180px]:grid-cols-[minmax(220px,1fr)_auto_minmax(180px,220px)] min-[1180px]:items-end">
-            <div className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#667085] focus-within:border-[#d92d20] focus-within:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]">
+          <div className="grid min-w-0 gap-3 border-b border-[#e8edf3] p-3 min-[1180px]:grid-cols-[minmax(220px,1fr)_auto_minmax(180px,220px)] min-[1180px]:items-end">
+            <div className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#657386] focus-within:border-[#c83f34] focus-within:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]">
               <Search size={17} />
-              <input className="min-w-0 flex-1 border-0 text-[#101828] outline-none" onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, mã máy, serial, khách hàng" value={query} />
+              <input className="min-w-0 flex-1 border-0 text-[#142033] outline-none" onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, mã máy, serial, khách hàng" value={query} />
             </div>
-            <div className="grid w-full grid-cols-2 gap-[3px] rounded-lg border border-[#dde5ee] bg-[#f4f7fb] p-[3px] min-[560px]:inline-flex min-[560px]:w-auto">
+            <div className="grid w-full grid-cols-2 gap-[3px] rounded-lg border border-[#d9e1ea] bg-[#f4f7fb] p-[3px] min-[560px]:inline-flex min-[560px]:w-auto">
               {[
                 ['open', 'Cần xử lý'],
                 ['progress', 'Đang làm'],
@@ -1439,7 +1439,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <button
                   className={[
                     'min-h-8 min-w-0 flex-1 rounded-md border-0 px-2 text-xs font-medium leading-tight min-[560px]:flex-none min-[560px]:px-3 min-[560px]:text-sm',
-                    filter === value ? 'bg-white text-[#d92d20] shadow-[0_1px_4px_rgba(16,24,40,0.08)]' : 'bg-transparent text-[#344054]',
+                    filter === value ? 'bg-white text-[#c83f34] shadow-[0_1px_4px_rgba(20,32,51,0.08)]' : 'bg-transparent text-[#334155]',
                   ].join(' ')}
                   key={value}
                   onClick={() => setFilter(value as TaskFilter)}
@@ -1449,9 +1449,9 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 </button>
               ))}
             </div>
-            <label className="grid min-w-0 gap-1.5 text-xs font-medium text-[#344054]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-medium text-[#334155]">
               <span>Loại công việc</span>
-              <select className="h-10 w-full rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]" onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
+              <select className="h-10 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]" onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
                 {businessTab === 'repair' ? (
                   <>
                     <option value="all">Sửa chữa</option>
@@ -1482,7 +1482,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
           <div className="grid">
             {loading ? (
-              <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#667085]">
+              <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#657386]">
                 <Loader2 className="spin-icon" size={18} />
                 Đang tải việc được giao...
               </div>
@@ -1491,28 +1491,28 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             {!loading && businessTab === 'calendar' ? (
               <>
                 {loadingDailyWork ? (
-                  <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#667085]">
+                  <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#657386]">
                     <Loader2 className="spin-icon" size={18} />
                     Đang tải lịch công việc...
                   </div>
                 ) : null}
 
                 {!loadingDailyWork && filteredDailyWorkNotes.length === 0 ? (
-                  <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#667085]">
-                    <strong className="text-[#101828]">Chưa có lịch công việc phù hợp</strong>
+                  <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#657386]">
+                    <strong className="text-[#142033]">Chưa có lịch công việc phù hợp</strong>
                     <span className="text-sm">Lịch admin thêm cho bạn và ghi chú công việc cá nhân sẽ xuất hiện tại đây.</span>
                   </div>
                 ) : null}
 
                 {!loadingDailyWork
                   ? filteredDailyWorkNotes.map((note) => (
-                      <article className="grid min-w-0 items-center gap-3.5 border-b border-[#edf2f7] p-4 last:border-b-0 min-[640px]:grid-cols-[66px_minmax(0,1fr)]" key={note.id}>
-                        <div className="grid min-h-16 justify-items-center rounded-lg border border-l-4 bg-[#fffdfb] p-2" style={{ borderColor: note.color || '#d92d20' }}>
-                          <strong className="text-2xl leading-none text-[#101828]">{dayNumber(note.workDate)}</strong>
-                          <span className="text-xs font-medium text-[#667085]">{monthLabel(note.workDate)}</span>
+                      <article className="grid min-w-0 items-center gap-3.5 border-b border-[#e8edf3] p-4 last:border-b-0 min-[640px]:grid-cols-[66px_minmax(0,1fr)]" key={note.id}>
+                        <div className="grid min-h-16 justify-items-center rounded-lg border border-l-4 bg-[#fffdfb] p-2" style={{ borderColor: note.color || '#c83f34' }}>
+                          <strong className="text-2xl leading-none text-[#142033]">{dayNumber(note.workDate)}</strong>
+                          <span className="text-xs font-medium text-[#657386]">{monthLabel(note.workDate)}</span>
                         </div>
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#667085]">
+                          <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#657386]">
                             <span>{dailyWorkTypeLabels[note.type || 'WORK']}</span>
                             <span className={`rounded-full border px-2 py-0.5 text-[12px] font-semibold ${dailyWorkStatusMeta[note.status || 'APPROVED'].className}`}>
                               {dailyWorkStatusMeta[note.status || 'APPROVED'].label}
@@ -1520,9 +1520,9 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                             <span>{formatDailyWorkDate(note.workDate)}</span>
                             <span>{formatDailyWorkTime(note)}</span>
                           </div>
-                          <h2 className="mt-1 text-[17px] font-medium text-[#101828] [overflow-wrap:anywhere]">{note.title}</h2>
-                          <p className="mt-1.5 leading-6 text-[#344054] [overflow-wrap:anywhere]">{note.note || 'Chưa có ghi chú chi tiết.'}</p>
-                          {note.rejectReason ? <p className="mt-2 rounded-lg border border-[#fecdca] bg-[#fff4f2] px-3 py-2 text-sm text-[#b42318]">Lý do từ chối: {note.rejectReason}</p> : null}
+                          <h2 className="mt-1 text-[17px] font-medium text-[#142033] [overflow-wrap:anywhere]">{note.title}</h2>
+                          <p className="mt-1.5 leading-6 text-[#334155] [overflow-wrap:anywhere]">{note.note || 'Chưa có ghi chú chi tiết.'}</p>
+                          {note.rejectReason ? <p className="mt-2 rounded-lg border border-[#f4c9c4] bg-[#fff6f4] px-3 py-2 text-sm text-[#a3342b]">Lý do từ chối: {note.rejectReason}</p> : null}
                         </div>
                       </article>
                     ))
@@ -1531,27 +1531,27 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ) : null}
 
             {!loading && businessTab !== 'calendar' && filteredTasks.length === 0 ? (
-              <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#667085]">
-                <strong className="text-[#101828]">Chưa có công việc phù hợp</strong>
+              <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#657386]">
+                <strong className="text-[#142033]">Chưa có công việc phù hợp</strong>
                 <span className="text-sm">Thử đổi bộ lọc hoặc kiểm tra lại phiếu được admin phân công.</span>
               </div>
             ) : null}
 
             {businessTab !== 'calendar' ? filteredTasks.map((task) => (
-              <article className="grid min-w-0 gap-3.5 border-b border-[#edf2f7] p-4 last:border-b-0 min-[860px]:grid-cols-[minmax(0,1fr)_auto] min-[860px]:items-center" key={`${task.kind}-${task.id}`}>
+              <article className="grid min-w-0 gap-3.5 border-b border-[#e8edf3] p-4 last:border-b-0 min-[860px]:grid-cols-[minmax(0,1fr)_auto] min-[860px]:items-center" key={`${task.kind}-${task.id}`}>
                 <div className="grid min-w-0 gap-3 min-[560px]:grid-cols-[40px_minmax(0,1fr)]">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#fecdca] bg-[#fff4f2] text-[#d92d20]">{taskIcon(task.kind)}</div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#f4c9c4] bg-[#fff6f4] text-[#c83f34]">{taskIcon(task.kind)}</div>
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#667085]">
+                    <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#657386]">
                       <span>{taskKindLabel(task.kind)}</span>
                       <span>{task.code}</span>
                       {task.kind === 'repair' && task.createdBy?.fullName ? <span>Người tạo: {task.createdBy.fullName}</span> : null}
-                      {isOverdueTask(task) ? <span className="font-medium text-[#b42318]">Quá hạn</span> : null}
-                      {needsMachineProfile(task) ? <span className="font-medium text-[#b54708]">Cần tạo hồ sơ máy</span> : null}
+                      {isOverdueTask(task) ? <span className="font-medium text-[#a3342b]">Quá hạn</span> : null}
+                      {needsMachineProfile(task) ? <span className="font-medium text-[#9b5a17]">Cần tạo hồ sơ máy</span> : null}
                     </div>
-                    <h2 className="mt-1 text-[17px] font-medium text-[#101828] [overflow-wrap:anywhere]">{taskTitle(task)}</h2>
-                    <p className="mt-1.5 line-clamp-2 leading-6 text-[#667085]">{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
-                    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-[13px] text-[#667085]">
+                    <h2 className="mt-1 text-[17px] font-medium text-[#142033] [overflow-wrap:anywhere]">{taskTitle(task)}</h2>
+                    <p className="mt-1.5 line-clamp-2 leading-6 text-[#657386]">{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
+                    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-[13px] text-[#657386]">
                       <span className="min-w-0 [overflow-wrap:anywhere]">{task.machine?.machineCode || task.machine?.serialNumber || taskSerialText(task) || 'Chưa có mã máy'}</span>
                       <span className="min-w-0 [overflow-wrap:anywhere]">{task.machine?.modelName || taskModelText(task) || 'Chưa có model'}</span>
                       <span className="min-w-0 [overflow-wrap:anywhere]">{taskCustomer(task) || 'Chưa có khách hàng'}</span>
@@ -1561,7 +1561,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <div className="grid min-w-0 justify-items-start gap-2 min-[860px]:min-w-[150px] min-[860px]:justify-items-end">
                   <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
                   <span className={`task-badge ${secondaryTone(task)}`}>{secondaryLabel(task)}</span>
-                  <span className="text-[13px] text-[#667085]">{taskDate(task)}</span>
+                  <span className="text-[13px] text-[#657386]">{taskDate(task)}</span>
                   {task.kind === 'installation' ? (
                     <Link className="task-action" to={`/installations/${task.id}/update?returnTo=/my-tasks`}>
                       Cập nhật
@@ -2291,14 +2291,14 @@ function WeeklyReportQuickCard({ loading, report }: { loading: boolean; report: 
   const rowCount = report?.rows?.length ?? 0;
 
   return (
-    <aside className="grid gap-4 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+    <aside className="grid gap-4 rounded-lg border border-[#d9e1ea] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-        <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#667085]">
+        <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#657386]">
           <CalendarDays size={14} />
           Báo cáo tuần
         </span>
-          <h2 className="mt-1 text-lg font-medium text-[#101828]">
+          <h2 className="mt-1 text-lg font-medium text-[#142033]">
             {formatDate(weekStart)} - {formatDate(weekEnd)}
           </h2>
         </div>
@@ -2309,12 +2309,12 @@ function WeeklyReportQuickCard({ loading, report }: { loading: boolean; report: 
 
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg bg-[#f8fafc] p-3">
-          <span className="block text-xs font-medium text-[#667085]">Dòng báo cáo</span>
-          <strong className="mt-1 block text-2xl leading-none text-[#101828]">{loading ? '-' : rowCount}</strong>
+          <span className="block text-xs font-medium text-[#657386]">Dòng báo cáo</span>
+          <strong className="mt-1 block text-2xl leading-none text-[#142033]">{loading ? '-' : rowCount}</strong>
         </div>
         <div className="rounded-lg bg-[#f8fafc] p-3">
-          <span className="block text-xs font-medium text-[#667085]">Trạng thái</span>
-          <strong className="mt-1 block text-sm text-[#101828]">{loading ? 'Đang tải' : weeklyReportStatusLabels[status]}</strong>
+          <span className="block text-xs font-medium text-[#657386]">Trạng thái</span>
+          <strong className="mt-1 block text-sm text-[#142033]">{loading ? 'Đang tải' : weeklyReportStatusLabels[status]}</strong>
         </div>
       </div>
 
@@ -2344,21 +2344,21 @@ function PriorityTaskRow({ task }: { task: EngineerTask }) {
   return (
     <Link className="grid min-w-0 gap-3 px-4 py-3 transition hover:bg-[#f8fafc] min-[760px]:grid-cols-[minmax(0,1fr)_auto] min-[760px]:items-center" to={href}>
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#667085]">
+        <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#657386]">
           <span>{taskKindLabel(task.kind)}</span>
           <span>{task.code}</span>
-          <span className={reason === 'Quá hạn' ? 'font-medium text-[#b42318]' : reason === 'Cần tạo hồ sơ máy' ? 'font-medium text-[#b54708]' : 'font-medium text-[#344054]'}>
+          <span className={reason === 'Quá hạn' ? 'font-medium text-[#a3342b]' : reason === 'Cần tạo hồ sơ máy' ? 'font-medium text-[#9b5a17]' : 'font-medium text-[#334155]'}>
             {reason}
           </span>
         </div>
-        <strong className="mt-1 block truncate text-[15px] font-medium text-[#101828]">{taskTitle(task)}</strong>
-        <span className="mt-1 block truncate text-[13px] text-[#667085]">
+        <strong className="mt-1 block truncate text-[15px] font-medium text-[#142033]">{taskTitle(task)}</strong>
+        <span className="mt-1 block truncate text-[13px] text-[#657386]">
           {[task.machine?.machineCode || taskSerialText(task) || 'Chưa có mã máy', task.machine?.modelName || taskModelText(task) || 'Chưa có model', taskCustomer(task) || 'Chưa có khách hàng'].join(' - ')}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2 min-[760px]:justify-end">
         <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
-        <span className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#dde5ee] bg-white px-2.5 text-xs font-semibold text-[#344054]">
+        <span className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#d9e1ea] bg-white px-2.5 text-xs font-semibold text-[#334155]">
           Cập nhật
           <ArrowRight size={14} />
         </span>

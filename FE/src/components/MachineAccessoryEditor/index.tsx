@@ -37,7 +37,7 @@ export function MachineAccessoryEditor({ value, onChange, compact }: MachineAcce
   return (
     <div className={`${compact ? 'machine-accessory-editor compact' : 'machine-accessory-editor'} grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4`}>
       <div className="machine-accessory-header flex flex-wrap items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#344054]">
+        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#334155]">
           <ScanLine size={17} className="text-[#2f5f98]" />
           Đầu dò đi kèm
         </span>
@@ -49,10 +49,10 @@ export function MachineAccessoryEditor({ value, onChange, compact }: MachineAcce
 
       <div className="machine-accessory-list grid gap-3">
         {items.map((item, index) => (
-          <div className="machine-accessory-row grid gap-3 rounded-lg border border-[#edf2f7] bg-white p-3 md:grid-cols-[minmax(190px,1fr)_minmax(180px,1fr)_auto]" key={`${item.id ?? 'new'}-${index}`}>
-            <label className="grid gap-2 text-sm font-medium text-[#344054]">
+          <div className="machine-accessory-row grid gap-3 rounded-lg border border-[#e8edf3] bg-white p-3 md:grid-cols-[minmax(190px,1fr)_minmax(180px,1fr)_auto]" key={`${item.id ?? 'new'}-${index}`}>
+            <label className="grid gap-2 text-sm font-medium text-[#334155]">
               Ký hiệu đầu dò
-              <select className="h-11 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
+              <select className="h-11 rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
                 <option value="">Chọn đầu dò</option>
                 {ultrasoundProbeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -61,9 +61,9 @@ export function MachineAccessoryEditor({ value, onChange, compact }: MachineAcce
                 ))}
               </select>
             </label>
-            <label className="grid gap-2 text-sm font-medium text-[#344054]">
+            <label className="grid gap-2 text-sm font-medium text-[#334155]">
               S/N đầu dò
-              <input className="h-11 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]" onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
+              <input className="h-11 rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]" onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
             </label>
             <button className="icon-button danger self-end" onClick={() => removeItem(index)} title="Xóa đầu dò" type="button">
               <Trash2 size={16} />
@@ -73,7 +73,7 @@ export function MachineAccessoryEditor({ value, onChange, compact }: MachineAcce
       </div>
 
       {!items.length ? (
-        <div className="machine-accessory-empty rounded-lg border border-dashed border-[#cfd8e3] bg-white px-4 py-5 text-sm leading-6 text-[#667085]">
+        <div className="machine-accessory-empty rounded-lg border border-dashed border-[#cbd5e1] bg-white px-4 py-5 text-sm leading-6 text-[#657386]">
           Mỗi máy siêu âm thường có khoảng 6 đầu dò. Bấm thêm đầu dò để nhập ký hiệu và S/N thực tế.
         </div>
       ) : null}
