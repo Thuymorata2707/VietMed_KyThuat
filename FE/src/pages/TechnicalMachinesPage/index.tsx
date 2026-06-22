@@ -592,74 +592,69 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         </div>
 
         <div className="grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-3 shadow-[0_10px_28px_rgba(16,24,40,0.05)]">
-          <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
-            <button
-              className={machineFilterChipClass(selectedBusinessLineKey === 'ALL')}
-              onClick={() => {
-                setSelectedBusinessLineKey('ALL');
-                setSelectedMachineId(null);
-                setPage(1);
-              }}
-              type="button"
-            >
-              <span>Tất cả</span>
-              <b>{technicalMachines?.businessLines.reduce((sum, item) => sum + item.count, 0) ?? 0}</b>
-            </button>
-            {technicalMachines?.businessLines.map((businessLine) => (
-              <button
-                className={machineFilterChipClass(businessLineKey(businessLine) === selectedBusinessLineKey)}
-                key={businessLineKey(businessLine)}
-                onClick={() => {
-                  setSelectedBusinessLineKey(businessLineKey(businessLine));
+          <div className="grid gap-3 min-[1120px]:grid-cols-[minmax(240px,320px)_minmax(260px,1fr)_180px_150px_auto]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#667085]">
+              Ngành hàng
+              <select
+                className="h-11 min-w-0 rounded-lg border border-[#cfd8e3] bg-white px-3 text-sm font-medium text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
+                onChange={(event) => {
+                  setSelectedBusinessLineKey(event.target.value);
                   setSelectedMachineId(null);
                   setPage(1);
                 }}
-                type="button"
+                value={selectedBusinessLineKey}
               >
-                <span>{businessLine.name}</span>
-                <b>{businessLine.count}</b>
-              </button>
-            ))}
-          </div>
-
-          <div className="grid gap-3 min-[1120px]:grid-cols-[minmax(260px,1fr)_180px_150px_auto]">
+                <option value="ALL">Tất cả ngành hàng ({technicalMachines?.businessLines.reduce((sum, item) => sum + item.count, 0) ?? 0})</option>
+                {technicalMachines?.businessLines.map((businessLine) => (
+                  <option key={businessLineKey(businessLine)} value={businessLineKey(businessLine)}>
+                    {businessLine.name} ({businessLine.count})
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="relative min-w-0">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#98a2b3]" size={17} />
               <input
-                className="h-11 w-full min-w-0 rounded-lg border border-[#cfd8e3] bg-[#f8fafc] pl-9 pr-3 text-[#101828] outline-none focus:border-[#d92d20] focus:bg-white focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
+                className="mt-[22px] h-11 w-full min-w-0 rounded-lg border border-[#cfd8e3] bg-[#f8fafc] pl-9 pr-3 text-[#101828] outline-none focus:border-[#d92d20] focus:bg-white focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Tìm S/N, model, khách hàng, đầu dò..."
                 value={searchInput}
               />
             </label>
-            <select
-              className="h-11 min-w-0 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
-              onChange={(event) => {
-                setInstallState(event.target.value);
-                setPage(1);
-                setSelectedMachineId(null);
-              }}
-              value={installState}
-            >
-              <option value="ALL">Tất cả trạng thái lắp</option>
-              <option value="INSTALLED">Đã lắp</option>
-              <option value="UNINSTALLED">Chưa lắp</option>
-            </select>
-            <select
-              className="h-11 min-w-0 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
-              onChange={(event) => {
-                setLimit(Number(event.target.value));
-                setPage(1);
-                setSelectedMachineId(null);
-              }}
-              value={limit}
-            >
-              <option value={10}>10 dòng</option>
-              <option value={25}>25 dòng</option>
-              <option value={50}>50 dòng</option>
-              <option value={100}>100 dòng</option>
-            </select>
-            <button className="secondary-button justify-center" onClick={resetFilters} type="button">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#667085]">
+              Trạng thái
+              <select
+                className="h-11 min-w-0 rounded-lg border border-[#cfd8e3] bg-white px-3 text-sm text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
+                onChange={(event) => {
+                  setInstallState(event.target.value);
+                  setPage(1);
+                  setSelectedMachineId(null);
+                }}
+                value={installState}
+              >
+                <option value="ALL">Tất cả</option>
+                <option value="INSTALLED">Đã lắp</option>
+                <option value="UNINSTALLED">Chưa lắp</option>
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#667085]">
+              Số dòng
+              <select
+                className="h-11 min-w-0 rounded-lg border border-[#cfd8e3] bg-white px-3 text-sm text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]"
+                onChange={(event) => {
+                  setLimit(Number(event.target.value));
+                  setPage(1);
+                  setSelectedMachineId(null);
+                }}
+                value={limit}
+              >
+                <option value={10}>10 dòng</option>
+                <option value={25}>25 dòng</option>
+                <option value={50}>50 dòng</option>
+                <option value={100}>100 dòng</option>
+              </select>
+            </label>
+            <button className="secondary-button mt-[22px] justify-center" onClick={resetFilters} type="button">
               <RotateCcw size={17} />
               Đặt lại
             </button>
@@ -1225,12 +1220,6 @@ function warrantyClass(value?: string | null) {
   if (daysLeft < 0) return 'text-[#d92d20]';
   if (daysLeft <= 30) return 'text-[#b54708]';
   return 'text-[#067647]';
-}
-
-function machineFilterChipClass(active: boolean) {
-  return `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition ${
-    active ? 'border-[#d92d20] bg-[#fff4f2] text-[#d92d20] shadow-[0_6px_18px_rgba(217,45,32,0.10)]' : 'border-[#dde5ee] bg-[#f8fafc] text-[#344054] hover:border-[#b8cbe1] hover:bg-white'
-  } [&_b]:tabular-nums`;
 }
 
 function MachineEditForm({
