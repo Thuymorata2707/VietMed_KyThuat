@@ -27,6 +27,7 @@ const allowedInventoryTransitions: Record<
   [InventoryMovementType.INSTALL]: {
     [MachineInventoryStatus.IN_STOCK]: [MachineInventoryStatus.INSTALLED],
     [MachineInventoryStatus.RESERVED]: [MachineInventoryStatus.INSTALLED],
+    [MachineInventoryStatus.RETURNED]: [MachineInventoryStatus.INSTALLED],
   },
   [InventoryMovementType.RETURN]: {
     [MachineInventoryStatus.RESERVED]: [MachineInventoryStatus.RETURNED],

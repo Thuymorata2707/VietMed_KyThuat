@@ -403,10 +403,18 @@ function MachineTable({
                         </Link>
                       ) : null}
                       {machine.inventoryStatus === 'RETURNED' ? (
-                        <Link className="secondary-button" to={`/service-tickets/create?kind=repair&machineId=${machine.id}&returnTo=${returnTo}`}>
-                          <Wrench size={15} />
-                          Sửa/kiểm tra
-                        </Link>
+                        <>
+                          <Link className="secondary-button" to={`/service-tickets/create?kind=repair&machineId=${machine.id}&returnTo=${returnTo}`}>
+                            <Wrench size={15} />
+                            Sửa/kiểm tra
+                          </Link>
+                          {canManageInventory ? (
+                            <button className="primary-button" onClick={() => onMove(machine, movementActions.returnToCustomer)} type="button">
+                              <PackageCheck size={15} />
+                              Trả khách
+                            </button>
+                          ) : null}
+                        </>
                       ) : null}
                       {canManageInventory && (machine.inventoryStatus === 'RETURNED' || machine.inventoryStatus === 'ACCESSORY_SPLIT') ? (
                         <button className="primary-button" onClick={() => onMove(machine, movementActions.import)} type="button">
@@ -561,7 +569,8 @@ function buildInventorySearch(tab: InventoryTab, query: string) {
 const movementActions = {
   import: { label: 'Nhập lại kho sẵn sàng', type: 'IMPORT', toStatus: 'IN_STOCK', note: 'Đã kiểm tra và nhập lại kho sẵn sàng.' },
   reserve: { label: 'Giữ máy cho khách/dự án', type: 'RESERVE', toStatus: 'RESERVED', note: 'Giữ máy từ kho cho khách hàng/dự án.', requiresCustomer: true },
-  return: { label: 'Thu hồi máy chờ kiểm tra', type: 'RETURN', toStatus: 'RETURNED', note: 'Thu hồi máy từ khách hàng, chờ kiểm tra tình trạng.' },
+  return: { label: 'Thu hồi máy chờ kiểm tra', type: 'RETURN', toStatus: 'RETURNED', note: 'Thu hồi máy từ khách hàng, chờ kiểm tra tình trạng.', requiresCustomer: true },
+  returnToCustomer: { label: 'Trả lại máy cho khách', type: 'INSTALL', toStatus: 'INSTALLED', note: 'Đã sửa/kiểm tra xong và trả lại máy cho khách hàng.', requiresCustomer: true },
   sell: { label: 'Bán/Thanh lý máy', type: 'SELL', toStatus: 'SOLD', note: 'Xuất bán hoặc thanh lý máy.', requiresCustomer: true },
   splitAccessory: { label: 'Tách phụ kiện khỏi máy', type: 'SPLIT_ACCESSORY', toStatus: 'ACCESSORY_SPLIT', note: 'Tách phụ kiện khỏi máy để quản lý riêng.' },
 } satisfies Record<string, MovementAction>;

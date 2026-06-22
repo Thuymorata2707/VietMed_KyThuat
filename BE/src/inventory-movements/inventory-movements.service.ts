@@ -149,13 +149,13 @@ export class InventoryMovementsService {
     if (
       toStatus === MachineInventoryStatus.INSTALLED ||
       toStatus === MachineInventoryStatus.RESERVED ||
-      toStatus === MachineInventoryStatus.SOLD
+      toStatus === MachineInventoryStatus.SOLD ||
+      toStatus === MachineInventoryStatus.RETURNED
     ) {
       return movementCustomerId || currentCustomerId || null;
     }
 
     if (
-      toStatus === MachineInventoryStatus.RETURNED ||
       toStatus === MachineInventoryStatus.IN_STOCK ||
       toStatus === MachineInventoryStatus.ACCESSORY_SPLIT
     ) {
@@ -167,7 +167,6 @@ export class InventoryMovementsService {
 
   private shouldClearInstallationFields(toStatus: MachineInventoryStatus) {
     return (
-      toStatus === MachineInventoryStatus.RETURNED ||
       toStatus === MachineInventoryStatus.IN_STOCK ||
       toStatus === MachineInventoryStatus.ACCESSORY_SPLIT ||
       toStatus === MachineInventoryStatus.SOLD

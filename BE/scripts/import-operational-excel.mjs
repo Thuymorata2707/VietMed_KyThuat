@@ -202,7 +202,7 @@ async function importRows(prisma, context, installationRows, repairRows) {
     const machineModel = findMachineModel(context.machineModels, row.modelName);
     const businessLine = machineModel?.businessLine || findBusinessLine(context.businessLines, row.sourceSheet, row.modelName);
     const customer = await getCustomer(prisma, context, customerFromInstallation(row), result);
-    const engineer = findUser(context.users, row.installerName);
+    const engineer = findUser(context.users, row.installerName || row.checkerName);
     const serialNumber = uniqueSerial(row.serialNumber, row.sourceSheet, row.stt);
     const machine = await getMachine(prisma, context, {
       serialNumber,

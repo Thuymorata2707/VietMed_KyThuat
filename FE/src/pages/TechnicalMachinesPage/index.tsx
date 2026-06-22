@@ -83,6 +83,42 @@ type DashboardMachine = {
       endDate: string;
     } | null;
   } | null;
+  repairs?: Array<{
+    id: string;
+    code: string;
+    status: string;
+    reportedAt?: string | null;
+    completedAt?: string | null;
+    title?: string | null;
+    resultNote?: string | null;
+    engineer?: DashboardEngineer | null;
+  }>;
+  inventoryMovements?: Array<{
+    id: string;
+    code?: string | null;
+    type: string;
+    fromStatus?: string | null;
+    toStatus: string;
+    occurredAt: string;
+    note?: string | null;
+    customer?: DashboardCustomer | null;
+    createdBy?: DashboardEngineer | null;
+  }>;
+  installations?: Array<{
+    id: string;
+    code: string;
+    status: string;
+    installedAt: string;
+    customer?: DashboardCustomer | null;
+    installedBy?: DashboardEngineer | null;
+    warrantyCard?: {
+      id: string;
+      code: string;
+      status: string;
+      startDate: string;
+      endDate: string;
+    } | null;
+  }>;
 };
 
 type EditMachineForm = {
@@ -158,6 +194,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   const [customers, setCustomers] = useState<DashboardCustomer[]>([]);
   const [selectedBusinessLineKey, setSelectedBusinessLineKey] = useState('ALL');
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
+  const [machineDetail, setMachineDetail] = useState<DashboardMachine | null>(null);
+  const [loadingMachineDetail, setLoadingMachineDetail] = useState(false);
   const [editingMachine, setEditingMachine] = useState<DashboardMachine | null>(null);
   const [editForm, setEditForm] = useState<EditMachineForm>(() => emptyEditMachineForm());
   const [templateAccessories, setTemplateAccessories] = useState<TemplateAccessory[]>([]);
@@ -190,6 +228,14 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     void loadTechnicalMachines();
   }, [search, selectedBusinessLineKey, installState, page, limit]);
 
+  useEffect(() => {
+    if (!selectedMachineId) {
+      setMachineDetail(null);
+      return;
+    }
+    void loadMachineDetail(selectedMachineId);
+  }, [selectedMachineId]);
+
   async function loadTechnicalMachines() {
     setLoading(true);
     setError('');
@@ -221,6 +267,18 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       setCustomers(result.data);
     } catch {
       setCustomers([]);
+    }
+  }
+
+  async function loadMachineDetail(machineId: string) {
+    setLoadingMachineDetail(true);
+    try {
+      const result = await apiFetch<DashboardMachine>(`/machines/${machineId}`);
+      setMachineDetail(result);
+    } catch {
+      setMachineDetail(null);
+    } finally {
+      setLoadingMachineDetail(false);
     }
   }
 
@@ -558,7 +616,12 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           </div>
         </div>
 
-        <MachineDetailPanel canEdit={currentRole === 'admin'} machine={selectedMachine} onEdit={openEditMachine} />
+        <MachineDetailPanel
+          canEdit={currentRole === 'admin'}
+          loading={loadingMachineDetail}
+          machine={machineDetail?.id === selectedMachine?.id ? machineDetail : selectedMachine}
+          onEdit={openEditMachine}
+        />
       </section>
 
       {editingMachine ? (
@@ -737,7 +800,17 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   );
 }
 
-function MachineDetailPanel({ canEdit, machine, onEdit }: { canEdit: boolean; machine: DashboardMachine | null; onEdit: (machine: DashboardMachine) => void }) {
+function MachineDetailPanel({
+  canEdit,
+  loading,
+  machine,
+  onEdit,
+}: {
+  canEdit: boolean;
+  loading: boolean;
+  machine: DashboardMachine | null;
+  onEdit: (machine: DashboardMachine) => void;
+}) {
   if (!machine) {
     return (
       <aside className="rounded-lg border border-[#dde5ee] bg-white p-6">
@@ -758,6 +831,7 @@ function MachineDetailPanel({ canEdit, machine, onEdit }: { canEdit: boolean; ma
           <div className="min-w-0">
             <h2 className="text-2xl font-medium leading-tight text-[#101828]">Thông tin máy</h2>
             <p className="mt-1 text-lg font-medium text-[#2f5f98]">{machine.serialNumber}</p>
+            {loading ? <span className="mt-1 inline-flex items-center gap-2 text-xs text-[#667085]"><Loader2 className="spin-icon" size={14} />Đang tải hồ sơ đầy đủ</span> : null}
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             {machine.dataStatus === 'PENDING_REVIEW' ? (
@@ -837,7 +911,67 @@ function MachineDetailPanel({ canEdit, machine, onEdit }: { canEdit: boolean; ma
           <EmptyState text="Máy chưa có thông tin lắp đặt." />
         )}
       </div>
+
+      <div className="grid min-w-0 gap-4 xl:grid-cols-3">
+        <TimelineBox
+          emptyText="Chưa có lịch sử sửa chữa."
+          items={(machine.repairs ?? []).slice(0, 5).map((repair) => ({
+            id: repair.id,
+            title: `${repair.code} - ${displayLabel(repair.status)}`,
+            date: formatDashboardDate(repair.completedAt || repair.reportedAt),
+            description: [repair.title, repair.resultNote, repair.engineer?.fullName].filter(Boolean).join(' - '),
+          }))}
+          title="Sửa chữa gần đây"
+        />
+        <TimelineBox
+          emptyText="Chưa có lịch sử kho."
+          items={(machine.inventoryMovements ?? []).slice(0, 5).map((movement) => ({
+            id: movement.id,
+            title: `${displayLabel(movement.type)}: ${displayLabel(movement.fromStatus || '')} → ${displayLabel(movement.toStatus)}`,
+            date: formatDashboardDate(movement.occurredAt),
+            description: [movement.customer?.name, movement.createdBy?.fullName, movement.note].filter(Boolean).join(' - '),
+          }))}
+          title="Lịch sử kho"
+        />
+        <TimelineBox
+          emptyText="Chưa có lịch sử lắp đặt."
+          items={(machine.installations ?? []).slice(0, 5).map((installation) => ({
+            id: installation.id,
+            title: `${installation.code} - ${displayLabel(installation.status)}`,
+            date: formatDashboardDate(installation.installedAt),
+            description: [installation.customer?.name, installation.installedBy?.fullName, installation.warrantyCard?.endDate ? `BH đến ${formatDashboardDate(installation.warrantyCard.endDate)}` : ''].filter(Boolean).join(' - '),
+          }))}
+          title="Lắp đặt"
+        />
+      </div>
     </aside>
+  );
+}
+
+function TimelineBox({
+  emptyText,
+  items,
+  title,
+}: {
+  emptyText: string;
+  items: Array<{ id: string; title: string; date?: string; description?: string }>;
+  title: string;
+}) {
+  return (
+    <section className="min-w-0 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <h3 className="text-base font-medium text-[#101828]">{title}</h3>
+      <div className="mt-3 grid gap-2">
+        {items.length ? items.map((item) => (
+          <div className="grid gap-1 rounded-lg border border-[#edf2f7] bg-[#fbfdff] p-3" key={item.id}>
+            <div className="flex items-start justify-between gap-2">
+              <strong className="text-sm leading-snug text-[#101828]">{item.title}</strong>
+              {item.date ? <span className="shrink-0 text-xs font-medium text-[#667085]">{item.date}</span> : null}
+            </div>
+            {item.description ? <p className="text-xs leading-snug text-[#667085]">{item.description}</p> : null}
+          </div>
+        )) : <EmptyState text={emptyText} />}
+      </div>
+    </section>
   );
 }
 
@@ -1011,13 +1145,19 @@ function isUltrasoundMachine(machine?: DashboardMachine | null) {
 }
 
 function inventoryStatusFormPatch(inventoryStatus: string): Partial<EditMachineForm> {
-  if (['IN_STOCK', 'ACCESSORY_SPLIT', 'RETURNED'].includes(inventoryStatus)) {
+  if (['IN_STOCK', 'ACCESSORY_SPLIT'].includes(inventoryStatus)) {
     return {
-      status: inventoryStatus === 'RETURNED' ? 'REPAIRING' : 'ACTIVE',
+      status: 'ACTIVE',
       customerId: '',
       installDate: '',
       warrantyStartDate: '',
       warrantyEndDate: '',
+    };
+  }
+
+  if (inventoryStatus === 'RETURNED') {
+    return {
+      status: 'REPAIRING',
     };
   }
 

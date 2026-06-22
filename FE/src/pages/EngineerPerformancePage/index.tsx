@@ -87,14 +87,16 @@ type EngineerWorkSummary = {
 };
 
 const today = new Date();
+const defaultFrom = toDateInput(addDays(today, -60));
+const defaultTo = toDateInput(today);
 
 export function EngineerPerformancePage({ currentRole, user }: EngineerPerformancePageProps) {
   const isAdmin = currentRole === 'admin';
   const [searchParams, setSearchParams] = useSearchParams();
   const [engineers, setEngineers] = useState<ApiUser[]>([]);
   const [engineerId, setEngineerId] = useState(() => searchParams.get('engineerId') || searchParams.get('userId') || (isAdmin ? '' : user.id));
-  const [from, setFrom] = useState(() => searchParams.get('from') || toDateInput(startOfWeek(today)));
-  const [to, setTo] = useState(() => searchParams.get('to') || toDateInput(addDays(startOfWeek(today), 6)));
+  const [from, setFrom] = useState(() => searchParams.get('from') || defaultFrom);
+  const [to, setTo] = useState(() => searchParams.get('to') || defaultTo);
   const [summary, setSummary] = useState<EngineerWorkSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -138,9 +140,10 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
   async function loadEngineers() {
     try {
-      const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&roleName=engineer&status=ACTIVE');
-      setEngineers(result.data);
-      setEngineerId((current) => current || result.data[0]?.id || '');
+      const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&status=ACTIVE');
+      const engineerUsers = result.data.filter((item) => item.role?.name === 'engineer' || item.engineerProfile);
+      setEngineers(engineerUsers);
+      setEngineerId((current) => current || engineerUsers[0]?.id || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được danh sách kỹ sư.');
     }
@@ -239,6 +242,11 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             <Download size={16} />
             CSV
           </button>
+        </div>
+        <div className="flex flex-wrap gap-2 border-t border-[#edf2f7] pt-3">
+          <button className="secondary-button" onClick={() => setDateRange(addDays(today, -60), today)} type="button">60 ngày</button>
+          <button className="secondary-button" onClick={() => setDateRange(startOfMonth(today), today)} type="button">Tháng này</button>
+          <button className="secondary-button" onClick={() => setDateRange(new Date('2026-05-01T00:00:00'), new Date('2026-05-31T00:00:00'))} type="button">Dữ liệu T05/2026</button>
         </div>
       </section>
 
@@ -364,6 +372,11 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       </section>
     </PageFrame>
   );
+
+  function setDateRange(nextFrom: Date, nextTo: Date) {
+    setFrom(toDateInput(nextFrom));
+    setTo(toDateInput(nextTo));
+  }
 }
 
 function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
@@ -527,6 +540,10 @@ function addDays(value: Date, days: number) {
   const date = new Date(value);
   date.setDate(date.getDate() + days);
   return date;
+}
+
+function startOfMonth(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), 1);
 }
 
 function toDateInput(value: Date) {
