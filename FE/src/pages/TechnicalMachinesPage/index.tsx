@@ -1,7 +1,7 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, Edit3, Eye, Loader2, PackageSearch, Plus, RotateCcw, Save, Search, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Paginated, apiFetch } from '../../api';
+import { Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -308,8 +308,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
   async function loadMachineModels() {
     try {
-      const result = await apiFetch<Paginated<MachineModelOption>>('/machine-models?limit=200');
-      setMachineModels(result.data);
+      const result = await apiFetchAllPages<MachineModelOption>('/machine-models');
+      setMachineModels(result);
     } catch {
       setMachineModels([]);
     }

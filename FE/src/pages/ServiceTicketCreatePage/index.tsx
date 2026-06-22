@@ -1,7 +1,7 @@
 import { ArrowLeft, ChevronDown, ChevronUp, Loader2, Plus, Save } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch } from '../../api';
+import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -171,11 +171,11 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     try {
       const [customersResult, modelsResult] = await Promise.all([
         apiFetch<Paginated<CustomerOption>>('/customers?limit=100'),
-        apiFetch<Paginated<MachineModelOption>>('/machine-models?limit=300'),
+        apiFetchAllPages<MachineModelOption>('/machine-models'),
       ]);
 
       setCustomers(customersResult.data);
-      setMachineModels(modelsResult.data);
+      setMachineModels(modelsResult);
 
       if (role === 'engineer') {
         setEngineers([{ id: user.id, email: user.email, fullName: user.fullName }]);

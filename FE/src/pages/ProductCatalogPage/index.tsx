@@ -2,7 +2,7 @@ import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, P
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch } from '../../api';
+import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { Notice } from '../../components/Notice';
@@ -216,12 +216,11 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     setError('');
 
     try {
-      const [industryResult, modelResult] = await Promise.all([
+      const [industryResult, nextModels] = await Promise.all([
         apiFetch<Paginated<ProductIndustry>>('/product-industries?limit=100'),
-        apiFetch<Paginated<MachineModel>>('/machine-models?limit=300'),
+        apiFetchAllPages<MachineModel>('/machine-models'),
       ]);
       const nextIndustries = industryResult.data ?? [];
-      const nextModels = modelResult.data ?? [];
 
       setIndustries(nextIndustries);
       setModels(nextModels);
@@ -253,16 +252,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
   }
 
   async function fetchAllCatalogMachines() {
-    const firstPage = await apiFetch<Paginated<CatalogMachine>>('/machines?limit=500&page=1');
-    const pages = [firstPage.data ?? []];
-    const totalPages = firstPage.meta.totalPages ?? 1;
-
-    for (let pageNumber = 2; pageNumber <= totalPages; pageNumber += 1) {
-      const pageResult = await apiFetch<Paginated<CatalogMachine>>(`/machines?limit=500&page=${pageNumber}`);
-      pages.push(pageResult.data ?? []);
-    }
-
-    return pages.flat();
+    return apiFetchAllPages<CatalogMachine>('/machines');
   }
 
   function updateCatalogState(nextIndustryId: string, nextQuery: string) {
@@ -558,8 +548,8 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
     setError('');
 
     try {
-      const result = await apiFetch<Paginated<MachineModel>>('/machine-models?limit=300');
-      const nextModels = (result.data ?? []).filter(
+      const allModels = await apiFetchAllPages<MachineModel>('/machine-models');
+      const nextModels = allModels.filter(
         (model) => role !== 'engineer' || !userExpertise || model.businessLine?.productIndustry?.expertiseGroup === userExpertise,
       );
       const requestedModelId = searchParams.get('modelId') ?? '';

@@ -96,6 +96,21 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   return JSON.parse(text) as T;
 }
 
+export async function apiFetchAllPages<T>(path: string, pageSize = 100): Promise<T[]> {
+  const safePageSize = Math.min(Math.max(pageSize, 1), 100);
+  const firstPath = withPagination(path, 1, safePageSize);
+  const firstPage = await apiFetch<Paginated<T>>(firstPath);
+  const pages = [firstPage.data ?? []];
+  const totalPages = firstPage.meta.totalPages ?? 1;
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const result = await apiFetch<Paginated<T>>(withPagination(path, page, safePageSize));
+    pages.push(result.data ?? []);
+  }
+
+  return pages.flat();
+}
+
 export async function login(email: string, password: string) {
   const result = await apiFetch<{ accessToken: string; user: ApiUser }>('/auth/login', {
     method: 'POST',
@@ -107,6 +122,14 @@ export async function login(email: string, password: string) {
 
 export function getApiBaseUrl() {
   return API_BASE_URL;
+}
+
+function withPagination(path: string, page: number, limit: number) {
+  const [pathname, query = ''] = path.split('?');
+  const params = new URLSearchParams(query);
+  params.set('page', String(page));
+  params.set('limit', String(limit));
+  return `${pathname}?${params.toString()}`;
 }
 
 function toVietnameseApiError(message: string, statusCode: number) {

@@ -1,7 +1,7 @@
 import { Download, FileUp, Loader2, Plus, Search, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
+import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { Notice } from '../../components/Notice';
@@ -325,7 +325,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         apiFetch<Paginated<PickerMachine>>('/machines?limit=20&inventoryStatus=INSTALLED'),
         apiFetch<Paginated<PickerCustomer>>('/customers?limit=20'),
       ]);
-      const modelsResult = await apiFetch<Paginated<QuickMachineModel>>('/machine-models?limit=300');
+      const modelsResult = await apiFetchAllPages<QuickMachineModel>('/machine-models');
 
       setMachineOptions(
         machinesResult.data.filter((machine) => canEngineerSeeMachine(user, machine)).map((machine) => ({
@@ -341,7 +341,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           row: customer,
         })),
       );
-      setMachineModelOptions(modelsResult.data.filter((model) => canEngineerSeeModel(user, model)));
+      setMachineModelOptions(modelsResult.filter((model) => canEngineerSeeModel(user, model)));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được dữ liệu tạo phiếu.');
     } finally {
@@ -920,7 +920,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <AsyncEntityPicker<QuickMachineModel>
                   className="engineer-picker"
                   disabled={loadingCreateOptions}
-                  endpoint="/machine-models?limit=300"
+                  endpoint="/machine-models?limit=100"
                   formatOption={(model) => ({
                     label: quickModelLabel(model),
                     row: model,
@@ -984,7 +984,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     <>
                 <AsyncEntityPicker<QuickMachineModel>
                   disabled={loadingCreateOptions}
-                  endpoint="/machine-models?limit=300"
+                  endpoint="/machine-models?limit=100"
                   formatOption={(model) => ({
                     label: quickModelLabel(model),
                     row: model,
