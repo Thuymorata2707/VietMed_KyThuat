@@ -260,7 +260,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
         </header>
 
         <Routes>
-          <Route path="/" element={<DashboardPage role={role} />} />
+          <Route path="/" element={<DashboardPage role={role} user={user} />} />
           <Route
             path="/technical-machines/:machineId/edit"
             element={

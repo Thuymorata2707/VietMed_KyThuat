@@ -4,12 +4,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { WeeklyReportStatus } from '@prisma/client';
+import { DailyWorkStatus, DailyWorkType, WeeklyReportStatus } from '@prisma/client';
 import { isAdmin, isEngineer } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { SaveWeeklyReportDto } from './dto/save-weekly-report.dto';
 import { WeeklyReportRowDto } from './dto/weekly-report-row.dto';
+
+const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
+  WORK: 'Công việc',
+  BUSINESS_TRIP: 'Công tác',
+  LEAVE: 'Nghỉ phép',
+  REPAIR: 'Sửa chữa',
+  INSTALLATION: 'Lắp đặt',
+  MAINTENANCE: 'Bảo trì/Bảo dưỡng',
+  OTHER: 'Khác',
+};
 
 @Injectable()
 export class WeeklyReportsService {
@@ -294,6 +304,71 @@ export class WeeklyReportsService {
     });
   }
 
+  async getDailyWorkRows({
+    user,
+    weekStart,
+    userId,
+  }: {
+    user: RequestUser;
+    weekStart?: string;
+    userId?: string;
+  }) {
+    this.assertCanUseWeeklyReports(user);
+    const targetUserId = this.resolveTargetUserId(user, userId);
+    await this.ensureUserExists(targetUserId);
+    const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
+    const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 6));
+
+    const notes = await this.prisma.dailyWorkNote.findMany({
+      where: {
+        userId: targetUserId,
+        workDate: { gte: parsedWeekStart, lte: weekEnd },
+        status: { notIn: [DailyWorkStatus.REJECTED, DailyWorkStatus.CANCELLED] },
+      },
+      orderBy: [
+        { workDate: 'asc' },
+        { startTime: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    });
+
+    const counts = notes.reduce(
+      (acc, note) => {
+        acc.total += 1;
+        acc.byType[note.type] = (acc.byType[note.type] || 0) + 1;
+        acc.byStatus[note.status] = (acc.byStatus[note.status] || 0) + 1;
+        return acc;
+      },
+      {
+        total: 0,
+        byType: {} as Partial<Record<DailyWorkType, number>>,
+        byStatus: {} as Partial<Record<DailyWorkStatus, number>>,
+      },
+    );
+
+    return {
+      weekStart: parsedWeekStart,
+      weekEnd,
+      counts,
+      rows: notes.map((note, index) => ({
+        sourceId: note.id,
+        sourceType: 'DailyWorkNote',
+        workDate: note.workDate,
+        customer: '',
+        machine: '',
+        content: this.buildDailyWorkContent(note),
+        result:
+          note.status === DailyWorkStatus.PENDING
+            ? 'Đang chờ admin duyệt lịch.'
+            : note.note || '',
+        pending: '',
+        proposal: '',
+        sortOrder: index,
+      })),
+      notes,
+    };
+  }
+
   async save(dto: SaveWeeklyReportDto, user: RequestUser) {
     this.assertCanUseWeeklyReports(user);
     const targetUserId = this.resolveTargetUserId(user, dto.userId);
@@ -447,6 +522,12 @@ export class WeeklyReportsService {
     return next;
   }
 
+  private addDays(value: Date, days: number) {
+    const date = new Date(value);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date;
+  }
+
   private currentWeekStart() {
     const now = new Date();
     const day = now.getDay() || 7;
@@ -465,6 +546,23 @@ export class WeeklyReportsService {
 
   private cleanOptional(value?: string | null) {
     return value?.trim() || null;
+  }
+
+  private buildDailyWorkContent(note: {
+    title: string;
+    note?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+    type: DailyWorkType;
+    status: DailyWorkStatus;
+  }) {
+    const timeRange = [note.startTime, note.endTime].filter(Boolean).join(' - ');
+    const prefix = dailyWorkTypeLabels[note.type] || 'Công việc';
+    const statusSuffix =
+      note.status === DailyWorkStatus.PENDING ? ' (chờ duyệt)' : '';
+    return [timeRange, `${prefix}: ${note.title}${statusSuffix}`]
+      .filter(Boolean)
+      .join(' · ');
   }
 
   private customerSummary(

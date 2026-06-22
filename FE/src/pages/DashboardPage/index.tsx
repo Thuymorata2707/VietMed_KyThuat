@@ -1,4 +1,5 @@
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 import { ReactNode, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiFetch } from '../../api';
+import { ApiUser, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
 import { AdminShortcut } from '../../components/AdminShortcut';
 import { Notice } from '../../components/Notice';
@@ -58,7 +59,7 @@ type TechnicalMachines = {
 
 type Tone = 'good' | 'neutral' | 'warn' | 'danger';
 
-export function DashboardPage({ role }: { role: RoleName }) {
+export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -114,6 +115,16 @@ export function DashboardPage({ role }: { role: RoleName }) {
   const totalOpenWork = openRepairWork + openMaintenanceWork;
   const availabilityRate = totalMachines > 0 ? Math.round((activeMachines / totalMachines) * 100) : 0;
   const isAdmin = role === 'admin';
+  const scopeTitle = isAdmin ? 'Toàn hệ thống' : user.fullName || user.email;
+  const scopeDescription = isAdmin
+    ? 'Số liệu tổng hợp toàn bộ khách hàng, máy, kho và phiếu kỹ thuật.'
+    : 'Số liệu theo máy, khách hàng và phiếu kỹ thuật đang liên quan trực tiếp đến kỹ sư này.';
+  const machineHealthItems = [
+    { label: 'Đã lắp', value: installedMachines, tone: 'good' as const },
+    { label: 'Trong kho', value: inStockMachines, tone: 'neutral' as const },
+    { label: 'Đang sửa', value: repairingMachines, tone: 'warn' as const },
+    { label: 'Trả về kho', value: returnedMachines, tone: returnedMachines > 0 ? ('warn' as const) : ('good' as const) },
+  ];
 
   const workQueues = [
     { label: 'Sửa chữa chờ nhận', value: pendingRepairs, tone: 'warn' as const },
@@ -133,9 +144,9 @@ export function DashboardPage({ role }: { role: RoleName }) {
 
   const commandKpis = [
     {
-      label: 'Máy đã xác minh',
-      value: verifiedMachines,
-      detail: `${totalMachines} hồ sơ tổng, ${summary?.pendingReviewMachines ?? 0} chờ duyệt`,
+      label: isAdmin ? 'Khách hàng hoạt động' : 'Khách hàng của tôi',
+      value: activeCustomers,
+      detail: `${summary?.totalCustomers ?? 0} khách hàng trong phạm vi`,
       tone: 'neutral' as const,
     },
     {
@@ -151,7 +162,7 @@ export function DashboardPage({ role }: { role: RoleName }) {
       tone: totalOpenWork > 0 ? ('warn' as const) : ('good' as const),
     },
     {
-      label: 'Cần chuẩn hóa',
+      label: isAdmin ? 'Cần chuẩn hóa' : 'Cần cập nhật',
       value: (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine,
       detail: `${summary?.pendingReviewMachines ?? 0} máy chờ duyệt, ${openTicketsWithoutMachine} phiếu thiếu hồ sơ`,
       tone: (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine > 0 ? ('warn' as const) : ('good' as const),
@@ -220,8 +231,8 @@ export function DashboardPage({ role }: { role: RoleName }) {
       <div className="flex items-start justify-between gap-4 max-[860px]:flex-col">
         <PageTitle
           eyebrow={isAdmin ? 'Admin console' : 'Trung tâm kỹ sư'}
-          title={isAdmin ? 'Tổng quan vận hành kỹ thuật' : 'Việc cần xử lý hôm nay'}
-          description={isAdmin ? 'Theo dõi tồn đọng, quá hạn, phân công và dữ liệu cần xác nhận trong một màn hình.' : 'Ưu tiên ticket, lịch bảo trì và thông tin máy cần cập nhật để kỹ sư thao tác nhanh.'}
+          title={isAdmin ? 'Tổng quan vận hành kỹ thuật' : `Tổng quan của ${user.fullName || 'kỹ sư'}`}
+          description={isAdmin ? 'Theo dõi máy, kho, phiếu kỹ thuật và dữ liệu cần xác nhận trong một màn hình.' : 'Các số liệu bên dưới là phần việc và đội máy liên quan trực tiếp đến tài khoản kỹ sư.'}
         />
         <button className="secondary-button shrink-0 max-[860px]:self-start" disabled={loading} onClick={loadSummary} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
@@ -231,6 +242,36 @@ export function DashboardPage({ role }: { role: RoleName }) {
 
       {error ? <Notice message={error} /> : null}
 
+      <section className="grid gap-4 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#edf2f7] pb-4">
+          <div className="min-w-0">
+            <span className="text-[12px] font-medium text-[#d92d20]">{scopeTitle}</span>
+            <h2 className="mt-1 text-xl font-semibold text-[#101828]">Đội máy đang quản lý</h2>
+            <p className="mt-1 max-w-[760px] text-sm leading-6 text-[#667085]">{scopeDescription}</p>
+          </div>
+          <span className="rounded-lg border border-[#dde5ee] bg-[#f8fafc] px-3 py-2 text-right text-xs font-medium text-[#667085]">
+            Cập nhật: {lastUpdatedAt ?? 'Chưa có'}
+          </span>
+        </div>
+
+        <div className="grid gap-4 min-[1120px]:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.45fr)]">
+          <MachineTotalCard
+            active={activeMachines}
+            availabilityRate={availabilityRate}
+            installed={installedMachines}
+            loading={loading}
+            pendingReview={summary?.pendingReviewMachines ?? 0}
+            total={totalMachines}
+            verified={verifiedMachines}
+          />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {machineHealthItems.map((item) => (
+              <MachineScopeCard key={item.label} loading={loading} {...item} />
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
           <div>
@@ -238,7 +279,7 @@ export function DashboardPage({ role }: { role: RoleName }) {
             <h2 className="mt-1 text-lg font-medium text-[#101828]">Bảng điều phối phòng kỹ thuật</h2>
           </div>
           <span className="rounded-lg border border-[#dde5ee] bg-white px-3 py-2 text-right text-xs font-medium text-[#667085]">
-            {lastUpdatedAt ?? 'Chưa cập nhật'}
+            {isAdmin ? 'Dữ liệu chung' : 'Phần việc cá nhân'}
           </span>
         </div>
 
@@ -261,7 +302,7 @@ export function DashboardPage({ role }: { role: RoleName }) {
           <BoardPanel eyebrow="Trạng thái đội máy" title="Máy cần theo dõi">
             <DonutMachineChart activeRate={availabilityRate} items={machineQueues} loading={loading} total={totalMachines} />
             <div className="grid grid-cols-3 gap-2.5 border-t border-[#edf2f7] pt-3 max-sm:grid-cols-1">
-              <MiniStat label="Khách hàng hoạt động" loading={loading} value={activeCustomers} />
+              <MiniStat label={isAdmin ? 'Khách hàng hoạt động' : 'Khách hàng liên quan'} loading={loading} value={activeCustomers} />
               <MiniStat label="Máy trả về" loading={loading} value={returnedMachines} />
               <MiniStat label="Thiếu hồ sơ máy" loading={loading} value={openTicketsWithoutMachine} />
             </div>
@@ -304,6 +345,90 @@ export function DashboardPage({ role }: { role: RoleName }) {
         </section>
       ) : null}
     </PageFrame>
+  );
+}
+
+function MachineTotalCard({
+  active,
+  availabilityRate,
+  installed,
+  loading,
+  pendingReview,
+  total,
+  verified,
+}: {
+  active: number;
+  availabilityRate: number;
+  installed: number;
+  loading: boolean;
+  pendingReview: number;
+  total: number;
+  verified: number;
+}) {
+  return (
+    <Link
+      className="grid min-h-[220px] gap-5 rounded-lg border border-[#d7e3f1] bg-[#f8fbff] p-5 text-left transition hover:-translate-y-px hover:border-[#b8c7d8] hover:bg-white"
+      to="/technical-machines"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[#175cd3] shadow-[0_1px_2px_rgba(16,24,40,0.06)]">
+          <PackageSearch size={22} />
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#dde5ee] bg-white px-2.5 py-1 text-xs font-semibold text-[#344054]">
+          Chi tiết <ArrowRight size={13} />
+        </span>
+      </div>
+      <div>
+        <span className="text-sm font-semibold text-[#667085]">Tổng số máy</span>
+        <strong className="mt-2 block text-[clamp(42px,7vw,68px)] font-semibold leading-none text-[#101828]">
+          {loading ? '-' : total}
+        </strong>
+      </div>
+      <div className="grid gap-2 text-sm text-[#344054] sm:grid-cols-3">
+        <span className="rounded-lg bg-white px-3 py-2 font-medium">{loading ? '-' : active} hoạt động</span>
+        <span className="rounded-lg bg-white px-3 py-2 font-medium">{loading ? '-' : installed} đã lắp</span>
+        <span className="rounded-lg bg-white px-3 py-2 font-medium">{loading ? '-' : verified} xác minh</span>
+      </div>
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between gap-3 text-xs font-medium text-[#667085]">
+          <span>Tỷ lệ sẵn sàng</span>
+          <span>{loading ? '-' : `${availabilityRate}%`}</span>
+        </div>
+        <div className="h-2.5 overflow-hidden rounded-full bg-[#e8eef6]">
+          <span className="block h-full rounded-full bg-[#067647]" style={{ width: `${loading ? 0 : availabilityRate}%` }} />
+        </div>
+        {pendingReview > 0 ? (
+          <span className="text-xs font-medium text-[#b54708]">{pendingReview} máy đang chờ xác nhận dữ liệu</span>
+        ) : null}
+      </div>
+    </Link>
+  );
+}
+
+function MachineScopeCard({
+  label,
+  value,
+  tone,
+  loading,
+}: {
+  label: string;
+  value: number;
+  tone: Tone;
+  loading: boolean;
+}) {
+  const style = toneClass(tone);
+
+  return (
+    <div className="grid min-h-[104px] gap-3 rounded-lg border border-[#edf2f7] bg-[#fbfcfe] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-[#344054]">{label}</span>
+        {tone === 'warn' || tone === 'danger' ? <AlertTriangle className={style.icon} size={17} /> : <Activity className={style.icon} size={17} />}
+      </div>
+      <strong className={`text-3xl leading-none ${style.text}`}>{loading ? '-' : value}</strong>
+      <div className="h-1.5 overflow-hidden rounded-full bg-[#edf2f7]">
+        <span className={`block h-full rounded-full ${style.bar}`} style={{ width: `${loading ? 0 : Math.min(100, Math.max(8, value * 8))}%` }} />
+      </div>
+    </div>
   );
 }
 

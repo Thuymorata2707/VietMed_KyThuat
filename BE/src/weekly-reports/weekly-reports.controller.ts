@@ -21,6 +21,15 @@ export class WeeklyReportsController {
     return this.weeklyReportsService.getEngineerSummary({ user, from, to, userId });
   }
 
+  @Get('daily-work-rows')
+  getDailyWorkRows(
+    @CurrentUser() user: RequestUser,
+    @Query('weekStart') weekStart?: string,
+    @Query('userId') userId?: string,
+  ) {
+    return this.weeklyReportsService.getDailyWorkRows({ user, weekStart, userId });
+  }
+
   @Get()
   findByWeek(
     @CurrentUser() user: RequestUser,

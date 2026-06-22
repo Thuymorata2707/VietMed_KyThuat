@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Download, Loader2, Plus, Save, Send, Trash2 } from 'lucide-react';
+import { CalendarCheck, ChevronLeft, ChevronRight, Download, Loader2, Plus, Save, Send, Sparkles, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
@@ -37,11 +37,36 @@ type WeeklyReport = {
   rows: Array<WeeklyReportRow & { id: string }>;
 };
 
+type DailyWorkStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+type DailyWorkType = 'WORK' | 'BUSINESS_TRIP' | 'LEAVE' | 'REPAIR' | 'INSTALLATION' | 'MAINTENANCE' | 'OTHER';
+
+type DailyWorkRowsResponse = {
+  counts: {
+    total: number;
+    byType: Partial<Record<DailyWorkType, number>>;
+    byStatus: Partial<Record<DailyWorkStatus, number>>;
+  };
+  rows: Array<WeeklyReportRow & {
+    sourceId: string;
+    sourceType: 'DailyWorkNote';
+  }>;
+};
+
 const statusLabels: Record<WeeklyReportStatus, string> = {
   DRAFT: 'Nháp',
   SUBMITTED: 'Đã gửi',
   APPROVED: 'Đã duyệt',
   NEEDS_REVISION: 'Cần sửa',
+};
+
+const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
+  WORK: 'Công việc',
+  BUSINESS_TRIP: 'Công tác',
+  LEAVE: 'Nghỉ phép',
+  REPAIR: 'Sửa chữa',
+  INSTALLATION: 'Lắp đặt',
+  MAINTENANCE: 'Bảo trì',
+  OTHER: 'Khác',
 };
 
 export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps) {
@@ -54,8 +79,10 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const [engineers, setEngineers] = useState<ApiUser[]>([]);
   const [report, setReport] = useState<WeeklyReport | null>(null);
   const [rows, setRows] = useState<WeeklyReportRow[]>(() => defaultRows(weekStart));
+  const [dailyWorkRows, setDailyWorkRows] = useState<DailyWorkRowsResponse | null>(null);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingDailyWorkRows, setLoadingDailyWorkRows] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -67,6 +94,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
 
   useEffect(() => {
     void loadReport();
+    void loadDailyWorkRows();
   }, [weekStart, selectedEngineerId, isAdmin]);
 
   const reportStatus = report?.status ?? 'DRAFT';
@@ -109,6 +137,27 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     }
   }
 
+  async function loadDailyWorkRows() {
+    if (isAdmin && !selectedEngineerId) {
+      setDailyWorkRows(null);
+      setLoadingDailyWorkRows(false);
+      return;
+    }
+
+    setLoadingDailyWorkRows(true);
+    const query = new URLSearchParams({ weekStart });
+    if (isAdmin && selectedEngineerId) query.set('userId', selectedEngineerId);
+
+    try {
+      const result = await apiFetch<DailyWorkRowsResponse>(`/weekly-reports/daily-work-rows?${query.toString()}`);
+      setDailyWorkRows(result);
+    } catch {
+      setDailyWorkRows(null);
+    } finally {
+      setLoadingDailyWorkRows(false);
+    }
+  }
+
   function updateRow(index: number, patch: Partial<WeeklyReportRow>) {
     setRows((current) => current.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
   }
@@ -119,6 +168,24 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
 
   function removeRow(index: number) {
     setRows((current) => (current.length <= 1 ? defaultRows(weekStart) : current.filter((_, rowIndex) => rowIndex !== index)));
+  }
+
+  function importDailyWorkRows() {
+    if (!dailyWorkRows?.rows.length) return;
+    setRows((current) => {
+      const filledRows = current.filter(rowHasReportData);
+      const existingKeys = new Set(filledRows.map(rowKey));
+      const importedRows = dailyWorkRows.rows
+        .map(normalizeRow)
+        .filter((row) => !existingKeys.has(rowKey(row)));
+      const nextRows = [...filledRows, ...importedRows].sort((a, b) => {
+        const dateCompare = a.workDate.localeCompare(b.workDate);
+        if (dateCompare !== 0) return dateCompare;
+        return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      });
+      return nextRows.length ? nextRows : defaultRows(weekStart);
+    });
+    setSuccess('Đã đưa lịch trong tuần vào báo cáo nháp.');
   }
 
   async function saveReport() {
@@ -272,6 +339,45 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
         </div>
       </section>
 
+      <section className="grid gap-4 rounded-lg border border-[#dde5ee] bg-[#fbfcfe] p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff4f2] text-[#d92d20]">
+              <CalendarCheck size={18} />
+            </span>
+            <div>
+              <span className="text-xs font-semibold text-[#d92d20]">Lịch trong tuần</span>
+              <h2 className="text-lg font-semibold text-[#101828]">Nguồn dữ liệu cho báo cáo tuần</h2>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-sm">
+            <span className="rounded-lg border border-[#dde5ee] bg-white px-3 py-2 font-medium text-[#344054]">
+              {loadingDailyWorkRows ? 'Đang tải lịch...' : `${dailyWorkRows?.counts.total ?? 0} lịch`}
+            </span>
+            <span className="rounded-lg border border-[#abefc6] bg-[#ecfdf3] px-3 py-2 font-medium text-[#067647]">
+              Đã duyệt: {dailyWorkRows?.counts.byStatus.APPROVED ?? 0}
+            </span>
+            <span className="rounded-lg border border-[#fedf89] bg-[#fffaeb] px-3 py-2 font-medium text-[#b54708]">
+              Chờ duyệt: {dailyWorkRows?.counts.byStatus.PENDING ?? 0}
+            </span>
+            {Object.entries(dailyWorkRows?.counts.byType ?? {}).slice(0, 4).map(([type, count]) => (
+              <span className="rounded-lg border border-[#edf2f7] bg-white px-3 py-2 text-[#667085]" key={type}>
+                {dailyWorkTypeLabels[type as DailyWorkType] || type}: {count}
+              </span>
+            ))}
+          </div>
+          <p className="mt-3 max-w-[760px] text-sm leading-6 text-[#667085]">
+            Lịch công việc là danh sách việc đã đăng ký trong tuần. Báo cáo tuần dùng lịch này làm khung, kỹ sư bổ sung kết quả, tồn đọng và đề xuất trước khi gửi admin.
+          </p>
+        </div>
+        {!isAdmin ? (
+          <button className="primary-button justify-center" disabled={saving || !canEdit || !dailyWorkRows?.rows.length} onClick={importDailyWorkRows} type="button">
+            <Sparkles size={16} />
+            Lấy từ lịch tuần
+          </button>
+        ) : null}
+      </section>
+
       <section className="min-w-0 overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         {loading ? (
           <div className="grid min-h-36 place-items-center text-[#667085]">
@@ -400,6 +506,10 @@ function normalizeRow(row: WeeklyReportRow & { id?: string }): WeeklyReportRow {
 
 function rowHasReportData(row: WeeklyReportRow) {
   return [row.customer, row.machine, row.content, row.result, row.pending, row.proposal].some((value) => value.trim());
+}
+
+function rowKey(row: WeeklyReportRow) {
+  return [row.workDate, row.customer.trim(), row.machine.trim(), row.content.trim()].join('|');
 }
 
 function startOfWeek(value: Date) {
