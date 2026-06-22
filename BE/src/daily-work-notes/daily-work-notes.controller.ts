@@ -16,6 +16,7 @@ import { RequestUser } from '../common/request-user.type';
 import { DailyWorkNotesService } from './daily-work-notes.service';
 import { CreateDailyWorkNoteDto } from './dto/create-daily-work-note.dto';
 import { ListDailyWorkNotesQueryDto } from './dto/list-daily-work-notes-query.dto';
+import { ReviewDailyWorkNoteDto } from './dto/review-daily-work-note.dto';
 import { UpdateDailyWorkNoteDto } from './dto/update-daily-work-note.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -43,6 +44,15 @@ export class DailyWorkNotesController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.dailyWorkNotesService.update(id, dto, user);
+  }
+
+  @Post(':id/review')
+  review(
+    @Param('id') id: string,
+    @Body() dto: ReviewDailyWorkNoteDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.dailyWorkNotesService.review(id, dto, user);
   }
 
   @Delete(':id')

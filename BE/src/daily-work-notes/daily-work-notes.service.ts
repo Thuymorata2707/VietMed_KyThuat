@@ -4,13 +4,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { DailyWorkStatus, DailyWorkType, Prisma } from '@prisma/client';
 import { isAdmin, isEngineer } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDailyWorkNoteDto } from './dto/create-daily-work-note.dto';
 import { ListDailyWorkNotesQueryDto } from './dto/list-daily-work-notes-query.dto';
+import { ReviewDailyWorkNoteDto } from './dto/review-daily-work-note.dto';
 import { UpdateDailyWorkNoteDto } from './dto/update-daily-work-note.dto';
 
 @Injectable()
@@ -31,6 +32,8 @@ export class DailyWorkNotesService {
               lte: query.to ? this.parseDate(query.to, 'to') : undefined,
             }
           : undefined,
+      type: query.type,
+      status: query.status,
     };
 
     return this.prisma.dailyWorkNote.findMany({
@@ -53,6 +56,10 @@ export class DailyWorkNotesService {
 
     const targetUserId = isAdmin(user) && dto.userId ? dto.userId : user.id;
     await this.ensureUserExists(targetUserId);
+    const type = dto.type || DailyWorkType.WORK;
+    const status = this.resolveCreateStatus(dto.status, type, user);
+    const reviewedByAdmin =
+      isAdmin(user) && status === DailyWorkStatus.APPROVED;
 
     const note = await this.prisma.dailyWorkNote.create({
       data: {
@@ -63,6 +70,10 @@ export class DailyWorkNotesService {
         startTime: this.cleanOptional(dto.startTime),
         endTime: this.cleanOptional(dto.endTime),
         color: this.cleanOptional(dto.color),
+        type,
+        status,
+        reviewedAt: reviewedByAdmin ? new Date() : null,
+        reviewerId: reviewedByAdmin ? user.id : null,
       },
       include: this.defaultInclude(),
     });
@@ -85,7 +96,9 @@ export class DailyWorkNotesService {
   }
 
   async update(id: string, dto: UpdateDailyWorkNoteDto, user: RequestUser) {
-    const current = await this.findOwnedNote(id, user);
+    const current = await this.findEditableNote(id, user);
+    const type = dto.type || current.type;
+    const statusPatch = this.resolveUpdateStatus(dto, current, type, user);
 
     return this.prisma.dailyWorkNote.update({
       where: { id: current.id },
@@ -109,13 +122,63 @@ export class DailyWorkNotesService {
             : this.cleanOptional(dto.endTime),
         color:
           dto.color === undefined ? undefined : this.cleanOptional(dto.color),
+        type: dto.type,
+        ...statusPatch,
       },
       include: this.defaultInclude(),
     });
   }
 
+  async review(id: string, dto: ReviewDailyWorkNoteDto, user: RequestUser) {
+    if (!isAdmin(user)) {
+      throw new ForbiddenException('Only admins can review daily work notes');
+    }
+
+    if (
+      dto.status !== DailyWorkStatus.APPROVED &&
+      dto.status !== DailyWorkStatus.REJECTED
+    ) {
+      throw new BadRequestException('Review status must be APPROVED or REJECTED');
+    }
+
+    const current = await this.findNote(id);
+    const note = await this.prisma.dailyWorkNote.update({
+      where: { id: current.id },
+      data: {
+        status: dto.status,
+        reviewedAt: new Date(),
+        reviewerId: user.id,
+        rejectReason:
+          dto.status === DailyWorkStatus.REJECTED
+            ? this.cleanOptional(dto.rejectReason) || 'Admin từ chối lịch này.'
+            : null,
+      },
+      include: this.defaultInclude(),
+    });
+
+    await this.notificationsService
+      .create({
+        userId: note.userId,
+        title:
+          dto.status === DailyWorkStatus.APPROVED
+            ? 'Lịch công việc đã được duyệt'
+            : 'Lịch công việc cần chỉnh lại',
+        message:
+          dto.status === DailyWorkStatus.APPROVED
+            ? `${note.title} ngày ${this.formatDate(note.workDate)} đã được duyệt.`
+            : `${note.title} ngày ${this.formatDate(note.workDate)} chưa được duyệt.`,
+        href: '/daily-work',
+        entityType: 'DailyWorkNote',
+        entityId: note.id,
+        createdById: user.id,
+      })
+      .catch(() => null);
+
+    return note;
+  }
+
   async remove(id: string, user: RequestUser) {
-    const current = await this.findOwnedNote(id, user);
+    const current = await this.findEditableNote(id, user);
     await this.prisma.dailyWorkNote.delete({ where: { id: current.id } });
     return { deleted: true };
   }
@@ -131,18 +194,106 @@ export class DailyWorkNotesService {
     return user.id;
   }
 
-  private async findOwnedNote(id: string, user: RequestUser) {
+  private async findNote(id: string) {
     const note = await this.prisma.dailyWorkNote.findUnique({ where: { id } });
 
     if (!note) {
       throw new NotFoundException('Daily work note not found');
     }
 
-    if (note.userId !== user.id) {
+    return note;
+  }
+
+  private async findEditableNote(id: string, user: RequestUser) {
+    const note = await this.findNote(id);
+
+    if (!isAdmin(user) && note.userId !== user.id) {
       throw new ForbiddenException('You can only edit your own notes');
     }
 
     return note;
+  }
+
+  private resolveCreateStatus(
+    requestedStatus: DailyWorkStatus | undefined,
+    type: DailyWorkType,
+    user: RequestUser,
+  ) {
+    if (isAdmin(user)) {
+      return requestedStatus || DailyWorkStatus.APPROVED;
+    }
+
+    return this.needsApproval(type)
+      ? DailyWorkStatus.PENDING
+      : DailyWorkStatus.APPROVED;
+  }
+
+  private resolveUpdateStatus(
+    dto: UpdateDailyWorkNoteDto,
+    current: { status: DailyWorkStatus; type: DailyWorkType },
+    type: DailyWorkType,
+    user: RequestUser,
+  ): Prisma.DailyWorkNoteUpdateInput {
+    if (isAdmin(user) && dto.status) {
+      const reviewed =
+        dto.status === DailyWorkStatus.APPROVED ||
+        dto.status === DailyWorkStatus.REJECTED;
+      return {
+        status: dto.status,
+        reviewedAt: reviewed ? new Date() : null,
+        reviewer: reviewed ? { connect: { id: user.id } } : { disconnect: true },
+        rejectReason:
+          dto.status === DailyWorkStatus.REJECTED
+            ? this.cleanOptional(dto.rejectReason)
+            : null,
+      };
+    }
+
+    if (dto.status === DailyWorkStatus.CANCELLED) {
+      return {
+        status: DailyWorkStatus.CANCELLED,
+        reviewedAt: null,
+        reviewer: { disconnect: true },
+        rejectReason: null,
+      };
+    }
+
+    if (!this.hasReviewableChange(dto)) {
+      return {};
+    }
+
+    const nextStatus = this.needsApproval(type)
+      ? DailyWorkStatus.PENDING
+      : DailyWorkStatus.APPROVED;
+
+    if (current.status === nextStatus && current.type === type) {
+      return {};
+    }
+
+    return {
+      status: nextStatus,
+      reviewedAt: null,
+      reviewer: { disconnect: true },
+      rejectReason: null,
+    };
+  }
+
+  private needsApproval(type: DailyWorkType) {
+    return (
+      type === DailyWorkType.LEAVE || type === DailyWorkType.BUSINESS_TRIP
+    );
+  }
+
+  private hasReviewableChange(dto: UpdateDailyWorkNoteDto) {
+    return Boolean(
+      dto.title !== undefined ||
+        dto.note !== undefined ||
+        dto.workDate !== undefined ||
+        dto.startTime !== undefined ||
+        dto.endTime !== undefined ||
+        dto.color !== undefined ||
+        dto.type !== undefined,
+    );
   }
 
   private async ensureUserExists(id: string) {
@@ -191,6 +342,13 @@ export class DailyWorkNotesService {
           fullName: true,
           role: true,
           region: true,
+        },
+      },
+      reviewer: {
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
         },
       },
     };

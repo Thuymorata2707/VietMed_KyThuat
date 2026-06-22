@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
@@ -18,8 +18,15 @@ type DailyWorkNote = {
   startTime?: string | null;
   endTime?: string | null;
   color?: string | null;
+  type?: DailyWorkType;
+  status?: DailyWorkStatus;
+  rejectReason?: string | null;
+  reviewer?: Pick<ApiUser, 'id' | 'email' | 'fullName'> | null;
   user?: ApiUser;
 };
+
+type DailyWorkType = 'WORK' | 'BUSINESS_TRIP' | 'LEAVE' | 'REPAIR' | 'INSTALLATION' | 'MAINTENANCE' | 'OTHER';
+type DailyWorkStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 type NoteForm = {
   title: string;
@@ -28,6 +35,7 @@ type NoteForm = {
   startTime: string;
   endTime: string;
   color: string;
+  type: DailyWorkType;
 };
 
 const colorOptions = [
@@ -35,6 +43,48 @@ const colorOptions = [
   { label: 'Xanh lá', value: '#067647' },
   { label: 'Xanh dương', value: '#175cd3' },
   { label: 'Vàng', value: '#b54708' },
+];
+
+const scheduleTypeOptions = [
+  { label: 'Công tác', type: 'BUSINESS_TRIP', title: 'Công tác', color: '#175cd3', note: 'Đăng ký lịch công tác.' },
+  { label: 'Nghỉ phép', type: 'LEAVE', title: 'Nghỉ phép', color: '#b54708', note: 'Đăng ký nghỉ phép.' },
+  { label: 'Sửa chữa', type: 'REPAIR', title: 'Sửa chữa', color: '#d92d20', note: 'Lịch sửa chữa tại khách hàng.' },
+  { label: 'Lắp đặt', type: 'INSTALLATION', title: 'Lắp đặt', color: '#067647', note: 'Lịch lắp đặt/bàn giao thiết bị.' },
+  { label: 'Bảo trì', type: 'MAINTENANCE', title: 'Bảo trì/Bảo dưỡng', color: '#7a5af8', note: 'Lịch bảo trì hoặc bảo dưỡng định kỳ.' },
+] satisfies Array<{
+  label: string;
+  type: DailyWorkType;
+  title: string;
+  color: string;
+  note: string;
+}>;
+
+const workTypeLabels: Record<DailyWorkType, string> = {
+  WORK: 'Công việc',
+  BUSINESS_TRIP: 'Công tác',
+  LEAVE: 'Nghỉ phép',
+  REPAIR: 'Sửa chữa',
+  INSTALLATION: 'Lắp đặt',
+  MAINTENANCE: 'Bảo trì',
+  OTHER: 'Khác',
+};
+
+const statusMeta: Record<DailyWorkStatus, { label: string; className: string }> = {
+  DRAFT: { label: 'Nháp', className: 'border-[#dde5ee] bg-white text-[#667085]' },
+  PENDING: { label: 'Chờ duyệt', className: 'border-[#fedf89] bg-[#fffaeb] text-[#b54708]' },
+  APPROVED: { label: 'Đã duyệt', className: 'border-[#abefc6] bg-[#ecfdf3] text-[#067647]' },
+  REJECTED: { label: 'Từ chối', className: 'border-[#fecdca] bg-[#fff4f2] text-[#b42318]' },
+  CANCELLED: { label: 'Đã hủy', className: 'border-[#dde5ee] bg-[#f8fafc] text-[#667085]' },
+};
+
+const workTypeOptions: Array<{ value: DailyWorkType; label: string }> = [
+  { value: 'WORK', label: 'Công việc chung' },
+  { value: 'BUSINESS_TRIP', label: 'Công tác' },
+  { value: 'LEAVE', label: 'Nghỉ phép' },
+  { value: 'REPAIR', label: 'Sửa chữa' },
+  { value: 'INSTALLATION', label: 'Lắp đặt' },
+  { value: 'MAINTENANCE', label: 'Bảo trì/Bảo dưỡng' },
+  { value: 'OTHER', label: 'Khác' },
 ];
 
 const weekdayLabels = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -118,6 +168,16 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     setSuccess('');
   }
 
+  function applySchedulePreset(preset: (typeof scheduleTypeOptions)[number]) {
+    setForm((current) => ({
+      ...current,
+      title: current.title || preset.title,
+      note: current.note || preset.note,
+      color: preset.color,
+      type: preset.type,
+    }));
+  }
+
   function openEdit(note: DailyWorkNote) {
     if (!canEditExisting) {
       setSelectedDayDate(toDateInput(note.workDate));
@@ -131,6 +191,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
       startTime: note.startTime || '',
       endTime: note.endTime || '',
       color: note.color || colorOptions[0].value,
+      type: note.type || 'WORK',
     });
     setIsModalOpen(true);
     setSelectedDayDate('');
@@ -163,6 +224,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
         startTime: form.startTime || null,
         endTime: form.endTime || null,
         color: form.color,
+        type: form.type,
         userId: isAdmin ? selectedEngineerId : undefined,
       };
 
@@ -207,6 +269,25 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     }
   }
 
+  async function reviewNote(note: DailyWorkNote, status: Extract<DailyWorkStatus, 'APPROVED' | 'REJECTED'>) {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiFetch(`/daily-work-notes/${note.id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ status }),
+      });
+      setSuccess(status === 'APPROVED' ? 'Đã duyệt lịch công việc.' : 'Đã từ chối lịch công việc.');
+      await loadNotes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không cập nhật được trạng thái lịch.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const selectedEngineer = engineers.find((engineer) => engineer.id === selectedEngineerId);
   const selectedDayNotes = selectedDayDate ? notesByDate[selectedDayDate] || [] : [];
 
@@ -214,9 +295,9 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     <PageFrame>
       <section className="flex min-w-0 items-end justify-between gap-[18px] rounded-[18px] bg-[linear-gradient(135deg,#101828_0%,#202939_56%,#b42318_120%)] p-6 text-white max-[1180px]:grid max-[1180px]:items-stretch">
         <div className="min-w-0">
-          <span className="mb-2 block text-xs font-medium text-[#ffd9d5]">Lịch công việc</span>
-          <h1 className="mb-2.5 text-[clamp(30px,4vw,46px)] font-medium leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Công việc hàng ngày của tôi'}</h1>
-          <p className="text-white/80">{isAdmin ? 'Admin chọn kỹ sư để xem lịch công việc cá nhân.' : 'Ghi lại kế hoạch, việc phát sinh và ghi chú theo ngày.'}</p>
+          <span className="mb-2 inline-flex items-center gap-2 text-xs font-medium text-[#ffd9d5]"><CalendarDays size={15} /> Lịch kỹ sư</span>
+          <h1 className="mb-2.5 text-[clamp(30px,4vw,46px)] font-medium leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Lịch làm việc của tôi'}</h1>
+          <p className="text-white/80">{isAdmin ? 'Admin theo dõi lịch công tác, nghỉ phép và việc phát sinh của kỹ sư.' : 'Đăng ký công tác, nghỉ phép và ghi chú lịch sửa chữa, lắp đặt, bảo trì.'}</p>
         </div>
         {isAdmin ? (
           <label className="grid min-w-0 gap-2 font-medium text-white/80 min-[1180px]:min-w-[min(360px,100%)]">
@@ -241,6 +322,25 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
+
+      <section className="grid gap-3 md:grid-cols-5">
+        {scheduleTypeOptions.map((option) => (
+          <button
+            className="grid min-h-[76px] gap-2 rounded-[14px] border border-[#dde5ee] bg-white p-3 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition hover:-translate-y-px hover:border-[#b8cbe1]"
+            key={option.label}
+            onClick={() => {
+              openCreate(new Date());
+              setTimeout(() => applySchedulePreset(option), 0);
+            }}
+            type="button"
+          >
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ backgroundColor: option.color }}>
+              <BriefcaseBusiness size={16} />
+            </span>
+            <strong className="text-sm text-[#101828]">{option.label}</strong>
+          </button>
+        ))}
+      </section>
 
       <section className="min-w-0 overflow-hidden rounded-[14px] border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] max-[1180px]:overflow-x-auto">
         <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[#edf2f7] p-4 max-[1180px]:grid max-[1180px]:items-stretch">
@@ -289,7 +389,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                 <div className="grid content-start gap-1">
                   {dayNotes.slice(0, 3).map((note) => (
                     <span
-                      className="overflow-hidden text-ellipsis whitespace-nowrap rounded-md border-l-[3px] bg-white px-[7px] py-[5px] text-xs leading-snug text-[#101828] shadow-[0_1px_3px_rgba(16,24,40,0.08)]"
+                      className="grid gap-0.5 overflow-hidden rounded-md border-l-[3px] bg-white px-[7px] py-[5px] text-xs leading-snug text-[#101828] shadow-[0_1px_3px_rgba(16,24,40,0.08)]"
                       key={note.id}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -297,7 +397,10 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                       }}
                       style={{ borderColor: note.color || colorOptions[0].value }}
                     >
-                      {note.startTime ? `${note.startTime} ` : ''}{note.title}
+                      <span className="overflow-hidden text-ellipsis whitespace-nowrap">{note.startTime ? `${note.startTime} ` : ''}{note.title}</span>
+                      <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-[#667085]">
+                        {workTypeLabels[note.type || 'WORK']} · {statusMeta[note.status || 'APPROVED'].label}
+                      </span>
                     </span>
                   ))}
                   {dayNotes.length > 3 ? <small className="text-[#667085]">+{dayNotes.length - 3} việc khác</small> : null}
@@ -327,12 +430,31 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
               {selectedDayNotes.map((note) => (
                 <article className="rounded-lg border border-[#edf2f7] bg-[#f8fbfd] p-3" key={note.id}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="text-[#101828]">{note.title}</strong>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <strong className="text-[#101828]">{note.title}</strong>
+                      <span className="rounded-full border border-[#dde5ee] bg-white px-2.5 py-1 text-xs font-medium text-[#667085]">
+                        {workTypeLabels[note.type || 'WORK']}
+                      </span>
+                      <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusMeta[note.status || 'APPROVED'].className}`}>
+                        {statusMeta[note.status || 'APPROVED'].label}
+                      </span>
+                    </div>
                     <span className="rounded-full border border-[#dde5ee] bg-white px-2.5 py-1 text-xs font-medium text-[#667085]">
                       {[note.startTime, note.endTime].filter(Boolean).join(' - ') || 'Cả ngày'}
                     </span>
                   </div>
                   {note.note ? <p className="mt-2 text-sm leading-relaxed text-[#344054]">{note.note}</p> : null}
+                  {note.rejectReason ? <p className="mt-2 rounded-lg border border-[#fecdca] bg-white px-3 py-2 text-sm text-[#b42318]">Lý do: {note.rejectReason}</p> : null}
+                  {isAdmin && note.status === 'PENDING' ? (
+                    <div className="mt-3 flex flex-wrap justify-end gap-2">
+                      <button className="secondary-button" disabled={saving} onClick={() => reviewNote(note, 'REJECTED')} type="button">
+                        Từ chối
+                      </button>
+                      <button className="primary-button" disabled={saving} onClick={() => reviewNote(note, 'APPROVED')} type="button">
+                        Duyệt lịch
+                      </button>
+                    </div>
+                  ) : null}
                 </article>
               ))}
 
@@ -367,7 +489,28 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                 <X size={16} />
               </button>
             </div>
+            <div className="flex flex-wrap gap-2 rounded-lg border border-[#edf2f7] bg-[#f8fafc] p-2">
+              {scheduleTypeOptions.map((option) => (
+                <button
+                  className="inline-flex min-h-8 items-center gap-2 rounded-lg border border-[#dde5ee] bg-white px-2.5 text-xs font-semibold text-[#344054] hover:border-[#b8cbe1]"
+                  key={option.label}
+                  onClick={() => applySchedulePreset(option)}
+                  type="button"
+                >
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: option.color }} />
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <form className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1 [&_input]:min-h-[42px] [&_input]:rounded-lg [&_input]:border [&_input]:border-[#cfd8e3] [&_input]:px-3 [&_input]:text-[#101828] [&_input]:outline-none [&_input:focus]:border-[#d92d20] [&_input:focus]:shadow-[0_0_0_3px_rgba(217,45,32,0.12)] [&_label]:grid [&_label]:gap-2 [&_label]:font-medium [&_label]:text-[#344054] [&_select]:min-h-[42px] [&_select]:rounded-lg [&_select]:border [&_select]:border-[#cfd8e3] [&_select]:px-3 [&_select]:text-[#101828] [&_select]:outline-none [&_select:focus]:border-[#d92d20] [&_select:focus]:shadow-[0_0_0_3px_rgba(217,45,32,0.12)] [&_textarea]:min-h-[110px] [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#cfd8e3] [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#101828] [&_textarea]:outline-none [&_textarea:focus]:border-[#d92d20] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]" onSubmit={handleSubmit}>
+              <label>
+                Loại lịch
+                <select onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as DailyWorkType }))} value={form.type}>
+                  {workTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
               <label>
                 Tiêu đề công việc
                 <input onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required value={form.title} />
@@ -425,6 +568,7 @@ function emptyForm(workDate: string): NoteForm {
     startTime: '',
     endTime: '',
     color: colorOptions[0].value,
+    type: 'WORK',
   };
 }
 

@@ -1,4 +1,4 @@
-import { Download, FileUp, Loader2, Plus, Search, X } from 'lucide-react';
+import { ArrowRight, CalendarDays, Download, FileText, FileUp, Loader2, Plus, Search, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
@@ -87,6 +87,30 @@ type DailyWorkNote = {
   startTime?: string | null;
   endTime?: string | null;
   color?: string | null;
+  type?: DailyWorkType;
+  status?: DailyWorkStatus;
+  rejectReason?: string | null;
+};
+
+type DailyWorkType = 'WORK' | 'BUSINESS_TRIP' | 'LEAVE' | 'REPAIR' | 'INSTALLATION' | 'MAINTENANCE' | 'OTHER';
+type DailyWorkStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
+  WORK: 'Công việc',
+  BUSINESS_TRIP: 'Công tác',
+  LEAVE: 'Nghỉ phép',
+  REPAIR: 'Sửa chữa',
+  INSTALLATION: 'Lắp đặt',
+  MAINTENANCE: 'Bảo trì',
+  OTHER: 'Khác',
+};
+
+const dailyWorkStatusMeta: Record<DailyWorkStatus, { label: string; className: string }> = {
+  DRAFT: { label: 'Nháp', className: 'border-[#dde5ee] bg-white text-[#667085]' },
+  PENDING: { label: 'Chờ duyệt', className: 'border-[#fedf89] bg-[#fffaeb] text-[#b54708]' },
+  APPROVED: { label: 'Đã duyệt', className: 'border-[#abefc6] bg-[#ecfdf3] text-[#067647]' },
+  REJECTED: { label: 'Từ chối', className: 'border-[#fecdca] bg-[#fff4f2] text-[#b42318]' },
+  CANCELLED: { label: 'Đã hủy', className: 'border-[#dde5ee] bg-[#f8fafc] text-[#667085]' },
 };
 
 type QuickCustomerForm = {
@@ -146,6 +170,24 @@ type PickerCustomer = {
 
 type BusinessTab = 'repair' | 'maintenance' | 'installation' | 'warranty' | 'calendar';
 
+type WeeklyReportStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'NEEDS_REVISION';
+
+type WeeklyReportQuick = {
+  id: string;
+  weekStart: string;
+  status: WeeklyReportStatus;
+  submittedAt?: string | null;
+  rows?: Array<{ id: string }>;
+};
+
+const weeklyReportStatusLabels: Record<WeeklyReportStatus | 'NONE', string> = {
+  NONE: 'Chưa có',
+  DRAFT: 'Nháp',
+  SUBMITTED: 'Đã gửi',
+  APPROVED: 'Đã duyệt',
+  NEEDS_REVISION: 'Cần sửa',
+};
+
 const businessTabs: Array<{ value: BusinessTab; label: string }> = [
   { value: 'repair', label: 'Sửa chữa' },
   { value: 'maintenance', label: 'Bảo trì' },
@@ -157,6 +199,8 @@ const businessTabs: Array<{ value: BusinessTab; label: string }> = [
 export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [tasks, setTasks] = useState<EngineerTask[]>([]);
   const [dailyWorkNotes, setDailyWorkNotes] = useState<DailyWorkNote[]>([]);
+  const [weeklyReport, setWeeklyReport] = useState<WeeklyReportQuick | null>(null);
+  const [loadingWeeklyReport, setLoadingWeeklyReport] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingDailyWork, setLoadingDailyWork] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -197,6 +241,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   useEffect(() => {
     loadTasks();
     loadDailyWorkNotes();
+    loadWeeklyReportQuick();
   }, [user.id]);
 
   const filteredTasks = useMemo(() => {
@@ -314,6 +359,20 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       setDailyWorkNotes([]);
     } finally {
       setLoadingDailyWork(false);
+    }
+  }
+
+  async function loadWeeklyReportQuick() {
+    setLoadingWeeklyReport(true);
+    const weekStart = toDateInput(startOfWeek(new Date()));
+
+    try {
+      const result = await apiFetch<WeeklyReportQuick | null | undefined>(`/weekly-reports?weekStart=${weekStart}`);
+      setWeeklyReport(result ?? null);
+    } catch {
+      setWeeklyReport(null);
+    } finally {
+      setLoadingWeeklyReport(false);
     }
   }
 
@@ -864,27 +923,30 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         <SummaryTile label="Thiếu hồ sơ máy" value={taskStats.missingMachine} tone={taskStats.missingMachine > 0 ? 'danger' : 'neutral'} />
       </section>
 
-      <section className="rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
-          <div>
-            <span className="text-[12px] font-medium text-[#667085]">Ưu tiên hôm nay</span>
-            <h2 className="mt-1 text-lg font-medium text-[#101828]">Việc cần mở trước</h2>
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
+            <div>
+              <span className="text-[12px] font-medium text-[#667085]">Ưu tiên hôm nay</span>
+              <h2 className="mt-1 text-lg font-medium text-[#101828]">Việc cần mở trước</h2>
+            </div>
+            <button className="secondary-button" onClick={openCreateRequest} type="button">
+              <Plus size={16} />
+              Tạo phiếu mới
+            </button>
           </div>
-          <button className="secondary-button" onClick={openCreateRequest} type="button">
-            <Plus size={16} />
-            Tạo phiếu mới
-          </button>
+          <div className="grid divide-y divide-[#edf2f7]">
+            {priorityTasks.length ? priorityTasks.map((task) => (
+              <PriorityTaskRow key={`${task.kind}-${task.id}`} task={task} />
+            )) : (
+              <div className="px-4 py-5 text-sm text-[#667085]">Không có việc quá hạn, việc hôm nay hoặc phiếu thiếu hồ sơ máy.</div>
+            )}
+          </div>
         </div>
-        <div className="grid divide-y divide-[#edf2f7]">
-          {priorityTasks.length ? priorityTasks.map((task) => (
-            <PriorityTaskRow key={`${task.kind}-${task.id}`} task={task} />
-          )) : (
-            <div className="px-4 py-5 text-sm text-[#667085]">Không có việc quá hạn, việc hôm nay hoặc phiếu thiếu hồ sơ máy.</div>
-          )}
-        </div>
+        <WeeklyReportQuickCard loading={loadingWeeklyReport} report={weeklyReport} />
       </section>
 
-      {false ? (
+      {workspaceTab === 'create' ? (
         <section className="engineer-create-panel">
           <div className="task-section-heading">
             <div>
@@ -1451,12 +1513,16 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                         </div>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#667085]">
-                            <span>Lịch công việc</span>
+                            <span>{dailyWorkTypeLabels[note.type || 'WORK']}</span>
+                            <span className={`rounded-full border px-2 py-0.5 text-[12px] font-semibold ${dailyWorkStatusMeta[note.status || 'APPROVED'].className}`}>
+                              {dailyWorkStatusMeta[note.status || 'APPROVED'].label}
+                            </span>
                             <span>{formatDailyWorkDate(note.workDate)}</span>
                             <span>{formatDailyWorkTime(note)}</span>
                           </div>
                           <h2 className="mt-1 text-[17px] font-medium text-[#101828] [overflow-wrap:anywhere]">{note.title}</h2>
                           <p className="mt-1.5 leading-6 text-[#344054] [overflow-wrap:anywhere]">{note.note || 'Chưa có ghi chú chi tiết.'}</p>
+                          {note.rejectReason ? <p className="mt-2 rounded-lg border border-[#fecdca] bg-[#fff4f2] px-3 py-2 text-sm text-[#b42318]">Lý do từ chối: {note.rejectReason}</p> : null}
                         </div>
                       </article>
                     ))
@@ -2106,6 +2172,14 @@ function startOfDay(value: Date) {
   return date;
 }
 
+function startOfWeek(value: Date) {
+  const date = startOfDay(value);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  return date;
+}
+
 function addDays(value: Date, days: number) {
   const date = new Date(value);
   date.setDate(date.getDate() + days);
@@ -2210,6 +2284,48 @@ function defaultCreateKindForBusinessTab(tab: BusinessTab): TaskKind {
   return 'repair';
 }
 
+function WeeklyReportQuickCard({ loading, report }: { loading: boolean; report: WeeklyReportQuick | null }) {
+  const weekStart = toDateInput(startOfWeek(new Date()));
+  const weekEnd = toDateInput(addDays(new Date(`${weekStart}T00:00:00`), 6));
+  const status = report?.status ?? 'NONE';
+  const rowCount = report?.rows?.length ?? 0;
+
+  return (
+    <aside className="grid gap-4 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+        <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#667085]">
+          <CalendarDays size={14} />
+          Báo cáo tuần
+        </span>
+          <h2 className="mt-1 text-lg font-medium text-[#101828]">
+            {formatDate(weekStart)} - {formatDate(weekEnd)}
+          </h2>
+        </div>
+        <span className={`task-badge ${status === 'APPROVED' ? 'good' : status === 'SUBMITTED' ? 'warn' : status === 'NEEDS_REVISION' ? 'danger' : 'neutral'}`}>
+          {loading ? 'Đang tải' : weeklyReportStatusLabels[status]}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-[#f8fafc] p-3">
+          <span className="block text-xs font-medium text-[#667085]">Dòng báo cáo</span>
+          <strong className="mt-1 block text-2xl leading-none text-[#101828]">{loading ? '-' : rowCount}</strong>
+        </div>
+        <div className="rounded-lg bg-[#f8fafc] p-3">
+          <span className="block text-xs font-medium text-[#667085]">Trạng thái</span>
+          <strong className="mt-1 block text-sm text-[#101828]">{loading ? 'Đang tải' : weeklyReportStatusLabels[status]}</strong>
+        </div>
+      </div>
+
+      <Link className="primary-button justify-center" to={`/weekly-reports?weekStart=${weekStart}`}>
+        <FileText size={16} />
+        Mở báo cáo tuần
+      </Link>
+    </aside>
+  );
+}
+
 function PriorityTaskRow({ task }: { task: EngineerTask }) {
   const href =
     task.kind === 'installation'
@@ -2240,7 +2356,13 @@ function PriorityTaskRow({ task }: { task: EngineerTask }) {
           {[task.machine?.machineCode || taskSerialText(task) || 'Chưa có mã máy', task.machine?.modelName || taskModelText(task) || 'Chưa có model', taskCustomer(task) || 'Chưa có khách hàng'].join(' - ')}
         </span>
       </div>
-      <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
+      <div className="flex flex-wrap items-center gap-2 min-[760px]:justify-end">
+        <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
+        <span className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#dde5ee] bg-white px-2.5 text-xs font-semibold text-[#344054]">
+          Cập nhật
+          <ArrowRight size={14} />
+        </span>
+      </div>
     </Link>
   );
 }

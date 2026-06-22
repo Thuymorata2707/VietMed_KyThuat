@@ -172,6 +172,24 @@ enum WeeklyReportStatus {
   NEEDS_REVISION
 }
 
+enum DailyWorkType {
+  WORK
+  BUSINESS_TRIP
+  LEAVE
+  REPAIR
+  INSTALLATION
+  MAINTENANCE
+  OTHER
+}
+
+enum DailyWorkStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 model Region {
   id String @id @default(cuid())
 
@@ -229,6 +247,7 @@ model User {
   uploadedAttachments   Attachment[]               @relation("AttachmentUploadedBy")
   engineerProfile       EngineerProfile?
   dailyWorkNotes        DailyWorkNote[]            @relation("DailyWorkNoteUser")
+  reviewedDailyWorkNotes DailyWorkNote[]           @relation("DailyWorkNoteReviewer")
   weeklyReports         WeeklyReport[]             @relation("WeeklyReportUser")
   reviewedWeeklyReports WeeklyReport[]             @relation("WeeklyReportReviewer")
 
@@ -248,11 +267,21 @@ model DailyWorkNote {
   startTime String?
   endTime   String?
   color     String?
+  type      DailyWorkType   @default(WORK)
+  status    DailyWorkStatus @default(APPROVED)
+
+  reviewedAt   DateTime?
+  reviewerId   String?
+  reviewer     User?     @relation("DailyWorkNoteReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  rejectReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId, workDate])
+  @@index([type])
+  @@index([status])
+  @@index([reviewerId])
 }
 
 model WeeklyReport {

@@ -1,4 +1,5 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { DailyWorkStatus, DailyWorkType } from '@prisma/client';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class ListDailyWorkNotesQueryDto {
   @IsOptional()
@@ -12,4 +13,12 @@ export class ListDailyWorkNotesQueryDto {
   @IsOptional()
   @IsDateString()
   to?: string;
+
+  @IsOptional()
+  @IsEnum(DailyWorkType)
+  type?: DailyWorkType;
+
+  @IsOptional()
+  @IsEnum(DailyWorkStatus)
+  status?: DailyWorkStatus;
 }
