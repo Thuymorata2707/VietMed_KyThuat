@@ -68,7 +68,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
 
   return (
     <PageFrame>
-      <section className="flex items-stretch justify-between gap-[18px] overflow-hidden rounded-[18px] bg-[linear-gradient(135deg,#142033_0%,#202939_48%,#a3342b_115%)] p-6 text-white shadow-[0_12px_30px_rgba(20,32,51,0.06)] max-[760px]:grid">
+      <section className="flex items-stretch justify-between gap-[18px] overflow-hidden rounded-[18px] bg-[linear-gradient(135deg,#1f1f1f_0%,#202939_48%,#b5121b_115%)] p-6 text-white shadow-[0_12px_30px_rgba(20,32,51,0.06)] max-[760px]:grid">
         <div className="flex min-w-0 items-center gap-[18px] max-[760px]:grid max-[760px]:items-start">
           <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-white/30 bg-white/15 text-[28px] font-medium text-white">
             {form.photoUrl && !photoFailed ? (
@@ -97,37 +97,37 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
       {success ? <div className="success-notice">{success}</div> : null}
 
       <form className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-x-4 gap-y-3.5 max-[1120px]:grid-cols-1" onSubmit={handleSubmit}>
-        <aside className="sticky top-[88px] grid gap-[18px] rounded-xl border border-[#d9e1ea] bg-white p-[18px] shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[1120px]:static">
+        <aside className="sticky top-[88px] grid gap-[18px] rounded-xl border border-[#e5e5e5] bg-white p-[18px] shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[1120px]:static">
           <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3">
-            <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[10px] bg-[#fff6f4] text-[#c83f34]">
+            <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[10px] bg-[#fff5f5] text-[#d71920]">
               <ShieldCheck size={18} />
             </span>
             <div>
-              <strong className="block text-[#142033]">Quyền truy cập</strong>
-              <p className="mt-1 text-[#657386]">Vai trò, trạng thái và khu vực do admin quản lý.</p>
+              <strong className="block text-[#1f1f1f]">Quyền truy cập</strong>
+              <p className="mt-1 text-[#666666]">Vai trò, trạng thái và khu vực do admin quản lý.</p>
             </div>
           </div>
 
-          <dl className="m-0 grid border-t border-[#e8edf3] pt-2">
-            <div className="flex justify-between gap-3 border-b border-[#e8edf3] py-[11px]">
-              <dt className="font-semibold text-[#657386]">Vai trò</dt>
-              <dd className="m-0 text-right font-medium text-[#142033]">{roleLabel(role)}</dd>
+          <dl className="m-0 grid border-t border-[#eeeeee] pt-2">
+            <div className="flex justify-between gap-3 border-b border-[#eeeeee] py-[11px]">
+              <dt className="font-semibold text-[#666666]">Vai trò</dt>
+              <dd className="m-0 text-right font-medium text-[#1f1f1f]">{roleLabel(role)}</dd>
             </div>
-            <div className="flex justify-between gap-3 border-b border-[#e8edf3] py-[11px]">
-              <dt className="font-semibold text-[#657386]">Khu vực</dt>
-              <dd className="m-0 text-right font-medium text-[#142033]">{user.region?.name || 'Chưa gán'}</dd>
+            <div className="flex justify-between gap-3 border-b border-[#eeeeee] py-[11px]">
+              <dt className="font-semibold text-[#666666]">Khu vực</dt>
+              <dd className="m-0 text-right font-medium text-[#1f1f1f]">{user.region?.name || 'Chưa gán'}</dd>
             </div>
-            <div className="flex justify-between gap-3 border-b border-[#e8edf3] py-[11px]">
-              <dt className="font-semibold text-[#657386]">Trạng thái</dt>
-              <dd className="m-0 text-right font-medium text-[#142033]">{user.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm khóa'}</dd>
+            <div className="flex justify-between gap-3 border-b border-[#eeeeee] py-[11px]">
+              <dt className="font-semibold text-[#666666]">Trạng thái</dt>
+              <dd className="m-0 text-right font-medium text-[#1f1f1f]">{user.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm khóa'}</dd>
             </div>
           </dl>
 
-          <label className="grid gap-2 font-medium text-[#334155] [&_svg]:text-[#c83f34]">
+          <label className="grid gap-2 font-medium text-[#333333] [&_svg]:text-[#d71920]">
             <Camera size={17} />
             URL ảnh đại diện
             <input
-              className="min-h-[42px] w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+              className="min-h-[42px] w-full rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
               onChange={(event) => updateField('photoUrl', event.target.value)}
               placeholder="https://..."
               type="url"
@@ -136,17 +136,17 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
           </label>
         </aside>
 
-        <section className="col-start-2 grid gap-0 rounded-xl border border-[#d9e1ea] bg-white p-[18px] shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[1120px]:col-auto">
+        <section className="col-start-2 grid gap-0 rounded-xl border border-[#e5e5e5] bg-white p-[18px] shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[1120px]:col-auto">
           <div className="grid gap-3">
-            <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3 border-b border-[#e8edf3] pb-3">
-              <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#e8edf3] bg-[#f8fbfd] p-[9px] text-[#c83f34]" size={18} />
+            <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3 border-b border-[#eeeeee] pb-3">
+              <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#f8fbfd] p-[9px] text-[#d71920]" size={18} />
               <div>
-                <h2 className="text-[#142033]">Thông tin cá nhân</h2>
-                <p className="mt-1 text-[#657386]">Dữ liệu liên hệ dùng khi phân việc, bàn giao và xử lý phiếu dịch vụ.</p>
+                <h2 className="text-[#1f1f1f]">Thông tin cá nhân</h2>
+                <p className="mt-1 text-[#666666]">Dữ liệu liên hệ dùng khi phân việc, bàn giao và xử lý phiếu dịch vụ.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3.5 max-[760px]:grid-cols-1 [&_input]:min-h-[42px] [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[#cbd5e1] [&_input]:bg-white [&_input]:px-3 [&_input]:text-[#142033] [&_input]:outline-none [&_input:focus]:border-[#c83f34] [&_input:focus]:shadow-[0_0_0_3px_rgba(200,63,52,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#334155]">
+            <div className="grid grid-cols-2 gap-3.5 max-[760px]:grid-cols-1 [&_input]:min-h-[42px] [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:bg-white [&_input]:px-3 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#d71920] [&_input:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#333333]">
               <label>
                 Họ và tên
                 <input
@@ -187,15 +187,15 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
 
           {canEditEngineerProfile ? (
             <div className="mt-4 grid gap-3 border-t border-[#e9eef5] pt-4">
-              <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3 border-b border-[#e8edf3] pb-3">
-                <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#e8edf3] bg-[#f8fbfd] p-[9px] text-[#c83f34]" size={18} />
+              <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3 border-b border-[#eeeeee] pb-3">
+                <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#f8fbfd] p-[9px] text-[#d71920]" size={18} />
                 <div>
-                  <h2 className="text-[#142033]">Hồ sơ kỹ sư</h2>
-                  <p className="mt-1 text-[#657386]">Thông tin chuyên môn giúp điều phối công việc đúng năng lực và khu vực phụ trách.</p>
+                  <h2 className="text-[#1f1f1f]">Hồ sơ kỹ sư</h2>
+                  <p className="mt-1 text-[#666666]">Thông tin chuyên môn giúp điều phối công việc đúng năng lực và khu vực phụ trách.</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3.5 max-[760px]:grid-cols-1 [&_input]:min-h-[42px] [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[#cbd5e1] [&_input]:bg-white [&_input]:px-3 [&_input]:text-[#142033] [&_input]:outline-none [&_input:focus]:border-[#c83f34] [&_input:focus]:shadow-[0_0_0_3px_rgba(200,63,52,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#334155] [&_select]:min-h-[42px] [&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:border-[#cbd5e1] [&_select]:bg-white [&_select]:px-3 [&_select]:text-[#142033] [&_select]:outline-none [&_select:focus]:border-[#c83f34] [&_select:focus]:shadow-[0_0_0_3px_rgba(200,63,52,0.12)] [&_textarea]:min-h-28 [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#cbd5e1] [&_textarea]:bg-white [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#142033] [&_textarea]:outline-none [&_textarea:focus]:border-[#c83f34] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]">
+              <div className="grid grid-cols-3 gap-3.5 max-[760px]:grid-cols-1 [&_input]:min-h-[42px] [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:bg-white [&_input]:px-3 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#d71920] [&_input:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#333333] [&_select]:min-h-[42px] [&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:border-[#d6d6d6] [&_select]:bg-white [&_select]:px-3 [&_select]:text-[#1f1f1f] [&_select]:outline-none [&_select:focus]:border-[#d71920] [&_select:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] [&_textarea]:min-h-28 [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#d6d6d6] [&_textarea]:bg-white [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#1f1f1f] [&_textarea]:outline-none [&_textarea:focus]:border-[#d71920] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
                 <label>
                   Mã nhân sự
                   <input onChange={(event) => updateField('employeeCode', event.target.value)} value={form.employeeCode} />
@@ -264,8 +264,8 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
           ) : null}
         </section>
 
-        <div className="col-span-full flex items-center justify-between gap-4 rounded-xl border border-[#d9e1ea] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[760px]:grid max-[760px]:items-stretch">
-          <span className="text-[#657386]">Thông tin sẽ được cập nhật ngay trên tài khoản hiện tại.</span>
+        <div className="col-span-full flex items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[760px]:grid max-[760px]:items-stretch">
+          <span className="text-[#666666]">Thông tin sẽ được cập nhật ngay trên tài khoản hiện tại.</span>
           <button className="primary-button" disabled={saving} type="submit">
             {saving ? <Loader2 className="spin-icon" size={18} /> : <Save size={18} />}
             {saving ? 'Đang lưu' : 'Lưu thay đổi'}

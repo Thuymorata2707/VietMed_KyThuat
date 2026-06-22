@@ -214,7 +214,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
       {success ? <div className="success-notice">{success}</div> : null}
 
       {loading ? (
-        <div className="grid min-h-64 place-items-center rounded-lg border border-[#d9e1ea] bg-white text-sm font-semibold text-[#657386]">
+        <div className="grid min-h-64 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-sm font-semibold text-[#666666]">
           <Loader2 className="spin-icon" size={18} />
           Đang tải phiếu bảo trì...
         </div>
@@ -222,10 +222,10 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
         <form className="grid min-w-0 gap-4 min-[1320px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
           <section className="grid min-w-0 gap-4">
             <div className={panelClass}>
-              <div className="mb-4 border-b border-[#e8edf3] pb-4">
-                <span className="text-xs font-medium text-[#c83f34]">Thông tin phiếu</span>
-                <h2 className="mt-1 text-lg font-medium text-[#142033]">{detail?.title || 'Phiếu bảo trì'}</h2>
-                <p className="mt-1 text-sm text-[#657386]">{detail?.code} - {statusLabel(detail?.status || '')}</p>
+              <div className="mb-4 border-b border-[#eeeeee] pb-4">
+                <span className="text-xs font-medium text-[#d71920]">Thông tin phiếu</span>
+                <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">{detail?.title || 'Phiếu bảo trì'}</h2>
+                <p className="mt-1 text-sm text-[#666666]">{detail?.code} - {statusLabel(detail?.status || '')}</p>
               </div>
 
               <div className="grid min-w-0 gap-4 md:grid-cols-2">
@@ -296,9 +296,9 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
             </div>
 
             <div className={panelClass}>
-              <div className="mb-4 border-b border-[#e8edf3] pb-4">
-                <span className="text-xs font-medium text-[#c83f34]">Khách hàng</span>
-                <h2 className="mt-1 text-lg font-medium text-[#142033]">Thông tin tại điểm bảo trì</h2>
+              <div className="mb-4 border-b border-[#eeeeee] pb-4">
+                <span className="text-xs font-medium text-[#d71920]">Khách hàng</span>
+                <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Thông tin tại điểm bảo trì</h2>
               </div>
               <div className="grid min-w-0 gap-4 md:grid-cols-2">
                 <label className={labelClass}>
@@ -323,8 +323,8 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
 
           <aside className="grid min-w-0 gap-4 self-start">
             <div className={panelClass}>
-              <span className="text-xs font-medium text-[#c83f34]">Tóm tắt máy</span>
-              <div className="mt-3 grid gap-3 text-sm text-[#334155]">
+              <span className="text-xs font-medium text-[#d71920]">Tóm tắt máy</span>
+              <div className="mt-3 grid gap-3 text-sm text-[#333333]">
                 <SummaryRow label="Mã máy" value={detail?.machine?.machineCode || '-'} />
                 <SummaryRow label="S/N hệ thống" value={detail?.machine?.serialNumber || '-'} />
                 <SummaryRow label="Model hệ thống" value={detail?.machine?.modelName || '-'} />
@@ -333,35 +333,35 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
             </div>
 
             <section className={panelClass}>
-              <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#e8edf3] pb-4">
+              <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
                 <div>
-                  <span className="text-xs font-medium text-[#c83f34]">Tài liệu hiện trường</span>
-                  <h2 className="mt-1 text-lg font-medium text-[#142033]">Ảnh và biên bản</h2>
+                  <span className="text-xs font-medium text-[#d71920]">Tài liệu hiện trường</span>
+                  <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Ảnh và biên bản</h2>
                 </div>
-                <strong className="rounded-full border border-[#d9e1ea] bg-[#f8fafc] px-2.5 py-1 text-sm text-[#334155]">{attachments.length}</strong>
+                <strong className="rounded-full border border-[#e5e5e5] bg-[#fafafa] px-2.5 py-1 text-sm text-[#333333]">{attachments.length}</strong>
               </div>
 
               <div className="grid gap-2">
                 {loadingAttachments ? (
-                  <div className="flex min-h-20 items-center justify-center gap-2 text-sm text-[#657386]">
+                  <div className="flex min-h-20 items-center justify-center gap-2 text-sm text-[#666666]">
                     <Loader2 className="spin-icon" size={16} />
                     Đang tải tài liệu...
                   </div>
                 ) : null}
 
                 {!loadingAttachments && attachments.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-[#d9e1ea] bg-[#fbfdff] p-4 text-center text-sm text-[#657386]">
+                  <div className="rounded-lg border border-dashed border-[#e5e5e5] bg-[#fbfdff] p-4 text-center text-sm text-[#666666]">
                     Chưa có ảnh hoặc tài liệu nào cho phiếu này.
                   </div>
                 ) : null}
 
                 {!loadingAttachments
                   ? attachments.map((attachment) => (
-                      <article className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#e8edf3] bg-[#fbfdff] p-3" key={attachment.id}>
+                      <article className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-3" key={attachment.id}>
                         <div className="min-w-0">
-                          <span className="text-xs font-medium text-[#657386]">{attachmentTypeLabel(attachment.type)}</span>
-                          <strong className="mt-1 block truncate text-sm text-[#142033]">{attachment.title || attachment.originalName}</strong>
-                          <small className="block truncate text-xs text-[#657386]">
+                          <span className="text-xs font-medium text-[#666666]">{attachmentTypeLabel(attachment.type)}</span>
+                          <strong className="mt-1 block truncate text-sm text-[#1f1f1f]">{attachment.title || attachment.originalName}</strong>
+                          <small className="block truncate text-xs text-[#666666]">
                             {attachment.originalName} - {formatFileSize(attachment.size)}
                           </small>
                         </div>
@@ -373,7 +373,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                   : null}
               </div>
 
-              <form className="mt-4 grid min-w-0 gap-3 border-t border-[#e8edf3] pt-4" onSubmit={uploadAttachment}>
+              <form className="mt-4 grid min-w-0 gap-3 border-t border-[#eeeeee] pt-4" onSubmit={uploadAttachment}>
                 <label className={labelClass}>
                   Loại tài liệu
                   <select className={fieldClass} onChange={(event) => setAttachmentType(event.target.value as AttachmentType)} value={attachmentType}>
@@ -390,13 +390,13 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 </label>
                 <label className={labelClass}>
                   Ghi chú
-                  <textarea className="min-h-20 w-full min-w-0 resize-y rounded-lg border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-medium leading-relaxed text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]" onChange={(event) => setAttachmentDescription(event.target.value)} value={attachmentDescription} />
+                  <textarea className="min-h-20 w-full min-w-0 resize-y rounded-lg border border-[#d6d6d6] bg-white px-3 py-2.5 text-sm font-medium leading-relaxed text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => setAttachmentDescription(event.target.value)} value={attachmentDescription} />
                 </label>
                 <label className={labelClass}>
                   File
                   <input
                     accept="image/jpeg,image/png,image/webp,application/pdf"
-                    className="w-full min-w-0 rounded-lg border border-dashed border-[#cbd5e1] bg-[#fbfdff] px-3 py-3 text-sm text-[#334155]"
+                    className="w-full min-w-0 rounded-lg border border-dashed border-[#d6d6d6] bg-[#fbfdff] px-3 py-3 text-sm text-[#333333]"
                     onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)}
                     type="file"
                   />
@@ -498,9 +498,9 @@ function statusOptionsForCurrent(status: string) {
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid min-w-0 gap-1 rounded-lg border border-[#e8edf3] bg-[#fbfdff] p-3">
-      <span className="text-xs font-medium text-[#657386]">{label}</span>
-      <strong className="break-words text-[#142033]">{value}</strong>
+    <div className="grid min-w-0 gap-1 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-3">
+      <span className="text-xs font-medium text-[#666666]">{label}</span>
+      <strong className="break-words text-[#1f1f1f]">{value}</strong>
     </div>
   );
 }
@@ -516,7 +516,7 @@ function dateInputValue(value?: string | null) {
   return value ? value.slice(0, 10) : '';
 }
 
-const panelClass = 'rounded-lg border border-[#d9e1ea] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]';
-const labelClass = 'grid min-w-0 content-start gap-2 text-sm font-medium text-[#334155]';
-const fieldClass = 'h-11 w-full min-w-0 rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm font-medium text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]';
-const textareaClass = 'min-h-28 w-full min-w-0 resize-y rounded-lg border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-medium leading-relaxed text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]';
+const panelClass = 'rounded-lg border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]';
+const labelClass = 'grid min-w-0 content-start gap-2 text-sm font-medium text-[#333333]';
+const fieldClass = 'h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';
+const textareaClass = 'min-h-28 w-full min-w-0 resize-y rounded-lg border border-[#d6d6d6] bg-white px-3 py-2.5 text-sm font-medium leading-relaxed text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';

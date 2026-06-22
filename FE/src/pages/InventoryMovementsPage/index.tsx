@@ -212,7 +212,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
         <SummaryCard label="Đã lắp đặt" value={stats.installed} />
       </section>
 
-      <div className="rounded-lg border border-[#d9e1ea] bg-white p-1 font-sans">
+      <div className="rounded-lg border border-[#e5e5e5] bg-white p-1 font-sans">
         <div className="grid grid-cols-3 gap-1 max-sm:grid-cols-1">
           <TabButton active={tab === 'stock'} icon={<Boxes size={17} />} label="Tồn kho" onClick={() => updateInventoryState('stock', query)} />
           <TabButton active={tab === 'installed'} icon={<PackageCheck size={17} />} label="Máy đã lắp" onClick={() => updateInventoryState('installed', query)} />
@@ -221,10 +221,10 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       </div>
 
       <div className="flex min-w-0 items-center justify-between gap-3.5 max-sm:flex-col max-sm:items-stretch">
-        <div className="flex min-h-11 max-w-[560px] flex-1 items-center gap-2.5 rounded-lg border border-[#d9e1ea] bg-white px-3 text-[#657386] transition focus-within:-translate-y-px focus-within:border-[#c83f34] focus-within:shadow-[0_0_0_3px_rgba(200,63,52,0.12)] max-sm:max-w-none">
+        <div className="flex min-h-11 max-w-[560px] flex-1 items-center gap-2.5 rounded-lg border border-[#e5e5e5] bg-white px-3 text-[#666666] transition focus-within:-translate-y-px focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] max-sm:max-w-none">
           <Search size={18} />
           <input
-            className="min-w-0 flex-1 border-0 font-sans text-[#142033] outline-none"
+            className="min-w-0 flex-1 border-0 font-sans text-[#1f1f1f] outline-none"
             onChange={(event) => updateInventoryState(tab, event.target.value)}
             placeholder={tab === 'history' ? 'Tìm mã phiếu, máy, khách hàng, người tạo' : 'Tìm mã máy, serial, model hoặc khách hàng'}
             value={query}
@@ -251,15 +251,15 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
 
       {activeMove ? (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/40 p-5" role="presentation">
-          <form className="grid w-full max-w-[520px] gap-4 rounded-lg border border-[#d9e1ea] bg-white p-5 font-sans shadow-[0_24px_70px_rgba(20,32,51,0.2)]" onSubmit={submitMovement}>
+          <form className="grid w-full max-w-[520px] gap-4 rounded-lg border border-[#e5e5e5] bg-white p-5 font-sans shadow-[0_24px_70px_rgba(20,32,51,0.2)]" onSubmit={submitMovement}>
             <div>
-              <span className="text-xs font-medium text-[#c83f34]">Phiếu kho</span>
-              <h2 className="mt-1 text-xl font-medium text-[#142033]">{activeMove.action.label}</h2>
-              <p className="mt-1 text-sm text-[#657386]">{machineLabel(activeMove.machine)}</p>
+              <span className="text-xs font-medium text-[#d71920]">Phiếu kho</span>
+              <h2 className="mt-1 text-xl font-medium text-[#1f1f1f]">{activeMove.action.label}</h2>
+              <p className="mt-1 text-sm text-[#666666]">{machineLabel(activeMove.machine)}</p>
             </div>
 
             {activeMove.action.requiresCustomer ? (
-              <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+              <label className="grid gap-2 text-sm font-semibold text-[#333333]">
                 Khách hàng
                 <select className={fieldClass} onChange={(event) => setMovementCustomerId(event.target.value)} required value={movementCustomerId}>
                   <option value="">Chọn khách hàng</option>
@@ -272,12 +272,12 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
               </label>
             ) : null}
 
-            <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+            <label className="grid gap-2 text-sm font-semibold text-[#333333]">
               Ghi chú
               <textarea className={`${fieldClass} min-h-24 py-2.5`} onChange={(event) => setMovementNote(event.target.value)} value={movementNote} />
             </label>
 
-            <div className="flex justify-end gap-2 border-t border-[#e8edf3] pt-4">
+            <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
               <button className="secondary-button" disabled={saving} onClick={() => setActiveMove(null)} type="button">
                 Hủy
               </button>
@@ -295,10 +295,10 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
 
 function SummaryCard({ label, value, detail }: { label: string; value: number; detail?: string }) {
   return (
-    <div className="grid gap-2 rounded-lg border border-[#d9e1ea] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
-      <span className="text-sm text-[#657386]">{label}</span>
-      <strong className="text-3xl leading-none text-[#142033]">{value}</strong>
-      {detail ? <span className="text-xs text-[#657386]">{detail}</span> : null}
+    <div className="grid gap-2 rounded-lg border border-[#e5e5e5] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <span className="text-sm text-[#666666]">{label}</span>
+      <strong className="text-3xl leading-none text-[#1f1f1f]">{value}</strong>
+      {detail ? <span className="text-xs text-[#666666]">{detail}</span> : null}
     </div>
   );
 }
@@ -307,7 +307,7 @@ function TabButton({ active, icon, label, onClick }: { active: boolean; icon: Re
   return (
     <button
       className={`inline-flex min-h-[42px] items-center justify-center gap-2 rounded-md px-3 font-medium transition ${
-        active ? 'bg-[#fff8f7] text-[#c83f34] shadow-[inset_0_-2px_0_#c83f34]' : 'text-[#334155] hover:bg-[#f8fafc]'
+        active ? 'bg-[#fff8f7] text-[#d71920] shadow-[inset_0_-2px_0_#d71920]' : 'text-[#333333] hover:bg-[#fafafa]'
       }`}
       onClick={onClick}
       type="button"
@@ -334,12 +334,12 @@ function MachineTable({
   onMove: (machine: Machine, action: MovementAction) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#d9e1ea] bg-white font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <div className="overflow-x-auto rounded-lg border border-[#e5e5e5] bg-white font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
       <table className="w-full min-w-[1040px] border-collapse">
         <thead>
           <tr>
             {['Máy', 'Serial / Model', 'Khách hàng', 'Trạng thái', mode === 'installed' ? 'Bảo hành / Kỹ sư' : 'Phụ kiện', 'Thao tác'].map((header) => (
-              <th className="border-b border-[#e8edf3] bg-[#f8fbfd] px-4 py-3 text-left text-xs font-medium text-[#657386]" key={header}>
+              <th className="border-b border-[#eeeeee] bg-[#f8fbfd] px-4 py-3 text-left text-xs font-medium text-[#666666]" key={header}>
                 {header}
               </th>
             ))}
@@ -350,12 +350,12 @@ function MachineTable({
           {!loading && machines.map((machine) => (
             <tr className="even:bg-[#fcfdff] hover:bg-[#fbfdff]" key={machine.id}>
               <td className={cellClass}>
-                <strong className="block text-[#142033]">{machine.machineCode || machine.name || '-'}</strong>
-                <span className="text-xs text-[#657386]">{machine.name || 'Thiết bị'}</span>
+                <strong className="block text-[#1f1f1f]">{machine.machineCode || machine.name || '-'}</strong>
+                <span className="text-xs text-[#666666]">{machine.name || 'Thiết bị'}</span>
               </td>
               <td className={cellClass}>
                 <span className="block">{machine.serialNumber || '-'}</span>
-                <span className="text-xs text-[#657386]">{machine.machineModel?.code || machine.modelName || machine.machineModel?.name || '-'}</span>
+                <span className="text-xs text-[#666666]">{machine.machineModel?.code || machine.modelName || machine.machineModel?.name || '-'}</span>
               </td>
               <td className={cellClass}>{machine.customer?.name || '-'}</td>
               <td className={cellClass}><StatusBadge value={machine.inventoryStatus} /></td>
@@ -363,7 +363,7 @@ function MachineTable({
                 {mode === 'installed' ? (
                   <>
                     <span className="block">{machine.warrantyEndDate ? formatValue(machine.warrantyEndDate) : 'Chưa có hạn BH'}</span>
-                    <span className="text-xs text-[#657386]">{machine.primaryEngineer?.fullName || machine.primaryEngineer?.email || 'Chưa có kỹ sư'}</span>
+                    <span className="text-xs text-[#666666]">{machine.primaryEngineer?.fullName || machine.primaryEngineer?.email || 'Chưa có kỹ sư'}</span>
                   </>
                 ) : (
                   `${machine.accessories?.length ?? 0} phụ kiện`
@@ -449,12 +449,12 @@ function MachineTable({
 
 function HistoryTable({ loading, movements }: { loading: boolean; movements: InventoryMovement[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#d9e1ea] bg-white font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <div className="overflow-x-auto rounded-lg border border-[#e5e5e5] bg-white font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
       <table className="w-full min-w-[980px] border-collapse">
         <thead>
           <tr>
             {['Mã phiếu', 'Loại', 'Máy', 'Chuyển trạng thái', 'Khách hàng', 'Người tạo', 'Ngày'].map((header) => (
-              <th className="border-b border-[#e8edf3] bg-[#f8fbfd] px-4 py-3 text-left text-xs font-medium text-[#657386]" key={header}>
+              <th className="border-b border-[#eeeeee] bg-[#f8fbfd] px-4 py-3 text-left text-xs font-medium text-[#666666]" key={header}>
                 {header}
               </th>
             ))}
@@ -469,7 +469,7 @@ function HistoryTable({ loading, movements }: { loading: boolean; movements: Inv
               <td className={cellClass}>{movement.machine ? machineLabel(movement.machine) : '-'}</td>
               <td className={cellClass}>
                 <span>{movement.fromStatus ? displayLabel(movement.fromStatus) : '-'}</span>
-                <span className="px-2 text-[#7b8797]">→</span>
+                <span className="px-2 text-[#8a8a8a]">→</span>
                 <StatusBadge value={movement.toStatus} />
               </td>
               <td className={cellClass}>{movement.customer?.name || '-'}</td>
@@ -509,9 +509,9 @@ function EmptyRow({ columns }: { columns: number }) {
   return (
     <tr>
       <td colSpan={columns}>
-        <div className="grid min-h-[180px] place-items-center content-center justify-center gap-2.5 text-center text-[#657386]">
-          <Boxes className="rounded-lg border border-[#f4c9c4] bg-[#fff6f4] p-2.5 text-[#c83f34]" size={42} />
-          <strong className="text-[15px] text-[#142033]">Chưa có dữ liệu phù hợp</strong>
+        <div className="grid min-h-[180px] place-items-center content-center justify-center gap-2.5 text-center text-[#666666]">
+          <Boxes className="rounded-lg border border-[#f5c7cb] bg-[#fff5f5] p-2.5 text-[#d71920]" size={42} />
+          <strong className="text-[15px] text-[#1f1f1f]">Chưa có dữ liệu phù hợp</strong>
           <span className="text-[13px]">Thử đổi tab hoặc từ khóa tìm kiếm.</span>
         </div>
       </td>
@@ -575,11 +575,11 @@ const movementActions = {
   splitAccessory: { label: 'Tách phụ kiện khỏi máy', type: 'SPLIT_ACCESSORY', toStatus: 'ACCESSORY_SPLIT', note: 'Tách phụ kiện khỏi máy để quản lý riêng.' },
 } satisfies Record<string, MovementAction>;
 
-const cellClass = 'border-b border-[#e8edf3] px-4 py-3.5 text-left align-middle text-[#202939]';
-const fieldClass = 'min-h-11 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 font-sans text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]';
+const cellClass = 'border-b border-[#eeeeee] px-4 py-3.5 text-left align-middle text-[#202939]';
+const fieldClass = 'min-h-11 w-full rounded-lg border border-[#d6d6d6] bg-white px-3 font-sans text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';
 const statusToneClass = {
   good: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
   warn: 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]',
-  danger: 'border-[#fecdd3] bg-[#fff1f3] text-[#a3342b]',
-  neutral: 'border-[#d9e1ea] bg-[#f4f7fb] text-[#334155]',
+  danger: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]',
+  neutral: 'border-[#e5e5e5] bg-[#f4f7fb] text-[#333333]',
 };

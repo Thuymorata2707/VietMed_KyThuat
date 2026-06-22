@@ -178,44 +178,44 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
       {success ? <div className="success-notice">{success}</div> : null}
 
       {loading ? (
-        <div className="grid min-h-64 place-items-center rounded-lg border border-[#d9e1ea] bg-white text-sm font-semibold text-[#657386]">
+        <div className="grid min-h-64 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-sm font-semibold text-[#666666]">
           <Loader2 className="spin-icon" size={18} />
           Đang tải phiếu lắp đặt...
         </div>
       ) : (
         <form className="grid min-w-0 gap-4 min-[1320px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
           <section className="grid min-w-0 gap-4">
-            <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
+            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
               <div className="mb-4">
-                <h2 className="text-lg font-medium text-[#142033]">Thông tin lắp đặt</h2>
+                <h2 className="text-lg font-medium text-[#1f1f1f]">Thông tin lắp đặt</h2>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+                <label className="grid gap-2 text-sm font-semibold text-[#333333]">
                   Ngày lắp đặt
                   <input className={fieldClass} onChange={(event) => setInstalledAt(event.target.value)} required type="date" value={installedAt} />
                 </label>
-                <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+                <label className="grid gap-2 text-sm font-semibold text-[#333333]">
                   Bắt đầu bảo hành
                   <input className={fieldClass} onChange={(event) => updateForm({ workDate: event.target.value })} type="date" value={form.workDate} />
                 </label>
-                <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+                <label className="grid gap-2 text-sm font-semibold text-[#333333]">
                   Kết thúc bảo hành
                   <input className={fieldClass} onChange={(event) => updateForm({ warrantyEndDate: event.target.value })} required type="date" value={form.warrantyEndDate} />
                 </label>
-                <label className="grid gap-2 text-sm font-semibold text-[#334155] md:col-span-2">
+                <label className="grid gap-2 text-sm font-semibold text-[#333333] md:col-span-2">
                   Ghi chú lắp đặt
                   <textarea className={textareaClass} onChange={(event) => setNote(event.target.value)} value={note} />
                 </label>
-                <label className="grid gap-2 text-sm font-semibold text-[#334155] md:col-span-2">
+                <label className="grid gap-2 text-sm font-semibold text-[#333333] md:col-span-2">
                   Ghi chú bảo hành
                   <textarea className={textareaClass} onChange={(event) => updateForm({ description: event.target.value })} value={form.description} />
                 </label>
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
+            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
               <div className="mb-4">
-                <h2 className="text-lg font-medium text-[#142033]">Bên bàn giao</h2>
+                <h2 className="text-lg font-medium text-[#1f1f1f]">Bên bàn giao</h2>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className={labelClass}>
@@ -242,9 +242,9 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
+            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
               <div className="mb-4">
-                <h2 className="text-lg font-medium text-[#142033]">Bên nhận bàn giao</h2>
+                <h2 className="text-lg font-medium text-[#1f1f1f]">Bên nhận bàn giao</h2>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className={`${labelClass} md:col-span-2`}>
@@ -266,10 +266,10 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
+            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
               <div className="mb-4">
-                <h2 className="text-lg font-medium text-[#142033]">Máy thực tế sau bóc hàng</h2>
-                <p className="mt-1 text-sm text-[#657386]">Kỹ sư nhập S/N máy và đầu dò/phụ kiện thực tế sau khi mở thùng tại khách hàng.</p>
+                <h2 className="text-lg font-medium text-[#1f1f1f]">Máy thực tế sau bóc hàng</h2>
+                <p className="mt-1 text-sm text-[#666666]">Kỹ sư nhập S/N máy và đầu dò/phụ kiện thực tế sau khi mở thùng tại khách hàng.</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className={labelClass}>
@@ -293,16 +293,16 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
+            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-medium text-[#142033]">Danh mục thiết bị lắp đặt</h2>
+                <h2 className="text-lg font-medium text-[#1f1f1f]">Danh mục thiết bị lắp đặt</h2>
                 <button className="secondary-button" onClick={addDeviceItem} type="button">
                   Thêm thiết bị
                 </button>
               </div>
               <div className="grid gap-3">
                 {form.installedDeviceItems.map((item, index) => (
-                  <div className="rounded-lg border border-[#edf1f5] bg-[#fbfcfe] p-4" key={index}>
+                  <div className="rounded-lg border border-[#edf1f5] bg-[#ffffff] p-4" key={index}>
                     <div className="grid gap-3 md:grid-cols-3">
                       <label className={labelClass}>
                         Tên hàng
@@ -339,9 +339,9 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
+            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
               <div className="mb-4">
-                <h2 className="text-lg font-medium text-[#142033]">Tình trạng thiết bị</h2>
+                <h2 className="text-lg font-medium text-[#1f1f1f]">Tình trạng thiết bị</h2>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className={labelClass}>
@@ -362,9 +362,9 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
           </section>
 
           <aside className="grid gap-4 self-start">
-            <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
-              <h2 className="mb-4 text-lg font-medium text-[#142033]">Trạng thái phiếu</h2>
-              <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
+              <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Trạng thái phiếu</h2>
+              <label className="grid gap-2 text-sm font-semibold text-[#333333]">
                 Trạng thái
                 <select
                   className={fieldClass}
@@ -380,7 +380,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 </select>
               </label>
               {isAdmin ? (
-                <label className="mt-4 grid gap-2 text-sm font-semibold text-[#334155]">
+                <label className="mt-4 grid gap-2 text-sm font-semibold text-[#333333]">
                   Kỹ sư lắp đặt
                   <select className={fieldClass} onChange={(event) => setInstalledById(event.target.value)} value={installedById}>
                     <option value="">Chưa phân công</option>
@@ -393,15 +393,15 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 </label>
               ) : null}
               {role !== 'admin' ? (
-                <p className="mt-3 text-sm font-medium text-[#657386]">
+                <p className="mt-3 text-sm font-medium text-[#666666]">
                   Kỹ sư được chuyển sang Đã lắp đặt sau khi nhập S/N máy thực tế. Khi lưu, hệ thống sẽ tạo/gắn máy vào kho và cập nhật tổng máy đã lắp.
                 </p>
               ) : null}
             </div>
 
-            <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
-              <h2 className="mb-4 text-lg font-medium text-[#142033]">Thiết bị</h2>
-              <div className="grid gap-3 text-sm text-[#334155]">
+            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
+              <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Thiết bị</h2>
+              <div className="grid gap-3 text-sm text-[#333333]">
                 <InfoRow label="Mã phiếu" value={detail?.code} />
                 <InfoRow label="Mã máy" value={detail?.machine?.machineCode || detail?.machine?.serialNumber} />
                 <InfoRow label="Model" value={detail?.machine?.modelName || detail?.plannedMachineModel?.name || detail?.plannedModelName} />
@@ -426,18 +426,18 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
 }
 
 const fieldClass =
-  'h-11 rounded-lg border border-[#cbd5e1] px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#657386]';
+  'h-11 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
 
 const textareaClass =
-  'min-h-28 rounded-lg border border-[#cbd5e1] px-3 py-2 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]';
+  'min-h-28 rounded-lg border border-[#d6d6d6] px-3 py-2 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';
 
-const labelClass = 'grid gap-2 text-sm font-semibold text-[#334155]';
+const labelClass = 'grid gap-2 text-sm font-semibold text-[#333333]';
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-[#edf1f5] pb-2 last:border-b-0 last:pb-0">
       <span>{label}</span>
-      <strong className="text-right text-[#142033]">{value || '-'}</strong>
+      <strong className="text-right text-[#1f1f1f]">{value || '-'}</strong>
     </div>
   );
 }

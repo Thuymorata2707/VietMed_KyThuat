@@ -294,13 +294,13 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
       <section className="grid overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_18px_44px_rgba(47,95,152,0.10)] xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="grid content-between gap-6 bg-[#f7fafc] p-5 md:p-6">
           <div>
-            <span className="inline-flex min-h-8 items-center rounded-lg border border-[#d8e0ea] bg-white px-2.5 text-xs font-semibold text-[#2f5f98]">
+            <span className="inline-flex min-h-8 items-center rounded-lg border border-[#d8e0ea] bg-white px-2.5 text-xs font-semibold text-[#d71920]">
               Catalog overview
             </span>
-            <h2 className="mt-4 max-w-2xl text-[clamp(24px,3vw,38px)] font-semibold leading-tight text-[#142033]">
+            <h2 className="mt-4 max-w-2xl text-[clamp(24px,3vw,38px)] font-semibold leading-tight text-[#1f1f1f]">
               Danh mục sản phẩm theo ngành hàng
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#657386]">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#666666]">
               Theo dõi model cố định, số máy thực tế và tình trạng còn kho trong cùng một màn.
             </p>
           </div>
@@ -336,10 +336,10 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
               </button>
             ))}
           </div>
-          <label className="flex h-11 min-w-0 items-center gap-2 rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-3 text-[#657386] focus-within:border-[#c83f34] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]">
+          <label className="flex h-11 min-w-0 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-[#fafafa] px-3 text-[#666666] focus-within:border-[#d71920] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
             <Search size={16} />
             <input
-              className="min-w-0 flex-1 border-0 bg-transparent text-[#142033] outline-none"
+              className="min-w-0 flex-1 border-0 bg-transparent text-[#1f1f1f] outline-none"
               onChange={(event) => updateCatalogState(selectedIndustryId, event.target.value)}
               placeholder="Tìm model, hãng, nhóm sản phẩm"
               value={query}
@@ -348,14 +348,14 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
         </div>
 
         {loading ? (
-          <div className="rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm font-semibold text-[#657386]">
+          <div className="rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm font-semibold text-[#666666]">
             <Loader2 className="spin-icon mx-auto mb-2" size={20} />
             Đang tải danh sách sản phẩm
           </div>
         ) : null}
 
         {!loading && visibleModels.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm text-[#657386]">
+          <div className="rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm text-[#666666]">
             Không có model phù hợp với bộ lọc.
           </div>
         ) : null}
@@ -502,7 +502,7 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
       {success ? <div className="success-notice">{success}</div> : null}
 
       {loadingModelDetail ? (
-        <section className="rounded-lg border border-[#d9e1ea] bg-white p-6 text-sm font-semibold text-[#657386]">
+        <section className="rounded-lg border border-[#e5e5e5] bg-white p-6 text-sm font-semibold text-[#666666]">
           <Loader2 className="spin-icon mr-2 inline" size={18} />
           Đang tải chi tiết model
         </section>
@@ -651,15 +651,15 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
       <form className="grid min-w-0 gap-4 min-[1320px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
         <section className="grid min-w-0 gap-4">
-          <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
+          <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
             <div className="mb-4">
-              <h2 className="text-lg font-medium text-[#142033]">Products Description</h2>
+              <h2 className="text-lg font-medium text-[#1f1f1f]">Products Description</h2>
             </div>
             <div className="grid min-w-0 gap-4 md:grid-cols-2">
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155] md:col-span-2">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333] md:col-span-2">
                 Model sản phẩm
                 <select
-                  className="h-11 min-w-0 rounded-lg border border-[#cbd5e1] px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                   disabled={loading}
                   onChange={(event) => updateField('machineModelId', event.target.value)}
                   required
@@ -672,39 +672,39 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                   ))}
                 </select>
               </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 Category
                 <input
-                  className="h-11 min-w-0 rounded-lg border border-[#cbd5e1] px-3 text-[#142033] outline-none"
+                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none"
                   readOnly
                   value={selectedModel?.businessLine?.productIndustry?.name ?? ''}
                 />
               </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 Brand
-                <input className="h-11 min-w-0 rounded-lg border border-[#cbd5e1] px-3 text-[#142033] outline-none" readOnly value={selectedModel?.manufacturer ?? ''} />
+                <input className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none" readOnly value={selectedModel?.manufacturer ?? ''} />
               </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 Serial Number
                 <input
-                  className="h-11 min-w-0 rounded-lg border border-[#cbd5e1] px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                   onChange={(event) => updateField('serialNumber', event.target.value)}
                   required
                   value={form.serialNumber}
                 />
               </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 Mã máy nội bộ
                 <input
-                  className="h-11 min-w-0 rounded-lg border border-[#cbd5e1] px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                   onChange={(event) => updateField('machineCode', event.target.value)}
                   value={form.machineCode}
                 />
               </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 Ngày nhập kho
                 <input
-                  className="h-11 min-w-0 rounded-lg border border-[#cbd5e1] px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                   onChange={(event) => updateField('warehouseImportDate', event.target.value)}
                   type="date"
                   value={form.warehouseImportDate}
@@ -713,17 +713,17 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
+          <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
             <div className="mb-4">
-              <h2 className="text-lg font-medium text-[#142033]">Phụ kiện đi kèm</h2>
+              <h2 className="text-lg font-medium text-[#1f1f1f]">Phụ kiện đi kèm</h2>
             </div>
             {supportsProbes ? (
               <MachineAccessoryEditor onChange={(value) => updateField('accessoriesText', value)} value={form.accessoriesText} />
             ) : (
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 S/N phụ kiện
                 <textarea
-                  className="min-h-36 min-w-0 rounded-lg border border-[#cbd5e1] px-3 py-2 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                  className="min-h-36 min-w-0 rounded-lg border border-[#d6d6d6] px-3 py-2 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                   onChange={(event) => updateField('accessoriesText', event.target.value)}
                   placeholder={'Mỗi dòng: Phụ kiện | Serial Number\nVí dụ:\nBộ dây nguồn | ACC-001\nCáp kết nối | ACC-002'}
                   value={formatMachineAccessoriesText(form.accessoriesText)}
@@ -734,17 +734,17 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
         </section>
 
         <aside className="grid min-w-0 gap-4 self-start">
-          <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
-            <h2 className="mb-4 text-lg font-medium text-[#142033]">Products Images</h2>
-            <div className="grid min-h-48 place-items-center rounded-lg border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4 text-center text-sm text-[#657386]">
+          <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
+            <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Products Images</h2>
+            <div className="grid min-h-48 place-items-center rounded-lg border border-dashed border-[#d6d6d6] bg-[#fafafa] p-4 text-center text-sm text-[#666666]">
               <ModelImage large model={selectedModel ?? undefined} />
               <span className="mt-3 block">{selectedModel?.businessLine?.name ?? 'Chọn model để xem hình nhóm sản phẩm'}</span>
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#d9e1ea] bg-white p-5">
-            <h2 className="mb-4 text-lg font-medium text-[#142033]">Pricing & Availability</h2>
-            <div className="grid gap-3 text-sm text-[#334155]">
+          <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
+            <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Pricing & Availability</h2>
+            <div className="grid gap-3 text-sm text-[#333333]">
               <div className="flex items-center justify-between gap-3">
                 <span>Availability Status</span>
                 <strong className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-xs text-[#177245]">In Stock</strong>
@@ -783,25 +783,25 @@ function ModelRow({
   stock?: ModelStock;
 }) {
   return (
-    <tr className="border-b border-[#e8edf3] hover:bg-[#fff8f7]">
+    <tr className="border-b border-[#eeeeee] hover:bg-[#fff8f7]">
       <td className="px-4 py-4">
         <Link className="flex min-w-0 items-center gap-3 text-left" to={`/business-lines/models/${model.id}${catalogSearch}`}>
           <ModelImage model={model} />
           <div className="min-w-0">
-            <strong className="block text-sm text-[#142033]">{modelShortLabel(model)}</strong>
-            <span className="block max-w-[340px] truncate text-[13px] text-[#657386]">{modelDetailLabel(model)}</span>
+            <strong className="block text-sm text-[#1f1f1f]">{modelShortLabel(model)}</strong>
+            <span className="block max-w-[340px] truncate text-[13px] text-[#666666]">{modelDetailLabel(model)}</span>
           </div>
         </Link>
       </td>
-      <td className="px-4 py-4 text-sm text-[#334155]">
+      <td className="px-4 py-4 text-sm text-[#333333]">
         <span className="block font-semibold">{model.businessLine?.productIndustry?.name ?? 'Chưa phân ngành'}</span>
-        <span className="text-[13px] text-[#657386]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</span>
+        <span className="text-[13px] text-[#666666]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</span>
       </td>
-      <td className="px-4 py-4 text-sm font-semibold text-[#334155]">{model.manufacturer || 'Chưa có hãng'}</td>
+      <td className="px-4 py-4 text-sm font-semibold text-[#333333]">{model.manufacturer || 'Chưa có hãng'}</td>
       <td className="px-4 py-4">
         <div className="flex flex-wrap gap-2 text-xs font-medium">
           <span className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-[#177245]">Còn kho {stock?.inStock ?? 0}</span>
-          <span className="rounded-full border border-[#d9e1ea] bg-[#f4f7fb] px-2.5 py-1 text-[#334155]">Tổng {stock?.total ?? 0}</span>
+          <span className="rounded-full border border-[#e5e5e5] bg-[#f4f7fb] px-2.5 py-1 text-[#333333]">Tổng {stock?.total ?? 0}</span>
         </div>
       </td>
       <td className="px-4 py-4">
@@ -811,7 +811,7 @@ function ModelRow({
             Add sản phẩm
           </Link>
         ) : (
-          <span className="text-[13px] text-[#657386]">Chỉ xem</span>
+          <span className="text-[13px] text-[#666666]">Chỉ xem</span>
         )}
       </td>
     </tr>
@@ -834,18 +834,18 @@ function ModelIndustryGroup({
 
   return (
     <section className="overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#e8edf3] bg-[#f8fafc] px-4 py-3">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
         <div>
-          <span className="text-[12px] font-semibold text-[#657386]">{group.expertise || 'Ngành hàng'}</span>
-          <h3 className="mt-1 text-xl font-semibold text-[#142033]">{group.name}</h3>
+          <span className="text-[12px] font-semibold text-[#666666]">{group.expertise || 'Ngành hàng'}</span>
+          <h3 className="mt-1 text-xl font-semibold text-[#1f1f1f]">{group.name}</h3>
         </div>
         <div className="flex flex-wrap gap-2 text-xs font-medium">
-          <span className="rounded-full border border-[#d9e1ea] bg-white px-2.5 py-1 text-[#334155]">{group.models.length} model</span>
+          <span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[#333333]">{group.models.length} model</span>
           <span className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{inStock}/{totalMachines} còn kho</span>
         </div>
       </div>
 
-      <div className="divide-y divide-[#e8edf3]">
+      <div className="divide-y divide-[#eeeeee]">
         {group.models.map((model) => (
           <ModelCard
             canAddProduct={canAddProduct}
@@ -880,25 +880,25 @@ function ModelCard({
       <Link className="flex min-w-0 gap-3" to={`/business-lines/models/${model.id}${catalogSearch}`}>
         <ModelImage model={model} />
         <div className="min-w-0">
-          <strong className="block truncate text-base font-semibold text-[#142033]">{modelShortLabel(model)}</strong>
-          <span className="mt-1 block truncate text-sm leading-5 text-[#657386]">{modelDetailLabel(model)}</span>
-          <span className="mt-1 block text-xs font-medium text-[#2f5f98]">{model.businessLine?.name || 'Chưa có dòng sản phẩm'}</span>
+          <strong className="block truncate text-base font-semibold text-[#1f1f1f]">{modelShortLabel(model)}</strong>
+          <span className="mt-1 block truncate text-sm leading-5 text-[#666666]">{modelDetailLabel(model)}</span>
+          <span className="mt-1 block text-xs font-medium text-[#d71920]">{model.businessLine?.name || 'Chưa có dòng sản phẩm'}</span>
         </div>
       </Link>
 
       <div className="grid gap-1 text-sm">
-        <span className="text-[12px] font-medium text-[#657386]">Hãng / loại</span>
-        <strong className="truncate text-[#334155]">{model.manufacturer || 'Chưa có hãng'}</strong>
-        <span className="truncate text-xs text-[#657386]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</span>
+        <span className="text-[12px] font-medium text-[#666666]">Hãng / loại</span>
+        <strong className="truncate text-[#333333]">{model.manufacturer || 'Chưa có hãng'}</strong>
+        <span className="truncate text-xs text-[#666666]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</span>
       </div>
 
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="font-medium text-[#657386]">Tồn kho</span>
-          <strong className="tabular-nums text-[#142033]">{inStock}/{total}</strong>
+          <span className="font-medium text-[#666666]">Tồn kho</span>
+          <strong className="tabular-nums text-[#1f1f1f]">{inStock}/{total}</strong>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-[#e8edf3]">
-          <div className="h-full rounded-full bg-[#2f5f98]" style={{ width: `${Math.max(ratio, total ? 7 : 0)}%` }} />
+        <div className="h-2 overflow-hidden rounded-full bg-[#eeeeee]">
+          <div className="h-full rounded-full bg-[#d71920]" style={{ width: `${Math.max(ratio, total ? 7 : 0)}%` }} />
         </div>
       </div>
 
@@ -951,18 +951,18 @@ function ModelDetailBlock({
   const warehouseQuantity = detail?.warehouseQuantity ?? stock?.inStock ?? 0;
 
   return (
-    <div className="rounded-lg border border-[#f4c9c4] bg-white shadow-[0_18px_42px_rgba(23,32,42,0.08)]">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e8edf3] p-5">
+    <div className="rounded-lg border border-[#f5c7cb] bg-white shadow-[0_18px_42px_rgba(23,32,42,0.08)]">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#eeeeee] p-5">
         <div className="flex min-w-0 gap-4">
           <ModelImage large model={model} />
           <div className="min-w-0">
-            <span className="text-xs font-medium text-[#657386]">Chi tiết model</span>
-            <h3 className="mt-1 text-xl font-medium text-[#142033]">{modelShortLabel(model)}</h3>
-            <p className="mt-1 text-sm text-[#657386]">{modelDetailLabel(model)}</p>
+            <span className="text-xs font-medium text-[#666666]">Chi tiết model</span>
+            <h3 className="mt-1 text-xl font-medium text-[#1f1f1f]">{modelShortLabel(model)}</h3>
+            <p className="mt-1 text-sm text-[#666666]">{modelDetailLabel(model)}</p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium">
               <span className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{warehouseQuantity} máy còn kho</span>
-              <span className="rounded-full border border-[#d9e1ea] bg-[#f4f7fb] px-2.5 py-1 text-[#334155]">{totalMachines} máy tổng</span>
-              <span className="rounded-full border border-[#d9e1ea] bg-white px-2.5 py-1 text-[#334155]">{model.businessLine?.productIndustry?.name ?? 'Chưa phân ngành'}</span>
+              <span className="rounded-full border border-[#e5e5e5] bg-[#f4f7fb] px-2.5 py-1 text-[#333333]">{totalMachines} máy tổng</span>
+              <span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[#333333]">{model.businessLine?.productIndustry?.name ?? 'Chưa phân ngành'}</span>
             </div>
           </div>
         </div>
@@ -971,11 +971,11 @@ function ModelDetailBlock({
       <div className="grid min-w-0 gap-4 p-5 min-[1320px]:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
         <div className="grid min-w-0 gap-4 self-start">
           {canEditImage ? (
-            <div className="rounded-lg border border-[#d9e1ea] bg-[#f8fafc] p-4">
-              <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+            <div className="rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-4">
+              <label className="grid gap-2 text-sm font-semibold text-[#333333]">
                 Ảnh model
                 <input
-                  className="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                  className="h-10 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                   onChange={(event) => onImageUrlChange(event.target.value)}
                   placeholder="Dán URL ảnh model"
                   value={imageUrlDraft}
@@ -989,29 +989,29 @@ function ModelDetailBlock({
           ) : null}
 
           <div className="grid gap-2">
-          <strong className="text-sm text-[#142033]">Danh sách serial</strong>
+          <strong className="text-sm text-[#1f1f1f]">Danh sách serial</strong>
 
           <div className="grid max-h-[420px] gap-2 overflow-auto pr-1">
             {machines.map((machine) => (
               <button
                 className={`rounded-lg border p-3 text-left ${
-                  selectedMachineId === machine.id ? 'border-[#f4c9c4] bg-[#fff8f7]' : 'border-[#d9e1ea] bg-[#f8fafc] hover:border-[#c83f34]'
+                  selectedMachineId === machine.id ? 'border-[#f5c7cb] bg-[#fff8f7]' : 'border-[#e5e5e5] bg-[#fafafa] hover:border-[#d71920]'
                 }`}
                 key={machine.id}
                 onClick={() => void onSelectMachine(machine.id)}
                 type="button"
               >
-                <strong className="block text-sm text-[#142033]">{machine.serialNumber}</strong>
-                <span className="mt-1 block text-[13px] text-[#657386]">
+                <strong className="block text-sm text-[#1f1f1f]">{machine.serialNumber}</strong>
+                <span className="mt-1 block text-[13px] text-[#666666]">
                   {[machine.machineCode, inventoryLabel(machine.inventoryStatus), machine.customer?.name].filter(Boolean).join(' - ') || 'Chưa có thông tin thêm'}
                 </span>
-                <small className="mt-1 block text-xs text-[#657386]">{machine._count?.accessories ?? 0} phụ kiện</small>
+                <small className="mt-1 block text-xs text-[#666666]">{machine._count?.accessories ?? 0} phụ kiện</small>
               </button>
             ))}
 
-            {!loadingModelDetail && machines.length === 0 ? <p className="rounded-lg bg-[#f8fafc] p-4 text-sm text-[#657386]">Model này chưa có máy thực tế.</p> : null}
+            {!loadingModelDetail && machines.length === 0 ? <p className="rounded-lg bg-[#fafafa] p-4 text-sm text-[#666666]">Model này chưa có máy thực tế.</p> : null}
             {loadingModelDetail ? (
-              <p className="rounded-lg bg-[#f8fafc] p-4 text-sm font-semibold text-[#657386]">
+              <p className="rounded-lg bg-[#fafafa] p-4 text-sm font-semibold text-[#666666]">
                 <Loader2 className="spin-icon mr-2 inline" size={16} />
                 Đang tải máy
               </p>
@@ -1029,7 +1029,7 @@ function ModelDetailBlock({
 function MachineDetailPanel({ detail, loading }: { detail: MachineDetail | null; loading: boolean }) {
   if (loading) {
     return (
-      <section className="rounded-lg border border-[#d9e1ea] bg-white p-6 text-sm font-semibold text-[#657386]">
+      <section className="rounded-lg border border-[#e5e5e5] bg-white p-6 text-sm font-semibold text-[#666666]">
         <Loader2 className="spin-icon mr-2 inline" size={18} />
         Đang tải chi tiết máy
       </section>
@@ -1038,18 +1038,18 @@ function MachineDetailPanel({ detail, loading }: { detail: MachineDetail | null;
 
   if (!detail) {
     return (
-      <section className="rounded-lg border border-[#d9e1ea] bg-white p-6 text-sm text-[#657386]">
+      <section className="rounded-lg border border-[#e5e5e5] bg-white p-6 text-sm text-[#666666]">
         Chọn một serial máy để xem chi tiết máy và phụ kiện đi kèm.
       </section>
     );
   }
 
   return (
-    <section className="rounded-lg border border-[#d9e1ea] bg-white">
-      <div className="border-b border-[#e8edf3] p-4">
-        <span className="text-xs font-medium text-[#657386]">Chi tiết máy</span>
-        <h2 className="mt-1 text-lg font-medium text-[#142033]">{detail.serialNumber}</h2>
-        <p className="mt-1 text-sm text-[#657386]">{[detail.machineCode, detail.modelName, detail.manufacturer].filter(Boolean).join(' - ')}</p>
+    <section className="rounded-lg border border-[#e5e5e5] bg-white">
+      <div className="border-b border-[#eeeeee] p-4">
+        <span className="text-xs font-medium text-[#666666]">Chi tiết máy</span>
+        <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">{detail.serialNumber}</h2>
+        <p className="mt-1 text-sm text-[#666666]">{[detail.machineCode, detail.modelName, detail.manufacturer].filter(Boolean).join(' - ')}</p>
       </div>
 
       <div className="grid gap-4 p-4">
@@ -1064,20 +1064,20 @@ function MachineDetailPanel({ detail, loading }: { detail: MachineDetail | null;
 
         <div>
           <div className="mb-2 flex items-center justify-between gap-3">
-            <strong className="text-sm text-[#142033]">Phụ kiện</strong>
-            <span className="text-xs font-medium text-[#657386]">{detail.accessories?.length ?? 0} phụ kiện</span>
+            <strong className="text-sm text-[#1f1f1f]">Phụ kiện</strong>
+            <span className="text-xs font-medium text-[#666666]">{detail.accessories?.length ?? 0} phụ kiện</span>
           </div>
           <div className="grid gap-2">
             {detail.accessories?.map((accessory) => (
-              <div className="rounded-lg border border-[#d9e1ea] bg-[#f8fafc] p-3" key={accessory.id}>
-                <strong className="block text-sm text-[#142033]">{accessory.name}</strong>
-                <span className="mt-1 block text-[13px] text-[#657386]">
+              <div className="rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3" key={accessory.id}>
+                <strong className="block text-sm text-[#1f1f1f]">{accessory.name}</strong>
+                <span className="mt-1 block text-[13px] text-[#666666]">
                   {[accessory.serialNumber, accessory.code].filter(Boolean).join(' - ') || 'Chưa có S/N'}
                 </span>
-                <small className="mt-1 block text-xs text-[#657386]">{accessory.componentAccessory?.component?.name || accessory.note || 'Phụ kiện theo máy'}</small>
+                <small className="mt-1 block text-xs text-[#666666]">{accessory.componentAccessory?.component?.name || accessory.note || 'Phụ kiện theo máy'}</small>
               </div>
             ))}
-            {!detail.accessories?.length ? <p className="rounded-lg bg-[#f8fafc] p-4 text-sm text-[#657386]">Máy này chưa khai báo phụ kiện.</p> : null}
+            {!detail.accessories?.length ? <p className="rounded-lg bg-[#fafafa] p-4 text-sm text-[#666666]">Máy này chưa khai báo phụ kiện.</p> : null}
           </div>
         </div>
       </div>
@@ -1087,9 +1087,9 @@ function MachineDetailPanel({ detail, loading }: { detail: MachineDetail | null;
 
 function DetailItem({ label, value }: { label: string; value?: string }) {
   return (
-    <div className="rounded-lg border border-[#d9e1ea] bg-[#f8fafc] p-3">
-      <span className="block text-xs font-medium text-[#657386]">{label}</span>
-      <strong className="mt-1 block text-sm text-[#142033]">{value || 'Chưa có'}</strong>
+    <div className="rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3">
+      <span className="block text-xs font-medium text-[#666666]">{label}</span>
+      <strong className="mt-1 block text-sm text-[#1f1f1f]">{value || 'Chưa có'}</strong>
     </div>
   );
 }
@@ -1114,10 +1114,10 @@ function IndustryMachineChart({
     <section className="grid gap-4 border-l border-[#d8e0ea] bg-white p-5 md:p-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <span className="text-[12px] font-medium text-[#657386]">Biểu đồ ngành hàng</span>
-          <h2 className="mt-1 text-lg font-medium text-[#142033]">Số lượng máy theo ngành</h2>
+          <span className="text-[12px] font-medium text-[#666666]">Biểu đồ ngành hàng</span>
+          <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Số lượng máy theo ngành</h2>
         </div>
-        <BarChart3 className="text-[#2f5f98]" size={20} />
+        <BarChart3 className="text-[#d71920]" size={20} />
       </div>
       <div className="grid gap-4">
         {items.map((item) => {
@@ -1125,17 +1125,17 @@ function IndustryMachineChart({
           return (
             <div className="grid gap-1.5" key={item.id}>
               <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="font-medium text-[#334155]">{item.name}</span>
-                <span className="font-semibold tabular-nums text-[#142033]">{item.stock.total}</span>
+                <span className="font-medium text-[#333333]">{item.name}</span>
+                <span className="font-semibold tabular-nums text-[#1f1f1f]">{item.stock.total}</span>
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-[#e8edf3]">
-                <div className="h-full rounded-full bg-[#2f5f98] transition-[width] duration-300" style={{ width: `${width}%` }} />
+              <div className="h-2.5 overflow-hidden rounded-full bg-[#eeeeee]">
+                <div className="h-full rounded-full bg-[#d71920] transition-[width] duration-300" style={{ width: `${width}%` }} />
               </div>
-              <span className="text-xs text-[#657386]">{item.stock.inStock} máy còn kho</span>
+              <span className="text-xs text-[#666666]">{item.stock.inStock} máy còn kho</span>
             </div>
           );
         })}
-        {!items.length ? <p className="rounded-lg bg-[#f8fafc] p-4 text-sm text-[#657386]">Chưa có ngành hàng để hiển thị biểu đồ.</p> : null}
+        {!items.length ? <p className="rounded-lg bg-[#fafafa] p-4 text-sm text-[#666666]">Chưa có ngành hàng để hiển thị biểu đồ.</p> : null}
       </div>
     </section>
   );
@@ -1145,12 +1145,12 @@ function IndustryStockCard({ icon, label, subLabel, value }: { icon: ReactNode; 
   return (
     <div className="grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold text-[#657386]">{label}</span>
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#eef6ff] text-[#2f5f98]">{icon}</span>
+        <span className="text-sm font-semibold text-[#666666]">{label}</span>
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#eef6ff] text-[#d71920]">{icon}</span>
       </div>
       <div className="grid gap-1">
-        <strong className="text-3xl font-semibold leading-none text-[#142033]">{value}</strong>
-        <span className="text-xs font-medium text-[#657386]">{subLabel}</span>
+        <strong className="text-3xl font-semibold leading-none text-[#1f1f1f]">{value}</strong>
+        <span className="text-xs font-medium text-[#666666]">{subLabel}</span>
       </div>
     </div>
   );
@@ -1167,7 +1167,7 @@ function StockPill({ stock }: { stock: ModelStock }) {
 
 function industryTabClass(active: boolean) {
   return `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition ${
-    active ? 'border-[#c83f34] bg-[#fff6f4] text-[#c83f34] shadow-[0_6px_18px_rgba(200,63,52,0.10)]' : 'border-[#d9e1ea] bg-[#f8fafc] text-[#334155] hover:border-[#b8cbe1] hover:bg-white'
+    active ? 'border-[#d71920] bg-[#fff5f5] text-[#d71920] shadow-[0_6px_18px_rgba(215,25,32,0.10)]' : 'border-[#e5e5e5] bg-[#fafafa] text-[#333333] hover:border-[#b8cbe1] hover:bg-white'
   }`;
 }
 
@@ -1182,14 +1182,14 @@ function ModelImage({ model, large = false }: { model?: MachineModel | null; lar
 
   if (!imageUrl || hasError) {
     return (
-      <span className={`${sizeClass} flex shrink-0 items-center justify-center rounded-lg border border-[#d9e1ea] bg-[#f4f7fb] text-[#7b8797]`}>
+      <span className={`${sizeClass} flex shrink-0 items-center justify-center rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] text-[#8a8a8a]`}>
         <ImageOff size={large ? 28 : 18} />
       </span>
     );
   }
 
   return (
-    <span className={`${sizeClass} block shrink-0 overflow-hidden rounded-lg border border-[#d9e1ea] bg-white`}>
+    <span className={`${sizeClass} block shrink-0 overflow-hidden rounded-lg border border-[#e5e5e5] bg-white`}>
       <img alt={model?.name ?? ''} className="h-full w-full object-cover" onError={() => setHasError(true)} src={imageUrl} />
     </span>
   );

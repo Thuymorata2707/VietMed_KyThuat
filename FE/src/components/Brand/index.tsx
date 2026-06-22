@@ -22,8 +22,8 @@ export function Brand({ compact = false, size = 'default' }: BrandProps) {
       </div>
       {compact ? null : (
         <div>
-          <strong className="block whitespace-nowrap text-[15px] font-medium leading-tight text-[#142033]">{isLarge ? 'VietMed Kỹ Thuật' : 'VietMed'}</strong>
-          <span className="block text-[12px] font-medium leading-snug text-[#657386]">{isLarge ? 'Điều phối thiết bị y tế và dịch vụ kỹ thuật' : 'Kỹ thuật'}</span>
+          <strong className="block whitespace-nowrap text-[15px] font-medium leading-tight text-[#1f1f1f]">{isLarge ? 'VietMed Kỹ Thuật' : 'VietMed'}</strong>
+          <span className="block text-[12px] font-medium leading-snug text-[#666666]">{isLarge ? 'Quản lý kỹ thuật và bảo hành' : 'Kỹ thuật'}</span>
         </div>
       )}
     </div>

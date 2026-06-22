@@ -263,20 +263,20 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       <PageTitle
         eyebrow="Kỹ sư"
         title="Báo cáo tuần"
-        description="Nhập báo cáo dạng bảng theo từng đầu việc trong tuần, lưu nháp và gửi admin theo dõi."
+        description="Ghi lại việc đã làm trong tuần, lưu nháp rồi gửi admin."
       />
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="grid min-w-0 gap-4 rounded-lg border border-[#d9e1ea] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <section className="grid min-w-0 gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <span className="text-xs font-medium text-[#c83f34]">Tuần báo cáo</span>
-            <h2 className="mt-1 text-xl text-[#142033]">
+            <span className="text-xs font-medium text-[#d71920]">Tuần báo cáo</span>
+            <h2 className="mt-1 text-xl text-[#1f1f1f]">
               {formatDate(weekStart)} - {formatDate(weekEnd)}
             </h2>
-            <p className="mt-1 text-sm text-[#657386]">
+            <p className="mt-1 text-sm text-[#666666]">
               {isAdmin ? selectedEngineer?.fullName || selectedEngineer?.email || 'Chọn kỹ sư' : user.fullName || user.email}
             </p>
           </div>
@@ -286,7 +286,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               Tuần trước
             </button>
             <input
-              className="min-h-10 rounded-lg border border-[#cbd5e1] px-3 text-[#142033]"
+              className="min-h-10 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f]"
               onChange={(event) => setWeekStart(toDateInput(startOfWeek(new Date(`${event.target.value}T00:00:00`))))}
               type="date"
               value={weekStart}
@@ -298,12 +298,12 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
           </div>
         </div>
 
-        <div className="flex flex-wrap items-end justify-between gap-3 border-t border-[#e8edf3] pt-4">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-t border-[#eeeeee] pt-4">
           {isAdmin ? (
-            <label className="grid min-w-[280px] gap-1.5 text-sm font-medium text-[#334155]">
+            <label className="grid min-w-[280px] gap-1.5 text-sm font-medium text-[#333333]">
               Kỹ sư
               <select
-                className="min-h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#142033]"
+                className="min-h-10 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f]"
                 onChange={(event) => setSelectedEngineerId(event.target.value)}
                 value={selectedEngineerId}
               >
@@ -316,7 +316,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             </label>
           ) : null}
           <div className="ml-auto flex min-w-0 flex-wrap gap-2 max-[760px]:ml-0">
-            <span className="inline-flex min-h-10 items-center rounded-lg border border-[#d9e1ea] bg-[#f8fafc] px-3 text-sm font-medium text-[#334155]">
+            <span className="inline-flex min-h-10 items-center rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-sm font-medium text-[#333333]">
               {statusLabels[reportStatus]}
             </span>
             <button className="secondary-button" onClick={exportCsv} type="button">
@@ -339,19 +339,19 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
         </div>
       </section>
 
-      <section className="grid gap-4 rounded-lg border border-[#d9e1ea] bg-[#fbfcfe] p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+      <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-[#ffffff] p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff6f4] text-[#c83f34]">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff5f5] text-[#d71920]">
               <CalendarCheck size={18} />
             </span>
             <div>
-              <span className="text-xs font-semibold text-[#c83f34]">Lịch trong tuần</span>
-              <h2 className="text-lg font-semibold text-[#142033]">Nguồn dữ liệu cho báo cáo tuần</h2>
+              <span className="text-xs font-semibold text-[#d71920]">Lịch trong tuần</span>
+              <h2 className="text-lg font-semibold text-[#1f1f1f]">Dùng lịch để lập báo cáo</h2>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
-            <span className="rounded-lg border border-[#d9e1ea] bg-white px-3 py-2 font-medium text-[#334155]">
+            <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 font-medium text-[#333333]">
               {loadingDailyWorkRows ? 'Đang tải lịch...' : `${dailyWorkRows?.counts.total ?? 0} lịch`}
             </span>
             <span className="rounded-lg border border-[#b9e8ca] bg-[#eefaf3] px-3 py-2 font-medium text-[#177245]">
@@ -361,13 +361,13 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               Chờ duyệt: {dailyWorkRows?.counts.byStatus.PENDING ?? 0}
             </span>
             {Object.entries(dailyWorkRows?.counts.byType ?? {}).slice(0, 4).map(([type, count]) => (
-              <span className="rounded-lg border border-[#e8edf3] bg-white px-3 py-2 text-[#657386]" key={type}>
+              <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]" key={type}>
                 {dailyWorkTypeLabels[type as DailyWorkType] || type}: {count}
               </span>
             ))}
           </div>
-          <p className="mt-3 max-w-[760px] text-sm leading-6 text-[#657386]">
-            Lịch công việc là danh sách việc đã đăng ký trong tuần. Báo cáo tuần dùng lịch này làm khung, kỹ sư bổ sung kết quả, tồn đọng và đề xuất trước khi gửi admin.
+          <p className="mt-3 max-w-[760px] text-sm leading-6 text-[#666666]">
+            Các lịch đã đăng ký trong tuần sẽ được đưa vào bảng. Kỹ sư chỉ cần bổ sung kết quả, tồn đọng và đề xuất.
           </p>
         </div>
         {!isAdmin ? (
@@ -378,9 +378,9 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
         ) : null}
       </section>
 
-      <section className="min-w-0 overflow-hidden rounded-lg border border-[#d9e1ea] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <section className="min-w-0 overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
         {loading ? (
-          <div className="grid min-h-36 place-items-center text-[#657386]">
+          <div className="grid min-h-36 place-items-center text-[#666666]">
             <span className="inline-flex items-center gap-2">
               <Loader2 className="spin-icon" size={18} />
               Đang tải báo cáo...
@@ -390,42 +390,42 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
           <div className="overflow-x-auto">
             <table className="min-w-[1120px] border-collapse text-left text-sm">
               <thead>
-                <tr className="bg-[#f8fafc] text-xs text-[#657386]">
-                  <th className="w-[128px] border-b border-[#e8edf3] p-3">Ngày</th>
-                  <th className="w-[170px] border-b border-[#e8edf3] p-3">Khách hàng</th>
-                  <th className="w-[150px] border-b border-[#e8edf3] p-3">Máy</th>
-                  <th className="border-b border-[#e8edf3] p-3">Nội dung</th>
-                  <th className="border-b border-[#e8edf3] p-3">Kết quả</th>
-                  <th className="border-b border-[#e8edf3] p-3">Tồn đọng</th>
-                  <th className="border-b border-[#e8edf3] p-3">Đề xuất</th>
-                  <th className="w-[54px] border-b border-[#e8edf3] p-3"></th>
+                <tr className="bg-[#fafafa] text-xs text-[#666666]">
+                  <th className="w-[128px] border-b border-[#eeeeee] p-3">Ngày</th>
+                  <th className="w-[170px] border-b border-[#eeeeee] p-3">Khách hàng</th>
+                  <th className="w-[150px] border-b border-[#eeeeee] p-3">Máy</th>
+                  <th className="border-b border-[#eeeeee] p-3">Nội dung</th>
+                  <th className="border-b border-[#eeeeee] p-3">Kết quả</th>
+                  <th className="border-b border-[#eeeeee] p-3">Tồn đọng</th>
+                  <th className="border-b border-[#eeeeee] p-3">Đề xuất</th>
+                  <th className="w-[54px] border-b border-[#eeeeee] p-3"></th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, index) => (
                   <tr className="align-top" key={`${row.id || 'new'}-${index}`}>
-                    <td className="border-b border-[#e8edf3] p-2">
+                    <td className="border-b border-[#eeeeee] p-2">
                       <input className="weekly-cell" disabled={!canEdit || isAdmin} onChange={(event) => updateRow(index, { workDate: event.target.value })} type="date" value={toDateInput(new Date(row.workDate))} />
                     </td>
-                    <td className="border-b border-[#e8edf3] p-2">
+                    <td className="border-b border-[#eeeeee] p-2">
                       <textarea className="weekly-cell" disabled={!canEdit || isAdmin} onChange={(event) => updateRow(index, { customer: event.target.value })} value={row.customer} />
                     </td>
-                    <td className="border-b border-[#e8edf3] p-2">
+                    <td className="border-b border-[#eeeeee] p-2">
                       <textarea className="weekly-cell" disabled={!canEdit || isAdmin} onChange={(event) => updateRow(index, { machine: event.target.value })} value={row.machine} />
                     </td>
-                    <td className="border-b border-[#e8edf3] p-2">
+                    <td className="border-b border-[#eeeeee] p-2">
                       <textarea className="weekly-cell min-h-[72px]" disabled={!canEdit || isAdmin} onChange={(event) => updateRow(index, { content: event.target.value })} value={row.content} />
                     </td>
-                    <td className="border-b border-[#e8edf3] p-2">
+                    <td className="border-b border-[#eeeeee] p-2">
                       <textarea className="weekly-cell min-h-[72px]" disabled={!canEdit || isAdmin} onChange={(event) => updateRow(index, { result: event.target.value })} value={row.result} />
                     </td>
-                    <td className="border-b border-[#e8edf3] p-2">
+                    <td className="border-b border-[#eeeeee] p-2">
                       <textarea className="weekly-cell min-h-[72px]" disabled={!canEdit || isAdmin} onChange={(event) => updateRow(index, { pending: event.target.value })} value={row.pending} />
                     </td>
-                    <td className="border-b border-[#e8edf3] p-2">
+                    <td className="border-b border-[#eeeeee] p-2">
                       <textarea className="weekly-cell min-h-[72px]" disabled={!canEdit || isAdmin} onChange={(event) => updateRow(index, { proposal: event.target.value })} value={row.proposal} />
                     </td>
-                    <td className="border-b border-[#e8edf3] p-2">
+                    <td className="border-b border-[#eeeeee] p-2">
                       {!isAdmin ? (
                         <button className="icon-button" disabled={!canEdit} onClick={() => removeRow(index)} title="Xóa dòng" type="button">
                           <Trash2 size={15} />
@@ -446,10 +446,10 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             <Plus size={16} />
             Thêm dòng
           </button>
-          <label className="grid min-w-[min(520px,100%)] gap-2 text-sm font-medium text-[#334155]">
+          <label className="grid min-w-[min(520px,100%)] gap-2 text-sm font-medium text-[#333333]">
             Ghi chú chung
             <textarea
-              className="min-h-20 rounded-lg border border-[#cbd5e1] px-3 py-2.5 text-[#142033] outline-none focus:border-[#c83f34]"
+              className="min-h-20 rounded-lg border border-[#d6d6d6] px-3 py-2.5 text-[#1f1f1f] outline-none focus:border-[#d71920]"
               disabled={!canEdit}
               onChange={(event) => setNote(event.target.value)}
               value={note}

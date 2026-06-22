@@ -614,10 +614,10 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
         <div className="grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-3 shadow-[0_10px_28px_rgba(20,32,51,0.05)]">
           <div className="grid gap-3 min-[1120px]:grid-cols-[minmax(240px,320px)_minmax(260px,1fr)_180px_150px_auto]">
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#657386]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Ngành hàng
               <select
-                className="h-11 min-w-0 rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm font-medium text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                 onChange={(event) => {
                   setSelectedBusinessLineKey(event.target.value);
                   setSelectedMachineId(null);
@@ -634,18 +634,18 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               </select>
             </label>
             <label className="relative min-w-0">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#7b8797]" size={17} />
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8a8a]" size={17} />
               <input
-                className="mt-[22px] h-11 w-full min-w-0 rounded-lg border border-[#cbd5e1] bg-[#f8fafc] pl-9 pr-3 text-[#142033] outline-none focus:border-[#c83f34] focus:bg-white focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                className="mt-[22px] h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-[#fafafa] pl-9 pr-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:bg-white focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Tìm S/N, model, khách hàng, đầu dò..."
                 value={searchInput}
               />
             </label>
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#657386]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Trạng thái
               <select
-                className="h-11 min-w-0 rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                 onChange={(event) => {
                   setInstallState(event.target.value);
                   setPage(1);
@@ -658,10 +658,10 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 <option value="UNINSTALLED">Chưa lắp</option>
               </select>
             </label>
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#657386]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Số dòng
               <select
-                className="h-11 min-w-0 rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                 onChange={(event) => {
                   setLimit(Number(event.target.value));
                   setPage(1);
@@ -683,14 +683,14 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         </div>
 
         <section className="overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_12px_34px_rgba(20,32,51,0.06)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8edf3] bg-[#f8fafc] px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
             <div>
-              <h2 className="text-base font-semibold text-[#142033]">Danh sách máy</h2>
-              <p className="mt-1 text-sm text-[#657386]">
+              <h2 className="text-base font-semibold text-[#1f1f1f]">Danh sách máy</h2>
+              <p className="mt-1 text-sm text-[#666666]">
                 {selectedBusinessLine?.name ?? 'Tất cả ngành hàng'} - {technicalMachines?.filteredTotal ?? 0} kết quả
               </p>
             </div>
-            <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-white px-2.5 text-sm font-medium text-[#2f5f98]">
+            <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-white px-2.5 text-sm font-medium text-[#d71920]">
               {loading ? <Loader2 className="spin-icon" size={17} /> : <PackageSearch size={17} />}
               {loading ? '-' : technicalMachines?.total ?? 0}
             </span>
@@ -699,7 +699,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1040px] border-collapse">
               <thead>
-                <tr className="border-b border-[#e8edf3] text-left text-xs font-semibold text-[#657386]">
+                <tr className="border-b border-[#eeeeee] text-left text-xs font-semibold text-[#666666]">
                   <th className="px-4 py-3">Máy</th>
                   <th className="px-4 py-3">Khách hàng</th>
                   <th className="px-4 py-3">Trạng thái</th>
@@ -714,7 +714,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 ))}
                 {loading ? (
                   <tr>
-                    <td className="px-4 py-10 text-center text-sm font-semibold text-[#657386]" colSpan={6}>
+                    <td className="px-4 py-10 text-center text-sm font-semibold text-[#666666]" colSpan={6}>
                       <Loader2 className="spin-icon mx-auto mb-2" size={20} />
                       Đang tải danh sách máy
                     </td>
@@ -722,7 +722,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 ) : null}
                 {!loading && !technicalMachines?.machines.length ? (
                   <tr>
-                    <td className="px-4 py-10 text-center text-sm text-[#657386]" colSpan={6}>
+                    <td className="px-4 py-10 text-center text-sm text-[#666666]" colSpan={6}>
                       Không có máy phù hợp bộ lọc.
                     </td>
                   </tr>
@@ -731,9 +731,9 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             </table>
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-[#e8edf3] px-4 py-3">
+          <div className="flex items-center justify-between gap-3 border-t border-[#eeeeee] px-4 py-3">
             <button
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#d9e1ea] bg-white px-2.5 text-sm font-medium text-[#334155] disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-2.5 text-sm font-medium text-[#333333] disabled:cursor-not-allowed disabled:opacity-45"
               disabled={loading || page <= 1}
               onClick={() => setPage((current) => Math.max(current - 1, 1))}
               type="button"
@@ -741,11 +741,11 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               <ChevronLeft size={16} />
               Trước
             </button>
-            <span className="text-sm font-semibold text-[#657386]">
+            <span className="text-sm font-semibold text-[#666666]">
               Trang {technicalMachines?.page ?? page}/{technicalMachines?.totalPages ?? 1}
             </span>
             <button
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#d9e1ea] bg-white px-2.5 text-sm font-medium text-[#334155] disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-2.5 text-sm font-medium text-[#333333] disabled:cursor-not-allowed disabled:opacity-45"
               disabled={loading || page >= (technicalMachines?.totalPages ?? 1)}
               onClick={() => setPage((current) => current + 1)}
               type="button"
@@ -759,11 +759,11 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
       {editingMachine && !machineId ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 p-5" role="presentation">
-          <form className="grid max-h-[calc(100vh-40px)] w-full max-w-[920px] gap-4 overflow-y-auto rounded-lg border border-[#d9e1ea] bg-white p-5 shadow-[0_24px_70px_rgba(20,32,51,0.22)]" onSubmit={handleSaveMachine}>
-            <div className="flex items-start justify-between gap-3 border-b border-[#e8edf3] pb-3">
+          <form className="grid max-h-[calc(100vh-40px)] w-full max-w-[920px] gap-4 overflow-y-auto rounded-lg border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(20,32,51,0.22)]" onSubmit={handleSaveMachine}>
+            <div className="flex items-start justify-between gap-3 border-b border-[#eeeeee] pb-3">
               <div>
-                <span className="text-[12px] font-medium text-[#657386]">Chuẩn hóa hồ sơ máy</span>
-                <h2 className="mt-1 text-xl font-medium text-[#142033]">{editingMachine?.serialNumber}</h2>
+                <span className="text-[12px] font-medium text-[#666666]">Chuẩn hóa hồ sơ máy</span>
+                <h2 className="mt-1 text-xl font-medium text-[#1f1f1f]">{editingMachine?.serialNumber}</h2>
               </div>
               <button className="icon-button" onClick={() => setEditingMachine(null)} title="Đóng" type="button">
                 <X size={16} />
@@ -845,11 +845,11 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               </label>
             </div>
 
-            <section className="grid gap-3 border-t border-[#e8edf3] pt-4">
+            <section className="grid gap-3 border-t border-[#eeeeee] pt-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <span className="text-[12px] font-medium text-[#657386]">Đầu dò / Phụ kiện</span>
-                  <h3 className="mt-1 text-base font-medium text-[#142033]">{editForm.accessories.length} dòng phụ kiện</h3>
+                  <span className="text-[12px] font-medium text-[#666666]">Đầu dò / Phụ kiện</span>
+                  <h3 className="mt-1 text-base font-medium text-[#1f1f1f]">{editForm.accessories.length} dòng phụ kiện</h3>
                 </div>
                 <button className="secondary-button" onClick={addAccessoryForm} type="button">
                   <Plus size={16} />
@@ -870,9 +870,9 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
               <div className="grid gap-3">
                 {editForm.accessories.map((accessory, index) => (
-                  <div className="grid gap-3 rounded-lg border border-[#e8edf3] bg-[#fbfdff] p-3" key={accessory.clientId}>
+                  <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-3" key={accessory.clientId}>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-medium text-[#334155]">Phụ kiện {index + 1}</span>
+                      <span className="text-sm font-medium text-[#333333]">Phụ kiện {index + 1}</span>
                       <button className="icon-button" onClick={() => removeAccessoryForm(accessory.clientId)} title="Xóa phụ kiện" type="button">
                         <Trash2 size={16} />
                       </button>
@@ -919,7 +919,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               </div>
             </section>
 
-            <div className="flex justify-end gap-2 border-t border-[#e8edf3] pt-4">
+            <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
               <button className="secondary-button" disabled={saving} onClick={() => setEditingMachine(null)} type="button">Hủy</button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
@@ -946,7 +946,7 @@ function MachineDetailPanel({
 }) {
   if (!machine) {
     return (
-      <aside className="rounded-lg border border-[#d9e1ea] bg-white p-6">
+      <aside className="rounded-lg border border-[#e5e5e5] bg-white p-6">
         <EmptyState text="Chọn S/N để xem thông tin máy." />
       </aside>
     );
@@ -959,18 +959,18 @@ function MachineDetailPanel({
 
   return (
     <aside className="grid min-w-0 gap-4 self-start">
-      <div className="min-w-0 rounded-lg border border-[#d9e1ea] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <div className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
         <div className="mb-5 flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-2xl font-medium leading-tight text-[#142033]">Thông tin máy</h2>
-            <p className="mt-1 text-lg font-medium text-[#2f5f98]">{machine.serialNumber}</p>
-            {loading ? <span className="mt-1 inline-flex items-center gap-2 text-xs text-[#657386]"><Loader2 className="spin-icon" size={14} />Đang tải hồ sơ đầy đủ</span> : null}
+            <h2 className="text-2xl font-medium leading-tight text-[#1f1f1f]">Thông tin máy</h2>
+            <p className="mt-1 text-lg font-medium text-[#d71920]">{machine.serialNumber}</p>
+            {loading ? <span className="mt-1 inline-flex items-center gap-2 text-xs text-[#666666]"><Loader2 className="spin-icon" size={14} />Đang tải hồ sơ đầy đủ</span> : null}
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             {machine.dataStatus === 'PENDING_REVIEW' ? (
               <span className="inline-flex min-h-8 items-center rounded-full border border-[#efd8a8] bg-[#fff8ed] px-3 text-sm font-medium text-[#9b5a17]">Chờ xác minh</span>
             ) : null}
-            <span className="inline-flex min-h-8 items-center rounded-full bg-[#eef6ff] px-3 text-sm font-medium text-[#2f5f98]">
+            <span className="inline-flex min-h-8 items-center rounded-full bg-[#eef6ff] px-3 text-sm font-medium text-[#d71920]">
               {displayLabel(machine.inventoryStatus || machine.status || '')}
             </span>
             {canEdit ? (
@@ -993,29 +993,29 @@ function MachineDetailPanel({
           <InfoItem label="Kỹ sư phụ trách" value={machine.primaryEngineer?.fullName} />
         </div>
 
-        <div className="mt-6 border-t border-[#e8edf3] pt-5">
+        <div className="mt-6 border-t border-[#eeeeee] pt-5">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-xl font-medium text-[#142033]">Đầu dò / Phụ kiện</h3>
-            <span className="rounded-full bg-[#f8fafc] px-3 py-1 text-sm font-medium text-[#2f5f98]">{accessories.length}</span>
+            <h3 className="text-xl font-medium text-[#1f1f1f]">Đầu dò / Phụ kiện</h3>
+            <span className="rounded-full bg-[#fafafa] px-3 py-1 text-sm font-medium text-[#d71920]">{accessories.length}</span>
           </div>
           {accessories.length ? (
             <div className="grid min-w-0 gap-3 md:grid-cols-2 2xl:grid-cols-3">
               {accessories.map((accessory) => (
-                <div className="grid min-w-0 gap-2 rounded-lg border border-[#e8edf3] bg-[#fbfdff] p-4" key={accessory.id}>
+                <div className="grid min-w-0 gap-2 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-4" key={accessory.id}>
                   <div className="grid gap-1">
-                    <span className="text-[12px] font-medium text-[#657386]">
+                    <span className="text-[12px] font-medium text-[#666666]">
                       {accessory.componentAccessory?.component?.name || accessory.componentAccessory?.name || accessory.code || 'Phụ kiện'}
                     </span>
-                    <strong className="break-words text-base font-medium leading-snug text-[#142033]">{accessory.name}</strong>
+                    <strong className="break-words text-base font-medium leading-snug text-[#1f1f1f]">{accessory.name}</strong>
                   </div>
                   <div className="grid grid-cols-[76px_minmax(0,1fr)] gap-2 text-sm">
-                    <span className="font-semibold text-[#657386]">S/N</span>
-                    <strong className="break-words text-[#2f5f98]">{accessory.serialNumber || '-'}</strong>
-                    <span className="font-semibold text-[#657386]">Mã</span>
-                    <span className="break-words text-[#334155]">{accessory.code || accessory.componentAccessory?.code || '-'}</span>
+                    <span className="font-semibold text-[#666666]">S/N</span>
+                    <strong className="break-words text-[#d71920]">{accessory.serialNumber || '-'}</strong>
+                    <span className="font-semibold text-[#666666]">Mã</span>
+                    <span className="break-words text-[#333333]">{accessory.code || accessory.componentAccessory?.code || '-'}</span>
                   </div>
                   {accessory.note || accessory.description ? (
-                    <p className="text-sm leading-snug text-[#657386]">{accessory.note || accessory.description}</p>
+                    <p className="text-sm leading-snug text-[#666666]">{accessory.note || accessory.description}</p>
                   ) : null}
                 </div>
               ))}
@@ -1026,10 +1026,10 @@ function MachineDetailPanel({
         </div>
       </div>
 
-      <div className="min-w-0 rounded-lg border border-[#d9e1ea] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <div className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
         <div className="mb-5 flex min-w-0 items-start justify-between gap-3">
-          <h2 className="text-2xl font-medium leading-tight text-[#142033]">Khách hàng đã lắp máy</h2>
-          {machine.installation?.code ? <span className="rounded-full bg-[#f8fafc] px-3 py-1 text-sm font-semibold text-[#657386]">{machine.installation.code}</span> : null}
+          <h2 className="text-2xl font-medium leading-tight text-[#1f1f1f]">Khách hàng đã lắp máy</h2>
+          {machine.installation?.code ? <span className="rounded-full bg-[#fafafa] px-3 py-1 text-sm font-semibold text-[#666666]">{machine.installation.code}</span> : null}
         </div>
         {customer ? (
           <div className="grid min-w-0 gap-4 md:grid-cols-2 2xl:grid-cols-3">
@@ -1091,16 +1091,16 @@ function TimelineBox({
   title: string;
 }) {
   return (
-    <section className="min-w-0 rounded-lg border border-[#d9e1ea] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
-      <h3 className="text-base font-medium text-[#142033]">{title}</h3>
+    <section className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <h3 className="text-base font-medium text-[#1f1f1f]">{title}</h3>
       <div className="mt-3 grid gap-2">
         {items.length ? items.map((item) => (
-          <div className="grid gap-1 rounded-lg border border-[#e8edf3] bg-[#fbfdff] p-3" key={item.id}>
+          <div className="grid gap-1 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-3" key={item.id}>
             <div className="flex items-start justify-between gap-2">
-              <strong className="text-sm leading-snug text-[#142033]">{item.title}</strong>
-              {item.date ? <span className="shrink-0 text-xs font-medium text-[#657386]">{item.date}</span> : null}
+              <strong className="text-sm leading-snug text-[#1f1f1f]">{item.title}</strong>
+              {item.date ? <span className="shrink-0 text-xs font-medium text-[#666666]">{item.date}</span> : null}
             </div>
-            {item.description ? <p className="text-xs leading-snug text-[#657386]">{item.description}</p> : null}
+            {item.description ? <p className="text-xs leading-snug text-[#666666]">{item.description}</p> : null}
           </div>
         )) : <EmptyState text={emptyText} />}
       </div>
@@ -1110,20 +1110,20 @@ function TimelineBox({
 
 function MachineListActionPanel({ canEdit, machine }: { canEdit: boolean; machine: DashboardMachine | null }) {
   return (
-    <aside className="grid min-w-0 gap-4 self-start rounded-lg border border-[#d9e1ea] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <aside className="grid min-w-0 gap-4 self-start rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
       <div>
-        <span className="text-[12px] font-medium text-[#657386]">Thao tác hồ sơ</span>
-        <h2 className="mt-1 text-2xl font-medium leading-tight text-[#142033]">Mở trang riêng để xem hoặc sửa</h2>
-        <p className="mt-2 text-sm leading-6 text-[#657386]">
+        <span className="text-[12px] font-medium text-[#666666]">Thao tác hồ sơ</span>
+        <h2 className="mt-1 text-2xl font-medium leading-tight text-[#1f1f1f]">Mở trang riêng để xem hoặc sửa</h2>
+        <p className="mt-2 text-sm leading-6 text-[#666666]">
           Hồ sơ máy, lịch sử kho, sửa chữa và phụ kiện sẽ hiển thị trên một trang riêng để dễ đọc hơn.
         </p>
       </div>
 
       {machine ? (
-        <div className="grid gap-3 rounded-lg border border-[#e8edf3] bg-[#fbfdff] p-4">
+        <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-4">
           <div>
-            <strong className="block text-lg text-[#2f5f98]">{machine.serialNumber}</strong>
-            <span className="text-sm text-[#657386]">{[machine.machineCode, machine.modelName, machine.customer?.name].filter(Boolean).join(' - ') || 'Chưa có thông tin thêm'}</span>
+            <strong className="block text-lg text-[#d71920]">{machine.serialNumber}</strong>
+            <span className="text-sm text-[#666666]">{[machine.machineCode, machine.modelName, machine.customer?.name].filter(Boolean).join(' - ') || 'Chưa có thông tin thêm'}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link className="primary-button" to={`/technical-machines/${machine.id}`}>
@@ -1147,17 +1147,17 @@ function MachineListActionPanel({ canEdit, machine }: { canEdit: boolean; machin
 
 function MachineSummaryCard({ label, tone = 'neutral', value }: { label: string; tone?: 'neutral' | 'green' | 'blue' | 'amber'; value: number }) {
   const toneClass = {
-    neutral: 'bg-[#f8fafc] text-[#334155]',
+    neutral: 'bg-[#fafafa] text-[#333333]',
     green: 'bg-[#eefaf3] text-[#177245]',
-    blue: 'bg-[#eef6ff] text-[#2f5f98]',
+    blue: 'bg-[#eef6ff] text-[#d71920]',
     amber: 'bg-[#fff8ed] text-[#9b5a17]',
   }[tone];
 
   return (
     <div className="grid gap-2 rounded-lg border border-[#d8e0ea] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
-      <span className="text-sm font-medium text-[#657386]">{label}</span>
+      <span className="text-sm font-medium text-[#666666]">{label}</span>
       <div className="flex items-end justify-between gap-3">
-        <strong className="text-3xl font-semibold leading-none text-[#142033]">{value}</strong>
+        <strong className="text-3xl font-semibold leading-none text-[#1f1f1f]">{value}</strong>
         <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${toneClass}`}>
           <PackageSearch size={16} />
         </span>
@@ -1183,17 +1183,17 @@ function MachineIndustryBarChart({
     <section className="grid min-h-[300px] gap-5 rounded-lg border border-[#d8e0ea] bg-white p-5 shadow-[0_12px_34px_rgba(20,32,51,0.06)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <span className="text-[12px] font-semibold text-[#657386]">Biểu đồ ngành hàng</span>
-          <h2 className="mt-1 text-xl font-semibold text-[#142033]">Số máy theo ngành hàng</h2>
+          <span className="text-[12px] font-semibold text-[#666666]">Biểu đồ ngành hàng</span>
+          <h2 className="mt-1 text-xl font-semibold text-[#1f1f1f]">Số máy theo ngành hàng</h2>
         </div>
-        <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-[#f8fafc] px-2.5 text-sm font-medium text-[#2f5f98]">
+        <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-[#fafafa] px-2.5 text-sm font-medium text-[#d71920]">
           <PackageSearch size={17} />
           {items.reduce((sum, item) => sum + item.count, 0)}
         </span>
       </div>
 
       {loading ? (
-        <div className="grid min-h-[180px] place-items-center rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] text-sm font-semibold text-[#657386]">
+        <div className="grid min-h-[180px] place-items-center rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] text-sm font-semibold text-[#666666]">
           <span className="inline-flex items-center gap-2">
             <Loader2 className="spin-icon" size={17} />
             Đang tải biểu đồ
@@ -1212,14 +1212,14 @@ function MachineIndustryBarChart({
                 onClick={() => onSelect(item.id)}
                 type="button"
               >
-                <span className="text-sm font-semibold tabular-nums text-[#142033]">{item.count}</span>
-                <span className="flex h-36 items-end rounded-lg bg-[#e8edf3] p-1.5">
+                <span className="text-sm font-semibold tabular-nums text-[#1f1f1f]">{item.count}</span>
+                <span className="flex h-36 items-end rounded-lg bg-[#eeeeee] p-1.5">
                   <span
-                    className={`block w-full rounded-md transition-all duration-300 group-hover:bg-[#c83f34] ${activeId === item.id ? 'bg-[#c83f34]' : 'bg-[#2f5f98]'}`}
+                    className={`block w-full rounded-md transition-all duration-300 group-hover:bg-[#d71920] ${activeId === item.id ? 'bg-[#d71920]' : 'bg-[#d71920]'}`}
                     style={{ height: `${height}%` }}
                   />
                 </span>
-                <span className="line-clamp-2 min-h-9 text-xs font-medium leading-snug text-[#657386]">{item.name}</span>
+                <span className="line-clamp-2 min-h-9 text-xs font-medium leading-snug text-[#666666]">{item.name}</span>
               </button>
             );
           })}
@@ -1237,20 +1237,20 @@ function MachineTableRow({ canEdit, machine }: { canEdit: boolean; machine: Dash
   const engineerName = machine.primaryEngineer?.fullName || machine.installedBy?.fullName || machine.primaryEngineer?.email || machine.installedBy?.email || '';
 
   return (
-    <tr className="border-b border-[#e8edf3] transition hover:bg-[#fbfdff]">
+    <tr className="border-b border-[#eeeeee] transition hover:bg-[#fbfdff]">
       <td className="px-4 py-3">
         <div className="grid gap-1">
-          <Link className="font-semibold text-[#2f5f98] hover:underline" to={`/technical-machines/${machine.id}`}>
+          <Link className="font-semibold text-[#d71920] hover:underline" to={`/technical-machines/${machine.id}`}>
             {machine.serialNumber}
           </Link>
-          <span className="text-sm text-[#142033]">{machine.machineCode || machine.name || 'Chưa có mã máy'}</span>
-          <span className="text-xs text-[#657386]">{machine.modelName}</span>
+          <span className="text-sm text-[#1f1f1f]">{machine.machineCode || machine.name || 'Chưa có mã máy'}</span>
+          <span className="text-xs text-[#666666]">{machine.modelName}</span>
         </div>
       </td>
       <td className="px-4 py-3">
         <div className="grid gap-1 text-sm">
-          <strong className="max-w-[240px] truncate text-[#142033]">{customerName || 'Chưa gắn khách hàng'}</strong>
-          <span className="text-xs text-[#657386]">{[machine.customer?.province, machine.customer?.phone || machine.customer?.contactPhone].filter(Boolean).join(' - ') || '-'}</span>
+          <strong className="max-w-[240px] truncate text-[#1f1f1f]">{customerName || 'Chưa gắn khách hàng'}</strong>
+          <span className="text-xs text-[#666666]">{[machine.customer?.province, machine.customer?.phone || machine.customer?.contactPhone].filter(Boolean).join(' - ') || '-'}</span>
         </div>
       </td>
       <td className="px-4 py-3">
@@ -1262,10 +1262,10 @@ function MachineTableRow({ canEdit, machine }: { canEdit: boolean; machine: Dash
       <td className="px-4 py-3">
         <div className="grid gap-1 text-sm">
           <strong className={warrantyClass(machine.warrantyEndDate)}>{warrantyText || 'Chưa có hạn'}</strong>
-          <span className="text-xs text-[#657386]">{machine.installDate ? `Lắp ${formatDashboardDate(machine.installDate)}` : 'Chưa có ngày lắp'}</span>
+          <span className="text-xs text-[#666666]">{machine.installDate ? `Lắp ${formatDashboardDate(machine.installDate)}` : 'Chưa có ngày lắp'}</span>
         </div>
       </td>
-      <td className="px-4 py-3 text-sm text-[#334155]">{engineerName || '-'}</td>
+      <td className="px-4 py-3 text-sm text-[#333333]">{engineerName || '-'}</td>
       <td className="px-4 py-3">
         <div className="flex justify-end gap-2">
           <Link className="secondary-button compact" to={`/technical-machines/${machine.id}`}>
@@ -1286,24 +1286,24 @@ function MachineTableRow({ canEdit, machine }: { canEdit: boolean; machine: Dash
 
 function StatusPill({ subtle, value }: { subtle?: boolean; value: string }) {
   if (!value) return null;
-  const color = subtle ? 'border-[#d9e1ea] bg-[#f8fafc] text-[#334155]' : statusPillTone(value);
+  const color = subtle ? 'border-[#e5e5e5] bg-[#fafafa] text-[#333333]' : statusPillTone(value);
   return <span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-semibold ${color}`}>{displayLabel(value)}</span>;
 }
 
 function statusPillTone(value: string) {
   if (value === 'INSTALLED' || value === 'ACTIVE') return 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]';
-  if (value === 'IN_STOCK' || value === 'RESERVED') return 'border-[#b8cbe1] bg-[#eef6ff] text-[#2f5f98]';
+  if (value === 'IN_STOCK' || value === 'RESERVED') return 'border-[#b8cbe1] bg-[#eef6ff] text-[#d71920]';
   if (value === 'RETURNED' || value === 'REPAIRING' || value === 'MAINTENANCE') return 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]';
-  if (value === 'SOLD' || value === 'INACTIVE') return 'border-[#f4c9c4] bg-[#fff6f4] text-[#c83f34]';
-  return 'border-[#d9e1ea] bg-[#f8fafc] text-[#334155]';
+  if (value === 'SOLD' || value === 'INACTIVE') return 'border-[#f5c7cb] bg-[#fff5f5] text-[#d71920]';
+  return 'border-[#e5e5e5] bg-[#fafafa] text-[#333333]';
 }
 
 function warrantyClass(value?: string | null) {
-  if (!value) return 'text-[#657386]';
+  if (!value) return 'text-[#666666]';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'text-[#142033]';
+  if (Number.isNaN(date.getTime())) return 'text-[#1f1f1f]';
   const daysLeft = Math.ceil((date.getTime() - Date.now()) / 86_400_000);
-  if (daysLeft < 0) return 'text-[#c83f34]';
+  if (daysLeft < 0) return 'text-[#d71920]';
   if (daysLeft <= 30) return 'text-[#9b5a17]';
   return 'text-[#177245]';
 }
@@ -1349,8 +1349,8 @@ function MachineEditForm({
 }) {
   if (loading && !machine) {
     return (
-      <section className="grid min-h-[360px] place-items-center rounded-lg border border-[#d9e1ea] bg-white p-8">
-        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#657386]">
+      <section className="grid min-h-[360px] place-items-center rounded-lg border border-[#e5e5e5] bg-white p-8">
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#666666]">
           <Loader2 className="spin-icon" size={17} />
           Đang tải hồ sơ máy
         </span>
@@ -1363,11 +1363,11 @@ function MachineEditForm({
   }
 
   return (
-    <form className="grid gap-5 rounded-lg border border-[#d9e1ea] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]" onSubmit={onSave}>
-      <div className="flex items-start justify-between gap-3 border-b border-[#e8edf3] pb-4">
+    <form className="grid gap-5 rounded-lg border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]" onSubmit={onSave}>
+      <div className="flex items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
         <div>
-          <span className="text-[12px] font-medium text-[#657386]">Chuẩn hóa hồ sơ máy</span>
-          <h2 className="mt-1 text-xl font-medium text-[#142033]">{machine.serialNumber}</h2>
+          <span className="text-[12px] font-medium text-[#666666]">Chuẩn hóa hồ sơ máy</span>
+          <h2 className="mt-1 text-xl font-medium text-[#1f1f1f]">{machine.serialNumber}</h2>
         </div>
       </div>
 
@@ -1457,11 +1457,11 @@ function MachineEditForm({
         </label>
       </div>
 
-      <section className="grid gap-4 border-t border-[#e8edf3] pt-5">
+      <section className="grid gap-4 border-t border-[#eeeeee] pt-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <span className="text-[12px] font-medium text-[#657386]">Đầu dò / Phụ kiện</span>
-            <h3 className="mt-1 text-base font-medium text-[#142033]">{editForm.accessories.length} dòng phụ kiện</h3>
+            <span className="text-[12px] font-medium text-[#666666]">Đầu dò / Phụ kiện</span>
+            <h3 className="mt-1 text-base font-medium text-[#1f1f1f]">{editForm.accessories.length} dòng phụ kiện</h3>
           </div>
           <button className="secondary-button" onClick={onAddAccessory} type="button">
             <Plus size={16} />
@@ -1484,7 +1484,7 @@ function MachineEditForm({
           {editForm.accessories.map((accessory, index) => (
             <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4" key={accessory.clientId}>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-medium text-[#334155]">Phụ kiện {index + 1}</span>
+                <span className="text-sm font-medium text-[#333333]">Phụ kiện {index + 1}</span>
                 <button className="icon-button" onClick={() => onRemoveAccessory(accessory.clientId)} title="Xóa phụ kiện" type="button">
                   <Trash2 size={16} />
                 </button>
@@ -1531,7 +1531,7 @@ function MachineEditForm({
         </div>
       </section>
 
-      <div className="flex justify-end gap-2 border-t border-[#e8edf3] pt-4">
+      <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
         <button className="secondary-button" disabled={saving} onClick={onCancel} type="button">Hủy</button>
         <button className="primary-button" disabled={saving} type="submit">
           {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
@@ -1544,15 +1544,15 @@ function MachineEditForm({
 
 function InfoItem({ label, value }: { label: string; value?: string | number | null }) {
   return (
-    <div className="grid min-w-0 gap-1.5 rounded-lg border border-[#e8edf3] bg-[#fbfdff] p-3">
-      <span className="text-[12px] font-medium text-[#657386]">{label}</span>
-      <strong className="min-h-6 break-words text-base font-semibold leading-snug text-[#142033]">{value || '-'}</strong>
+    <div className="grid min-w-0 gap-1.5 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-3">
+      <span className="text-[12px] font-medium text-[#666666]">{label}</span>
+      <strong className="min-h-6 break-words text-base font-semibold leading-snug text-[#1f1f1f]">{value || '-'}</strong>
     </div>
   );
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-4 text-sm text-[#657386]">{text}</div>;
+  return <div className="rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-4 text-sm text-[#666666]">{text}</div>;
 }
 
 function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
@@ -1560,8 +1560,8 @@ function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
     <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="text-sm font-semibold text-[#334155]">Thêm nhanh đầu dò siêu âm</span>
-          <p className="mt-1 text-xs leading-5 text-[#657386]">Chọn model đầu dò từ danh sách chuẩn, sau đó nhập S/N thực tế ở dòng bên dưới.</p>
+          <span className="text-sm font-semibold text-[#333333]">Thêm nhanh đầu dò siêu âm</span>
+          <p className="mt-1 text-xs leading-5 text-[#666666]">Chọn model đầu dò từ danh sách chuẩn, sau đó nhập S/N thực tế ở dòng bên dưới.</p>
         </div>
         <select
           className={`${editFieldClass} max-w-[260px]`}
@@ -1580,7 +1580,7 @@ function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {ultrasoundProbeOptions.slice(0, 8).map((option) => (
           <button
-            className="rounded-lg border border-[#e8edf3] bg-white px-3 py-2 text-left text-sm font-medium text-[#2f5f98] transition hover:-translate-y-px hover:border-[#b8cbe1] hover:bg-[#f3f8ff]"
+            className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-left text-sm font-medium text-[#d71920] transition hover:-translate-y-px hover:border-[#b8cbe1] hover:bg-[#f3f8ff]"
             key={option.value}
             onClick={() => onSelect(option.value)}
             type="button"
@@ -1606,7 +1606,7 @@ function TemplateAccessoryPicker({
 }) {
   if (loading) {
     return (
-      <div className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#e8edf3] bg-[#fbfdff] px-3 text-sm text-[#657386]">
+      <div className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#eeeeee] bg-[#fbfdff] px-3 text-sm text-[#666666]">
         <Loader2 className="spin-icon" size={16} />
         Đang tải danh sách phụ kiện mẫu
       </div>
@@ -1618,11 +1618,11 @@ function TemplateAccessoryPicker({
   }
 
   return (
-    <div className="grid gap-2 rounded-lg border border-[#e8edf3] bg-white p-3">
-      <span className="text-sm font-medium text-[#334155]">Tích chọn phụ kiện mẫu của model</span>
+    <div className="grid gap-2 rounded-lg border border-[#eeeeee] bg-white p-3">
+      <span className="text-sm font-medium text-[#333333]">Tích chọn phụ kiện mẫu của model</span>
       <div className="grid gap-2 md:grid-cols-2">
         {templates.map((template) => (
-          <label className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-lg border border-[#e8edf3] bg-[#fbfdff] px-3 py-2 text-sm text-[#334155]" key={template.id}>
+          <label className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-lg border border-[#eeeeee] bg-[#fbfdff] px-3 py-2 text-sm text-[#333333]" key={template.id}>
             <input
               checked={selectedIds.has(template.id)}
               className="mt-1"
@@ -1630,8 +1630,8 @@ function TemplateAccessoryPicker({
               type="checkbox"
             />
             <span className="grid min-w-0 gap-0.5">
-              <strong className="font-medium text-[#142033]">{template.code || template.name}</strong>
-              <small className="truncate text-xs text-[#657386]">{[template.componentName, template.name].filter(Boolean).join(' - ')}</small>
+              <strong className="font-medium text-[#1f1f1f]">{template.code || template.name}</strong>
+              <small className="truncate text-xs text-[#666666]">{[template.componentName, template.name].filter(Boolean).join(' - ')}</small>
             </span>
           </label>
         ))}
@@ -1788,5 +1788,5 @@ function toDateInput(value?: string | null) {
   return date.toISOString().slice(0, 10);
 }
 
-const editLabelClass = 'grid min-w-0 gap-2 text-sm font-medium text-[#334155]';
-const editFieldClass = 'h-11 min-w-0 rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]';
+const editLabelClass = 'grid min-w-0 gap-2 text-sm font-medium text-[#333333]';
+const editFieldClass = 'h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';

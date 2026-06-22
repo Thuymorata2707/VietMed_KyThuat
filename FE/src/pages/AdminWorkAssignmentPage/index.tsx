@@ -235,10 +235,10 @@ export function AdminWorkAssignmentPage() {
         <PageTitle
           eyebrow="Admin"
           title="Phân việc kỹ sư"
-          description="Quản trị viên chọn kỹ sư xử lý cho phiếu sửa chữa và bảo trì, đồng thời theo dõi phiếu lắp đặt đã có người phụ trách."
+          description="Chọn kỹ sư phụ trách phiếu sửa chữa, bảo trì và lắp đặt."
         />
         <button
-          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#d9e1ea] bg-white px-4 text-sm font-medium text-[#334155] shadow-sm hover:border-[#c83f34] hover:text-[#c83f34] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
+          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-4 text-sm font-medium text-[#333333] shadow-sm hover:border-[#d71920] hover:text-[#d71920] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
           disabled={loading}
           onClick={loadData}
           type="button"
@@ -250,31 +250,31 @@ export function AdminWorkAssignmentPage() {
 
       <div className="grid gap-3.5 min-[821px]:grid-cols-3">
         <div className={summaryCardClass}>
-          <span className="text-[13px] text-[#657386]">Chưa phân</span>
-          <strong className="text-[28px] leading-none text-[#142033]">{unassignedCount}</strong>
+          <span className="text-[13px] text-[#666666]">Chưa phân</span>
+          <strong className="text-[28px] leading-none text-[#1f1f1f]">{unassignedCount}</strong>
         </div>
         <div className={summaryCardClass}>
-          <span className="text-[13px] text-[#657386]">Đang mở</span>
-          <strong className="text-[28px] leading-none text-[#142033]">{openCount}</strong>
+          <span className="text-[13px] text-[#666666]">Đang mở</span>
+          <strong className="text-[28px] leading-none text-[#1f1f1f]">{openCount}</strong>
         </div>
         <div className={summaryCardClass}>
-          <span className="text-[13px] text-[#657386]">Kỹ sư hoạt động</span>
-          <strong className="text-[28px] leading-none text-[#142033]">{engineers.length}</strong>
+          <span className="text-[13px] text-[#666666]">Kỹ sư hoạt động</span>
+          <strong className="text-[28px] leading-none text-[#1f1f1f]">{engineers.length}</strong>
         </div>
       </div>
 
       {error ? <Notice message={error} /> : null}
       {success ? <Notice message={success} /> : null}
 
-      <section className="overflow-hidden rounded-lg border border-[#d9e1ea] bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8edf3] p-3.5">
-          <div className="inline-flex gap-[3px] rounded-lg border border-[#d9e1ea] bg-[#f4f7fb] p-[3px]" aria-label="Lọc công việc">
+      <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] p-3.5">
+          <div className="inline-flex gap-[3px] rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] p-[3px]" aria-label="Lọc công việc">
             {filterOptions.map((option) => (
               <button
                 className={`min-h-8 whitespace-nowrap rounded-md px-3 text-sm font-medium ${
                   filter === option.value
-                    ? 'bg-white text-[#c83f34] shadow-[0_1px_4px_rgba(20,32,51,0.08)]'
-                    : 'bg-transparent text-[#334155] hover:text-[#c83f34]'
+                    ? 'bg-white text-[#d71920] shadow-[0_1px_4px_rgba(20,32,51,0.08)]'
+                    : 'bg-transparent text-[#333333] hover:text-[#d71920]'
                 }`}
                 key={option.value}
                 onClick={() => setFilter(option.value)}
@@ -284,30 +284,30 @@ export function AdminWorkAssignmentPage() {
               </button>
             ))}
           </div>
-          <label className="flex h-10 min-w-60 flex-[1_1_320px] items-center gap-2 rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#657386] focus-within:border-[#c83f34] focus-within:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]">
+          <label className="flex h-10 min-w-60 flex-[1_1_320px] items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#666666] focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
             <Search size={16} />
             <input
-              className="min-w-0 flex-1 border-0 text-[#142033] outline-none"
+              className="min-w-0 flex-1 border-0 text-[#1f1f1f] outline-none"
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Tìm mã phiếu, S/N, mã máy, khách hàng"
               value={query}
             />
           </label>
-          <span className="text-[13px] font-medium text-[#657386]">{loading ? 'Đang tải dữ liệu' : `${items.length} công việc`}</span>
+          <span className="text-[13px] font-medium text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} công việc`}</span>
         </div>
 
         <div className="grid">
           {loading ? (
-            <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-sm font-semibold text-[#657386]">
+            <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-sm font-semibold text-[#666666]">
               <Loader2 className="animate-spin" size={18} />
               <span>Đang tải danh sách phân việc</span>
             </div>
           ) : null}
 
           {!loading && items.length === 0 ? (
-            <div className="grid min-h-52 place-items-center gap-2 p-8 text-center text-[#657386]">
+            <div className="grid min-h-52 place-items-center gap-2 p-8 text-center text-[#666666]">
               <UserCheck size={22} />
-              <strong className="text-[#142033]">Không có công việc phù hợp</strong>
+              <strong className="text-[#1f1f1f]">Không có công việc phù hợp</strong>
               <span className="text-sm">Thử đổi bộ lọc hoặc làm mới dữ liệu.</span>
             </div>
           ) : null}
@@ -315,7 +315,7 @@ export function AdminWorkAssignmentPage() {
           {!loading
             ? items.map((item) => (
                 <article
-                  className="grid items-start gap-3.5 border-b border-[#e8edf3] px-4 py-[15px] last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(220px,320px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(140px,190px)_minmax(260px,330px)]"
+                  className="grid items-start gap-3.5 border-b border-[#eeeeee] px-4 py-[15px] last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(220px,320px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(140px,190px)_minmax(260px,330px)]"
                   key={item.key}
                 >
                   <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
@@ -326,7 +326,7 @@ export function AdminWorkAssignmentPage() {
                       {item.date ? <span>{formatDate(item.date)}</span> : null}
                       {item.createdBy?.fullName ? <span>Người tạo: {item.createdBy.fullName}</span> : null}
                     </div>
-                    <h2 className="[overflow-wrap:anywhere] text-[17px] font-medium text-[#142033]">{item.title}</h2>
+                    <h2 className="[overflow-wrap:anywhere] text-[17px] font-medium text-[#1f1f1f]">{item.title}</h2>
                     <div className={metaClass}>
                       <span>{machineText(item)}</span>
                       <span>{customerText(item)}</span>
@@ -337,14 +337,14 @@ export function AdminWorkAssignmentPage() {
                       <span className={badgeDotClass(statusTone(item.status))} />
                       {statusLabel(item.status)}
                     </span>
-                    <span className="[overflow-wrap:anywhere] text-[13px] font-medium text-[#334155]">
+                    <span className="[overflow-wrap:anywhere] text-[13px] font-medium text-[#333333]">
                       {item.engineer?.fullName || item.engineer?.email || 'Chưa có kỹ sư'}
                     </span>
                   </div>
                   <div className="col-span-full grid gap-2.5 max-[560px]:grid-cols-1 min-[561px]:grid-cols-[minmax(0,1fr)_auto] min-[821px]:col-start-3 min-[821px]:col-span-1 min-[821px]:row-span-2 min-[821px]:row-start-1 min-[1181px]:col-auto min-[1181px]:row-auto">
                     <select
                       aria-label={`Chọn kỹ sư cho ${item.code}`}
-                      className="h-10 min-w-0 rounded-lg border border-[#cbd5e1] bg-white px-3 text-[#142033] outline-none focus:border-[#c83f34] focus:shadow-[0_0_0_3px_rgba(200,63,52,0.12)]"
+                      className="h-10 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                       onChange={(event) => setAssignmentByKey((current) => ({ ...current, [item.key]: event.target.value }))}
                       value={assignmentByKey[item.key] ?? ''}
                     >
@@ -356,7 +356,7 @@ export function AdminWorkAssignmentPage() {
                       ))}
                     </select>
                     <button
-                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border-0 bg-[#c83f34] px-4 text-sm font-medium text-white shadow-sm hover:bg-[#a3342b] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border-0 bg-[#d71920] px-4 text-sm font-medium text-white shadow-sm hover:bg-[#b5121b] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
                       disabled={!assignmentByKey[item.key] || assigningKey === item.key}
                       onClick={() => assignWork(item)}
                       type="button"
@@ -374,15 +374,15 @@ export function AdminWorkAssignmentPage() {
   );
 }
 
-const summaryCardClass = 'grid gap-[7px] rounded-lg border border-[#d9e1ea] bg-white p-4';
-const metaClass = 'flex flex-wrap items-center gap-[7px] text-[13px] text-[#657386] [&>span]:[overflow-wrap:anywhere]';
+const summaryCardClass = 'grid gap-[7px] rounded-lg border border-[#e5e5e5] bg-white p-4';
+const metaClass = 'flex flex-wrap items-center gap-[7px] text-[13px] text-[#666666] [&>span]:[overflow-wrap:anywhere]';
 
 function kindIconClass(kind: WorkKind) {
   const base = 'flex h-[42px] w-[42px] items-center justify-center rounded-lg border';
   const tones: Record<WorkKind, string> = {
-    repair: 'border-[#f4c9c4] bg-[#fff6f4] text-[#c83f34]',
+    repair: 'border-[#f5c7cb] bg-[#fff5f5] text-[#d71920]',
     maintenance: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
-    installation: 'border-[#c9d9ee] bg-[#eef5ff] text-[#2f5f98]',
+    installation: 'border-[#f5c7cb] bg-[#fff5f5] text-[#d71920]',
   };
   return `${base} ${tones[kind]}`;
 }
@@ -392,8 +392,8 @@ function badgeClass(tone: Tone) {
   const tones: Record<Tone, string> = {
     good: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
     warn: 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]',
-    danger: 'border-[#fecdd3] bg-[#fff1f3] text-[#a3342b]',
-    neutral: 'border-[#d9e1ea] bg-[#f4f7fb] text-[#334155]',
+    danger: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]',
+    neutral: 'border-[#e5e5e5] bg-[#f4f7fb] text-[#333333]',
   };
   return `${base} ${tones[tone]}`;
 }
@@ -403,7 +403,7 @@ function badgeDotClass(tone: Tone) {
     good: 'bg-[#12b76a]',
     warn: 'bg-[#f79009]',
     danger: 'bg-[#f04438]',
-    neutral: 'bg-[#7b8797]',
+    neutral: 'bg-[#8a8a8a]',
   };
   return `h-[7px] w-[7px] rounded-full ${tones[tone]}`;
 }
