@@ -236,6 +236,15 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     };
   }, [technicalMachines]);
 
+  const machineIndustryChartItems = useMemo(
+    () => technicalMachines?.businessLines.map((businessLine) => ({
+      id: businessLineKey(businessLine),
+      name: businessLine.name,
+      count: businessLine.count,
+    })) ?? [],
+    [technicalMachines],
+  );
+
   useEffect(() => {
     if (currentRole !== 'admin') return;
     void loadCustomers();
@@ -584,11 +593,23 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       {success ? <div className="success-notice">{success}</div> : null}
 
       <section className="grid gap-4">
-        <div className="grid gap-3 md:grid-cols-4">
-          <MachineSummaryCard label="Tổng kết quả" value={machineStatusSummary.total} />
-          <MachineSummaryCard label="Đã lắp" tone="green" value={machineStatusSummary.installed} />
-          <MachineSummaryCard label="Trong kho" tone="blue" value={machineStatusSummary.inStock} />
-          <MachineSummaryCard label="Thu hồi" tone="amber" value={machineStatusSummary.returned} />
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <MachineIndustryBarChart
+            activeId={selectedBusinessLineKey}
+            items={machineIndustryChartItems}
+            loading={loading}
+            onSelect={(nextId) => {
+              setSelectedBusinessLineKey(nextId);
+              setSelectedMachineId(null);
+              setPage(1);
+            }}
+          />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <MachineSummaryCard label="Tổng kết quả" value={machineStatusSummary.total} />
+            <MachineSummaryCard label="Đã lắp" tone="green" value={machineStatusSummary.installed} />
+            <MachineSummaryCard label="Trong kho" tone="blue" value={machineStatusSummary.inStock} />
+            <MachineSummaryCard label="Thu hồi" tone="amber" value={machineStatusSummary.returned} />
+          </div>
         </div>
 
         <div className="grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-3 shadow-[0_10px_28px_rgba(16,24,40,0.05)]">
@@ -1142,6 +1163,71 @@ function MachineSummaryCard({ label, tone = 'neutral', value }: { label: string;
         </span>
       </div>
     </div>
+  );
+}
+
+function MachineIndustryBarChart({
+  activeId,
+  items,
+  loading,
+  onSelect,
+}: {
+  activeId: string;
+  items: Array<{ id: string; name: string; count: number }>;
+  loading: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const maxCount = Math.max(1, ...items.map((item) => item.count));
+
+  return (
+    <section className="grid min-h-[300px] gap-5 rounded-lg border border-[#d8e0ea] bg-white p-5 shadow-[0_12px_34px_rgba(16,24,40,0.06)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <span className="text-[12px] font-semibold text-[#667085]">Biểu đồ ngành hàng</span>
+          <h2 className="mt-1 text-xl font-semibold text-[#101828]">Số máy theo ngành hàng</h2>
+        </div>
+        <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-[#f8fafc] px-2.5 text-sm font-medium text-[#2f5f98]">
+          <PackageSearch size={17} />
+          {items.reduce((sum, item) => sum + item.count, 0)}
+        </span>
+      </div>
+
+      {loading ? (
+        <div className="grid min-h-[180px] place-items-center rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] text-sm font-semibold text-[#667085]">
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="spin-icon" size={17} />
+            Đang tải biểu đồ
+          </span>
+        </div>
+      ) : null}
+
+      {!loading && items.length ? (
+        <div className="grid min-h-[220px] grid-cols-[repeat(auto-fit,minmax(88px,1fr))] items-end gap-3">
+          {items.map((item) => {
+            const height = Math.max(12, Math.round((item.count / maxCount) * 100));
+            return (
+              <button
+                className={`group grid h-full min-h-[220px] items-end gap-2 rounded-lg border p-2 text-center transition hover:border-[#b8cbe1] hover:bg-[#fbfdff] ${activeId === item.id ? 'border-[#b8cbe1] bg-[#f3f8ff]' : 'border-transparent'}`}
+                key={item.id}
+                onClick={() => onSelect(item.id)}
+                type="button"
+              >
+                <span className="text-sm font-semibold tabular-nums text-[#101828]">{item.count}</span>
+                <span className="flex h-36 items-end rounded-lg bg-[#edf2f7] p-1.5">
+                  <span
+                    className={`block w-full rounded-md transition-all duration-300 group-hover:bg-[#d92d20] ${activeId === item.id ? 'bg-[#d92d20]' : 'bg-[#2f5f98]'}`}
+                    style={{ height: `${height}%` }}
+                  />
+                </span>
+                <span className="line-clamp-2 min-h-9 text-xs font-medium leading-snug text-[#667085]">{item.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {!loading && !items.length ? <EmptyState text="Chưa có dữ liệu ngành hàng để hiển thị biểu đồ." /> : null}
+    </section>
   );
 }
 
