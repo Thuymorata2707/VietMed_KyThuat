@@ -242,19 +242,19 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="grid gap-4 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#edf2f7] pb-4">
+      <section className="grid gap-5 rounded-[10px] border border-[#d9e1ea] bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfe_100%)] p-5 shadow-[0_1px_2px_rgba(20,32,51,0.05)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#e8edf3] pb-4">
           <div className="min-w-0">
-            <span className="text-[12px] font-medium text-[#d92d20]">{scopeTitle}</span>
-            <h2 className="mt-1 text-xl font-semibold text-[#101828]">Đội máy đang quản lý</h2>
-            <p className="mt-1 max-w-[760px] text-sm leading-6 text-[#667085]">{scopeDescription}</p>
+            <span className="text-[12px] font-semibold text-[#2f5f98]">{scopeTitle}</span>
+            <h2 className="mt-1 text-xl font-semibold text-[#142033]">Đội máy đang quản lý</h2>
+            <p className="mt-1 max-w-[760px] text-sm leading-6 text-[#657386]">{scopeDescription}</p>
           </div>
-          <span className="rounded-lg border border-[#dde5ee] bg-[#f8fafc] px-3 py-2 text-right text-xs font-medium text-[#667085]">
+          <span className="rounded-lg border border-[#d9e1ea] bg-white px-3 py-2 text-right text-xs font-medium text-[#657386]">
             Cập nhật: {lastUpdatedAt ?? 'Chưa có'}
           </span>
         </div>
 
-        <div className="grid gap-4 min-[1120px]:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.45fr)]">
+        <div className="grid gap-4 min-[1120px]:grid-cols-[minmax(360px,0.95fr)_minmax(0,1.4fr)]">
           <MachineTotalCard
             active={activeMachines}
             availabilityRate={availabilityRate}
@@ -272,27 +272,27 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] bg-[#f8fafc] px-4 py-3">
+      <section className="overflow-hidden rounded-[10px] border border-[#d9e1ea] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.05)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8edf3] bg-[#fbfcfe] px-5 py-4">
           <div>
-            <span className="text-[12px] font-medium text-[#667085]">Dashboard vận hành</span>
-            <h2 className="mt-1 text-lg font-medium text-[#101828]">Bảng điều phối phòng kỹ thuật</h2>
+            <span className="text-[12px] font-medium text-[#657386]">Dashboard vận hành</span>
+            <h2 className="mt-1 text-lg font-semibold text-[#142033]">Bảng điều phối phòng kỹ thuật</h2>
           </div>
-          <span className="rounded-lg border border-[#dde5ee] bg-white px-3 py-2 text-right text-xs font-medium text-[#667085]">
+          <span className="rounded-lg border border-[#d9e1ea] bg-white px-3 py-2 text-right text-xs font-medium text-[#657386]">
             {isAdmin ? 'Dữ liệu chung' : 'Phần việc cá nhân'}
           </span>
         </div>
 
-        <div className="grid grid-cols-4 divide-x divide-[#edf2f7] border-b border-[#edf2f7] max-[1180px]:grid-cols-2 max-sm:grid-cols-1 max-sm:divide-x-0">
+        <div className="grid grid-cols-4 divide-x divide-[#e8edf3] border-b border-[#e8edf3] max-[1180px]:grid-cols-2 max-sm:grid-cols-1 max-sm:divide-x-0">
           {commandKpis.map((item) => (
             <CommandKpi key={item.label} loading={loading} {...item} />
           ))}
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] divide-x divide-[#edf2f7] max-[1180px]:grid-cols-1 max-[1180px]:divide-x-0">
+        <div className="grid grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] divide-x divide-[#e8edf3] max-[1180px]:grid-cols-1 max-[1180px]:divide-x-0">
           <BoardPanel eyebrow="Sơ đồ tải việc" title="Ticket sửa chữa và bảo trì">
             <LineWorkChart items={workQueues} loading={loading} />
-            <div className="grid grid-cols-3 gap-2.5 border-t border-[#edf2f7] pt-3 max-sm:grid-cols-1">
+            <div className="grid grid-cols-3 gap-2.5 border-t border-[#e8edf3] pt-3 max-sm:grid-cols-1">
               <ActionLink icon={<Wrench size={17} />} label={isAdmin ? 'Điều phối ticket' : 'Ticket của tôi'} to={isAdmin ? '/service-tickets' : '/my-tasks'} />
               <ActionLink icon={<ClipboardCheck size={17} />} label="Lịch công việc" to="/daily-work" />
               <ActionLink icon={<ArrowUpRight size={17} />} label="Tạo phiếu" to="/service-tickets/create" />
@@ -301,7 +301,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
           <BoardPanel eyebrow="Trạng thái đội máy" title="Máy cần theo dõi">
             <DonutMachineChart activeRate={availabilityRate} items={machineQueues} loading={loading} total={totalMachines} />
-            <div className="grid grid-cols-3 gap-2.5 border-t border-[#edf2f7] pt-3 max-sm:grid-cols-1">
+            <div className="grid grid-cols-3 gap-2.5 border-t border-[#e8edf3] pt-3 max-sm:grid-cols-1">
               <MiniStat label={isAdmin ? 'Khách hàng hoạt động' : 'Khách hàng liên quan'} loading={loading} value={activeCustomers} />
               <MiniStat label="Máy trả về" loading={loading} value={returnedMachines} />
               <MiniStat label="Thiếu hồ sơ máy" loading={loading} value={openTicketsWithoutMachine} />
@@ -313,20 +313,20 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
       </section>
 
       <Link
-        className="grid min-h-[104px] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-lg border border-[#dde5ee] bg-white p-4 text-left shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:-translate-y-px hover:border-[#b8c7d8] hover:shadow-[0_12px_30px_rgba(16,24,40,0.08)] max-sm:grid-cols-[auto_minmax(0,1fr)]"
+        className="grid min-h-[104px] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-[10px] border border-[#d9e1ea] bg-white p-4 text-left shadow-[0_1px_2px_rgba(20,32,51,0.05)] transition hover:-translate-y-px hover:border-[#c9d9ee] hover:shadow-[0_12px_30px_rgba(20,32,51,0.08)] max-sm:grid-cols-[auto_minmax(0,1fr)]"
         to="/technical-machines"
       >
-        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#eef4ff] text-[#175cd3]">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#eef5ff] text-[#2f5f98]">
           <PackageSearch size={22} />
         </span>
         <span className="grid min-w-0 gap-1">
-          <span className="text-xs font-medium text-[#667085]">Danh mục máy</span>
-          <span className="text-lg font-medium text-[#101828]">Model và serial đang quản lý</span>
-          <span className="text-sm text-[#667085]">
+          <span className="text-xs font-medium text-[#657386]">Danh mục máy</span>
+          <span className="text-lg font-semibold text-[#142033]">Model và serial đang quản lý</span>
+          <span className="text-sm text-[#657386]">
             {loading ? 'Đang tải danh sách máy' : `${technicalMachines?.total ?? summary?.totalMachines ?? 0} máy, ${technicalMachines?.businessLines.length ?? 0} ngành hàng`}
           </span>
         </span>
-        <span className="text-sm font-medium text-[#344054] max-sm:col-span-2">Xem chi tiết</span>
+        <span className="text-sm font-medium text-[#334155] max-sm:col-span-2">Xem chi tiết</span>
       </Link>
 
       {role === 'admin' ? (
@@ -367,38 +367,38 @@ function MachineTotalCard({
 }) {
   return (
     <Link
-      className="grid min-h-[220px] gap-5 rounded-lg border border-[#d7e3f1] bg-[#f8fbff] p-5 text-left transition hover:-translate-y-px hover:border-[#b8c7d8] hover:bg-white"
+      className="grid min-h-[228px] gap-5 rounded-[10px] border border-[#c9d9ee] bg-white p-5 text-left shadow-[0_10px_28px_rgba(47,95,152,0.08)] transition hover:-translate-y-px hover:border-[#9fb8d7]"
       to="/technical-machines"
     >
       <div className="flex items-start justify-between gap-3">
-        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[#175cd3] shadow-[0_1px_2px_rgba(16,24,40,0.06)]">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#eef5ff] text-[#2f5f98] shadow-[0_1px_2px_rgba(20,32,51,0.06)]">
           <PackageSearch size={22} />
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#dde5ee] bg-white px-2.5 py-1 text-xs font-semibold text-[#344054]">
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#d9e1ea] bg-[#fbfcfe] px-2.5 py-1 text-xs font-semibold text-[#334155]">
           Chi tiết <ArrowRight size={13} />
         </span>
       </div>
       <div>
-        <span className="text-sm font-semibold text-[#667085]">Tổng số máy</span>
-        <strong className="mt-2 block text-[clamp(42px,7vw,68px)] font-semibold leading-none text-[#101828]">
+        <span className="text-sm font-semibold text-[#657386]">Tổng số máy</span>
+        <strong className="mt-2 block text-[clamp(42px,7vw,68px)] font-semibold leading-none text-[#142033]">
           {loading ? '-' : total}
         </strong>
       </div>
-      <div className="grid gap-2 text-sm text-[#344054] sm:grid-cols-3">
-        <span className="rounded-lg bg-white px-3 py-2 font-medium">{loading ? '-' : active} hoạt động</span>
-        <span className="rounded-lg bg-white px-3 py-2 font-medium">{loading ? '-' : installed} đã lắp</span>
-        <span className="rounded-lg bg-white px-3 py-2 font-medium">{loading ? '-' : verified} xác minh</span>
+      <div className="grid gap-2 text-sm text-[#334155] sm:grid-cols-3">
+        <span className="rounded-lg border border-[#e8edf3] bg-[#fbfcfe] px-3 py-2 font-medium">{loading ? '-' : active} hoạt động</span>
+        <span className="rounded-lg border border-[#e8edf3] bg-[#fbfcfe] px-3 py-2 font-medium">{loading ? '-' : installed} đã lắp</span>
+        <span className="rounded-lg border border-[#e8edf3] bg-[#fbfcfe] px-3 py-2 font-medium">{loading ? '-' : verified} xác minh</span>
       </div>
       <div className="grid gap-2">
-        <div className="flex items-center justify-between gap-3 text-xs font-medium text-[#667085]">
+        <div className="flex items-center justify-between gap-3 text-xs font-medium text-[#657386]">
           <span>Tỷ lệ sẵn sàng</span>
           <span>{loading ? '-' : `${availabilityRate}%`}</span>
         </div>
-        <div className="h-2.5 overflow-hidden rounded-full bg-[#e8eef6]">
-          <span className="block h-full rounded-full bg-[#067647]" style={{ width: `${loading ? 0 : availabilityRate}%` }} />
+        <div className="h-2.5 overflow-hidden rounded-full bg-[#e8edf3]">
+          <span className="block h-full rounded-full bg-[#177245]" style={{ width: `${loading ? 0 : availabilityRate}%` }} />
         </div>
         {pendingReview > 0 ? (
-          <span className="text-xs font-medium text-[#b54708]">{pendingReview} máy đang chờ xác nhận dữ liệu</span>
+          <span className="text-xs font-medium text-[#9b5a17]">{pendingReview} máy đang chờ xác nhận dữ liệu</span>
         ) : null}
       </div>
     </Link>
@@ -419,13 +419,13 @@ function MachineScopeCard({
   const style = toneClass(tone);
 
   return (
-    <div className="grid min-h-[104px] gap-3 rounded-lg border border-[#edf2f7] bg-[#fbfcfe] p-4">
+    <div className="grid min-h-[104px] gap-3 rounded-[10px] border border-[#e8edf3] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold text-[#344054]">{label}</span>
+        <span className="text-sm font-semibold text-[#334155]">{label}</span>
         {tone === 'warn' || tone === 'danger' ? <AlertTriangle className={style.icon} size={17} /> : <Activity className={style.icon} size={17} />}
       </div>
       <strong className={`text-3xl leading-none ${style.text}`}>{loading ? '-' : value}</strong>
-      <div className="h-1.5 overflow-hidden rounded-full bg-[#edf2f7]">
+      <div className="h-1.5 overflow-hidden rounded-full bg-[#e8edf3]">
         <span className={`block h-full rounded-full ${style.bar}`} style={{ width: `${loading ? 0 : Math.min(100, Math.max(8, value * 8))}%` }} />
       </div>
     </div>
@@ -448,23 +448,23 @@ function CommandKpi({
   const style = toneClass(tone);
 
   return (
-    <div className="grid min-h-[122px] gap-2 p-4">
+    <div className="grid min-h-[122px] gap-2 p-5">
       <div className="flex items-start justify-between gap-3">
-        <span className="text-[13px] font-medium text-[#344054]">{label}</span>
+        <span className="text-[13px] font-semibold text-[#334155]">{label}</span>
         {tone === 'good' ? <CheckCircle2 className={style.icon} size={17} /> : tone === 'neutral' ? null : <AlertTriangle className={style.icon} size={17} />}
       </div>
       <strong className={`text-[34px] leading-none ${style.text}`}>{loading ? '-' : value}</strong>
-      <span className="text-xs leading-snug text-[#667085]">{detail}</span>
+      <span className="text-xs leading-snug text-[#657386]">{detail}</span>
     </div>
   );
 }
 
 function BoardPanel({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
   return (
-    <section className="grid gap-4 p-4">
+    <section className="grid gap-4 p-5">
       <div>
-        <span className="text-[12px] font-medium text-[#667085]">{eyebrow}</span>
-        <h2 className="mt-1 text-lg font-medium text-[#101828]">{title}</h2>
+        <span className="text-[12px] font-medium text-[#657386]">{eyebrow}</span>
+        <h2 className="mt-1 text-lg font-semibold text-[#142033]">{title}</h2>
       </div>
       {children}
     </section>
@@ -488,25 +488,25 @@ function LineWorkChart({ items, loading }: { items: Array<{ label: string; value
   const line = points.map((point) => `${point.x},${point.y}`).join(' ');
 
   return (
-    <div className="rounded-lg border border-[#edf2f7] bg-[#f8fafc] p-3">
+    <div className="rounded-[10px] border border-[#e8edf3] bg-[#fbfcfe] p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold text-[#344054]">Đường tải việc theo trạng thái</span>
-        <span className="text-xs font-medium text-[#98a2b3]">Tổng: {loading ? '-' : items.reduce((sum, item) => sum + item.value, 0)}</span>
+        <span className="text-sm font-semibold text-[#334155]">Đường tải việc theo trạng thái</span>
+        <span className="text-xs font-medium text-[#7b8797]">Tổng: {loading ? '-' : items.reduce((sum, item) => sum + item.value, 0)}</span>
       </div>
       <svg className="h-[250px] w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Sơ đồ tải việc sửa chữa và bảo trì">
-        <line stroke="#dde5ee" strokeWidth="1" x1={paddingX} x2={width - paddingX} y1={height - paddingBottom} y2={height - paddingBottom} />
-        <line stroke="#dde5ee" strokeWidth="1" x1={paddingX} x2={paddingX} y1={paddingTop} y2={height - paddingBottom} />
-        <polyline fill="none" points={line} stroke="#d92d20" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+        <line stroke="#d9e1ea" strokeWidth="1" x1={paddingX} x2={width - paddingX} y1={height - paddingBottom} y2={height - paddingBottom} />
+        <line stroke="#d9e1ea" strokeWidth="1" x1={paddingX} x2={paddingX} y1={paddingTop} y2={height - paddingBottom} />
+        <polyline fill="none" points={line} stroke="#2f5f98" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
         {points.map((point) => {
           const style = toneClass(point.tone);
 
           return (
             <g key={point.label}>
               <circle cx={point.x} cy={point.y} fill="white" r="7" stroke={style.hex} strokeWidth="4" />
-              <text fill="#101828" fontSize="18" fontWeight="700" textAnchor="middle" x={point.x} y={Math.max(18, point.y - 14)}>
+              <text fill="#142033" fontSize="18" fontWeight="700" textAnchor="middle" x={point.x} y={Math.max(18, point.y - 14)}>
                 {loading ? '-' : point.value}
               </text>
-              <text fill="#667085" fontSize="11" fontWeight="700" textAnchor="middle" x={point.x} y={height - 24}>
+              <text fill="#657386" fontSize="11" fontWeight="700" textAnchor="middle" x={point.x} y={height - 24}>
                 {shortLabel(point.label)}
               </text>
             </g>
@@ -534,10 +534,10 @@ function DonutMachineChart({
   let offset = 0;
 
   return (
-    <div className="grid grid-cols-[178px_minmax(0,1fr)] items-center gap-4 rounded-lg border border-[#edf2f7] bg-[#f8fafc] p-3 max-sm:grid-cols-1">
+    <div className="grid grid-cols-[178px_minmax(0,1fr)] items-center gap-4 rounded-[10px] border border-[#e8edf3] bg-[#fbfcfe] p-3 max-sm:grid-cols-1">
       <div className="relative h-[178px] w-[178px] justify-self-center">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 160 160" role="img" aria-label="Sơ đồ tròn trạng thái đội máy">
-          <circle cx="80" cy="80" fill="none" r={radius} stroke="#e8eef6" strokeWidth="18" />
+          <circle cx="80" cy="80" fill="none" r={radius} stroke="#e8edf3" strokeWidth="18" />
           {dataTotal > 0
             ? items.map((item) => {
                 const segment = (item.value / dataTotal) * circumference;
@@ -563,20 +563,20 @@ function DonutMachineChart({
         </svg>
         <div className="absolute inset-0 grid place-items-center text-center">
           <span>
-            <strong className="block text-3xl leading-none text-[#101828]">{loading ? '-' : `${activeRate}%`}</strong>
-            <small className="mt-1 block text-xs font-medium text-[#667085]">sẵn sàng</small>
+            <strong className="block text-3xl leading-none text-[#142033]">{loading ? '-' : `${activeRate}%`}</strong>
+            <small className="mt-1 block text-xs font-medium text-[#657386]">sẵn sàng</small>
           </span>
         </div>
       </div>
       <div className="grid gap-2">
-        <div className="mb-1 text-sm font-semibold text-[#344054]">Tổng {loading ? '-' : total} máy</div>
+        <div className="mb-1 text-sm font-semibold text-[#334155]">Tổng {loading ? '-' : total} máy</div>
         {items.map((item) => {
           const style = toneClass(item.tone);
 
           return (
-            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(16,24,40,0.04)]" key={item.label}>
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(20,32,51,0.04)]" key={item.label}>
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: style.hex }} />
-              <span className="font-semibold text-[#344054]">{item.label}</span>
+              <span className="font-semibold text-[#334155]">{item.label}</span>
               <strong className={style.text}>{loading ? '-' : item.value}</strong>
             </div>
           );
@@ -602,25 +602,25 @@ function PriorityTable({
   loading: boolean;
 }) {
   return (
-    <div className="border-t border-[#edf2f7] p-4">
+    <div className="border-t border-[#e8edf3] p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="text-[12px] font-medium text-[#667085]">Hàng đợi ưu tiên</span>
-          <h2 className="mt-1 text-lg font-medium text-[#101828]">Top vấn đề cần xử lý trong ngày</h2>
+          <span className="text-[12px] font-medium text-[#657386]">Hàng đợi ưu tiên</span>
+          <h2 className="mt-1 text-lg font-semibold text-[#142033]">Top vấn đề cần xử lý trong ngày</h2>
         </div>
-        <Link className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dde5ee] bg-white px-3 text-sm font-semibold text-[#344054] hover:border-[#fecdca] hover:bg-[#fff4f2] hover:text-[#d92d20]" to="/service-tickets">
+        <Link className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#d9e1ea] bg-white px-3 text-sm font-semibold text-[#334155] hover:border-[#c9d9ee] hover:bg-[#eef5ff] hover:text-[#2f5f98]" to="/service-tickets">
           Mở danh sách <ArrowRight size={15} />
         </Link>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
           <thead>
-            <tr className="text-[11px] text-[#667085]">
-              <th className="border-b border-[#edf2f7] px-3 py-2 font-medium">Code</th>
-              <th className="border-b border-[#edf2f7] px-3 py-2 font-medium">Vấn đề</th>
-              <th className="border-b border-[#edf2f7] px-3 py-2 font-medium">Phụ trách</th>
-              <th className="border-b border-[#edf2f7] px-3 py-2 font-medium">Số lượng</th>
-              <th className="border-b border-[#edf2f7] px-3 py-2 font-medium">Trạng thái</th>
+            <tr className="text-[11px] text-[#657386]">
+              <th className="border-b border-[#e8edf3] px-3 py-2 font-medium">Code</th>
+              <th className="border-b border-[#e8edf3] px-3 py-2 font-medium">Vấn đề</th>
+              <th className="border-b border-[#e8edf3] px-3 py-2 font-medium">Phụ trách</th>
+              <th className="border-b border-[#e8edf3] px-3 py-2 font-medium">Số lượng</th>
+              <th className="border-b border-[#e8edf3] px-3 py-2 font-medium">Trạng thái</th>
             </tr>
           </thead>
           <tbody>
@@ -629,15 +629,15 @@ function PriorityTable({
 
               return (
                 <tr className="group" key={row.code}>
-                  <td className="border-b border-[#edf2f7] px-3 py-3 font-semibold text-[#475467]">{row.code}</td>
-                  <td className="border-b border-[#edf2f7] px-3 py-3">
-                    <Link className="font-bold text-[#101828] group-hover:text-[#d92d20]" to={row.to}>
+                  <td className="border-b border-[#e8edf3] px-3 py-3 font-semibold text-[#526173]">{row.code}</td>
+                  <td className="border-b border-[#e8edf3] px-3 py-3">
+                    <Link className="font-bold text-[#142033] group-hover:text-[#2f5f98]" to={row.to}>
                       {row.name}
                     </Link>
                   </td>
-                  <td className="border-b border-[#edf2f7] px-3 py-3 text-[#667085]">{row.owner}</td>
-                  <td className={`border-b border-[#edf2f7] px-3 py-3 text-lg font-medium ${style.text}`}>{loading ? '-' : row.value}</td>
-                  <td className="border-b border-[#edf2f7] px-3 py-3">
+                  <td className="border-b border-[#e8edf3] px-3 py-3 text-[#657386]">{row.owner}</td>
+                  <td className={`border-b border-[#e8edf3] px-3 py-3 text-lg font-semibold ${style.text}`}>{loading ? '-' : row.value}</td>
+                  <td className="border-b border-[#e8edf3] px-3 py-3">
                     <span className={`inline-flex min-h-7 items-center rounded-lg border px-2.5 text-xs font-medium ${style.panel}`}>{loading ? '-' : row.status}</span>
                   </td>
                 </tr>
@@ -677,16 +677,16 @@ function QueueBars({ items, loading }: { items: Array<{ label: string; value: nu
 
 function MiniStat({ label, value, loading }: { label: string; value?: number; loading: boolean }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#edf2f7] bg-[#f8fafc] px-3 py-2.5">
-      <span className="text-sm font-semibold text-[#667085]">{label}</span>
-      <strong className="text-xl text-[#101828]">{loading ? '-' : value ?? 0}</strong>
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#e8edf3] bg-[#fbfcfe] px-3 py-2.5">
+      <span className="text-sm font-semibold text-[#657386]">{label}</span>
+      <strong className="text-xl text-[#142033]">{loading ? '-' : value ?? 0}</strong>
     </div>
   );
 }
 
 function ActionLink({ icon, label, to }: { icon: ReactNode; label: string; to: string }) {
   return (
-    <Link className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#dde5ee] bg-white px-3 text-[14px] font-medium text-[#344054] transition hover:-translate-y-px hover:border-[#fecdca] hover:bg-[#fff4f2] hover:text-[#d92d20]" to={to}>
+    <Link className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#d9e1ea] bg-white px-3 text-[14px] font-medium text-[#334155] transition hover:-translate-y-px hover:border-[#c9d9ee] hover:bg-[#eef5ff] hover:text-[#2f5f98]" to={to}>
       {icon}
       {label}
     </Link>
@@ -694,10 +694,10 @@ function ActionLink({ icon, label, to }: { icon: ReactNode; label: string; to: s
 }
 
 function toneClass(tone: Tone) {
-  if (tone === 'good') return { panel: 'border-[#abefc6] bg-[#ecfdf3]', text: 'text-[#067647]', icon: 'text-[#067647]', bar: 'bg-[#067647]', hex: '#067647' };
-  if (tone === 'warn') return { panel: 'border-[#fedf89] bg-[#fff7ed]', text: 'text-[#b54708]', icon: 'text-[#b54708]', bar: 'bg-[#b54708]', hex: '#b54708' };
-  if (tone === 'danger') return { panel: 'border-[#fecdd3] bg-[#fff1f3]', text: 'text-[#b42318]', icon: 'text-[#b42318]', bar: 'bg-[#b42318]', hex: '#b42318' };
-  return { panel: 'border-[#b2ccff] bg-[#eff4ff]', text: 'text-[#175cd3]', icon: 'text-[#175cd3]', bar: 'bg-[#175cd3]', hex: '#175cd3' };
+  if (tone === 'good') return { panel: 'border-[#b9e8ca] bg-[#eefaf3]', text: 'text-[#177245]', icon: 'text-[#177245]', bar: 'bg-[#177245]', hex: '#177245' };
+  if (tone === 'warn') return { panel: 'border-[#efd8a8] bg-[#fff8ed]', text: 'text-[#9b5a17]', icon: 'text-[#9b5a17]', bar: 'bg-[#9b5a17]', hex: '#9b5a17' };
+  if (tone === 'danger') return { panel: 'border-[#f4c9c4] bg-[#fff4f2]', text: 'text-[#a3342b]', icon: 'text-[#a3342b]', bar: 'bg-[#a3342b]', hex: '#a3342b' };
+  return { panel: 'border-[#c9d9ee] bg-[#eef5ff]', text: 'text-[#2f5f98]', icon: 'text-[#2f5f98]', bar: 'bg-[#2f5f98]', hex: '#2f5f98' };
 }
 
 function count(source: Record<string, number> | undefined, key: string) {

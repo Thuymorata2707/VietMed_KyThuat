@@ -9,35 +9,38 @@
 
 @layer base {
 :root {
-  --color-brand: #d92d20;
-  --color-brand-dark: #b42318;
-  --color-brand-soft: #fff4f2;
-  --color-brand-border: #fecdca;
+  --color-brand: #c83f34;
+  --color-brand-dark: #a3342b;
+  --color-brand-soft: #fff6f4;
+  --color-brand-border: #f4c9c4;
   --color-surface: #ffffff;
-  --color-page: #f4f6f9;
-  --color-border: #dde5ee;
-  --color-text: #101828;
-  --color-muted: #667085;
-  --color-muted-strong: #344054;
-  --color-border-soft: #edf2f7;
-  --color-field-border: #cfd8e3;
+  --color-page: #f5f7fa;
+  --color-border: #d9e1ea;
+  --color-text: #142033;
+  --color-muted: #657386;
+  --color-muted-strong: #334155;
+  --color-border-soft: #e8edf3;
+  --color-field-border: #cbd5e1;
   --color-panel: #f8fafc;
-  --color-success: #067647;
-  --color-success-bg: #ecfdf3;
-  --color-success-border: #abefc6;
-  --color-warning: #b54708;
-  --color-warning-bg: #fff7ed;
-  --color-warning-border: #fedf89;
-  --color-danger: #b42318;
-  --color-danger-bg: #fff1f3;
-  --color-danger-border: #fecdd3;
+  --color-accent: #2f5f98;
+  --color-accent-soft: #eef5ff;
+  --color-accent-border: #c9d9ee;
+  --color-success: #177245;
+  --color-success-bg: #eefaf3;
+  --color-success-border: #b9e8ca;
+  --color-warning: #9b5a17;
+  --color-warning-bg: #fff8ed;
+  --color-warning-border: #efd8a8;
+  --color-danger: #a3342b;
+  --color-danger-bg: #fff4f2;
+  --color-danger-border: #f4c9c4;
   --radius-sm: 8px;
   --radius-md: 8px;
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --shadow-panel: 0 10px 26px rgba(16, 24, 40, 0.07);
-  --shadow-hover: 0 14px 32px rgba(16, 24, 40, 0.1);
-  --focus-ring: 0 0 0 3px rgba(217, 45, 32, 0.12);
-  --shadow-modal: 0 24px 70px rgba(16, 24, 40, 0.22);
+  --shadow-sm: 0 1px 2px rgba(20, 32, 51, 0.05);
+  --shadow-panel: 0 12px 32px rgba(20, 32, 51, 0.07);
+  --shadow-hover: 0 16px 36px rgba(20, 32, 51, 0.1);
+  --focus-ring: 0 0 0 3px rgba(200, 63, 52, 0.12);
+  --shadow-modal: 0 24px 70px rgba(20, 32, 51, 0.22);
   color: var(--color-text);
   background: var(--color-page);
   font-family: var(--font-sans);
@@ -58,7 +61,7 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(244, 246, 249, 0.92) 320px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(245, 247, 250, 0.96) 320px),
     var(--color-page);
 }
 
@@ -94,7 +97,7 @@ button:disabled {
 }
 
 ::selection {
-  background: rgba(217, 45, 32, 0.14);
+  background: rgba(200, 63, 52, 0.14);
 }
 
 a {
@@ -121,13 +124,16 @@ p {
 .list-toolbar input,
 .admin-role-form input,
 .admin-region-form input {
-  @apply min-h-10 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none placeholder:text-[#98a2b3];
+  @apply min-h-10 rounded-lg border bg-white px-3 outline-none placeholder:text-[#98a2b3];
+  border-color: var(--color-field-border);
+  color: var(--color-text);
 }
 
 .list-toolbar input:focus,
 .admin-role-form input:focus,
 .admin-region-form input:focus {
-  @apply border-[#d92d20] shadow-[0_0_0_3px_rgba(217,45,32,0.12)];
+  border-color: var(--color-brand);
+  box-shadow: var(--focus-ring);
 }
 
 .icon-button,
@@ -145,16 +151,21 @@ p {
 }
 
 .icon-button {
-  @apply h-[34px] w-[34px] rounded-lg border border-[#dde5ee] bg-white text-[#344054] shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+  @apply h-[34px] w-[34px] rounded-lg border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+  border-color: var(--color-border);
+  color: var(--color-muted-strong);
 }
 
 .icon-button:hover,
 .secondary-button:hover {
-  @apply border-[#fecdca] bg-[#fff4f2] text-[#d92d20];
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
 }
 
 .icon-button.danger:hover {
-  @apply border-[#fecdd3] text-[#b42318];
+  border-color: var(--color-danger-border);
+  color: var(--color-danger);
 }
 
 .secondary-button,
@@ -164,35 +175,47 @@ p {
 }
 
 .secondary-button {
-  @apply border border-[#dde5ee] bg-white text-[#344054] shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+  @apply border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+  border-color: var(--color-border);
+  color: var(--color-muted-strong);
 }
 
 .primary-button {
-  @apply bg-[#d92d20] text-white shadow-[0_1px_2px_rgba(180,35,24,0.22)];
+  @apply text-white;
+  background: var(--color-brand);
+  box-shadow: 0 1px 2px rgba(163, 52, 43, 0.22);
 }
 
 .primary-button:hover {
-  @apply bg-[#b42318];
+  background: var(--color-brand-dark);
 }
 
 .danger-button {
-  @apply bg-[#b42318] text-white;
+  @apply text-white;
+  background: var(--color-danger);
 }
 
 .surface-card {
-  @apply rounded-lg border border-[#dde5ee] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+  @apply rounded-lg border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+  border-color: var(--color-border);
 }
 
 .metric-icon {
-  @apply inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#fecdca] bg-[#fff4f2] text-[#d92d20];
+  @apply inline-flex h-10 w-10 items-center justify-center rounded-lg border;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
 }
 
 .weekly-cell {
-  @apply min-h-10 w-full resize-y rounded-md border border-transparent bg-transparent px-2 py-2 text-[#101828] outline-none;
+  @apply min-h-10 w-full resize-y rounded-md border border-transparent bg-transparent px-2 py-2 outline-none;
+  color: var(--color-text);
 }
 
 .weekly-cell:focus {
-  @apply border-[#d92d20] bg-white shadow-[0_0_0_3px_rgba(217,45,32,0.12)];
+  border-color: var(--color-brand);
+  background: #fff;
+  box-shadow: var(--focus-ring);
 }
 
 .weekly-cell:disabled {
@@ -263,7 +286,7 @@ p {
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 800;
-  text-transform:;
+  letter-spacing: 0.02em;
 }
 
 .form-panel-heading h2 {
