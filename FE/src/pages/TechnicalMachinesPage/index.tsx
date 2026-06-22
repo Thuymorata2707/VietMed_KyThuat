@@ -1,6 +1,6 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Edit3, Loader2, PackageSearch, Plus, RotateCcw, Save, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Edit3, Eye, Loader2, PackageSearch, Plus, RotateCcw, Save, Search, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -124,6 +124,7 @@ type DashboardMachine = {
 type EditMachineForm = {
   machineCode: string;
   serialNumber: string;
+  machineModelId: string;
   name: string;
   modelName: string;
   manufacturer: string;
@@ -150,9 +151,18 @@ type EditMachineAccessoryForm = {
 
 type MachineModelDetail = {
   id: string;
+  code?: string | null;
+  name?: string | null;
+  displayName?: string | null;
+  manufacturer?: string | null;
   productCategory?: string | null;
+  productLine?: string | null;
   businessLine?: {
+    name?: string | null;
     productCategory?: string | null;
+    productIndustry?: {
+      name?: string | null;
+    } | null;
   } | null;
   components?: Array<{
     id: string;
@@ -169,6 +179,8 @@ type TemplateAccessory = {
   requiresSerial?: boolean;
   componentName?: string;
 };
+
+type MachineModelOption = MachineModelDetail;
 
 type TechnicalMachineGroup = {
   id: string | null;
@@ -190,8 +202,12 @@ type TechnicalMachines = {
 
 export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { machineId } = useParams();
+  const isMachineEditRoute = Boolean(machineId && location.pathname.endsWith('/edit'));
   const [technicalMachines, setTechnicalMachines] = useState<TechnicalMachines | null>(null);
   const [customers, setCustomers] = useState<DashboardCustomer[]>([]);
+  const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
   const [selectedBusinessLineKey, setSelectedBusinessLineKey] = useState('ALL');
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
   const [machineDetail, setMachineDetail] = useState<DashboardMachine | null>(null);
@@ -213,6 +229,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   useEffect(() => {
     if (currentRole !== 'admin') return;
     void loadCustomers();
+    void loadMachineModels();
   }, [currentRole]);
 
   useEffect(() => {
@@ -225,16 +242,35 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   }, [searchInput]);
 
   useEffect(() => {
+    if (machineId) return;
     void loadTechnicalMachines();
-  }, [search, selectedBusinessLineKey, installState, page, limit]);
+  }, [machineId, search, selectedBusinessLineKey, installState, page, limit]);
 
   useEffect(() => {
+    if (machineId) return;
     if (!selectedMachineId) {
       setMachineDetail(null);
       return;
     }
     void loadMachineDetail(selectedMachineId);
-  }, [selectedMachineId]);
+  }, [machineId, selectedMachineId]);
+
+  useEffect(() => {
+    if (!machineId) return;
+    void loadMachineDetail(machineId);
+  }, [machineId]);
+
+  useEffect(() => {
+    if (!machineDetail || !isMachineEditRoute) return;
+    setEditingMachine(machineDetail);
+    setEditForm(buildEditMachineForm(machineDetail));
+    void loadAccessoryTemplates(machineDetail.machineModelId || undefined);
+  }, [isMachineEditRoute, machineDetail?.id]);
+
+  useEffect(() => {
+    if (isMachineEditRoute) return;
+    setEditingMachine(null);
+  }, [isMachineEditRoute]);
 
   async function loadTechnicalMachines() {
     setLoading(true);
@@ -267,6 +303,15 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       setCustomers(result.data);
     } catch {
       setCustomers([]);
+    }
+  }
+
+  async function loadMachineModels() {
+    try {
+      const result = await apiFetch<Paginated<MachineModelOption>>('/machine-models?limit=200');
+      setMachineModels(result.data);
+    } catch {
+      setMachineModels([]);
     }
   }
 
@@ -303,20 +348,18 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   }
 
   function openEditMachine(machine: DashboardMachine) {
-    setEditingMachine(machine);
-    setEditForm(buildEditMachineForm(machine));
-    setTemplateAccessories([]);
-    setSuccess('');
-    setError('');
-    void loadAccessoryTemplates(machine);
+    navigate(`/technical-machines/${machine.id}/edit`);
   }
 
-  async function loadAccessoryTemplates(machine: DashboardMachine) {
-    if (!machine.machineModelId) return;
+  async function loadAccessoryTemplates(nextMachineModelId?: string | null) {
+    if (!nextMachineModelId) {
+      setTemplateAccessories([]);
+      return;
+    }
 
     setLoadingAccessoryTemplates(true);
     try {
-      const result = await apiFetch<MachineModelDetail>(`/machine-models/${machine.machineModelId}`);
+      const result = await apiFetch<MachineModelDetail>(`/machine-models/${nextMachineModelId}`);
       setTemplateAccessories(flattenTemplateAccessories(result));
     } catch {
       setTemplateAccessories([]);
@@ -327,6 +370,17 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
   function updateEditForm(patch: Partial<EditMachineForm>) {
     setEditForm((current) => ({ ...current, ...patch }));
+  }
+
+  function selectEditMachineModel(machineModelId: string) {
+    const model = machineModels.find((item) => item.id === machineModelId);
+    updateEditForm({
+      machineModelId,
+      modelName: model?.name || model?.displayName || model?.code || editForm.modelName,
+      manufacturer: model?.manufacturer || editForm.manufacturer,
+      productCategory: model?.productCategory || model?.businessLine?.productCategory || editForm.productCategory,
+    });
+    void loadAccessoryTemplates(machineModelId);
   }
 
   function addAccessoryForm() {
@@ -405,6 +459,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         body: JSON.stringify({
           machineCode: editForm.machineCode.trim() || null,
           serialNumber: editForm.serialNumber.trim(),
+          machineModelId: editForm.machineModelId || null,
           name: editForm.name.trim() || undefined,
           modelName: editForm.modelName.trim(),
           manufacturer: editForm.manufacturer.trim(),
@@ -429,7 +484,12 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       });
       setSuccess('Đã cập nhật và xác minh hồ sơ máy.');
       setEditingMachine(null);
-      await loadTechnicalMachines();
+      if (machineId) {
+        await loadMachineDetail(machineId);
+        navigate(`/technical-machines/${machineId}`);
+      } else {
+        await loadTechnicalMachines();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không lưu được thông tin máy.');
     } finally {
@@ -437,7 +497,64 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     }
   }
 
-  const isEditingUltrasound = isUltrasoundMachine(editingMachine);
+  const selectedEditModel = machineModels.find((model) => model.id === editForm.machineModelId);
+  const isEditingUltrasound = isUltrasoundMachine(editingMachine) || editForm.productCategory === 'ULTRASOUND' || selectedEditModel?.productCategory === 'ULTRASOUND';
+
+  if (machineId) {
+    const recordMachine = machineDetail?.id === machineId ? machineDetail : null;
+
+    return (
+      <PageFrame>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <PageTitle
+            eyebrow="Hồ sơ máy"
+            title={isMachineEditRoute ? 'Sửa thông tin máy' : 'Thông tin máy'}
+            description={recordMachine ? [recordMachine.machineCode, recordMachine.serialNumber, recordMachine.modelName].filter(Boolean).join(' - ') : 'Đang tải hồ sơ máy.'}
+          />
+          <Link className="secondary-button" to="/technical-machines">
+            <ArrowLeft size={17} />
+            Quay lại danh sách
+          </Link>
+        </div>
+
+        {error ? <Notice message={error} /> : null}
+        {success ? <div className="success-notice">{success}</div> : null}
+
+        {isMachineEditRoute ? (
+          <MachineEditForm
+            customers={customers}
+            editForm={editForm}
+            isEditingUltrasound={isEditingUltrasound}
+            loading={loadingMachineDetail}
+            loadingAccessoryTemplates={loadingAccessoryTemplates}
+            machine={recordMachine}
+            machineModels={machineModels}
+            saving={saving}
+            templateAccessories={templateAccessories}
+            onAddAccessory={addAccessoryForm}
+            onAddProbe={addProbeAccessory}
+            onCancel={() => {
+              setEditingMachine(null);
+              navigate(`/technical-machines/${machineId}`);
+            }}
+            onRemoveAccessory={removeAccessoryForm}
+            onSave={handleSaveMachine}
+            onSelectModel={selectEditMachineModel}
+            onToggleTemplate={toggleTemplateAccessory}
+            onUpdateAccessory={updateAccessoryForm}
+            onUpdateForm={updateEditForm}
+          />
+        ) : (
+          <MachineDetailPanel
+            canEdit={currentRole === 'admin'}
+            loading={loadingMachineDetail}
+            machine={recordMachine}
+            onEdit={openEditMachine}
+          />
+        )}
+      </PageFrame>
+    );
+  }
 
   return (
     <PageFrame>
@@ -579,11 +696,14 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                   <button
                     className={`grid min-h-[50px] gap-1 rounded-lg border px-2.5 py-2 text-left transition ${machine.id === selectedMachine?.id ? 'border-[#b8cbe1] bg-[#f3f8ff]' : 'border-[#edf2f7] bg-white hover:border-[#d7e0eb] hover:bg-[#fbfdff]'}`}
                     key={machine.id}
-                    onClick={() => setSelectedMachineId(machine.id)}
+                    onClick={() => navigate(`/technical-machines/${machine.id}`)}
                     type="button"
                   >
-                    <strong className="text-[13px] text-[#2f5f98]">{machine.serialNumber}</strong>
-                    <span className="truncate text-[12px] text-[#667085]">{machine.modelName}</span>
+                    <span className="flex min-w-0 items-center justify-between gap-2">
+                      <strong className="truncate text-[13px] text-[#2f5f98]">{machine.serialNumber}</strong>
+                      <Eye size={15} className="shrink-0 text-[#98a2b3]" />
+                    </span>
+                    <span className="truncate text-[12px] text-[#667085]">{machine.machineCode || machine.modelName}</span>
                   </button>
                 ))
               ) : (
@@ -616,21 +736,16 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           </div>
         </div>
 
-        <MachineDetailPanel
-          canEdit={currentRole === 'admin'}
-          loading={loadingMachineDetail}
-          machine={machineDetail?.id === selectedMachine?.id ? machineDetail : selectedMachine}
-          onEdit={openEditMachine}
-        />
+        <MachineListActionPanel canEdit={currentRole === 'admin'} machine={selectedMachine} />
       </section>
 
-      {editingMachine ? (
+      {editingMachine && !machineId ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 p-5" role="presentation">
           <form className="grid max-h-[calc(100vh-40px)] w-full max-w-[920px] gap-4 overflow-y-auto rounded-lg border border-[#dde5ee] bg-white p-5 shadow-[0_24px_70px_rgba(16,24,40,0.22)]" onSubmit={handleSaveMachine}>
             <div className="flex items-start justify-between gap-3 border-b border-[#edf2f7] pb-3">
               <div>
                 <span className="text-[12px] font-medium text-[#667085]">Chuẩn hóa hồ sơ máy</span>
-                <h2 className="mt-1 text-xl font-medium text-[#101828]">{editingMachine.serialNumber}</h2>
+                <h2 className="mt-1 text-xl font-medium text-[#101828]">{editingMachine?.serialNumber}</h2>
               </div>
               <button className="icon-button" onClick={() => setEditingMachine(null)} title="Đóng" type="button">
                 <X size={16} />
@@ -975,6 +1090,277 @@ function TimelineBox({
   );
 }
 
+function MachineListActionPanel({ canEdit, machine }: { canEdit: boolean; machine: DashboardMachine | null }) {
+  return (
+    <aside className="grid min-w-0 gap-4 self-start rounded-lg border border-[#dde5ee] bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div>
+        <span className="text-[12px] font-medium text-[#667085]">Thao tác hồ sơ</span>
+        <h2 className="mt-1 text-2xl font-medium leading-tight text-[#101828]">Mở trang riêng để xem hoặc sửa</h2>
+        <p className="mt-2 text-sm leading-6 text-[#667085]">
+          Hồ sơ máy, lịch sử kho, sửa chữa và phụ kiện sẽ hiển thị trên một trang riêng để dễ đọc hơn.
+        </p>
+      </div>
+
+      {machine ? (
+        <div className="grid gap-3 rounded-lg border border-[#edf2f7] bg-[#fbfdff] p-4">
+          <div>
+            <strong className="block text-lg text-[#2f5f98]">{machine.serialNumber}</strong>
+            <span className="text-sm text-[#667085]">{[machine.machineCode, machine.modelName, machine.customer?.name].filter(Boolean).join(' - ') || 'Chưa có thông tin thêm'}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link className="primary-button" to={`/technical-machines/${machine.id}`}>
+              <Eye size={16} />
+              Xem thông tin
+            </Link>
+            {canEdit ? (
+              <Link className="secondary-button" to={`/technical-machines/${machine.id}/edit`}>
+                <Edit3 size={16} />
+                Sửa thông tin
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <EmptyState text="Chọn một S/N trong danh sách để mở hồ sơ máy." />
+      )}
+    </aside>
+  );
+}
+
+function MachineEditForm({
+  customers,
+  editForm,
+  isEditingUltrasound,
+  loading,
+  loadingAccessoryTemplates,
+  machine,
+  machineModels,
+  saving,
+  templateAccessories,
+  onAddAccessory,
+  onAddProbe,
+  onCancel,
+  onRemoveAccessory,
+  onSave,
+  onSelectModel,
+  onToggleTemplate,
+  onUpdateAccessory,
+  onUpdateForm,
+}: {
+  customers: DashboardCustomer[];
+  editForm: EditMachineForm;
+  isEditingUltrasound: boolean;
+  loading: boolean;
+  loadingAccessoryTemplates: boolean;
+  machine: DashboardMachine | null;
+  machineModels: MachineModelOption[];
+  saving: boolean;
+  templateAccessories: TemplateAccessory[];
+  onAddAccessory: () => void;
+  onAddProbe: (code: string) => void;
+  onCancel: () => void;
+  onRemoveAccessory: (clientId: string) => void;
+  onSave: (event: FormEvent<HTMLFormElement>) => void;
+  onSelectModel: (machineModelId: string) => void;
+  onToggleTemplate: (template: TemplateAccessory, checked: boolean) => void;
+  onUpdateAccessory: (clientId: string, patch: Partial<EditMachineAccessoryForm>) => void;
+  onUpdateForm: (patch: Partial<EditMachineForm>) => void;
+}) {
+  if (loading && !machine) {
+    return (
+      <section className="grid min-h-[360px] place-items-center rounded-lg border border-[#dde5ee] bg-white p-8">
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#667085]">
+          <Loader2 className="spin-icon" size={17} />
+          Đang tải hồ sơ máy
+        </span>
+      </section>
+    );
+  }
+
+  if (!machine) {
+    return <EmptyState text="Không tìm thấy hồ sơ máy để sửa." />;
+  }
+
+  return (
+    <form className="grid gap-5 rounded-lg border border-[#dde5ee] bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]" onSubmit={onSave}>
+      <div className="flex items-start justify-between gap-3 border-b border-[#edf2f7] pb-4">
+        <div>
+          <span className="text-[12px] font-medium text-[#667085]">Chuẩn hóa hồ sơ máy</span>
+          <h2 className="mt-1 text-xl font-medium text-[#101828]">{machine.serialNumber}</h2>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className={editLabelClass}>
+          Mã máy
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ machineCode: event.target.value })} value={editForm.machineCode} />
+        </label>
+        <label className={editLabelClass}>
+          Serial
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ serialNumber: event.target.value })} required value={editForm.serialNumber} />
+        </label>
+        <label className={`${editLabelClass} md:col-span-2`}>
+          Model cố định
+          <select className={editFieldClass} onChange={(event) => onSelectModel(event.target.value)} required value={editForm.machineModelId}>
+            <option value="">Chọn model trong danh mục</option>
+            {machineModels.map((model) => (
+              <option key={model.id} value={model.id}>
+                {modelOptionText(model)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={editLabelClass}>
+          Tên thiết bị
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ name: event.target.value })} value={editForm.name} />
+        </label>
+        <label className={editLabelClass}>
+          Tên model hiển thị
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ modelName: event.target.value })} required value={editForm.modelName} />
+        </label>
+        <label className={editLabelClass}>
+          Hãng
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ manufacturer: event.target.value })} value={editForm.manufacturer} />
+        </label>
+        <label className={editLabelClass}>
+          Loại thiết bị
+          <select className={editFieldClass} onChange={(event) => onUpdateForm({ productCategory: event.target.value })} value={editForm.productCategory}>
+            {['ULTRASOUND', 'LAB_TESTING', 'BIOCHEMISTRY', 'IMMUNOLOGY', 'HEMATOLOGY', 'X_RAY', 'ENDOSCOPY', 'OTHER'].map((value) => (
+              <option key={value} value={value}>{displayLabel(value)}</option>
+            ))}
+          </select>
+        </label>
+        <label className={editLabelClass}>
+          Trạng thái máy
+          <select className={editFieldClass} onChange={(event) => onUpdateForm({ status: event.target.value })} value={editForm.status}>
+            {['ACTIVE', 'MAINTENANCE', 'REPAIRING', 'INACTIVE'].map((value) => (
+              <option key={value} value={value}>{displayLabel(value)}</option>
+            ))}
+          </select>
+        </label>
+        <label className={editLabelClass}>
+          Trạng thái kho
+          <select
+            className={editFieldClass}
+            onChange={(event) => onUpdateForm({
+              inventoryStatus: event.target.value,
+              ...inventoryStatusFormPatch(event.target.value),
+            })}
+            value={editForm.inventoryStatus}
+          >
+            {['IN_STOCK', 'ACCESSORY_SPLIT', 'INSTALLED', 'RESERVED', 'RETURNED', 'SOLD'].map((value) => (
+              <option key={value} value={value}>{displayLabel(value)}</option>
+            ))}
+          </select>
+        </label>
+        <label className={`${editLabelClass} md:col-span-2`}>
+          Khách hàng
+          <select className={editFieldClass} onChange={(event) => onUpdateForm({ customerId: event.target.value })} value={editForm.customerId}>
+            <option value="">Chưa gắn khách hàng</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>{[customer.customerCode, customer.name, customer.province].filter(Boolean).join(' - ')}</option>
+            ))}
+          </select>
+        </label>
+        <label className={editLabelClass}>
+          Ngày lắp
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ installDate: event.target.value })} type="date" value={editForm.installDate} />
+        </label>
+        <label className={editLabelClass}>
+          Bắt đầu bảo hành
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ warrantyStartDate: event.target.value })} type="date" value={editForm.warrantyStartDate} />
+        </label>
+        <label className={editLabelClass}>
+          Hết bảo hành
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ warrantyEndDate: event.target.value })} type="date" value={editForm.warrantyEndDate} />
+        </label>
+      </div>
+
+      <section className="grid gap-4 border-t border-[#edf2f7] pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <span className="text-[12px] font-medium text-[#667085]">Đầu dò / Phụ kiện</span>
+            <h3 className="mt-1 text-base font-medium text-[#101828]">{editForm.accessories.length} dòng phụ kiện</h3>
+          </div>
+          <button className="secondary-button" onClick={onAddAccessory} type="button">
+            <Plus size={16} />
+            Thêm phụ kiện
+          </button>
+        </div>
+
+        {isEditingUltrasound ? (
+          <ProbePicker onSelect={onAddProbe} />
+        ) : (
+          <TemplateAccessoryPicker
+            loading={loadingAccessoryTemplates}
+            selectedIds={new Set(editForm.accessories.map((accessory) => accessory.componentAccessoryId).filter((id): id is string => Boolean(id)))}
+            templates={templateAccessories}
+            onToggle={onToggleTemplate}
+          />
+        )}
+
+        <div className="grid gap-3">
+          {editForm.accessories.map((accessory, index) => (
+            <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4" key={accessory.clientId}>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-[#344054]">Phụ kiện {index + 1}</span>
+                <button className="icon-button" onClick={() => onRemoveAccessory(accessory.clientId)} title="Xóa phụ kiện" type="button">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className={editLabelClass}>
+                  {isEditingUltrasound ? 'Model đầu dò' : 'Tên phụ kiện'}
+                  {isEditingUltrasound ? (
+                    <select
+                      className={editFieldClass}
+                      onChange={(event) => onUpdateAccessory(accessory.clientId, { code: event.target.value, name: event.target.value })}
+                      required
+                      value={accessory.code || accessory.name}
+                    >
+                      <option value="">Chọn đầu dò</option>
+                      {ultrasoundProbeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input className={editFieldClass} onChange={(event) => onUpdateAccessory(accessory.clientId, { name: event.target.value })} required value={accessory.name} />
+                  )}
+                </label>
+                <label className={editLabelClass}>
+                  Serial phụ kiện
+                  <input className={editFieldClass} onChange={(event) => onUpdateAccessory(accessory.clientId, { serialNumber: event.target.value })} value={accessory.serialNumber} />
+                </label>
+                <label className={editLabelClass}>
+                  Mã phụ kiện
+                  <input className={editFieldClass} onChange={(event) => onUpdateAccessory(accessory.clientId, { code: event.target.value })} value={accessory.code} />
+                </label>
+                <label className={editLabelClass}>
+                  Mô tả
+                  <input className={editFieldClass} onChange={(event) => onUpdateAccessory(accessory.clientId, { description: event.target.value })} value={accessory.description} />
+                </label>
+                <label className={`${editLabelClass} md:col-span-2`}>
+                  Ghi chú
+                  <textarea className={`${editFieldClass} min-h-[74px] py-2`} onChange={(event) => onUpdateAccessory(accessory.clientId, { note: event.target.value })} value={accessory.note} />
+                </label>
+              </div>
+            </div>
+          ))}
+          {editForm.accessories.length === 0 ? <EmptyState text="Máy này chưa có phụ kiện. Bấm Thêm phụ kiện để khai báo." /> : null}
+        </div>
+      </section>
+
+      <div className="flex justify-end gap-2 border-t border-[#edf2f7] pt-4">
+        <button className="secondary-button" disabled={saving} onClick={onCancel} type="button">Hủy</button>
+        <button className="primary-button" disabled={saving} type="submit">
+          {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
+          Lưu và xác minh
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function InfoItem({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div className="grid min-w-0 gap-1.5 rounded-lg border border-[#edf2f7] bg-[#fbfdff] p-3">
@@ -990,21 +1376,38 @@ function EmptyState({ text }: { text: string }) {
 
 function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
   return (
-    <div className="grid gap-2 rounded-lg border border-[#edf2f7] bg-[#fff] p-3">
-      <span className="text-sm font-medium text-[#344054]">Thêm nhanh đầu dò siêu âm</span>
-      <select
-        className={editFieldClass}
-        onChange={(event) => {
-          onSelect(event.target.value);
-          event.currentTarget.value = '';
-        }}
-        value=""
-      >
-        <option value="">Chọn model đầu dò để thêm</option>
-        {ultrasoundProbeOptions.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
+    <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span className="text-sm font-semibold text-[#344054]">Thêm nhanh đầu dò siêu âm</span>
+          <p className="mt-1 text-xs leading-5 text-[#667085]">Chọn model đầu dò từ danh sách chuẩn, sau đó nhập S/N thực tế ở dòng bên dưới.</p>
+        </div>
+        <select
+          className={`${editFieldClass} max-w-[260px]`}
+          onChange={(event) => {
+            onSelect(event.target.value);
+            event.currentTarget.value = '';
+          }}
+          value=""
+        >
+          <option value="">Chọn model đầu dò</option>
+          {ultrasoundProbeOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {ultrasoundProbeOptions.slice(0, 8).map((option) => (
+          <button
+            className="rounded-lg border border-[#edf2f7] bg-white px-3 py-2 text-left text-sm font-medium text-[#2f5f98] transition hover:-translate-y-px hover:border-[#b8cbe1] hover:bg-[#f3f8ff]"
+            key={option.value}
+            onClick={() => onSelect(option.value)}
+            type="button"
+          >
+            {option.label}
+          </button>
         ))}
-      </select>
+      </div>
     </div>
   );
 }
@@ -1064,6 +1467,15 @@ function displayProductCategory(value?: string | null) {
   return value ? displayLabel(value) : '-';
 }
 
+function modelOptionText(model: MachineModelOption) {
+  return [
+    model.code,
+    model.displayName || model.name,
+    model.businessLine?.name,
+    model.businessLine?.productIndustry?.name,
+  ].filter(Boolean).join(' - ');
+}
+
 function formatDashboardDate(value?: string | null) {
   if (!value) return '';
   const date = new Date(value);
@@ -1075,6 +1487,7 @@ function emptyEditMachineForm(): EditMachineForm {
   return {
     machineCode: '',
     serialNumber: '',
+    machineModelId: '',
     name: '',
     modelName: '',
     manufacturer: '',
@@ -1093,6 +1506,7 @@ function buildEditMachineForm(machine: DashboardMachine): EditMachineForm {
   return {
     machineCode: machine.machineCode || '',
     serialNumber: machine.serialNumber || '',
+    machineModelId: machine.machineModelId || '',
     name: machine.name || '',
     modelName: machine.modelName || '',
     manufacturer: machine.manufacturer || '',

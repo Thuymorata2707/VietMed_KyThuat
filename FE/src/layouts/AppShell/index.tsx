@@ -262,6 +262,30 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
         <Routes>
           <Route path="/" element={<DashboardPage role={role} />} />
           <Route
+            path="/technical-machines/:machineId/edit"
+            element={
+              <RequireRole
+                allowedRoles={['admin']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <TechnicalMachinesPage currentRole={role} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/technical-machines/:machineId"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'manager', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <TechnicalMachinesPage currentRole={role} />
+              </RequireRole>
+            }
+          />
+          <Route
             path="/technical-machines"
             element={
               <RequireRole

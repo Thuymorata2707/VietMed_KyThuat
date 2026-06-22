@@ -325,7 +325,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         apiFetch<Paginated<PickerMachine>>('/machines?limit=20&inventoryStatus=INSTALLED'),
         apiFetch<Paginated<PickerCustomer>>('/customers?limit=20'),
       ]);
-      const modelsResult = await apiFetch<Paginated<QuickMachineModel>>('/machine-models?limit=20');
+      const modelsResult = await apiFetch<Paginated<QuickMachineModel>>('/machine-models?limit=300');
 
       setMachineOptions(
         machinesResult.data.filter((machine) => canEngineerSeeMachine(user, machine)).map((machine) => ({
@@ -920,7 +920,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <AsyncEntityPicker<QuickMachineModel>
                   className="engineer-picker"
                   disabled={loadingCreateOptions}
-                  endpoint="/machine-models?limit=20"
+                  endpoint="/machine-models?limit=300"
                   formatOption={(model) => ({
                     label: quickModelLabel(model),
                     row: model,
@@ -984,7 +984,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     <>
                 <AsyncEntityPicker<QuickMachineModel>
                   disabled={loadingCreateOptions}
-                  endpoint="/machine-models?limit=20"
+                  endpoint="/machine-models?limit=300"
                   formatOption={(model) => ({
                     label: quickModelLabel(model),
                     row: model,

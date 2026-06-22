@@ -171,7 +171,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     try {
       const [customersResult, modelsResult] = await Promise.all([
         apiFetch<Paginated<CustomerOption>>('/customers?limit=100'),
-        apiFetch<Paginated<MachineModelOption>>('/machine-models?limit=100'),
+        apiFetch<Paginated<MachineModelOption>>('/machine-models?limit=300'),
       ]);
 
       setCustomers(customersResult.data);

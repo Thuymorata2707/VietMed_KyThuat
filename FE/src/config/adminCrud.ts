@@ -101,7 +101,7 @@ const machineOptionSource = {
 };
 
 const machineModelOptionSource = {
-  endpoint: '/machine-models?limit=20',
+  endpoint: '/machine-models?limit=300',
   labelPath: 'code',
   labelPaths: ['code', 'name', 'manufacturer', 'businessLine.name'],
   searchable: true,

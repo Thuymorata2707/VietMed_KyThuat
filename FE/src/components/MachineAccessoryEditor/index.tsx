@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, ScanLine, Trash2 } from 'lucide-react';
 import { ultrasoundProbeOptions } from '../../config/ultrasoundProbes';
 import { MachineAccessoryFormItem, makeProbeAccessory, parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 
@@ -35,21 +35,24 @@ export function MachineAccessoryEditor({ value, onChange, compact }: MachineAcce
   }
 
   return (
-    <div className={compact ? 'machine-accessory-editor compact' : 'machine-accessory-editor'}>
-      <div className="machine-accessory-header">
-        <span>Đầu dò đi kèm</span>
+    <div className={`${compact ? 'machine-accessory-editor compact' : 'machine-accessory-editor'} grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4`}>
+      <div className="machine-accessory-header flex flex-wrap items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#344054]">
+          <ScanLine size={17} className="text-[#2f5f98]" />
+          Đầu dò đi kèm
+        </span>
         <button className="secondary-button compact" onClick={addItem} type="button">
           <Plus size={16} />
           Thêm đầu dò
         </button>
       </div>
 
-      <div className="machine-accessory-list">
+      <div className="machine-accessory-list grid gap-3">
         {items.map((item, index) => (
-          <div className="machine-accessory-row" key={`${item.id ?? 'new'}-${index}`}>
-            <label>
+          <div className="machine-accessory-row grid gap-3 rounded-lg border border-[#edf2f7] bg-white p-3 md:grid-cols-[minmax(190px,1fr)_minmax(180px,1fr)_auto]" key={`${item.id ?? 'new'}-${index}`}>
+            <label className="grid gap-2 text-sm font-medium text-[#344054]">
               Ký hiệu đầu dò
-              <select onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
+              <select className="h-11 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
                 <option value="">Chọn đầu dò</option>
                 {ultrasoundProbeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -58,11 +61,11 @@ export function MachineAccessoryEditor({ value, onChange, compact }: MachineAcce
                 ))}
               </select>
             </label>
-            <label>
+            <label className="grid gap-2 text-sm font-medium text-[#344054]">
               S/N đầu dò
-              <input onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
+              <input className="h-11 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#101828] outline-none focus:border-[#d92d20] focus:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]" onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
             </label>
-            <button className="icon-button danger" onClick={() => removeItem(index)} title="Xóa đầu dò" type="button">
+            <button className="icon-button danger self-end" onClick={() => removeItem(index)} title="Xóa đầu dò" type="button">
               <Trash2 size={16} />
             </button>
           </div>
@@ -70,7 +73,7 @@ export function MachineAccessoryEditor({ value, onChange, compact }: MachineAcce
       </div>
 
       {!items.length ? (
-        <div className="machine-accessory-empty">
+        <div className="machine-accessory-empty rounded-lg border border-dashed border-[#cfd8e3] bg-white px-4 py-5 text-sm leading-6 text-[#667085]">
           Mỗi máy siêu âm thường có khoảng 6 đầu dò. Bấm thêm đầu dò để nhập ký hiệu và S/N thực tế.
         </div>
       ) : null}

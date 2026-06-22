@@ -1,5 +1,6 @@
-import { ArrowLeft, ImageOff, Loader2, PackagePlus, Plus, RefreshCw, Save, Search } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Save, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { getRoleName } from '../../auth/roles';
@@ -10,7 +11,7 @@ import { PageTitle } from '../../components/PageTitle';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { formatMachineAccessoriesText, parseMachineAccessoriesInput, serializeMachineAccessories } from '../../utils/machineAccessories';
 
-type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING';
+type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING' | 'PHYSIOTHERAPY' | 'ICU';
 
 type ProductIndustry = {
   id: string;
@@ -66,14 +67,28 @@ type ModelStock = {
   total: number;
 };
 
+type ModelIndustryGroupItem = {
+  id: string;
+  name: string;
+  expertise?: string;
+  models: MachineModel[];
+};
+
 type MachineItem = {
   id: string;
+  machineModelId?: string | null;
   machineCode?: string | null;
   serialNumber: string;
   inventoryStatus?: string | null;
   status?: string | null;
   customer?: { id: string; name: string } | null;
   _count?: { accessories?: number };
+};
+
+type CatalogMachine = {
+  id: string;
+  machineModelId?: string | null;
+  inventoryStatus?: string | null;
 };
 
 type MachineAccessory = {
@@ -151,6 +166,8 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     });
   }, [models, query, role, selectedIndustryId, userExpertise]);
 
+  const visibleModelGroups = useMemo(() => groupModelsByIndustry(visibleModels), [visibleModels]);
+
   const stockByIndustry = useMemo(() => {
     const next: Record<string, ModelStock> = {};
 
@@ -184,6 +201,16 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     [stockByIndustry, visibleIndustries],
   );
 
+  const catalogTotals = useMemo(() => {
+    const businessLineIds = new Set(visibleModels.map((model) => model.businessLine?.id).filter(Boolean));
+    return {
+      models: visibleModels.length,
+      businessLines: businessLineIds.size,
+      machines: visibleIndustryStock.total,
+      inStock: visibleIndustryStock.inStock,
+    };
+  }, [visibleIndustryStock, visibleModels]);
+
   async function loadData() {
     setLoading(true);
     setError('');
@@ -191,14 +218,14 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     try {
       const [industryResult, modelResult] = await Promise.all([
         apiFetch<Paginated<ProductIndustry>>('/product-industries?limit=100'),
-        apiFetch<Paginated<MachineModel>>('/machine-models?limit=100'),
+        apiFetch<Paginated<MachineModel>>('/machine-models?limit=300'),
       ]);
       const nextIndustries = industryResult.data ?? [];
       const nextModels = modelResult.data ?? [];
 
       setIndustries(nextIndustries);
       setModels(nextModels);
-      await loadModelStock(nextModels);
+      await loadMachineStock(nextModels);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được danh sách sản phẩm.');
     } finally {
@@ -206,19 +233,36 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     }
   }
 
-  async function loadModelStock(nextModels: MachineModel[]) {
-    const entries = await Promise.all(
-      nextModels.map(async (model) => {
-        const [inStockResult, totalResult] = await Promise.all([
-          apiFetch<Paginated<unknown>>(`/machines?machineModelId=${model.id}&inventoryStatus=IN_STOCK&limit=1`),
-          apiFetch<Paginated<unknown>>(`/machines?machineModelId=${model.id}&limit=1`),
-        ]);
+  async function loadMachineStock(nextModels: MachineModel[]) {
+    const allowedModelIds = new Set(nextModels.map((model) => model.id));
+    const machines = await fetchAllCatalogMachines();
+    const nextStock = nextModels.reduce<Record<string, ModelStock>>((stock, model) => {
+      stock[model.id] = { inStock: 0, total: 0 };
+      return stock;
+    }, {});
 
-        return [model.id, { inStock: inStockResult.meta.total, total: totalResult.meta.total }] as const;
-      }),
-    );
+    machines.forEach((machine) => {
+      if (!machine.machineModelId || !allowedModelIds.has(machine.machineModelId)) return;
+      const current = nextStock[machine.machineModelId] ?? { inStock: 0, total: 0 };
+      current.total += 1;
+      if (machine.inventoryStatus === 'IN_STOCK') current.inStock += 1;
+      nextStock[machine.machineModelId] = current;
+    });
 
-    setStockByModel(Object.fromEntries(entries));
+    setStockByModel(nextStock);
+  }
+
+  async function fetchAllCatalogMachines() {
+    const firstPage = await apiFetch<Paginated<CatalogMachine>>('/machines?limit=500&page=1');
+    const pages = [firstPage.data ?? []];
+    const totalPages = firstPage.meta.totalPages ?? 1;
+
+    for (let pageNumber = 2; pageNumber <= totalPages; pageNumber += 1) {
+      const pageResult = await apiFetch<Paginated<CatalogMachine>>(`/machines?limit=500&page=${pageNumber}`);
+      pages.push(pageResult.data ?? []);
+    }
+
+    return pages.flat();
   }
 
   function updateCatalogState(nextIndustryId: string, nextQuery: string) {
@@ -257,35 +301,23 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <IndustryStockCard label="Tất cả ngành hàng" stock={visibleIndustryStock} />
-        {visibleIndustries.slice(0, 3).map((industry) => (
-          <IndustryStockCard key={industry.id} label={industry.name} stock={stockByIndustry[industry.id] ?? { inStock: 0, total: 0 }} />
-        ))}
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <IndustryStockCard icon={<Boxes size={18} />} label="Tổng máy" value={catalogTotals.machines} subLabel={`${catalogTotals.inStock} máy còn kho`} />
+          <IndustryStockCard icon={<Layers3 size={18} />} label="Model" value={catalogTotals.models} subLabel={`${catalogTotals.businessLines} dòng sản phẩm`} />
+          {visibleIndustries.slice(0, 2).map((industry) => {
+            const stock = stockByIndustry[industry.id] ?? { inStock: 0, total: 0 };
+            return <IndustryStockCard icon={<BarChart3 size={18} />} key={industry.id} label={industry.name} value={stock.total} subLabel={`${stock.inStock} máy còn kho`} />;
+          })}
+        </div>
+        <IndustryMachineChart industries={visibleIndustries} stockByIndustry={stockByIndustry} />
       </section>
 
-      <section className="rounded-lg border border-[#dde5ee] bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] p-3.5">
-          <div className="flex flex-wrap gap-2">
-            <button
-              className={industryTabClass(selectedIndustryId === allIndustriesKey)}
-              onClick={() => updateCatalogState(allIndustriesKey, query)}
-              type="button"
-            >
-              <span>Tất cả</span>
-              <StockPill stock={visibleIndustryStock} />
-            </button>
-            {visibleIndustries.map((industry) => (
-              <button
-                className={industryTabClass(industry.id === selectedIndustryId)}
-                key={industry.id}
-                onClick={() => updateCatalogState(industry.id, query)}
-                type="button"
-              >
-                <span>{industry.name}</span>
-                <StockPill stock={stockByIndustry[industry.id] ?? { inStock: 0, total: 0 }} />
-              </button>
-            ))}
+      <section className="grid gap-4 rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-medium text-[#101828]">Danh mục model</h2>
+            <p className="mt-1 text-sm text-[#667085]">{visibleModels.length} model theo bộ lọc hiện tại</p>
           </div>
           <label className="flex h-10 min-w-60 flex-[1_1_320px] items-center gap-2 rounded-lg border border-[#cfd8e3] bg-white px-3 text-[#667085] focus-within:border-[#d92d20] focus-within:shadow-[0_0_0_3px_rgba(217,45,32,0.12)]">
             <Search size={16} />
@@ -298,47 +330,50 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
           </label>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-[860px] w-full border-collapse">
-            <thead>
-              <tr className="border-b border-[#edf2f7] bg-[#f8fafc] text-left text-xs font-medium text-[#667085]">
-                <th className="px-4 py-3">Products</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Brand</th>
-                <th className="px-4 py-3">Stock</th>
-                <th className="px-4 py-3">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleModels.map((model) => (
-                <ModelRow
-                  canAddProduct={canAddProduct}
-                  catalogSearch={catalogSearch}
-                  key={model.id}
-                  model={model}
-                  stock={stockByModel[model.id]}
-                />
-              ))}
-
-              {loading ? (
-                <tr>
-                  <td className="px-4 py-10 text-center text-sm font-semibold text-[#667085]" colSpan={5}>
-                    <Loader2 className="spin-icon mx-auto mb-2" size={20} />
-                    Đang tải danh sách sản phẩm
-                  </td>
-                </tr>
-              ) : null}
-
-              {!loading && visibleModels.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-10 text-center text-sm text-[#667085]" colSpan={5}>
-                    Không có model phù hợp với bộ lọc.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className={industryTabClass(selectedIndustryId === allIndustriesKey)}
+            onClick={() => updateCatalogState(allIndustriesKey, query)}
+            type="button"
+          >
+            <span>Tất cả</span>
+            <StockPill stock={visibleIndustryStock} />
+          </button>
+          {visibleIndustries.map((industry) => (
+            <button
+              className={industryTabClass(industry.id === selectedIndustryId)}
+              key={industry.id}
+              onClick={() => updateCatalogState(industry.id, query)}
+              type="button"
+            >
+              <span>{industry.name}</span>
+              <StockPill stock={stockByIndustry[industry.id] ?? { inStock: 0, total: 0 }} />
+            </button>
+          ))}
         </div>
+
+        {loading ? (
+          <div className="rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm font-semibold text-[#667085]">
+            <Loader2 className="spin-icon mx-auto mb-2" size={20} />
+            Đang tải danh sách sản phẩm
+          </div>
+        ) : null}
+
+        {!loading && visibleModels.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm text-[#667085]">
+            Không có model phù hợp với bộ lọc.
+          </div>
+        ) : null}
+
+        {!loading && visibleModelGroups.map((group) => (
+          <ModelIndustryGroup
+            canAddProduct={canAddProduct}
+            catalogSearch={catalogSearch}
+            group={group}
+            key={group.id}
+            stockByModel={stockByModel}
+          />
+        ))}
       </section>
 
     </PageFrame>
@@ -523,7 +558,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
     setError('');
 
     try {
-      const result = await apiFetch<Paginated<MachineModel>>('/machine-models?limit=100');
+      const result = await apiFetch<Paginated<MachineModel>>('/machine-models?limit=300');
       const nextModels = (result.data ?? []).filter(
         (model) => role !== 'engineer' || !userExpertise || model.businessLine?.productIndustry?.expertiseGroup === userExpertise,
       );
@@ -788,6 +823,96 @@ function ModelRow({
   );
 }
 
+function ModelIndustryGroup({
+  canAddProduct,
+  catalogSearch,
+  group,
+  stockByModel,
+}: {
+  canAddProduct: boolean;
+  catalogSearch: string;
+  group: ModelIndustryGroupItem;
+  stockByModel: Record<string, ModelStock>;
+}) {
+  const totalMachines = group.models.reduce((sum, model) => sum + (stockByModel[model.id]?.total ?? 0), 0);
+  const inStock = group.models.reduce((sum, model) => sum + (stockByModel[model.id]?.inStock ?? 0), 0);
+
+  return (
+    <section className="grid gap-3 rounded-lg border border-[#edf2f7] bg-[#fbfdff] p-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <span className="text-[12px] font-medium text-[#667085]">{group.expertise || 'Ngành hàng'}</span>
+          <h3 className="mt-1 text-lg font-medium text-[#101828]">{group.name}</h3>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs font-medium">
+          <span className="rounded-full border border-[#dde5ee] bg-white px-2.5 py-1 text-[#344054]">{group.models.length} model</span>
+          <span className="rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2.5 py-1 text-[#067647]">{inStock}/{totalMachines} còn kho</span>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 min-[1440px]:grid-cols-3">
+        {group.models.map((model) => (
+          <ModelCard
+            canAddProduct={canAddProduct}
+            catalogSearch={catalogSearch}
+            key={model.id}
+            model={model}
+            stock={stockByModel[model.id]}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ModelCard({
+  canAddProduct,
+  catalogSearch,
+  model,
+  stock,
+}: {
+  canAddProduct: boolean;
+  catalogSearch: string;
+  model: MachineModel;
+  stock?: ModelStock;
+}) {
+  return (
+    <article className="grid min-w-0 gap-3 rounded-lg border border-[#dde5ee] bg-white p-4 transition hover:-translate-y-px hover:border-[#b8cbe1] hover:shadow-[0_10px_28px_rgba(47,95,152,0.10)]">
+      <Link className="flex min-w-0 gap-3" to={`/business-lines/models/${model.id}${catalogSearch}`}>
+        <ModelImage model={model} />
+        <div className="min-w-0">
+          <strong className="block truncate text-base font-semibold text-[#101828]">{modelShortLabel(model)}</strong>
+          <span className="mt-1 block line-clamp-2 text-sm leading-5 text-[#667085]">{modelDetailLabel(model)}</span>
+        </div>
+      </Link>
+
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded-lg bg-[#f8fafc] p-2.5">
+          <span className="block text-[12px] font-medium text-[#667085]">Hãng</span>
+          <strong className="mt-1 block truncate text-[#344054]">{model.manufacturer || 'Chưa có'}</strong>
+        </div>
+        <div className="rounded-lg bg-[#f8fafc] p-2.5">
+          <span className="block text-[12px] font-medium text-[#667085]">Loại</span>
+          <strong className="mt-1 block truncate text-[#344054]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</strong>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#edf2f7] pt-3">
+        <div className="flex flex-wrap gap-2 text-xs font-medium">
+          <span className="rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2.5 py-1 text-[#067647]">Còn kho {stock?.inStock ?? 0}</span>
+          <span className="rounded-full border border-[#dde5ee] bg-[#f4f7fb] px-2.5 py-1 text-[#344054]">Tổng {stock?.total ?? 0}</span>
+        </div>
+        {canAddProduct ? (
+          <Link className="primary-button compact" to={`/business-lines/add-product?modelId=${model.id}`}>
+            <PackagePlus size={16} />
+            Add
+          </Link>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
 function ModelDetailBlock({
   canEditImage,
   detail,
@@ -965,13 +1090,63 @@ function DetailItem({ label, value }: { label: string; value?: string }) {
   );
 }
 
-function IndustryStockCard({ label, stock }: { label: string; stock: ModelStock }) {
+function IndustryMachineChart({
+  industries,
+  stockByIndustry,
+}: {
+  industries: ProductIndustry[];
+  stockByIndustry: Record<string, ModelStock>;
+}) {
+  const items = industries
+    .map((industry) => ({
+      id: industry.id,
+      name: industry.name,
+      stock: stockByIndustry[industry.id] ?? { inStock: 0, total: 0 },
+    }))
+    .sort((a, b) => b.stock.total - a.stock.total);
+  const maxTotal = Math.max(1, ...items.map((item) => item.stock.total));
+
+  return (
+    <section className="rounded-lg border border-[#dde5ee] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <span className="text-[12px] font-medium text-[#667085]">Biểu đồ ngành hàng</span>
+          <h2 className="mt-1 text-lg font-medium text-[#101828]">Số lượng máy theo ngành</h2>
+        </div>
+        <BarChart3 className="text-[#2f5f98]" size={20} />
+      </div>
+      <div className="grid gap-3">
+        {items.map((item) => {
+          const width = Math.max(6, Math.round((item.stock.total / maxTotal) * 100));
+          return (
+            <div className="grid gap-1.5" key={item.id}>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="font-medium text-[#344054]">{item.name}</span>
+                <span className="font-semibold tabular-nums text-[#101828]">{item.stock.total}</span>
+              </div>
+              <div className="h-3 overflow-hidden rounded-full bg-[#edf2f7]">
+                <div className="h-full rounded-full bg-[#2f5f98]" style={{ width: `${width}%` }} />
+              </div>
+              <span className="text-xs text-[#667085]">{item.stock.inStock} máy còn kho</span>
+            </div>
+          );
+        })}
+        {!items.length ? <p className="rounded-lg bg-[#f8fafc] p-4 text-sm text-[#667085]">Chưa có ngành hàng để hiển thị biểu đồ.</p> : null}
+      </div>
+    </section>
+  );
+}
+
+function IndustryStockCard({ icon, label, subLabel, value }: { icon: ReactNode; label: string; subLabel: string; value: number }) {
   return (
     <div className="grid gap-2 rounded-lg border border-[#dde5ee] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-      <span className="text-sm font-semibold text-[#667085]">{label}</span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-[#667085]">{label}</span>
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#eef6ff] text-[#2f5f98]">{icon}</span>
+      </div>
       <div className="flex items-end justify-between gap-3">
-        <strong className="text-3xl leading-none text-[#101828]">{stock.total}</strong>
-        <span className="rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2.5 py-1 text-xs font-medium text-[#067647]">Còn kho {stock.inStock}</span>
+        <strong className="text-3xl leading-none text-[#101828]">{value}</strong>
+        <span className="text-xs font-medium text-[#667085]">{subLabel}</span>
       </div>
     </div>
   );
@@ -1019,6 +1194,8 @@ function ModelImage({ model, large = false }: { model?: MachineModel | null; lar
 function expertiseLabel(value?: ExpertiseGroup | null) {
   if (value === 'LAB_TESTING') return 'Xét nghiệm';
   if (value === 'IMAGING') return 'Chẩn đoán hình ảnh';
+  if (value === 'PHYSIOTHERAPY') return 'VLTL';
+  if (value === 'ICU') return 'ICU';
   return 'Chưa phân nhóm';
 }
 
@@ -1063,6 +1240,26 @@ function formatDate(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN');
+}
+
+function groupModelsByIndustry(models: MachineModel[]): ModelIndustryGroupItem[] {
+  const groups = new Map<string, ModelIndustryGroupItem>();
+
+  models.forEach((model) => {
+    const industry = model.businessLine?.productIndustry;
+    const id = industry?.id ?? '__unassigned__';
+    const current = groups.get(id) ?? {
+      id,
+      name: industry?.name ?? 'Chưa phân ngành',
+      expertise: expertiseLabel(industry?.expertiseGroup),
+      models: [],
+    };
+
+    current.models.push(model);
+    groups.set(id, current);
+  });
+
+  return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
 }
 
 function modelShortLabel(model: MachineModel) {
