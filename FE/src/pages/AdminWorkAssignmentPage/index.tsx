@@ -6,7 +6,8 @@ import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 
 type WorkKind = 'repair' | 'maintenance' | 'installation';
-type WorkFilter = 'all' | 'unassigned' | 'active';
+type WorkFilter = 'all' | 'unassigned' | 'active' | 'review';
+type WorkReviewStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'NEEDS_REVISION';
 type Tone = 'good' | 'warn' | 'danger' | 'neutral';
 
 type WorkMachine = {
@@ -24,6 +25,8 @@ type RepairAssignment = {
   code: string;
   title: string;
   status: string;
+  reviewStatus?: WorkReviewStatus | null;
+  reviewNote?: string | null;
   priority?: string | null;
   reportedAt?: string | null;
   engineer?: ApiUser | null;
@@ -36,6 +39,8 @@ type MaintenanceAssignment = {
   code: string;
   title: string;
   status: string;
+  reviewStatus?: WorkReviewStatus | null;
+  reviewNote?: string | null;
   type?: string | null;
   scheduledDate?: string | null;
   engineer?: ApiUser | null;
@@ -46,6 +51,8 @@ type InstallationAssignment = {
   id: string;
   code: string;
   status: string;
+  reviewStatus?: WorkReviewStatus | null;
+  reviewNote?: string | null;
   installedAt?: string | null;
   installedBy?: ApiUser | null;
   plannedModelName?: string | null;
@@ -72,12 +79,15 @@ type WorkItem = {
   createdBy?: ApiUser | null;
   machine?: WorkMachine | null;
   customer?: { name?: string | null; province?: string | null } | null;
+  reviewStatus?: WorkReviewStatus | null;
+  reviewNote?: string | null;
 };
 
 const filterOptions: Array<{ value: WorkFilter; label: string }> = [
   { value: 'all', label: 'Tất cả' },
   { value: 'unassigned', label: 'Chưa phân' },
   { value: 'active', label: 'Đang mở' },
+  { value: 'review', label: 'Chờ xác nhận' },
 ];
 
 export function AdminWorkAssignmentPage() {
@@ -91,6 +101,8 @@ export function AdminWorkAssignmentPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [assigningKey, setAssigningKey] = useState('');
+  const [reviewingKey, setReviewingKey] = useState('');
+  const [reviewNoteByKey, setReviewNoteByKey] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -154,6 +166,8 @@ export function AdminWorkAssignmentPage() {
         createdBy: item.createdBy,
         machine: item.machine,
         customer: item.machine?.customer,
+        reviewStatus: item.reviewStatus,
+        reviewNote: item.reviewNote,
       })),
       ...maintenances.map((item) => ({
         key: `maintenance:${item.id}`,
@@ -166,6 +180,8 @@ export function AdminWorkAssignmentPage() {
         engineer: item.engineer,
         machine: item.machine,
         customer: item.machine?.customer,
+        reviewStatus: item.reviewStatus,
+        reviewNote: item.reviewNote,
       })),
       ...installations.map((item) => ({
         key: `installation:${item.id}`,
@@ -178,6 +194,8 @@ export function AdminWorkAssignmentPage() {
         engineer: item.installedBy,
         machine: item.machine,
         customer: item.customer ?? item.machine?.customer,
+        reviewStatus: item.reviewStatus,
+        reviewNote: item.reviewNote,
       })),
     ];
 
@@ -185,6 +203,7 @@ export function AdminWorkAssignmentPage() {
       .filter((item) => {
         if (filter === 'unassigned') return !item.engineer?.id;
         if (filter === 'active') return !isClosed(item.status);
+        if (filter === 'review') return item.reviewStatus === 'PENDING';
         return true;
       })
       .sort((left, right) => Number(!right.engineer?.id) - Number(!left.engineer?.id) || left.code.localeCompare(right.code));
@@ -223,11 +242,47 @@ export function AdminWorkAssignmentPage() {
     }
   }
 
+  async function reviewWork(item: WorkItem, status: Extract<WorkReviewStatus, 'APPROVED' | 'NEEDS_REVISION'>) {
+    const reviewNote = (reviewNoteByKey[item.key] || '').trim();
+    if (status === 'NEEDS_REVISION' && !reviewNote) {
+      setError('Vui lòng nhập nội dung cần kỹ sư bổ sung.');
+      return;
+    }
+
+    const endpoint =
+      item.kind === 'repair'
+        ? `/repairs/${item.id}/review`
+        : item.kind === 'maintenance'
+          ? `/maintenance/${item.id}/review`
+          : `/installations/${item.id}/review`;
+    setReviewingKey(item.key);
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiFetch(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({ status, reviewNote: reviewNote || null }),
+      });
+      setSuccess(status === 'APPROVED' ? `Đã xác nhận ${item.code}.` : `Đã trả ${item.code} về kỹ sư bổ sung.`);
+      setReviewNoteByKey((current) => ({ ...current, [item.key]: '' }));
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không cập nhật kiểm duyệt được.');
+    } finally {
+      setReviewingKey('');
+    }
+  }
+
   const openCount =
     repairs.filter((item) => !isClosed(item.status)).length +
     maintenances.filter((item) => !isClosed(item.status)).length +
     installations.filter((item) => !isClosed(item.status)).length;
   const unassignedCount = repairs.filter((item) => !item.engineer?.id).length + maintenances.filter((item) => !item.engineer?.id).length;
+  const pendingReviewCount =
+    repairs.filter((item) => item.reviewStatus === 'PENDING').length +
+    maintenances.filter((item) => item.reviewStatus === 'PENDING').length +
+    installations.filter((item) => item.reviewStatus === 'PENDING').length;
 
   return (
     <PageFrame>
@@ -258,8 +313,8 @@ export function AdminWorkAssignmentPage() {
           <strong className="text-[28px] leading-none text-[#1f1f1f]">{openCount}</strong>
         </div>
         <div className={summaryCardClass}>
-          <span className="text-[13px] text-[#666666]">Kỹ sư hoạt động</span>
-          <strong className="text-[28px] leading-none text-[#1f1f1f]">{engineers.length}</strong>
+          <span className="text-[13px] text-[#666666]">Chờ xác nhận</span>
+          <strong className="text-[28px] leading-none text-[#1f1f1f]">{pendingReviewCount}</strong>
         </div>
       </div>
 
@@ -337,6 +392,12 @@ export function AdminWorkAssignmentPage() {
                       <span className={badgeDotClass(statusTone(item.status))} />
                       {statusLabel(item.status)}
                     </span>
+                    {item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? (
+                      <span className={badgeClass(reviewStatusTone(item.reviewStatus))}>
+                        <span className={badgeDotClass(reviewStatusTone(item.reviewStatus))} />
+                        {reviewStatusLabel(item.reviewStatus)}
+                      </span>
+                    ) : null}
                     <span className="[overflow-wrap:anywhere] text-[13px] font-medium text-[#333333]">
                       {item.engineer?.fullName || item.engineer?.email || 'Chưa có kỹ sư'}
                     </span>
@@ -364,6 +425,34 @@ export function AdminWorkAssignmentPage() {
                       {assigningKey === item.key ? <Loader2 className="animate-spin" size={16} /> : <UserCheck size={16} />}
                       Phân việc
                     </button>
+                    {item.reviewStatus === 'PENDING' ? (
+                      <div className="col-span-full grid gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-2.5">
+                        <textarea
+                          className="min-h-16 rounded-lg border border-[#d6d6d6] bg-white px-3 py-2 text-sm text-[#1f1f1f] outline-none focus:border-[#d71920]"
+                          onChange={(event) => setReviewNoteByKey((current) => ({ ...current, [item.key]: event.target.value }))}
+                          placeholder="Ghi chú nếu trả kỹ sư bổ sung"
+                          value={reviewNoteByKey[item.key] ?? ''}
+                        />
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <button
+                            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#333333] hover:border-[#d71920] hover:text-[#d71920] disabled:cursor-wait disabled:opacity-70"
+                            disabled={reviewingKey === item.key}
+                            onClick={() => reviewWork(item, 'NEEDS_REVISION')}
+                            type="button"
+                          >
+                            Trả về sửa
+                          </button>
+                          <button
+                            className="inline-flex min-h-9 items-center justify-center rounded-lg border-0 bg-[#d71920] px-3 text-sm font-medium text-white hover:bg-[#b5121b] disabled:cursor-wait disabled:opacity-70"
+                            disabled={reviewingKey === item.key}
+                            onClick={() => reviewWork(item, 'APPROVED')}
+                            type="button"
+                          >
+                            {reviewingKey === item.key ? 'Đang lưu' : 'Xác nhận'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </article>
               ))
@@ -477,6 +566,20 @@ function statusTone(value: string): Tone {
   if (['COMPLETED', 'INSTALLED'].includes(value)) return 'good';
   if (['CANCELLED', 'WAITING_PARTS'].includes(value)) return 'danger';
   if (['PENDING', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS'].includes(value)) return 'warn';
+  return 'neutral';
+}
+
+function reviewStatusLabel(value?: WorkReviewStatus | null) {
+  if (value === 'PENDING') return 'Chờ admin xác nhận';
+  if (value === 'APPROVED') return 'Admin đã xác nhận';
+  if (value === 'NEEDS_REVISION') return 'Cần kỹ sư bổ sung';
+  return '';
+}
+
+function reviewStatusTone(value?: WorkReviewStatus | null): Tone {
+  if (value === 'APPROVED') return 'good';
+  if (value === 'NEEDS_REVISION') return 'danger';
+  if (value === 'PENDING') return 'warn';
   return 'neutral';
 }
 

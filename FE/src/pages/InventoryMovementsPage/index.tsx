@@ -12,6 +12,7 @@ import { formatValue } from '../../utils/format';
 type InventoryTab = 'stock' | 'installed' | 'history';
 type InventoryStatus = 'IN_STOCK' | 'ACCESSORY_SPLIT' | 'INSTALLED' | 'RESERVED' | 'RETURNED' | 'SOLD';
 type MovementType = 'IMPORT' | 'SPLIT_ACCESSORY' | 'RESERVE' | 'INSTALL' | 'RETURN' | 'SELL' | 'ADJUST_STATUS';
+type StatusFilter = 'ALL' | InventoryStatus;
 
 type Customer = {
   id: string;
@@ -64,6 +65,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<InventoryTab>(() => normalizeInventoryTab(searchParams.get('tab')));
   const [query, setQuery] = useState(searchParams.get('q') || '');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => normalizeStatusFilter(searchParams.get('status')));
   const [machines, setMachines] = useState<Machine[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -84,10 +86,11 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
     return machines.filter((machine) => {
       if (tab === 'stock' && !stockStatuses.includes(machine.inventoryStatus)) return false;
       if (tab === 'installed' && machine.inventoryStatus !== 'INSTALLED') return false;
+      if (statusFilter !== 'ALL' && machine.inventoryStatus !== statusFilter) return false;
       if (!normalizedQuery) return true;
       return machineSearchText(machine).includes(normalizedQuery);
     }).sort(compareInventoryMachines);
-  }, [machines, normalizedQuery, tab]);
+  }, [machines, normalizedQuery, statusFilter, tab]);
 
   const filteredMovements = useMemo(() => {
     return movements.filter((movement) => {
@@ -115,6 +118,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
     () => ({
       available: machines.filter((machine) => machine.inventoryStatus === 'IN_STOCK').length,
       installed: machines.filter((machine) => machine.inventoryStatus === 'INSTALLED').length,
+      accessorySplit: machines.filter((machine) => machine.inventoryStatus === 'ACCESSORY_SPLIT').length,
       history: movements.length,
       reserved: machines.filter((machine) => machine.inventoryStatus === 'RESERVED').length,
       returned: machines.filter((machine) => machine.inventoryStatus === 'RETURNED').length,
@@ -154,13 +158,16 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
     setSuccess('');
   }
 
-  function updateInventoryState(nextTab: InventoryTab, nextQuery: string) {
+  function updateInventoryState(nextTab: InventoryTab, nextQuery: string, nextStatus: StatusFilter = statusFilter) {
     setTab(nextTab);
     setQuery(nextQuery);
+    const normalizedStatus = nextTab === 'history' || nextTab === 'installed' ? 'ALL' : nextStatus;
+    setStatusFilter(normalizedStatus);
 
     const nextParams = new URLSearchParams();
     if (nextTab !== 'stock') nextParams.set('tab', nextTab);
     if (nextQuery.trim()) nextParams.set('q', nextQuery.trim());
+    if (normalizedStatus !== 'ALL') nextParams.set('status', normalizedStatus);
     setSearchParams(nextParams, { replace: true });
   }
 
@@ -206,26 +213,47 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       {success ? <div className="success-notice">{success}</div> : null}
 
       <section className="grid grid-cols-4 gap-3 max-lg:grid-cols-2 max-sm:grid-cols-1">
-        <SummaryCard label="Sẵn sàng xuất kho" value={stats.available} />
-        <SummaryCard label="Đã giữ hàng" value={stats.reserved} />
-        <SummaryCard label="Máy trả về" value={stats.returned} detail={`${stats.returnedRepairing} đang sửa`} />
-        <SummaryCard label="Đã lắp đặt" value={stats.installed} />
+        <SummaryCard icon={<Boxes size={18} />} label="Sẵn sàng xuất kho" tone="neutral" value={stats.available} />
+        <SummaryCard icon={<ClipboardCheck size={18} />} label="Đã giữ hàng" tone="warn" value={stats.reserved} />
+        <SummaryCard icon={<RotateCcw size={18} />} label="Máy trả về" tone="danger" value={stats.returned} detail={`${stats.returnedRepairing} đang sửa`} />
+        <SummaryCard icon={<PackageCheck size={18} />} label="Đã lắp đặt" tone="good" value={stats.installed} />
       </section>
 
       <div className="rounded-lg border border-[#e5e5e5] bg-white p-1 font-sans">
         <div className="grid grid-cols-3 gap-1 max-sm:grid-cols-1">
-          <TabButton active={tab === 'stock'} icon={<Boxes size={17} />} label="Tồn kho" onClick={() => updateInventoryState('stock', query)} />
-          <TabButton active={tab === 'installed'} icon={<PackageCheck size={17} />} label="Máy đã lắp" onClick={() => updateInventoryState('installed', query)} />
-          <TabButton active={tab === 'history'} icon={<History size={17} />} label="Lịch sử kho" onClick={() => updateInventoryState('history', query)} />
+          <TabButton active={tab === 'stock'} icon={<Boxes size={17} />} label="Tồn kho" onClick={() => updateInventoryState('stock', query, 'ALL')} />
+          <TabButton active={tab === 'installed'} icon={<PackageCheck size={17} />} label="Máy đã lắp" onClick={() => updateInventoryState('installed', query, 'ALL')} />
+          <TabButton active={tab === 'history'} icon={<History size={17} />} label="Lịch sử kho" onClick={() => updateInventoryState('history', query, 'ALL')} />
         </div>
       </div>
+
+      {tab === 'stock' ? (
+        <section className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <span className="text-xs font-semibold text-[#d71920]">Hàng đợi kho</span>
+              <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">Chọn nhóm máy cần xử lý</h2>
+            </div>
+            <span className="rounded-lg border border-[#eeeeee] bg-[#fafafa] px-3 py-2 text-sm font-medium text-[#333333]">
+              {filteredMachines.length} máy đang hiển thị
+            </span>
+          </div>
+          <div className="grid gap-2 md:grid-cols-5">
+            <QueueButton active={statusFilter === 'ALL'} count={stats.available + stats.reserved + stats.returned + stats.accessorySplit} label="Tất cả kho" onClick={() => updateInventoryState('stock', query, 'ALL')} />
+            <QueueButton active={statusFilter === 'IN_STOCK'} count={stats.available} label="Sẵn sàng" onClick={() => updateInventoryState('stock', query, 'IN_STOCK')} />
+            <QueueButton active={statusFilter === 'RESERVED'} count={stats.reserved} label="Đã giữ" onClick={() => updateInventoryState('stock', query, 'RESERVED')} />
+            <QueueButton active={statusFilter === 'RETURNED'} count={stats.returned} label="Thu hồi" onClick={() => updateInventoryState('stock', query, 'RETURNED')} />
+            <QueueButton active={statusFilter === 'ACCESSORY_SPLIT'} count={stats.accessorySplit} label="Tách phụ kiện" onClick={() => updateInventoryState('stock', query, 'ACCESSORY_SPLIT')} />
+          </div>
+        </section>
+      ) : null}
 
       <div className="flex min-w-0 items-center justify-between gap-3.5 max-sm:flex-col max-sm:items-stretch">
         <div className="flex min-h-11 max-w-[560px] flex-1 items-center gap-2.5 rounded-lg border border-[#e5e5e5] bg-white px-3 text-[#666666] transition focus-within:-translate-y-px focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] max-sm:max-w-none">
           <Search size={18} />
           <input
             className="min-w-0 flex-1 border-0 font-sans text-[#1f1f1f] outline-none"
-            onChange={(event) => updateInventoryState(tab, event.target.value)}
+            onChange={(event) => updateInventoryState(tab, event.target.value, statusFilter)}
             placeholder={tab === 'history' ? 'Tìm mã phiếu, máy, khách hàng, người tạo' : 'Tìm mã máy, serial, model hoặc khách hàng'}
             value={query}
           />
@@ -239,14 +267,25 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       {tab === 'history' ? (
         <HistoryTable loading={loading} movements={filteredMovements} />
       ) : (
-        <MachineTable
-          loading={loading}
-          machines={filteredMachines}
-          mode={tab}
-          canManageInventory={currentRole === 'admin'}
-          returnTo={returnToInventory}
-          onMove={openMovement}
-        />
+        <section className="grid gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <span className="text-xs font-semibold text-[#d71920]">{tab === 'installed' ? 'Máy đã lắp' : 'Danh sách kho'}</span>
+              <h2 className="mt-1 text-xl font-semibold text-[#1f1f1f]">
+                {tab === 'installed' ? 'Máy đang ở khách hàng' : statusFilter === 'ALL' ? 'Tất cả máy trong kho' : displayLabel(statusFilter)}
+              </h2>
+            </div>
+            <span className="text-sm font-medium text-[#666666]">{filteredMachines.length} kết quả</span>
+          </div>
+          <MachineTable
+            loading={loading}
+            machines={filteredMachines}
+            mode={tab}
+            canManageInventory={currentRole === 'admin'}
+            returnTo={returnToInventory}
+            onMove={openMovement}
+          />
+        </section>
       )}
 
       {activeMove ? (
@@ -293,13 +332,45 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
   );
 }
 
-function SummaryCard({ label, value, detail }: { label: string; value: number; detail?: string }) {
+function SummaryCard({
+  detail,
+  icon,
+  label,
+  tone,
+  value,
+}: {
+  detail?: string;
+  icon: ReactNode;
+  label: string;
+  tone: 'good' | 'warn' | 'danger' | 'neutral';
+  value: number;
+}) {
   return (
     <div className="grid gap-2 rounded-lg border border-[#e5e5e5] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
-      <span className="text-sm text-[#666666]">{label}</span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-[#666666]">{label}</span>
+        <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${summaryIconTone[tone]}`}>{icon}</span>
+      </div>
       <strong className="text-3xl leading-none text-[#1f1f1f]">{value}</strong>
       {detail ? <span className="text-xs text-[#666666]">{detail}</span> : null}
     </div>
+  );
+}
+
+function QueueButton({ active, count, label, onClick }: { active: boolean; count: number; label: string; onClick: () => void }) {
+  return (
+    <button
+      className={`grid min-h-[76px] rounded-lg border p-3 text-left transition ${
+        active
+          ? 'border-[#d71920] bg-[#fff5f5] text-[#d71920] shadow-[0_8px_20px_rgba(215,25,32,0.08)]'
+          : 'border-[#eeeeee] bg-[#fafafa] text-[#333333] hover:border-[#f5c7cb] hover:bg-white'
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      <span className="text-sm font-semibold">{label}</span>
+      <strong className="mt-2 text-2xl leading-none">{count}</strong>
+    </button>
   );
 }
 
@@ -350,15 +421,21 @@ function MachineTable({
           {!loading && machines.map((machine) => (
             <tr className="even:bg-[#fcfdff] hover:bg-[#fbfdff]" key={machine.id}>
               <td className={cellClass}>
-                <strong className="block text-[#1f1f1f]">{machine.machineCode || machine.name || '-'}</strong>
-                <span className="text-xs text-[#666666]">{machine.name || 'Thiết bị'}</span>
+                <strong className="block text-[#1f1f1f]">{machine.machineCode || 'Chưa có mã máy'}</strong>
+                <span className="mt-1 block text-xs text-[#666666]">{machine.name || machine.modelName || 'Thiết bị'}</span>
               </td>
               <td className={cellClass}>
-                <span className="block">{machine.serialNumber || '-'}</span>
-                <span className="text-xs text-[#666666]">{machine.machineModel?.code || machine.modelName || machine.machineModel?.name || '-'}</span>
+                <span className="block font-semibold text-[#d71920]">{machine.serialNumber || '-'}</span>
+                <span className="mt-1 block text-xs text-[#666666]">{machine.machineModel?.code || machine.modelName || machine.machineModel?.name || '-'}</span>
               </td>
-              <td className={cellClass}>{machine.customer?.name || '-'}</td>
-              <td className={cellClass}><StatusBadge value={machine.inventoryStatus} /></td>
+              <td className={cellClass}>
+                <span className="block max-w-[220px] truncate">{machine.customer?.name || '-'}</span>
+                {machine.customer?.province ? <span className="mt-1 block text-xs text-[#666666]">{machine.customer.province}</span> : null}
+              </td>
+              <td className={cellClass}>
+                <StatusBadge value={machine.inventoryStatus} />
+                {machine.status && machine.status !== 'ACTIVE' ? <span className="ml-2 text-xs font-medium text-[#9b5a17]">{displayLabel(machine.status)}</span> : null}
+              </td>
               <td className={cellClass}>
                 {mode === 'installed' ? (
                   <>
@@ -558,6 +635,11 @@ function normalizeInventoryTab(value: string | null): InventoryTab {
   return 'stock';
 }
 
+function normalizeStatusFilter(value: string | null): StatusFilter {
+  if (value === 'IN_STOCK' || value === 'RESERVED' || value === 'RETURNED' || value === 'ACCESSORY_SPLIT') return value;
+  return 'ALL';
+}
+
 function buildInventorySearch(tab: InventoryTab, query: string) {
   const params = new URLSearchParams();
   if (tab !== 'stock') params.set('tab', tab);
@@ -582,4 +664,11 @@ const statusToneClass = {
   warn: 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]',
   danger: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]',
   neutral: 'border-[#e5e5e5] bg-[#f4f7fb] text-[#333333]',
+};
+
+const summaryIconTone = {
+  good: 'bg-[#eefaf3] text-[#177245]',
+  warn: 'bg-[#fff8ed] text-[#9b5a17]',
+  danger: 'bg-[#fff1f3] text-[#b5121b]',
+  neutral: 'bg-[#fafafa] text-[#d71920]',
 };

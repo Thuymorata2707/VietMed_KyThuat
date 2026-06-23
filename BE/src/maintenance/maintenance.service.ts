@@ -9,11 +9,13 @@ import {
   MaintenanceStatus,
   MaintenanceType,
   Prisma,
+  WorkReviewStatus,
 } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
-import { isEngineer, maintenanceAccessWhere } from '../auth/access-scope';
+import { isAdmin, isEngineer, maintenanceAccessWhere } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
+import { ReviewWorkTaskDto } from '../common/dto/review-work-task.dto';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { validateMachineState } from '../machines/machine-state.rules';
@@ -247,6 +249,22 @@ export class MaintenanceService {
               : undefined,
           completedAt:
             dto.status === MaintenanceStatus.COMPLETED ? new Date() : undefined,
+          reviewStatus: dto.status
+            ? this.resolveReviewStatus(dto.status, actor)
+            : undefined,
+          reviewedAt:
+            dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
+              ? new Date()
+              : dto.status
+                ? null
+                : undefined,
+          reviewerId:
+            dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
+              ? actor.id
+              : dto.status
+                ? null
+                : undefined,
+          reviewNote: dto.status ? null : undefined,
           scheduledDate: dto.scheduledDate
             ? this.parseRequiredDate(dto.scheduledDate, 'scheduledDate')
             : undefined,
@@ -456,7 +474,7 @@ export class MaintenanceService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedMaintenance = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.maintenance.update({
         where: { id },
         data: {
@@ -468,6 +486,16 @@ export class MaintenanceService {
               : undefined,
           completedAt:
             dto.status === MaintenanceStatus.COMPLETED ? now : undefined,
+          reviewStatus: this.resolveReviewStatus(dto.status, actor),
+          reviewedAt:
+            dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
+              ? now
+              : null,
+          reviewerId:
+            dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
+              ? actor.id
+              : null,
+          reviewNote: null,
           resultNote: dto.resultNote?.trim(),
           nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
         },
@@ -521,6 +549,140 @@ export class MaintenanceService {
 
       return updated;
     });
+
+    if (
+      updatedMaintenance.status === MaintenanceStatus.COMPLETED &&
+      isEngineer(actor)
+    ) {
+      await this.notificationsService
+        .createForAdmins({
+          title: 'Phiếu bảo trì chờ xác nhận',
+          message: `${actor.email} đã hoàn tất phiếu ${updatedMaintenance.code}: ${updatedMaintenance.title}. Vui lòng kiểm tra kết quả.`,
+          href: '/service-tickets',
+          entityType: 'Maintenance',
+          entityId: updatedMaintenance.id,
+          createdById: actor.id,
+        })
+        .catch(() => null);
+    }
+
+    return updatedMaintenance;
+  }
+
+  async review(id: string, dto: ReviewWorkTaskDto, actor: RequestUser) {
+    if (!isAdmin(actor)) {
+      throw new ForbiddenException('Only admins can review maintenance tasks');
+    }
+
+    if (
+      dto.status !== WorkReviewStatus.APPROVED &&
+      dto.status !== WorkReviewStatus.NEEDS_REVISION
+    ) {
+      throw new BadRequestException(
+        'Review status must be APPROVED or NEEDS_REVISION',
+      );
+    }
+
+    const maintenance = await this.findOne(id, actor);
+    if (maintenance.reviewStatus !== WorkReviewStatus.PENDING) {
+      throw new BadRequestException(
+        'Only pending review maintenances can be reviewed',
+      );
+    }
+
+    const reviewNote = this.cleanOptionalString(dto.reviewNote);
+    if (dto.status === WorkReviewStatus.NEEDS_REVISION && !reviewNote) {
+      throw new BadRequestException(
+        'reviewNote is required when returning a maintenance',
+      );
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const nextStatus =
+        dto.status === WorkReviewStatus.NEEDS_REVISION
+          ? MaintenanceStatus.IN_PROGRESS
+          : maintenance.status;
+      const nextMachineStatus =
+        dto.status === WorkReviewStatus.NEEDS_REVISION
+          ? MachineStatus.MAINTENANCE
+          : null;
+
+      const reviewed = await tx.maintenance.update({
+        where: { id },
+        data: {
+          status: nextStatus,
+          completedAt:
+            dto.status === WorkReviewStatus.NEEDS_REVISION
+              ? null
+              : maintenance.completedAt,
+          reviewStatus: dto.status,
+          reviewNote,
+          reviewedAt: new Date(),
+          reviewerId: actor.id,
+        },
+        include: this.defaultInclude(),
+      });
+
+      if (nextMachineStatus && maintenance.machine) {
+        validateMachineState(
+          nextMachineStatus,
+          maintenance.machine.inventoryStatus,
+          maintenance.machine.customerId,
+        );
+        await tx.machine.update({
+          where: { id: maintenance.machine.id },
+          data: { status: nextMachineStatus },
+        });
+      }
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.STATUS_CHANGE,
+          entityType: 'Maintenance',
+          entityId: id,
+          actor,
+          changes: {
+            reviewStatus: {
+              from: maintenance.reviewStatus,
+              to: reviewed.reviewStatus,
+            },
+            reviewNote: {
+              from: maintenance.reviewNote,
+              to: reviewed.reviewNote,
+            },
+            status: {
+              from: maintenance.status,
+              to: reviewed.status,
+            },
+          },
+        },
+        tx,
+      );
+
+      return reviewed;
+    });
+
+    if (updated.engineerId) {
+      await this.notificationsService
+        .create({
+          userId: updated.engineerId,
+          title:
+            dto.status === WorkReviewStatus.APPROVED
+              ? 'Phiếu bảo trì đã được xác nhận'
+              : 'Phiếu bảo trì cần bổ sung',
+          message:
+            dto.status === WorkReviewStatus.APPROVED
+              ? `Admin đã xác nhận phiếu ${updated.code}.`
+              : `Admin yêu cầu bổ sung phiếu ${updated.code}: ${reviewNote}`,
+          href: '/my-tasks',
+          entityType: 'Maintenance',
+          entityId: updated.id,
+          createdById: actor.id,
+        })
+        .catch(() => null);
+    }
+
+    return updated;
   }
 
   getStatuses() {
@@ -777,6 +939,19 @@ export class MaintenanceService {
     );
   }
 
+  private resolveReviewStatus(
+    status: MaintenanceStatus,
+    actor: RequestUser,
+  ): WorkReviewStatus {
+    if (status !== MaintenanceStatus.COMPLETED) {
+      return WorkReviewStatus.NOT_REQUIRED;
+    }
+
+    return isAdmin(actor)
+      ? WorkReviewStatus.APPROVED
+      : WorkReviewStatus.PENDING;
+  }
+
   private getMachineStatusForMaintenanceStatus(
     status: MaintenanceStatus,
   ): MachineStatus | null {
@@ -882,6 +1057,13 @@ export class MaintenanceService {
           status: true,
           role: true,
           region: true,
+        },
+      },
+      reviewer: {
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
         },
       },
     };

@@ -93,6 +93,17 @@ type DashboardMachine = {
     resultNote?: string | null;
     engineer?: DashboardEngineer | null;
   }>;
+  maintenances?: Array<{
+    id: string;
+    code: string;
+    status: string;
+    type?: string | null;
+    scheduledDate?: string | null;
+    completedAt?: string | null;
+    resultNote?: string | null;
+    nextDueDate?: string | null;
+    engineer?: DashboardEngineer | null;
+  }>;
   inventoryMovements?: Array<{
     id: string;
     code?: string | null;
@@ -118,6 +129,14 @@ type DashboardMachine = {
       startDate: string;
       endDate: string;
     } | null;
+  }>;
+  warrantyCards?: Array<{
+    id: string;
+    code: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+    note?: string | null;
   }>;
 };
 
@@ -952,10 +971,17 @@ function MachineDetailPanel({
     );
   }
 
-  const customer = machine.customer;
+  const latestInstallation = machine.installation ?? machine.installations?.[0] ?? null;
+  const latestInstallationCustomer = machine.installations?.[0]?.customer ?? null;
+  const customer = machine.customer ?? latestInstallationCustomer;
   const installAddress = machine.installation?.receiverInstallAddress || customer?.fullAddress || customer?.address || '';
-
   const accessories = machine.accessories ?? [];
+  const repairs = machine.repairs ?? [];
+  const maintenances = machine.maintenances ?? [];
+  const installations = machine.installations ?? [];
+  const movements = machine.inventoryMovements ?? [];
+  const warrantyCards = machine.warrantyCards ?? [];
+  const warrantyEndDate = machine.warrantyEndDate ?? warrantyCards[0]?.endDate ?? latestInstallation?.warrantyCard?.endDate;
 
   return (
     <aside className="grid min-w-0 gap-4 self-start">
@@ -981,6 +1007,12 @@ function MachineDetailPanel({
             ) : null}
           </div>
         </div>
+        <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <ProfileStat label="Sửa chữa" value={repairs.length} />
+          <ProfileStat label="Bảo trì" value={maintenances.length} />
+          <ProfileStat label="Luân chuyển kho" value={movements.length} />
+          <ProfileStat label="Phụ kiện" value={accessories.length} />
+        </div>
         <div className="grid min-w-0 gap-4 md:grid-cols-2 2xl:grid-cols-3">
           <InfoItem label="Model" value={machine.modelName} />
           <InfoItem label="Mã máy" value={machine.machineCode} />
@@ -988,7 +1020,7 @@ function MachineDetailPanel({
           <InfoItem label="Hãng" value={machine.manufacturer} />
           <InfoItem label="Loại thiết bị" value={displayProductCategory(machine.productCategory)} />
           <InfoItem label="Ngày lắp" value={formatDashboardDate(machine.installDate)} />
-          <InfoItem label="Hết bảo hành" value={formatDashboardDate(machine.warrantyEndDate)} />
+          <InfoItem label="Hết bảo hành" value={formatDashboardDate(warrantyEndDate)} />
           <InfoItem label="Kỹ sư lắp đặt" value={machine.installedBy?.fullName} />
           <InfoItem label="Kỹ sư phụ trách" value={machine.primaryEngineer?.fullName} />
         </div>
@@ -1029,7 +1061,7 @@ function MachineDetailPanel({
       <div className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
         <div className="mb-5 flex min-w-0 items-start justify-between gap-3">
           <h2 className="text-2xl font-medium leading-tight text-[#1f1f1f]">Khách hàng đã lắp máy</h2>
-          {machine.installation?.code ? <span className="rounded-full bg-[#fafafa] px-3 py-1 text-sm font-semibold text-[#666666]">{machine.installation.code}</span> : null}
+          {latestInstallation?.code ? <span className="rounded-full bg-[#fafafa] px-3 py-1 text-sm font-semibold text-[#666666]">{latestInstallation.code}</span> : null}
         </div>
         {customer ? (
           <div className="grid min-w-0 gap-4 md:grid-cols-2 2xl:grid-cols-3">
@@ -1048,7 +1080,7 @@ function MachineDetailPanel({
       <div className="grid min-w-0 gap-4 xl:grid-cols-3">
         <TimelineBox
           emptyText="Chưa có lịch sử sửa chữa."
-          items={(machine.repairs ?? []).slice(0, 5).map((repair) => ({
+          items={repairs.slice(0, 5).map((repair) => ({
             id: repair.id,
             title: `${repair.code} - ${displayLabel(repair.status)}`,
             date: formatDashboardDate(repair.completedAt || repair.reportedAt),
@@ -1057,8 +1089,18 @@ function MachineDetailPanel({
           title="Sửa chữa gần đây"
         />
         <TimelineBox
+          emptyText="Chưa có lịch sử bảo trì."
+          items={maintenances.slice(0, 5).map((maintenance) => ({
+            id: maintenance.id,
+            title: `${maintenance.code} - ${displayLabel(maintenance.status)}`,
+            date: formatDashboardDate(maintenance.completedAt || maintenance.scheduledDate),
+            description: [displayLabel(maintenance.type || ''), maintenance.resultNote, maintenance.engineer?.fullName, maintenance.nextDueDate ? `Hẹn lại ${formatDashboardDate(maintenance.nextDueDate)}` : ''].filter(Boolean).join(' - '),
+          }))}
+          title="Bảo trì"
+        />
+        <TimelineBox
           emptyText="Chưa có lịch sử kho."
-          items={(machine.inventoryMovements ?? []).slice(0, 5).map((movement) => ({
+          items={movements.slice(0, 5).map((movement) => ({
             id: movement.id,
             title: `${displayLabel(movement.type)}: ${displayLabel(movement.fromStatus || '')} → ${displayLabel(movement.toStatus)}`,
             date: formatDashboardDate(movement.occurredAt),
@@ -1068,7 +1110,7 @@ function MachineDetailPanel({
         />
         <TimelineBox
           emptyText="Chưa có lịch sử lắp đặt."
-          items={(machine.installations ?? []).slice(0, 5).map((installation) => ({
+          items={installations.slice(0, 5).map((installation) => ({
             id: installation.id,
             title: `${installation.code} - ${displayLabel(installation.status)}`,
             date: formatDashboardDate(installation.installedAt),
@@ -1076,8 +1118,27 @@ function MachineDetailPanel({
           }))}
           title="Lắp đặt"
         />
+        <TimelineBox
+          emptyText="Chưa có thẻ bảo hành."
+          items={warrantyCards.slice(0, 5).map((card) => ({
+            id: card.id,
+            title: `${card.code} - ${displayLabel(card.status)}`,
+            date: `${formatDashboardDate(card.startDate)} - ${formatDashboardDate(card.endDate)}`,
+            description: card.note || '',
+          }))}
+          title="Bảo hành"
+        />
       </div>
     </aside>
+  );
+}
+
+function ProfileStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3">
+      <span className="text-xs font-medium text-[#666666]">{label}</span>
+      <strong className="mt-1 block text-2xl leading-none text-[#1f1f1f]">{value}</strong>
+    </div>
   );
 }
 

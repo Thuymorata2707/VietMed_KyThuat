@@ -147,6 +147,13 @@ enum InstallationStatus {
   CANCELLED
 }
 
+enum WorkReviewStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  NEEDS_REVISION
+}
+
 enum WarrantyStatus {
   ACTIVE
   EXPIRED
@@ -234,9 +241,12 @@ model User {
 
   assignedRepairs       Repair[]                   @relation("RepairEngineer")
   createdRepairs        Repair[]                   @relation("RepairCreatedBy")
+  reviewedRepairs       Repair[]                   @relation("RepairReviewer")
   maintenances          Maintenance[]
+  reviewedMaintenances  Maintenance[]              @relation("MaintenanceReviewer")
   installedMachines     Machine[]                  @relation("MachineInstalledBy")
   machineInstallations  MachineInstallation[]      @relation("MachineInstallationEngineer")
+  reviewedInstallations MachineInstallation[]      @relation("InstallationReviewer")
   issuedWarrantyCards   WarrantyCard[]             @relation("WarrantyCardIssuedBy")
   responsibleMachines   Machine[]                  @relation("MachinePrimaryEngineer")
   inventoryMovements    MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
@@ -296,6 +306,7 @@ model WeeklyReport {
 
   submittedAt DateTime?
   reviewedAt  DateTime?
+  reviewNote  String?
   reviewerId  String?
   reviewer    User?     @relation("WeeklyReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
 
@@ -669,6 +680,12 @@ model MachineInstallation {
   deviceCondition           String?
   deviceConditionNote       String?
 
+  reviewStatus WorkReviewStatus @default(NOT_REQUIRED)
+  reviewNote   String?
+  reviewedAt   DateTime?
+  reviewerId   String?
+  reviewer     User?            @relation("InstallationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
   warrantyCard WarrantyCard?
 
   createdAt DateTime @default(now())
@@ -681,6 +698,8 @@ model MachineInstallation {
   @@index([installedById])
   @@index([installedAt])
   @@index([status])
+  @@index([reviewStatus])
+  @@index([reviewerId])
 }
 
 model WarrantyCard {
@@ -767,6 +786,12 @@ model Maintenance {
   resultNote  String?
   nextDueDate DateTime?
 
+  reviewStatus WorkReviewStatus @default(NOT_REQUIRED)
+  reviewNote   String?
+  reviewedAt   DateTime?
+  reviewerId   String?
+  reviewer     User?            @relation("MaintenanceReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
   usingDepartment String?
   representative  String?
   address         String?
@@ -777,6 +802,9 @@ model Maintenance {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([reviewStatus])
+  @@index([reviewerId])
 }
 
 model Repair {
@@ -807,6 +835,12 @@ model Repair {
   resultNote       String?
   customerFeedback String?
 
+  reviewStatus WorkReviewStatus @default(NOT_REQUIRED)
+  reviewNote   String?
+  reviewedAt   DateTime?
+  reviewerId   String?
+  reviewer     User?            @relation("RepairReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
   usingDepartment     String?
   representative      String?
   address             String?
@@ -822,6 +856,8 @@ model Repair {
   updatedAt DateTime @updatedAt
 
   @@index([createdById])
+  @@index([reviewStatus])
+  @@index([reviewerId])
 }
 
 model Notification {

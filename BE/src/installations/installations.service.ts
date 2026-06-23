@@ -11,11 +11,13 @@ import {
   MachineStatus,
   Prisma,
   WarrantyStatus,
+  WorkReviewStatus,
 } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
 import { installationAccessWhere, isAdmin, isEngineer } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
+import { ReviewWorkTaskDto } from '../common/dto/review-work-task.dto';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { validateInventoryMovement } from '../machines/machine-state.rules';
@@ -265,6 +267,10 @@ export class InstallationsService {
       installation.installedById === actor.id &&
       installation.status === InstallationStatus.PENDING &&
       dto.status === InstallationStatus.INSTALLED;
+    const isAdminApprovingInstallation =
+      isAdmin(actor) &&
+      installation.status === InstallationStatus.PENDING &&
+      dto.status === InstallationStatus.INSTALLED;
 
     if (
       !isAdmin(actor) &&
@@ -275,12 +281,9 @@ export class InstallationsService {
       throw new ForbiddenException('Only admin can change installation status');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedInstallation = await this.prisma.$transaction(async (tx) => {
       let completedMachineId: string | undefined;
-      if (
-        installation.status === InstallationStatus.PENDING &&
-        dto.status === InstallationStatus.INSTALLED
-      ) {
+      if (isAdminApprovingInstallation) {
         const actualMachine = await this.resolveActualInstallationMachine(
           tx,
           installation,
@@ -342,6 +345,14 @@ export class InstallationsService {
             createdById: actor?.id || null,
           },
         });
+      } else if (isAssignedEngineerCompleting) {
+        const actualMachine = await this.resolveActualInstallationMachine(
+          tx,
+          installation,
+          dto,
+          actor,
+        );
+        completedMachineId = actualMachine.id;
       }
 
       if (
@@ -357,10 +368,31 @@ export class InstallationsService {
       const updated = await tx.machineInstallation.update({
         where: { id },
         data: {
-          status: dto.status,
+          status: isAssignedEngineerCompleting ? installation.status : dto.status,
           machineId: completedMachineId ?? dto.machineId ?? undefined,
           installedAt: installedAt ?? undefined,
           installedById: installedBy?.id,
+          reviewStatus: isAssignedEngineerCompleting
+            ? WorkReviewStatus.PENDING
+            : isAdminApprovingInstallation
+              ? WorkReviewStatus.APPROVED
+              : dto.status
+                ? WorkReviewStatus.NOT_REQUIRED
+                : undefined,
+          reviewNote:
+            isAssignedEngineerCompleting || isAdminApprovingInstallation
+              ? null
+              : undefined,
+          reviewedAt: isAdminApprovingInstallation
+            ? new Date()
+            : isAssignedEngineerCompleting
+              ? null
+              : undefined,
+          reviewerId: isAdminApprovingInstallation
+            ? actor.id
+            : isAssignedEngineerCompleting
+              ? null
+              : undefined,
           plannedMachineModelId: dto.machineModelId ?? undefined,
           businessLineId:
             dto.businessLineId === undefined ? undefined : businessLine?.id ?? null,
@@ -505,6 +537,21 @@ export class InstallationsService {
 
       return updated;
     });
+
+    if (isAssignedEngineerCompleting) {
+      await this.notificationsService
+        .createForAdmins({
+          title: 'Phiếu lắp đặt chờ xác nhận',
+          message: `${actor.email} đã báo hoàn tất phiếu ${updatedInstallation.code}. Vui lòng kiểm tra trước khi xác nhận lắp đặt.`,
+          href: '/my-tasks',
+          entityType: 'MachineInstallation',
+          entityId: updatedInstallation.id,
+          createdById: actor.id,
+        })
+        .catch(() => null);
+    }
+
+    return updatedInstallation;
   }
 
   async remove(id: string, actor: RequestUser) {
@@ -641,6 +688,18 @@ export class InstallationsService {
           status: dto.status,
           installedAt: installedAt ?? undefined,
           note: dto.note?.trim(),
+          reviewStatus:
+            dto.status === InstallationStatus.INSTALLED
+              ? WorkReviewStatus.APPROVED
+              : dto.status
+                ? WorkReviewStatus.NOT_REQUIRED
+                : undefined,
+          reviewedAt:
+            dto.status === InstallationStatus.INSTALLED ? new Date() : undefined,
+          reviewerId:
+            dto.status === InstallationStatus.INSTALLED ? actor.id : undefined,
+          reviewNote:
+            dto.status === InstallationStatus.INSTALLED ? null : undefined,
         },
         include: this.defaultInclude(),
       });
@@ -680,6 +739,108 @@ export class InstallationsService {
 
       return updated;
     });
+  }
+
+  async review(id: string, dto: ReviewWorkTaskDto, actor: RequestUser) {
+    if (!isAdmin(actor)) {
+      throw new ForbiddenException('Only admins can review installation tasks');
+    }
+
+    if (
+      dto.status !== WorkReviewStatus.APPROVED &&
+      dto.status !== WorkReviewStatus.NEEDS_REVISION
+    ) {
+      throw new BadRequestException(
+        'Review status must be APPROVED or NEEDS_REVISION',
+      );
+    }
+
+    const installation = await this.findOne(id, actor);
+    if (installation.reviewStatus !== WorkReviewStatus.PENDING) {
+      throw new BadRequestException(
+        'Only pending review installations can be reviewed',
+      );
+    }
+
+    const reviewNote = this.cleanOptionalString(dto.reviewNote);
+    if (dto.status === WorkReviewStatus.NEEDS_REVISION && !reviewNote) {
+      throw new BadRequestException(
+        'reviewNote is required when returning an installation',
+      );
+    }
+
+    const updated =
+      dto.status === WorkReviewStatus.APPROVED
+        ? await this.update(
+            id,
+            {
+              status: InstallationStatus.INSTALLED,
+              warrantyEndDate: installation.warrantyCard?.endDate
+                ? installation.warrantyCard.endDate.toISOString()
+                : undefined,
+              warrantyStartDate: installation.warrantyCard?.startDate
+                ? installation.warrantyCard.startDate.toISOString()
+                : undefined,
+              reviewNote,
+            } as UpdateInstallationDto,
+            actor,
+          )
+        : await this.prisma.$transaction(async (tx) => {
+            const reviewed = await tx.machineInstallation.update({
+              where: { id },
+              data: {
+                reviewStatus: WorkReviewStatus.NEEDS_REVISION,
+                reviewNote,
+                reviewedAt: new Date(),
+                reviewerId: actor.id,
+              },
+              include: this.defaultInclude(),
+            });
+
+            await this.auditLogsService.create(
+              {
+                action: AUDIT_ACTIONS.STATUS_CHANGE,
+                entityType: 'MachineInstallation',
+                entityId: id,
+                actor,
+                changes: {
+                  reviewStatus: {
+                    from: installation.reviewStatus,
+                    to: reviewed.reviewStatus,
+                  },
+                  reviewNote: {
+                    from: installation.reviewNote,
+                    to: reviewed.reviewNote,
+                  },
+                },
+              },
+              tx,
+            );
+
+            return reviewed;
+          });
+
+    if (updated.installedById) {
+      await this.notificationsService
+        .create({
+          userId: updated.installedById,
+          title:
+            dto.status === WorkReviewStatus.APPROVED
+              ? 'Phiếu lắp đặt đã được xác nhận'
+              : 'Phiếu lắp đặt cần bổ sung',
+          message:
+            dto.status === WorkReviewStatus.APPROVED
+              ? `Admin đã xác nhận phiếu ${updated.code}.`
+              : `Admin yêu cầu bổ sung phiếu ${updated.code}: ${reviewNote}`,
+          href: '/my-tasks',
+          entityType: 'MachineInstallation',
+          entityId: updated.id,
+          createdById: actor.id,
+        })
+        .catch(() => null);
+    }
+
+    return updated;
   }
 
   getStatuses() {
@@ -1174,6 +1335,13 @@ export class InstallationsService {
           role: true,
           region: true,
           engineerProfile: true,
+        },
+      },
+      reviewer: {
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
         },
       },
       warrantyCard: true,

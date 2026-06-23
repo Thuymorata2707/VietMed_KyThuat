@@ -32,8 +32,11 @@ type WeeklyReport = {
   weekStart: string;
   status: WeeklyReportStatus;
   note?: string | null;
+  reviewNote?: string | null;
   submittedAt?: string | null;
+  reviewedAt?: string | null;
   user?: { fullName?: string | null; email?: string | null } | null;
+  reviewer?: { fullName?: string | null; email?: string | null } | null;
   rows: Array<WeeklyReportRow & { id: string }>;
 };
 
@@ -81,6 +84,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const [rows, setRows] = useState<WeeklyReportRow[]>(() => defaultRows(weekStart));
   const [dailyWorkRows, setDailyWorkRows] = useState<DailyWorkRowsResponse | null>(null);
   const [note, setNote] = useState('');
+  const [reviewNoteDraft, setReviewNoteDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingDailyWorkRows, setLoadingDailyWorkRows] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -100,6 +104,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const reportStatus = report?.status ?? 'DRAFT';
   const canSubmit = !isAdmin && Boolean(report?.id) && rows.some(rowHasReportData);
   const canEdit = !isAdmin && (reportStatus === 'DRAFT' || reportStatus === 'NEEDS_REVISION');
+  const canReview = isAdmin && report?.status === 'SUBMITTED';
 
   async function loadEngineers() {
     try {
@@ -127,6 +132,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       const result = await apiFetch<WeeklyReport | null | undefined>(`/weekly-reports?${query.toString()}`);
       setReport(result ?? null);
       setNote(result?.note ?? '');
+      setReviewNoteDraft(result?.reviewNote ?? '');
       setRows(buildWeekRows(weekStart, result?.rows ?? []));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được báo cáo tuần.');
@@ -238,6 +244,34 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     }
   }
 
+  async function reviewReport(status: Extract<WeeklyReportStatus, 'APPROVED' | 'NEEDS_REVISION'>) {
+    if (!report?.id) return;
+    const reviewNote = reviewNoteDraft.trim();
+
+    if (status === 'NEEDS_REVISION' && !reviewNote) {
+      setError('Vui lòng nhập nội dung cần sửa.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const reviewed = await apiFetch<WeeklyReport>(`/weekly-reports/${report.id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ status, reviewNote: reviewNote || null }),
+      });
+      setReport(reviewed);
+      setReviewNoteDraft(reviewed.reviewNote ?? '');
+      setSuccess(status === 'APPROVED' ? 'Đã duyệt báo cáo tuần.' : 'Đã gửi yêu cầu sửa báo cáo.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không cập nhật được báo cáo tuần.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function exportCsv() {
     const lines = [
       ['Ngày', 'Khách hàng', 'Máy', 'Nội dung', 'Kết quả', 'Tồn đọng', 'Đề xuất'],
@@ -335,9 +369,67 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
                 </button>
               </>
             ) : null}
+            {canReview ? (
+              <button className="primary-button" disabled={saving} onClick={() => reviewReport('APPROVED')} type="button">
+                <Send size={16} />
+                Duyệt báo cáo
+              </button>
+            ) : null}
           </div>
         </div>
       </section>
+
+      {(report?.reviewNote || canReview) ? (
+        <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <span className="text-xs font-semibold text-[#d71920]">Phản hồi báo cáo</span>
+              <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">
+                {canReview ? 'Kiểm duyệt báo cáo tuần' : 'Ý kiến từ admin'}
+              </h2>
+              {report?.reviewedAt ? (
+                <p className="mt-1 text-sm text-[#666666]">
+                  {report.reviewer?.fullName || report.reviewer?.email || 'Admin'} · {formatDate(report.reviewedAt)}
+                </p>
+              ) : null}
+            </div>
+            {report?.status === 'NEEDS_REVISION' ? (
+              <span className="rounded-lg border border-[#efd8a8] bg-[#fffaeb] px-3 py-2 text-sm font-medium text-[#9b5a17]">
+                Cần kỹ sư chỉnh lại
+              </span>
+            ) : null}
+            {report?.status === 'APPROVED' ? (
+              <span className="rounded-lg border border-[#b9e8ca] bg-[#eefaf3] px-3 py-2 text-sm font-medium text-[#177245]">
+                Đã hoàn tất duyệt
+              </span>
+            ) : null}
+          </div>
+
+          {canReview ? (
+            <label className="grid gap-2 text-sm font-medium text-[#333333]">
+              Nội dung cần chỉnh nếu trả báo cáo
+              <textarea
+                className="min-h-24 rounded-lg border border-[#d6d6d6] px-3 py-2.5 text-[#1f1f1f] outline-none focus:border-[#d71920]"
+                onChange={(event) => setReviewNoteDraft(event.target.value)}
+                placeholder="Ví dụ: bổ sung kết quả sửa chữa tại khách hàng A và ghi rõ tồn đọng còn lại."
+                value={reviewNoteDraft}
+              />
+            </label>
+          ) : report?.reviewNote ? (
+            <div className="rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3 text-sm leading-6 text-[#333333]">
+              {report.reviewNote}
+            </div>
+          ) : null}
+
+          {canReview ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              <button className="secondary-button" disabled={saving} onClick={() => reviewReport('NEEDS_REVISION')} type="button">
+                Yêu cầu sửa
+              </button>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-[#ffffff] p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0">

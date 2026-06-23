@@ -3,6 +3,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequestUser } from '../common/request-user.type';
+import { ReviewWeeklyReportDto } from './dto/review-weekly-report.dto';
 import { SaveWeeklyReportDto } from './dto/save-weekly-report.dto';
 import { WeeklyReportsService } from './weekly-reports.service';
 
@@ -56,5 +57,14 @@ export class WeeklyReportsController {
   @Post(':id/submit')
   submit(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.weeklyReportsService.submit(id, user);
+  }
+
+  @Post(':id/review')
+  review(
+    @Param('id') id: string,
+    @Body() dto: ReviewWeeklyReportDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.weeklyReportsService.review(id, dto, user);
   }
 }

@@ -5,6 +5,18 @@ export type TaskTone = 'good' | 'warn' | 'danger' | 'neutral';
 export type TaskFilter = 'all' | 'open' | 'progress' | 'done';
 export type KindFilter = 'all' | TaskKind;
 export type WorkspaceTab = 'create' | 'assigned';
+export type WorkReviewStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'NEEDS_REVISION';
+
+export type WorkReviewFields = {
+  reviewStatus?: WorkReviewStatus | null;
+  reviewNote?: string | null;
+  reviewedAt?: string | null;
+  reviewer?: {
+    id?: string | null;
+    fullName?: string | null;
+    email?: string | null;
+  } | null;
+};
 
 export type TaskMachine = {
   machineCode?: string | null;
@@ -24,7 +36,7 @@ export type TaskMachine = {
   } | null;
 };
 
-export type RepairTask = {
+export type RepairTask = WorkReviewFields & {
   id: string;
   code: string;
   title: string;
@@ -56,7 +68,7 @@ export type RepairTask = {
   machine?: TaskMachine | null;
 };
 
-export type MaintenanceTask = {
+export type MaintenanceTask = WorkReviewFields & {
   id: string;
   code: string;
   title: string;
@@ -91,7 +103,7 @@ export type InstallationDeviceItem = {
   warrantyPeriod: string;
 };
 
-export type InstallationTask = {
+export type InstallationTask = WorkReviewFields & {
   id: string;
   code: string;
   status: string;

@@ -195,6 +195,21 @@ export class MachinesService {
             createdAt: 'desc',
           },
         },
+        maintenances: {
+          include: {
+            engineer: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+          orderBy: {
+            scheduledDate: 'desc',
+          },
+        },
         inventoryMovements: {
           include: {
             customer: true,

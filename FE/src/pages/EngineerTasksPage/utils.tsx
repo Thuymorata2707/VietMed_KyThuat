@@ -191,6 +191,20 @@ export function statusLabel(value: string) {
   return displayLabel(value);
 }
 
+export function reviewStatusLabel(value?: string | null) {
+  if (value === 'PENDING') return 'Chờ admin xác nhận';
+  if (value === 'APPROVED') return 'Admin đã xác nhận';
+  if (value === 'NEEDS_REVISION') return 'Cần bổ sung';
+  return '';
+}
+
+export function reviewStatusTone(value?: string | null): TaskTone {
+  if (value === 'APPROVED') return 'good';
+  if (value === 'NEEDS_REVISION') return 'danger';
+  if (value === 'PENDING') return 'warn';
+  return 'neutral';
+}
+
 function priorityLabel(value: string) {
   return displayLabel(value);
 }

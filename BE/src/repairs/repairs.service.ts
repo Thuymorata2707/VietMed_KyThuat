@@ -9,11 +9,13 @@ import {
   Prisma,
   RepairPriority,
   RepairStatus,
+  WorkReviewStatus,
 } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
-import { isEngineer, repairAccessWhere } from '../auth/access-scope';
+import { isAdmin, isEngineer, repairAccessWhere } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
+import { ReviewWorkTaskDto } from '../common/dto/review-work-task.dto';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { validateMachineState } from '../machines/machine-state.rules';
@@ -245,6 +247,22 @@ export class RepairsService {
               : undefined,
           completedAt:
             dto.status === RepairStatus.COMPLETED ? new Date() : undefined,
+          reviewStatus: dto.status
+            ? this.resolveReviewStatus(dto.status, actor)
+            : undefined,
+          reviewedAt:
+            dto.status === RepairStatus.COMPLETED && isAdmin(actor)
+              ? new Date()
+              : dto.status
+                ? null
+                : undefined,
+          reviewerId:
+            dto.status === RepairStatus.COMPLETED && isAdmin(actor)
+              ? actor.id
+              : dto.status
+                ? null
+                : undefined,
+          reviewNote: dto.status ? null : undefined,
           resultNote:
             dto.resultNote === undefined
               ? undefined
@@ -461,6 +479,16 @@ export class RepairsService {
               ? now
               : undefined,
           completedAt: dto.status === RepairStatus.COMPLETED ? now : undefined,
+          reviewStatus: this.resolveReviewStatus(dto.status, actor),
+          reviewedAt:
+            dto.status === RepairStatus.COMPLETED && isAdmin(actor)
+              ? now
+              : null,
+          reviewerId:
+            dto.status === RepairStatus.COMPLETED && isAdmin(actor)
+              ? actor.id
+              : null,
+          reviewNote: null,
           resultNote: dto.resultNote?.trim(),
           customerFeedback: dto.customerFeedback?.trim(),
         },
@@ -513,7 +541,132 @@ export class RepairsService {
       return updated;
     });
 
+    if (dto.status === RepairStatus.COMPLETED && isEngineer(actor)) {
+      await this.notificationsService
+        .createForAdmins({
+          title: 'Phiếu sửa chữa chờ xác nhận',
+          message: `${actor.email} đã hoàn tất phiếu ${updatedRepair.code}: ${updatedRepair.title}. Vui lòng kiểm tra kết quả.`,
+          href: '/service-tickets',
+          entityType: 'Repair',
+          entityId: updatedRepair.id,
+          createdById: actor.id,
+        })
+        .catch(() => null);
+    }
+
     return updatedRepair;
+  }
+
+  async review(id: string, dto: ReviewWorkTaskDto, actor: RequestUser) {
+    if (!isAdmin(actor)) {
+      throw new ForbiddenException('Only admins can review repair tasks');
+    }
+
+    if (
+      dto.status !== WorkReviewStatus.APPROVED &&
+      dto.status !== WorkReviewStatus.NEEDS_REVISION
+    ) {
+      throw new BadRequestException(
+        'Review status must be APPROVED or NEEDS_REVISION',
+      );
+    }
+
+    const repair = await this.findOne(id, actor);
+    if (repair.reviewStatus !== WorkReviewStatus.PENDING) {
+      throw new BadRequestException('Only pending review repairs can be reviewed');
+    }
+
+    const reviewNote = this.cleanOptionalString(dto.reviewNote);
+    if (dto.status === WorkReviewStatus.NEEDS_REVISION && !reviewNote) {
+      throw new BadRequestException('reviewNote is required when returning a repair');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const nextStatus =
+        dto.status === WorkReviewStatus.NEEDS_REVISION
+          ? RepairStatus.IN_PROGRESS
+          : repair.status;
+      const nextMachineStatus =
+        dto.status === WorkReviewStatus.NEEDS_REVISION
+          ? MachineStatus.REPAIRING
+          : null;
+
+      const reviewed = await tx.repair.update({
+        where: { id },
+        data: {
+          status: nextStatus,
+          completedAt:
+            dto.status === WorkReviewStatus.NEEDS_REVISION
+              ? null
+              : repair.completedAt,
+          reviewStatus: dto.status,
+          reviewNote,
+          reviewedAt: new Date(),
+          reviewerId: actor.id,
+        },
+        include: this.defaultInclude(),
+      });
+
+      if (nextMachineStatus && repair.machine) {
+        validateMachineState(
+          nextMachineStatus,
+          repair.machine.inventoryStatus,
+          repair.machine.customerId,
+        );
+        await tx.machine.update({
+          where: { id: repair.machine.id },
+          data: { status: nextMachineStatus },
+        });
+      }
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.STATUS_CHANGE,
+          entityType: 'Repair',
+          entityId: id,
+          actor,
+          changes: {
+            reviewStatus: {
+              from: repair.reviewStatus,
+              to: reviewed.reviewStatus,
+            },
+            reviewNote: {
+              from: repair.reviewNote,
+              to: reviewed.reviewNote,
+            },
+            status: {
+              from: repair.status,
+              to: reviewed.status,
+            },
+          },
+        },
+        tx,
+      );
+
+      return reviewed;
+    });
+
+    if (updated.engineerId) {
+      await this.notificationsService
+        .create({
+          userId: updated.engineerId,
+          title:
+            dto.status === WorkReviewStatus.APPROVED
+              ? 'Phiếu sửa chữa đã được xác nhận'
+              : 'Phiếu sửa chữa cần bổ sung',
+          message:
+            dto.status === WorkReviewStatus.APPROVED
+              ? `Admin đã xác nhận phiếu ${updated.code}.`
+              : `Admin yêu cầu bổ sung phiếu ${updated.code}: ${reviewNote}`,
+          href: '/my-tasks',
+          entityType: 'Repair',
+          entityId: updated.id,
+          createdById: actor.id,
+        })
+        .catch(() => null);
+    }
+
+    return updated;
   }
 
   getStatuses() {
@@ -764,6 +917,19 @@ export class RepairsService {
     );
   }
 
+  private resolveReviewStatus(
+    status: RepairStatus,
+    actor: RequestUser,
+  ): WorkReviewStatus {
+    if (status !== RepairStatus.COMPLETED) {
+      return WorkReviewStatus.NOT_REQUIRED;
+    }
+
+    return isAdmin(actor)
+      ? WorkReviewStatus.APPROVED
+      : WorkReviewStatus.PENDING;
+  }
+
   private ensureStatusTransitionIsAllowed(
     currentStatus: RepairStatus,
     nextStatus: RepairStatus,
@@ -857,6 +1023,13 @@ export class RepairsService {
           status: true,
           role: true,
           region: true,
+        },
+      },
+      reviewer: {
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
         },
       },
     };

@@ -7,7 +7,9 @@ import {
 import { DailyWorkStatus, DailyWorkType, WeeklyReportStatus } from '@prisma/client';
 import { isAdmin, isEngineer } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { ReviewWeeklyReportDto } from './dto/review-weekly-report.dto';
 import { SaveWeeklyReportDto } from './dto/save-weekly-report.dto';
 import { WeeklyReportRowDto } from './dto/weekly-report-row.dto';
 
@@ -23,7 +25,10 @@ const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
 
 @Injectable()
 export class WeeklyReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async getEngineerSummary({
     user,
@@ -396,6 +401,7 @@ export class WeeklyReportsService {
           submittedAt: null,
           reviewedAt: null,
           reviewerId: null,
+          reviewNote: null,
         },
       });
 
@@ -442,14 +448,84 @@ export class WeeklyReportsService {
       throw new BadRequestException('Weekly report must have at least one row');
     }
 
-    return this.prisma.weeklyReport.update({
+    const updated = await this.prisma.weeklyReport.update({
       where: { id },
       data: {
         status: WeeklyReportStatus.SUBMITTED,
         submittedAt: new Date(),
+        reviewedAt: null,
+        reviewerId: null,
+        reviewNote: null,
       },
       include: this.defaultInclude(),
     });
+
+    await this.notificationsService
+      .createForAdmins({
+        title: 'Có báo cáo tuần mới',
+        message: `${updated.user.fullName || updated.user.email} đã gửi báo cáo tuần ${this.formatDate(updated.weekStart)}.`,
+        href: `/weekly-reports?weekStart=${updated.weekStart.toISOString().slice(0, 10)}&engineerId=${updated.userId}`,
+        entityType: 'WeeklyReport',
+        entityId: updated.id,
+        createdById: user.id,
+      })
+      .catch(() => null);
+
+    return updated;
+  }
+
+  async review(id: string, dto: ReviewWeeklyReportDto, user: RequestUser) {
+    if (!isAdmin(user)) {
+      throw new ForbiddenException('Only admins can review weekly reports');
+    }
+
+    if (
+      dto.status !== WeeklyReportStatus.APPROVED &&
+      dto.status !== WeeklyReportStatus.NEEDS_REVISION
+    ) {
+      throw new BadRequestException(
+        'Review status must be APPROVED or NEEDS_REVISION',
+      );
+    }
+
+    const report = await this.findAccessibleReport(id, user);
+    if (report.status !== WeeklyReportStatus.SUBMITTED) {
+      throw new BadRequestException('Only submitted weekly reports can be reviewed');
+    }
+
+    const updated = await this.prisma.weeklyReport.update({
+      where: { id },
+      data: {
+        status: dto.status,
+        reviewedAt: new Date(),
+        reviewerId: user.id,
+        reviewNote:
+          dto.status === WeeklyReportStatus.NEEDS_REVISION
+            ? this.cleanOptional(dto.reviewNote) || 'Admin yêu cầu sửa báo cáo.'
+            : this.cleanOptional(dto.reviewNote),
+      },
+      include: this.defaultInclude(),
+    });
+
+    await this.notificationsService
+      .create({
+        userId: updated.userId,
+        title:
+          dto.status === WeeklyReportStatus.APPROVED
+            ? 'Báo cáo tuần đã được duyệt'
+            : 'Báo cáo tuần cần sửa',
+        message:
+          dto.status === WeeklyReportStatus.APPROVED
+            ? `Báo cáo tuần ${this.formatDate(updated.weekStart)} đã được duyệt.`
+            : `Báo cáo tuần ${this.formatDate(updated.weekStart)} cần chỉnh lại.`,
+        href: `/weekly-reports?weekStart=${updated.weekStart.toISOString().slice(0, 10)}`,
+        entityType: 'WeeklyReport',
+        entityId: updated.id,
+        createdById: user.id,
+      })
+      .catch(() => null);
+
+    return updated;
   }
 
   private async findAccessibleReport(id: string, user: RequestUser) {
@@ -625,6 +701,13 @@ export class WeeklyReportsService {
       productCategory: machine?.productCategory ?? fallback.productCategory ?? null,
       businessLine: machine?.businessLine?.name ?? null,
     };
+  }
+
+  private formatDate(value: Date) {
+    return new Intl.DateTimeFormat('vi-VN', {
+      dateStyle: 'short',
+      timeZone: 'Asia/Ho_Chi_Minh',
+    }).format(value);
   }
 
   private defaultInclude() {

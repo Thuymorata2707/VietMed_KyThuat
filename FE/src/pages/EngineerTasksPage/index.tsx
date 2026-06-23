@@ -44,6 +44,8 @@ import {
   matchesFilter,
   nextDefaultStatus,
   normalizeInstallationDeviceItems,
+  reviewStatusLabel,
+  reviewStatusTone,
   secondaryLabel,
   secondaryTone,
   splitLines,
@@ -753,7 +755,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     loadAttachments(task);
 
     if (task.kind === 'installation') {
-      setStatus(task.status);
+      setStatus(task.status === 'PENDING' ? 'INSTALLED' : task.status);
       setResultNote(task.note || '');
       setCustomerFeedback('');
       setNextDueDate('');
@@ -1523,6 +1525,14 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                           <h2 className="mt-1 text-[17px] font-medium text-[#1f1f1f] [overflow-wrap:anywhere]">{note.title}</h2>
                           <p className="mt-1.5 leading-6 text-[#333333] [overflow-wrap:anywhere]">{note.note || 'Chưa có ghi chú chi tiết.'}</p>
                           {note.rejectReason ? <p className="mt-2 rounded-lg border border-[#f5c7cb] bg-[#fff5f5] px-3 py-2 text-sm text-[#b5121b]">Lý do từ chối: {note.rejectReason}</p> : null}
+                          {note.status === 'REJECTED' || note.status === 'CANCELLED' ? null : (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Link className="secondary-button" to={weeklyReportHrefForDailyWork(note)}>
+                                <FileText size={16} />
+                                Báo cáo tuần
+                              </Link>
+                            </div>
+                          )}
                         </div>
                       </article>
                     ))
@@ -1560,6 +1570,11 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 </div>
                 <div className="grid min-w-0 justify-items-start gap-2 min-[860px]:min-w-[150px] min-[860px]:justify-items-end">
                   <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
+                  {task.reviewStatus && task.reviewStatus !== 'NOT_REQUIRED' ? (
+                    <span className={`task-badge ${reviewStatusTone(task.reviewStatus)}`}>
+                      {reviewStatusLabel(task.reviewStatus)}
+                    </span>
+                  ) : null}
                   <span className={`task-badge ${secondaryTone(task)}`}>{secondaryLabel(task)}</span>
                   <span className="text-[13px] text-[#666666]">{taskDate(task)}</span>
                   {task.kind === 'installation' ? (
@@ -1616,7 +1631,20 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <dt>Trạng thái hiện tại</dt>
                 <dd>{statusLabel(selectedTask.status)}</dd>
               </div>
+              {selectedTask.reviewStatus && selectedTask.reviewStatus !== 'NOT_REQUIRED' ? (
+                <div>
+                  <dt>Kiểm duyệt admin</dt>
+                  <dd>{reviewStatusLabel(selectedTask.reviewStatus)}</dd>
+                </div>
+              ) : null}
             </dl>
+
+            {selectedTask.reviewNote ? (
+              <div className="task-info-block">
+                <h3>Phản hồi admin</h3>
+                <p>{selectedTask.reviewNote}</p>
+              </div>
+            ) : null}
 
             {selectedTask.kind === 'repair' ? (
               <div className="task-info-block">
@@ -2216,6 +2244,11 @@ function monthLabel(value: string) {
 function formatDailyWorkTime(note: DailyWorkNote) {
   const range = [note.startTime, note.endTime].filter(Boolean).join(' - ');
   return range || 'Cả ngày';
+}
+
+function weeklyReportHrefForDailyWork(note: DailyWorkNote) {
+  const weekStart = toDateInput(startOfWeek(new Date(note.workDate)));
+  return `/weekly-reports?weekStart=${weekStart}`;
 }
 
 function matchesBusinessTab(task: EngineerTask, tab: BusinessTab) {
