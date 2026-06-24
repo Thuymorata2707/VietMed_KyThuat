@@ -6,6 +6,7 @@ import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { RoleName } from '../../auth/roles';
+import { endoscopyAccessoryOptions, isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { ultrasoundProbeOptions } from '../../config/ultrasoundProbes';
 import { displayLabel } from '../../utils/displayLabels';
 
@@ -450,6 +451,23 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     }));
   }
 
+  function toggleEndoscopyAccessory(name: string, checked: boolean) {
+    setEditForm((current) => {
+      const exists = current.accessories.some((accessory) => (accessory.name || accessory.code) === name);
+      if (!checked) {
+        return {
+          ...current,
+          accessories: current.accessories.filter((accessory) => (accessory.name || accessory.code) !== name),
+        };
+      }
+      if (exists) return current;
+      return {
+        ...current,
+        accessories: [...current.accessories, { ...emptyEditAccessoryForm(), code: name, name }],
+      };
+    });
+  }
+
   function toggleTemplateAccessory(template: TemplateAccessory, checked: boolean) {
     setEditForm((current) => {
       if (!checked) {
@@ -537,6 +555,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
   const selectedEditModel = machineModels.find((model) => model.id === editForm.machineModelId);
   const isEditingUltrasound = isUltrasoundMachine(editingMachine) || editForm.productCategory === 'ULTRASOUND' || selectedEditModel?.productCategory === 'ULTRASOUND';
+  const isEditingEndoscopy = isEndoscopyMachine(editingMachine) || editForm.productCategory === 'ENDOSCOPY' || isEndoscopyMachineModel(selectedEditModel);
 
   if (machineId) {
     const recordMachine = machineDetail?.id === machineId ? machineDetail : null;
@@ -562,6 +581,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           <MachineEditForm
             customers={customers}
             editForm={editForm}
+            isEditingEndoscopy={isEditingEndoscopy}
             isEditingUltrasound={isEditingUltrasound}
             loading={loadingMachineDetail}
             loadingAccessoryTemplates={loadingAccessoryTemplates}
@@ -578,6 +598,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             onRemoveAccessory={removeAccessoryForm}
             onSave={handleSaveMachine}
             onSelectModel={selectEditMachineModel}
+            onToggleEndoscopy={toggleEndoscopyAccessory}
             onToggleTemplate={toggleTemplateAccessory}
             onUpdateAccessory={updateAccessoryForm}
             onUpdateForm={updateEditForm}
@@ -878,6 +899,11 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
               {isEditingUltrasound ? (
                 <ProbePicker onSelect={addProbeAccessory} />
+              ) : isEditingEndoscopy ? (
+                <EndoscopyAccessoryChecklist
+                  selectedNames={new Set(editForm.accessories.map((accessory) => accessory.name || accessory.code).filter((name): name is string => Boolean(name)))}
+                  onToggle={toggleEndoscopyAccessory}
+                />
               ) : (
                 <TemplateAccessoryPicker
                   loading={loadingAccessoryTemplates}
@@ -1372,6 +1398,7 @@ function warrantyClass(value?: string | null) {
 function MachineEditForm({
   customers,
   editForm,
+  isEditingEndoscopy,
   isEditingUltrasound,
   loading,
   loadingAccessoryTemplates,
@@ -1385,12 +1412,14 @@ function MachineEditForm({
   onRemoveAccessory,
   onSave,
   onSelectModel,
+  onToggleEndoscopy,
   onToggleTemplate,
   onUpdateAccessory,
   onUpdateForm,
 }: {
   customers: DashboardCustomer[];
   editForm: EditMachineForm;
+  isEditingEndoscopy: boolean;
   isEditingUltrasound: boolean;
   loading: boolean;
   loadingAccessoryTemplates: boolean;
@@ -1404,6 +1433,7 @@ function MachineEditForm({
   onRemoveAccessory: (clientId: string) => void;
   onSave: (event: FormEvent<HTMLFormElement>) => void;
   onSelectModel: (machineModelId: string) => void;
+  onToggleEndoscopy: (name: string, checked: boolean) => void;
   onToggleTemplate: (template: TemplateAccessory, checked: boolean) => void;
   onUpdateAccessory: (clientId: string, patch: Partial<EditMachineAccessoryForm>) => void;
   onUpdateForm: (patch: Partial<EditMachineForm>) => void;
@@ -1532,6 +1562,11 @@ function MachineEditForm({
 
         {isEditingUltrasound ? (
           <ProbePicker onSelect={onAddProbe} />
+        ) : isEditingEndoscopy ? (
+          <EndoscopyAccessoryChecklist
+            selectedNames={new Set(editForm.accessories.map((accessory) => accessory.name || accessory.code).filter((name): name is string => Boolean(name)))}
+            onToggle={onToggleEndoscopy}
+          />
         ) : (
           <TemplateAccessoryPicker
             loading={loadingAccessoryTemplates}
@@ -1648,6 +1683,35 @@ function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
           >
             {option.label}
           </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EndoscopyAccessoryChecklist({
+  onToggle,
+  selectedNames,
+}: {
+  onToggle: (name: string, checked: boolean) => void;
+  selectedNames: Set<string>;
+}) {
+  return (
+    <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4">
+      <div>
+        <span className="text-sm font-semibold text-[#333333]">Checklist phụ kiện nội soi tiêu hóa</span>
+        <p className="mt-1 text-xs leading-5 text-[#666666]">Tích các vật tư có theo máy. Nếu checklist chưa có, dùng nút Thêm phụ kiện để nhập thủ công.</p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {endoscopyAccessoryOptions.map((option) => (
+          <label className="flex min-h-10 items-center gap-2 rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-sm font-medium text-[#333333]" key={option.value}>
+            <input
+              checked={selectedNames.has(option.value)}
+              onChange={(event) => onToggle(option.value, event.target.checked)}
+              type="checkbox"
+            />
+            <span>{option.label}</span>
+          </label>
         ))}
       </div>
     </div>
@@ -1798,6 +1862,10 @@ function hasAccessoryContent(accessory: EditMachineAccessoryForm) {
 
 function isUltrasoundMachine(machine?: DashboardMachine | null) {
   return machine?.productCategory === 'ULTRASOUND';
+}
+
+function isEndoscopyMachine(machine?: DashboardMachine | null) {
+  return machine?.productCategory === 'ENDOSCOPY';
 }
 
 function inventoryStatusFormPatch(inventoryStatus: string): Partial<EditMachineForm> {

@@ -5,6 +5,8 @@ import { ApiUser, Paginated, apiFetch } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
+import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
@@ -44,6 +46,19 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [form, setForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm('installation'));
   const isAdmin = role === 'admin';
+  const accessoryMode: 'probe' | 'endoscopy' | null = isEndoscopyMachineModel({
+    code: detail?.plannedMachineModel?.code,
+    name: detail?.plannedMachineModel?.name || detail?.plannedModelName || detail?.machine?.modelName,
+    displayName: detail?.plannedMachineModel?.displayName,
+  })
+    ? 'endoscopy'
+    : isUltrasoundMachineModel({
+        code: detail?.plannedMachineModel?.code,
+        name: detail?.plannedMachineModel?.name || detail?.plannedModelName || detail?.machine?.modelName,
+        displayName: detail?.plannedMachineModel?.displayName,
+      })
+      ? 'probe'
+      : null;
 
   useEffect(() => {
     loadDetail();
@@ -285,10 +300,23 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   <input className={fieldClass} onChange={(event) => setMachineCode(event.target.value)} value={machineCode} />
                 </label>
                 <div className="md:col-span-2">
-                  <MachineAccessoryEditor
-                    onChange={setMachineAccessoriesText}
-                    value={machineAccessoriesText}
-                  />
+                  {accessoryMode ? (
+                    <MachineAccessoryEditor
+                      mode={accessoryMode}
+                      onChange={setMachineAccessoriesText}
+                      value={machineAccessoriesText}
+                    />
+                  ) : (
+                    <label className={labelClass}>
+                      Phụ kiện đi kèm
+                      <textarea
+                        className={`${fieldClass} min-h-28 py-2.5`}
+                        onChange={(event) => setMachineAccessoriesText(event.target.value)}
+                        placeholder="Mỗi dòng: Phụ kiện | S/N"
+                        value={machineAccessoriesText}
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
             </div>

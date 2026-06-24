@@ -7,6 +7,7 @@ import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { displayLabel } from '../../utils/displayLabels';
 import { TableRow, filterRows, formatValue, readPath } from '../../utils/format';
@@ -472,11 +473,7 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
               <div className="form-grid">
                 {visibleFields(config.fields, Boolean(editingRow), form, options, config.endpoint, editingRow).map((field) => (
                   <FieldControl
-                    accessoryMode={
-                      field.type === 'accessories' && isUltrasoundMachineForm(form, options, editingRow)
-                        ? 'probe'
-                        : 'generic'
-                    }
+                    accessoryMode={field.type === 'accessories' ? machineAccessoryMode(form, options, editingRow) : 'generic'}
                     field={field}
                     key={field.name}
                     onChange={(value, optionRow) => handleFieldChange(field, value, optionRow)}
@@ -645,7 +642,7 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
             <div className="form-grid">
               {visibleFields(config.fields, isEditing, form, options, config.endpoint, row).map((field) => (
                 <FieldControl
-                  accessoryMode={field.type === 'accessories' && isUltrasoundMachineForm(form, options, row) ? 'probe' : 'generic'}
+                  accessoryMode={field.type === 'accessories' ? machineAccessoryMode(form, options, row) : 'generic'}
                   field={field}
                   key={field.name}
                   onChange={(value, optionRow) => handleFieldChange(field, value, optionRow)}
@@ -680,7 +677,7 @@ function FieldControl({
   row,
   onChange,
 }: {
-  accessoryMode?: 'probe' | 'generic';
+  accessoryMode?: 'probe' | 'endoscopy' | 'generic';
   field: CrudField;
   value: string;
   options: SelectOption[];
@@ -702,11 +699,11 @@ function FieldControl({
   }
 
   if (field.type === 'accessories') {
-    if (accessoryMode === 'probe') {
+    if (accessoryMode === 'probe' || accessoryMode === 'endoscopy') {
       return (
         <div className="wide-field">
           <span className="field-label">{field.label}</span>
-          <MachineAccessoryEditor onChange={onChange} value={value} />
+          <MachineAccessoryEditor mode={accessoryMode} onChange={onChange} value={value} />
         </div>
       );
     }
@@ -1290,15 +1287,16 @@ function visibleFields(
   });
 }
 
-function isUltrasoundMachineForm(form: FormState, options: OptionMap, row: TableRow | null) {
+function machineAccessoryMode(form: FormState, options: OptionMap, row: TableRow | null): 'probe' | 'endoscopy' | 'generic' {
   const selectedModelId = form.machineModelId || String(readPath(row ?? {}, 'machineModel.id') ?? '');
   const selectedOption = options.machineModelId?.find((option) => option.value === selectedModelId);
   const rowModel = readPath(row ?? {}, 'machineModel');
+  const model = selectedOption?.row ?? (rowModel && typeof rowModel === 'object' ? rowModel as Record<string, unknown> : null);
 
-  if (selectedOption?.row) return isUltrasoundMachineModel(selectedOption.row);
-  if (rowModel && typeof rowModel === 'object') return isUltrasoundMachineModel(rowModel as Record<string, unknown>);
+  if (isEndoscopyMachineModel(model)) return 'endoscopy';
+  if (isUltrasoundMachineModel(model)) return 'probe';
 
-  return false;
+  return 'generic';
 }
 
 function withQueryParams(endpoint: string, params: Record<string, string>) {

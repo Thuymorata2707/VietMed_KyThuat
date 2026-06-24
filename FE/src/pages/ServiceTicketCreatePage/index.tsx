@@ -7,6 +7,7 @@ import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 
@@ -141,7 +142,11 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     () => visibleMachineModels.find((model) => model.id === quickMachineForm.machineModelId),
     [quickMachineForm.machineModelId, visibleMachineModels],
   );
-  const quickMachineSupportsAccessories = isUltrasoundMachineModel(selectedModel);
+  const quickMachineAccessoryMode = isEndoscopyMachineModel(selectedModel)
+    ? 'endoscopy'
+    : isUltrasoundMachineModel(selectedModel)
+      ? 'probe'
+      : null;
   const backHref = returnTo || (scope === 'installation' ? '/installations' : '/service-tickets');
 
   useEffect(() => {
@@ -565,7 +570,8 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 models={visibleMachineModels}
                 onCreate={createMachine}
                 selectedModel={selectedModel}
-                supportsAccessories={quickMachineSupportsAccessories}
+                supportsAccessories={Boolean(quickMachineAccessoryMode)}
+                accessoryMode={quickMachineAccessoryMode}
                 updateForm={(patch) => setQuickMachineForm((current) => ({ ...current, ...patch }))}
               />
             ) : null}
@@ -810,9 +816,11 @@ function QuickMachinePanel({
   models,
   onCreate,
   selectedModel,
+  accessoryMode,
   supportsAccessories,
   updateForm,
 }: {
+  accessoryMode: 'probe' | 'endoscopy' | null;
   creating: boolean;
   customers: CustomerOption[];
   form: QuickMachineForm;
@@ -877,7 +885,7 @@ function QuickMachinePanel({
       </label>
       <div className="md:col-span-2">
         {supportsAccessories ? (
-          <MachineAccessoryEditor compact onChange={(value) => updateForm({ accessoriesText: value })} value={form.accessoriesText} />
+          <MachineAccessoryEditor compact mode={accessoryMode ?? 'probe'} onChange={(value) => updateForm({ accessoriesText: value })} value={form.accessoriesText} />
         ) : (
           <label className={labelClass}>
             Phụ kiện đi kèm

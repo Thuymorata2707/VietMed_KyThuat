@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -1042,7 +1043,11 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               <div className="quick-machine-form">
                 {(() => {
                   const selectedQuickModel = machineModelOptions.find((model) => model.id === quickMachineForm.machineModelId);
-                  const supportsProbes = isUltrasoundMachineModel(selectedQuickModel);
+                  const accessoryMode = isEndoscopyMachineModel(selectedQuickModel)
+                    ? 'endoscopy'
+                    : isUltrasoundMachineModel(selectedQuickModel)
+                      ? 'probe'
+                      : null;
 
                   return (
                     <>
@@ -1103,9 +1108,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   Thêm KH
                 </button>
                 <div className="quick-machine-accessories">
-                  {supportsProbes ? (
+                  {accessoryMode ? (
                     <MachineAccessoryEditor
                       compact
+                      mode={accessoryMode}
                       onChange={(value) => updateQuickMachineForm({ accessoriesText: value })}
                       value={quickMachineForm.accessoriesText}
                     />

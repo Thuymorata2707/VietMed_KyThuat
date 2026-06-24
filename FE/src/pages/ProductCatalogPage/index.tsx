@@ -8,6 +8,7 @@ import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor'
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { formatMachineAccessoriesText, parseMachineAccessoriesInput, serializeMachineAccessories } from '../../utils/machineAccessories';
 
@@ -543,6 +544,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
   const canAddProduct = role === 'admin' || role === 'engineer';
   const selectedModel = models.find((model) => model.id === form.machineModelId) ?? null;
   const supportsProbes = isUltrasoundMachineModel(selectedModel);
+  const supportsEndoscopyChecklist = isEndoscopyMachineModel(selectedModel);
 
   useEffect(() => {
     void loadModels();
@@ -717,8 +719,12 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             <div className="mb-4">
               <h2 className="text-lg font-medium text-[#1f1f1f]">Phụ kiện đi kèm</h2>
             </div>
-            {supportsProbes ? (
-              <MachineAccessoryEditor onChange={(value) => updateField('accessoriesText', value)} value={form.accessoriesText} />
+            {supportsProbes || supportsEndoscopyChecklist ? (
+              <MachineAccessoryEditor
+                mode={supportsEndoscopyChecklist ? 'endoscopy' : 'probe'}
+                onChange={(value) => updateField('accessoriesText', value)}
+                value={form.accessoriesText}
+              />
             ) : (
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 S/N phụ kiện
