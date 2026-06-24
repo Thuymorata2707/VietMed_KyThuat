@@ -2,7 +2,7 @@ import type { ApiUser } from '../../api';
 
 export type TaskKind = 'repair' | 'maintenance' | 'installation';
 export type TaskTone = 'good' | 'warn' | 'danger' | 'neutral';
-export type TaskFilter = 'all' | 'open' | 'progress' | 'done';
+export type TaskFilter = 'all' | 'action' | 'open' | 'progress' | 'today' | 'overdue' | 'review' | 'revision' | 'done';
 export type KindFilter = 'all' | TaskKind;
 export type WorkspaceTab = 'create' | 'assigned';
 export type WorkReviewStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'NEEDS_REVISION';
@@ -22,6 +22,7 @@ export type TaskMachine = {
   machineCode?: string | null;
   serialNumber?: string | null;
   modelName?: string | null;
+  productCategory?: string | null;
   customer?: {
     name?: string | null;
     province?: string | null;

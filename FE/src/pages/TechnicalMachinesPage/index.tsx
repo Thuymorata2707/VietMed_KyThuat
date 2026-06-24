@@ -141,6 +141,16 @@ type DashboardMachine = {
   }>;
 };
 
+type MachineLifecycleEvent = {
+  id: string;
+  kind: 'installation' | 'warranty' | 'repair' | 'maintenance' | 'inventory';
+  title: string;
+  status?: string | null;
+  date?: string | null;
+  description?: string;
+  meta?: string;
+};
+
 type EditMachineForm = {
   machineCode: string;
   serialNumber: string;
@@ -1008,6 +1018,7 @@ function MachineDetailPanel({
   const movements = machine.inventoryMovements ?? [];
   const warrantyCards = machine.warrantyCards ?? [];
   const warrantyEndDate = machine.warrantyEndDate ?? warrantyCards[0]?.endDate ?? latestInstallation?.warrantyCard?.endDate;
+  const lifecycleEvents = buildMachineLifecycleEvents(machine);
 
   return (
     <aside className="grid min-w-0 gap-4 self-start">
@@ -1103,6 +1114,8 @@ function MachineDetailPanel({
         )}
       </div>
 
+      <MachineLifecycleTimeline events={lifecycleEvents} />
+
       <div className="grid min-w-0 gap-4 xl:grid-cols-3">
         <TimelineBox
           emptyText="Chưa có lịch sử sửa chữa."
@@ -1165,6 +1178,55 @@ function ProfileStat({ label, value }: { label: string; value: number }) {
       <span className="text-xs font-medium text-[#666666]">{label}</span>
       <strong className="mt-1 block text-2xl leading-none text-[#1f1f1f]">{value}</strong>
     </div>
+  );
+}
+
+function MachineLifecycleTimeline({ events }: { events: MachineLifecycleEvent[] }) {
+  const latestEvents = events.slice(0, 12);
+
+  return (
+    <section className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <span className="text-[12px] font-semibold text-[#666666]">Vòng đời thiết bị</span>
+          <h2 className="mt-1 text-2xl font-medium leading-tight text-[#1f1f1f]">Timeline hồ sơ máy</h2>
+          <p className="mt-1 text-sm leading-6 text-[#666666]">Gom lắp đặt, bảo hành, sửa chữa, bảo trì và luân chuyển kho theo một dòng thời gian.</p>
+        </div>
+        <span className="inline-flex min-h-9 items-center rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-sm font-semibold text-[#d71920]">
+          {events.length} sự kiện
+        </span>
+      </div>
+
+      {latestEvents.length ? (
+        <div className="relative grid gap-0 before:absolute before:bottom-2 before:left-[15px] before:top-2 before:w-px before:bg-[#e5e5e5]">
+          {latestEvents.map((event) => (
+            <article className="relative grid gap-2 pb-5 pl-10 last:pb-0" key={`${event.kind}-${event.id}`}>
+              <span className={`absolute left-0 top-1 flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-bold ${lifecycleKindClass(event.kind)}`}>
+                {lifecycleKindShortLabel(event.kind)}
+              </span>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#666666]">
+                    <span>{lifecycleKindLabel(event.kind)}</span>
+                    {event.date ? <span>{formatDashboardDate(event.date)}</span> : null}
+                    {event.meta ? <span>{event.meta}</span> : null}
+                  </div>
+                  <h3 className="mt-1 break-words text-base font-semibold leading-snug text-[#1f1f1f]">{event.title}</h3>
+                </div>
+                {event.status ? (
+                  <span className={`inline-flex min-h-7 shrink-0 items-center rounded-full border px-2.5 text-xs font-semibold ${lifecycleStatusClass(event.status)}`}>
+                    {displayLabel(event.status)}
+                  </span>
+                ) : null}
+              </div>
+              {event.description ? <p className="break-words text-sm leading-6 text-[#666666]">{event.description}</p> : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState text="Chưa có lịch sử vòng đời cho máy này." />
+      )}
+    </section>
   );
 }
 
@@ -1383,6 +1445,125 @@ function statusPillTone(value: string) {
   if (value === 'RETURNED' || value === 'REPAIRING' || value === 'MAINTENANCE') return 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]';
   if (value === 'SOLD' || value === 'INACTIVE') return 'border-[#f5c7cb] bg-[#fff5f5] text-[#d71920]';
   return 'border-[#e5e5e5] bg-[#fafafa] text-[#333333]';
+}
+
+function buildMachineLifecycleEvents(machine: DashboardMachine): MachineLifecycleEvent[] {
+  const events: MachineLifecycleEvent[] = [];
+
+  (machine.installations ?? []).forEach((installation) => {
+    events.push({
+      id: installation.id,
+      kind: 'installation',
+      title: `${installation.code} - ${installation.customer?.hospitalName || installation.customer?.name || 'Lắp đặt máy'}`,
+      status: installation.status,
+      date: installation.installedAt,
+      description: [installation.installedBy?.fullName, installation.warrantyCard?.endDate ? `Bảo hành đến ${formatDashboardDate(installation.warrantyCard.endDate)}` : ''].filter(Boolean).join(' - '),
+      meta: installation.code,
+    });
+  });
+
+  (machine.warrantyCards ?? []).forEach((card) => {
+    events.push({
+      id: card.id,
+      kind: 'warranty',
+      title: `${card.code} - Thẻ bảo hành`,
+      status: card.status,
+      date: card.startDate,
+      description: [`Hiệu lực ${formatDashboardDate(card.startDate)} - ${formatDashboardDate(card.endDate)}`, card.note].filter(Boolean).join(' - '),
+      meta: card.code,
+    });
+  });
+
+  (machine.repairs ?? []).forEach((repair) => {
+    events.push({
+      id: repair.id,
+      kind: 'repair',
+      title: `${repair.code} - ${repair.title || 'Sửa chữa'}`,
+      status: repair.status,
+      date: repair.completedAt || repair.reportedAt,
+      description: [repair.resultNote, repair.engineer?.fullName].filter(Boolean).join(' - '),
+      meta: repair.code,
+    });
+  });
+
+  (machine.maintenances ?? []).forEach((maintenance) => {
+    events.push({
+      id: maintenance.id,
+      kind: 'maintenance',
+      title: `${maintenance.code} - ${displayLabel(maintenance.type || 'Bảo trì')}`,
+      status: maintenance.status,
+      date: maintenance.completedAt || maintenance.scheduledDate,
+      description: [maintenance.resultNote, maintenance.engineer?.fullName, maintenance.nextDueDate ? `Hẹn lại ${formatDashboardDate(maintenance.nextDueDate)}` : ''].filter(Boolean).join(' - '),
+      meta: maintenance.code,
+    });
+  });
+
+  (machine.inventoryMovements ?? []).forEach((movement) => {
+    events.push({
+      id: movement.id,
+      kind: 'inventory',
+      title: `${displayLabel(movement.type)}: ${displayLabel(movement.fromStatus || '')} -> ${displayLabel(movement.toStatus)}`,
+      status: movement.toStatus,
+      date: movement.occurredAt,
+      description: [movement.customer?.hospitalName || movement.customer?.name, movement.createdBy?.fullName, movement.note].filter(Boolean).join(' - '),
+      meta: movement.code || undefined,
+    });
+  });
+
+  return events.sort((left, right) => lifecycleDateValue(right.date) - lifecycleDateValue(left.date));
+}
+
+function lifecycleDateValue(value?: string | null) {
+  if (!value) return 0;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function lifecycleKindLabel(kind: MachineLifecycleEvent['kind']) {
+  const labels: Record<MachineLifecycleEvent['kind'], string> = {
+    installation: 'Lắp đặt',
+    warranty: 'Bảo hành',
+    repair: 'Sửa chữa',
+    maintenance: 'Bảo trì',
+    inventory: 'Kho',
+  };
+  return labels[kind];
+}
+
+function lifecycleKindShortLabel(kind: MachineLifecycleEvent['kind']) {
+  const labels: Record<MachineLifecycleEvent['kind'], string> = {
+    installation: 'LĐ',
+    warranty: 'BH',
+    repair: 'SC',
+    maintenance: 'BT',
+    inventory: 'K',
+  };
+  return labels[kind];
+}
+
+function lifecycleKindClass(kind: MachineLifecycleEvent['kind']) {
+  const classes: Record<MachineLifecycleEvent['kind'], string> = {
+    installation: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
+    warranty: 'border-[#d8e0ea] bg-[#eef6ff] text-[#d71920]',
+    repair: 'border-[#f5c7cb] bg-[#fff5f5] text-[#b5121b]',
+    maintenance: 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]',
+    inventory: 'border-[#e5e5e5] bg-[#f4f7fb] text-[#333333]',
+  };
+  return classes[kind];
+}
+
+function lifecycleStatusClass(status: string) {
+  const normalized = status.toUpperCase();
+  if (['COMPLETED', 'INSTALLED', 'ACTIVE', 'APPROVED', 'IN_STOCK', 'AT_CUSTOMER'].includes(normalized)) {
+    return 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]';
+  }
+  if (['CANCELLED', 'OVERDUE', 'REPAIRING', 'IN_REPAIR', 'INACTIVE'].includes(normalized)) {
+    return 'border-[#f5c7cb] bg-[#fff5f5] text-[#b5121b]';
+  }
+  if (['PENDING', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS', 'WAITING_PARTS', 'MAINTENANCE'].includes(normalized)) {
+    return 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]';
+  }
+  return 'border-[#e5e5e5] bg-[#f4f7fb] text-[#333333]';
 }
 
 function warrantyClass(value?: string | null) {

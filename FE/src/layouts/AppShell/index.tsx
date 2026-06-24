@@ -1,5 +1,5 @@
 import { Bell, ChevronsLeft, ChevronsRight, LogOut, Plus } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiUser, apiFetch, clearToken, getApiBaseUrl } from '../../api';
 import { getRoleName, roleLabel } from '../../auth/roles';
@@ -8,28 +8,32 @@ import { RequireRole } from '../../components/RequireRole';
 import { navGroupsForRole, navItemsForRole } from '../../config/navigation';
 import { resources } from '../../config/resources';
 import { adminCrudConfigs } from '../../config/adminCrud';
-import { AccessDeniedPage } from '../../pages/AccessDeniedPage';
-import { AccountSettingsPage } from '../../pages/AccountSettingsPage';
-import { AdminCrudFormPage, AdminCrudPage } from '../../pages/AdminCrudPage';
-import { AdminRegionsPage } from '../../pages/AdminRegionsPage';
-import { AdminRolesPage } from '../../pages/AdminRolesPage';
-import { AdminUsersPage } from '../../pages/AdminUsersPage';
-import { AdminWorkAssignmentPage } from '../../pages/AdminWorkAssignmentPage';
-import { DashboardPage } from '../../pages/DashboardPage';
-import { DailyWorkCalendarPage } from '../../pages/DailyWorkCalendarPage';
-import { EngineerTasksPage } from '../../pages/EngineerTasksPage';
-import { EngineerPerformancePage } from '../../pages/EngineerPerformancePage';
-import { InstallationUpdatePage } from '../../pages/InstallationUpdatePage';
-import { InventoryMovementsPage } from '../../pages/InventoryMovementsPage';
-import { MaintenanceUpdatePage } from '../../pages/MaintenanceUpdatePage';
-import { ProductAddPage, ProductCatalogPage, ProductModelDetailPage } from '../../pages/ProductCatalogPage';
-import { RepairUpdatePage } from '../../pages/RepairUpdatePage';
-import { ResourcePage } from '../../pages/ResourcePage';
-import { ServiceTicketCreatePage } from '../../pages/ServiceTicketCreatePage';
-import { ServiceTicketsPage } from '../../pages/ServiceTicketsPage';
-import { TechnicalMachinesPage } from '../../pages/TechnicalMachinesPage';
-import { WeeklyReportsPage } from '../../pages/WeeklyReportsPage';
 import { initials } from '../../utils/format';
+
+const AccessDeniedPage = lazy(() => import('../../pages/AccessDeniedPage').then((module) => ({ default: module.AccessDeniedPage })));
+const AccountSettingsPage = lazy(() => import('../../pages/AccountSettingsPage').then((module) => ({ default: module.AccountSettingsPage })));
+const AdminCrudFormPage = lazy(() => import('../../pages/AdminCrudPage').then((module) => ({ default: module.AdminCrudFormPage })));
+const AdminCrudPage = lazy(() => import('../../pages/AdminCrudPage').then((module) => ({ default: module.AdminCrudPage })));
+const AdminRegionsPage = lazy(() => import('../../pages/AdminRegionsPage').then((module) => ({ default: module.AdminRegionsPage })));
+const AdminRolesPage = lazy(() => import('../../pages/AdminRolesPage').then((module) => ({ default: module.AdminRolesPage })));
+const AdminUsersPage = lazy(() => import('../../pages/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })));
+const AdminWorkAssignmentPage = lazy(() => import('../../pages/AdminWorkAssignmentPage').then((module) => ({ default: module.AdminWorkAssignmentPage })));
+const DashboardPage = lazy(() => import('../../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+const DailyWorkCalendarPage = lazy(() => import('../../pages/DailyWorkCalendarPage').then((module) => ({ default: module.DailyWorkCalendarPage })));
+const EngineerPerformancePage = lazy(() => import('../../pages/EngineerPerformancePage').then((module) => ({ default: module.EngineerPerformancePage })));
+const EngineerTasksPage = lazy(() => import('../../pages/EngineerTasksPage').then((module) => ({ default: module.EngineerTasksPage })));
+const InstallationUpdatePage = lazy(() => import('../../pages/InstallationUpdatePage').then((module) => ({ default: module.InstallationUpdatePage })));
+const InventoryMovementsPage = lazy(() => import('../../pages/InventoryMovementsPage').then((module) => ({ default: module.InventoryMovementsPage })));
+const MaintenanceUpdatePage = lazy(() => import('../../pages/MaintenanceUpdatePage').then((module) => ({ default: module.MaintenanceUpdatePage })));
+const ProductAddPage = lazy(() => import('../../pages/ProductCatalogPage').then((module) => ({ default: module.ProductAddPage })));
+const ProductCatalogPage = lazy(() => import('../../pages/ProductCatalogPage').then((module) => ({ default: module.ProductCatalogPage })));
+const ProductModelDetailPage = lazy(() => import('../../pages/ProductCatalogPage').then((module) => ({ default: module.ProductModelDetailPage })));
+const RepairUpdatePage = lazy(() => import('../../pages/RepairUpdatePage').then((module) => ({ default: module.RepairUpdatePage })));
+const ResourcePage = lazy(() => import('../../pages/ResourcePage').then((module) => ({ default: module.ResourcePage })));
+const ServiceTicketCreatePage = lazy(() => import('../../pages/ServiceTicketCreatePage').then((module) => ({ default: module.ServiceTicketCreatePage })));
+const ServiceTicketsPage = lazy(() => import('../../pages/ServiceTicketsPage').then((module) => ({ default: module.ServiceTicketsPage })));
+const TechnicalMachinesPage = lazy(() => import('../../pages/TechnicalMachinesPage').then((module) => ({ default: module.TechnicalMachinesPage })));
+const WeeklyReportsPage = lazy(() => import('../../pages/WeeklyReportsPage').then((module) => ({ default: module.WeeklyReportsPage })));
 
 type AppShellProps = {
   user: ApiUser;
@@ -259,6 +263,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           </div>
         </header>
 
+        <Suspense fallback={<RouteLoadingState />}>
         <Routes>
           <Route path="/" element={<DashboardPage role={role} user={user} />} />
           <Route
@@ -566,7 +571,19 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           ))}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </main>
+    </div>
+  );
+}
+
+function RouteLoadingState() {
+  return (
+    <div className="grid min-h-[320px] place-items-center px-4">
+      <div className="grid justify-items-center gap-3 rounded-lg border border-[#e5e5e5] bg-white px-6 py-5 text-sm font-medium text-[#666666] shadow-[0_8px_24px_rgba(20,32,51,0.06)]">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#f5c7cb] border-t-[#d71920]" />
+        <span>Đang mở màn hình...</span>
+      </div>
     </div>
   );
 }

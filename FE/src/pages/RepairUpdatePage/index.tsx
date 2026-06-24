@@ -6,6 +6,7 @@ import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { checklistForCategory } from '../../config/medicalDeviceChecklists';
 import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
 import type { AttachmentType, RepairTask, TaskAttachment } from '../EngineerTasksPage/types';
 import { attachmentTypeLabel, formatFileSize, statusLabel } from '../EngineerTasksPage/utils';
@@ -53,6 +54,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
   const [attachmentTitle, setAttachmentTitle] = useState('');
   const [attachmentDescription, setAttachmentDescription] = useState('');
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const repairChecklist = checklistForCategory(detail?.machine?.productCategory || detail?.modelName || detail?.deviceName, 'repair');
 
   useEffect(() => {
     void loadDetail();
@@ -340,6 +342,13 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
+            <StandardRepairChecklist
+              items={repairChecklist}
+              onApplyPartsTemplate={() => updateForm({
+                repairMethod: appendTextBlock(form.repairMethod, 'Linh kiện/phụ kiện:\n- Đã thay:\n- Cần chờ:\n- Mã/Số lượng:'),
+              })}
+            />
+
             <section className={panelClass}>
               <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
                 <div>
@@ -509,6 +518,38 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <strong className="break-words text-[#1f1f1f]">{value}</strong>
     </div>
   );
+}
+
+function StandardRepairChecklist({
+  items,
+  onApplyPartsTemplate,
+}: {
+  items: string[];
+  onApplyPartsTemplate: () => void;
+}) {
+  return (
+    <section className={panelClass}>
+      <div className="mb-4 border-b border-[#eeeeee] pb-4">
+        <span className="text-xs font-medium text-[#d71920]">Chuẩn kỹ thuật</span>
+        <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Checklist sửa chữa</h2>
+        <p className="mt-1 text-sm leading-6 text-[#666666]">Admin sẽ dựa vào các mục này để xác nhận phiếu sau khi kỹ sư hoàn tất.</p>
+      </div>
+      <div className="grid gap-2">
+        {items.map((item) => (
+          <div className="rounded-lg border border-[#eeeeee] bg-[#fbfdff] px-3 py-2 text-sm leading-5 text-[#333333]" key={item}>
+            {item}
+          </div>
+        ))}
+      </div>
+      <button className="secondary-button mt-4 w-full justify-center" onClick={onApplyPartsTemplate} type="button">
+        Thêm mẫu ghi linh kiện
+      </button>
+    </section>
+  );
+}
+
+function appendTextBlock(current: string, block: string) {
+  return [current.trim(), block.trim()].filter(Boolean).join('\n\n');
 }
 
 const panelClass = 'rounded-lg border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]';

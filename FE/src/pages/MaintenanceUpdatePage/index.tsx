@@ -6,6 +6,7 @@ import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { appendChecklistLines, checklistForCategory } from '../../config/medicalDeviceChecklists';
 import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
 import type { AttachmentType, MaintenanceTask, TaskAttachment } from '../EngineerTasksPage/types';
 import { attachmentTypeLabel, formatFileSize, statusLabel } from '../EngineerTasksPage/utils';
@@ -53,6 +54,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
   const [attachmentTitle, setAttachmentTitle] = useState('');
   const [attachmentDescription, setAttachmentDescription] = useState('');
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const standardChecklist = checklistForCategory(detail?.machine?.productCategory || detail?.modelName || detail?.deviceName, 'maintenance');
 
   useEffect(() => {
     void loadDetail();
@@ -288,6 +290,13 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                   Checklist
                   <textarea className={textareaClass} onChange={(event) => updateForm({ checklistText: event.target.value })} placeholder="Mỗi dòng là một hạng mục kiểm tra" value={form.checklistText} />
                 </label>
+                <div className="md:col-span-2">
+                  <StandardChecklistPanel
+                    items={standardChecklist}
+                    onApply={() => updateForm({ checklistText: appendChecklistLines(form.checklistText, standardChecklist) })}
+                    title="Checklist chuẩn theo ngành hàng"
+                  />
+                </div>
                 <label className={`${labelClass} md:col-span-2`}>
                   Kết quả/Ghi chú kỹ thuật
                   <textarea className={textareaClass} onChange={(event) => updateForm({ resultNote: event.target.value })} value={form.resultNote} />
@@ -501,6 +510,29 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
     <div className="grid min-w-0 gap-1 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-3">
       <span className="text-xs font-medium text-[#666666]">{label}</span>
       <strong className="break-words text-[#1f1f1f]">{value}</strong>
+    </div>
+  );
+}
+
+function StandardChecklistPanel({ items, onApply, title }: { items: string[]; onApply: () => void; title: string }) {
+  return (
+    <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <strong className="text-sm text-[#1f1f1f]">{title}</strong>
+          <p className="mt-1 text-xs leading-5 text-[#666666]">Dùng để chuẩn hóa thao tác bảo trì, kỹ sư có thể bổ sung thêm dòng riêng nếu cần.</p>
+        </div>
+        <button className="secondary-button compact" onClick={onApply} type="button">
+          Thêm vào checklist
+        </button>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {items.map((item) => (
+          <div className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-sm leading-5 text-[#333333]" key={item}>
+            {item}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -311,6 +311,8 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
               </label>
             ) : null}
 
+            <MovementChecklist action={activeMove.action} />
+
             <label className="grid gap-2 text-sm font-semibold text-[#333333]">
               Ghi chú
               <textarea className={`${fieldClass} min-h-24 py-2.5`} onChange={(event) => setMovementNote(event.target.value)} value={movementNote} />
@@ -564,6 +566,45 @@ function HistoryTable({ loading, movements }: { loading: boolean; movements: Inv
 function StatusBadge({ value }: { value: InventoryStatus }) {
   const tone = value === 'INSTALLED' ? 'good' : value === 'RESERVED' ? 'warn' : value === 'SOLD' ? 'danger' : 'neutral';
   return <span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-medium ${statusToneClass[tone]}`}>{displayLabel(value)}</span>;
+}
+
+function MovementChecklist({ action }: { action: MovementAction }) {
+  const items =
+    action.type === 'RETURN'
+      ? [
+          'Ghi rõ lý do thu hồi và tình trạng máy khi nhận',
+          'Đối chiếu serial máy và phụ kiện đi kèm',
+          'Chụp ảnh tình trạng máy/phụ kiện trước khi nhập kho',
+          'Nếu cần sửa, tạo phiếu sửa chữa ngay sau khi thu hồi',
+        ]
+      : action.label.includes('Trả khách')
+        ? [
+            'Xác nhận máy đã kiểm tra/sửa xong trước khi trả khách',
+            'Đối chiếu đủ phụ kiện lúc trả lại',
+            'Ghi nhận người nhận bàn giao và thời điểm trả',
+            'Chụp ảnh/biên bản bàn giao lại nếu có',
+          ]
+        : action.type === 'IMPORT'
+          ? [
+              'Kiểm tra lại tình trạng máy trước khi nhập kho sẵn sàng',
+              'Cập nhật phụ kiện còn thiếu nếu có',
+              'Ghi chú rõ nguồn nhập lại kho',
+            ]
+          : [];
+
+  if (!items.length) return null;
+
+  return (
+    <div className="grid gap-2 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-3">
+      <strong className="text-sm text-[#1f1f1f]">Checklist nghiệp vụ kho</strong>
+      {items.map((item) => (
+        <label className="flex items-start gap-2 text-sm leading-5 text-[#333333]" key={item}>
+          <input className="mt-1" type="checkbox" />
+          <span>{item}</span>
+        </label>
+      ))}
+    </div>
+  );
 }
 
 function LoadingRows({ columns }: { columns: number }) {

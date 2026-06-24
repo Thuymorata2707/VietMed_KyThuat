@@ -147,10 +147,16 @@ export function taskIcon(kind: TaskKind) {
 }
 
 export function matchesFilter(task: EngineerTask, filter: TaskFilter) {
+  const isTerminal = ['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status);
   if (filter === 'all') return true;
-  if (filter === 'done') return ['COMPLETED', 'CANCELLED'].includes(task.status);
+  if (filter === 'action') return task.reviewStatus === 'NEEDS_REVISION' || (!isTerminal && task.reviewStatus !== 'PENDING');
+  if (filter === 'today') return isTodayTask(task);
+  if (filter === 'overdue') return isOverdueTask(task);
+  if (filter === 'review') return task.reviewStatus === 'PENDING';
+  if (filter === 'revision') return task.reviewStatus === 'NEEDS_REVISION';
+  if (filter === 'done') return isTerminal;
   if (filter === 'progress') return ['IN_PROGRESS', 'WAITING_PARTS'].includes(task.status);
-  return !['COMPLETED', 'CANCELLED'].includes(task.status);
+  return !isTerminal;
 }
 
 export function isTodayTask(task: EngineerTask) {
@@ -172,7 +178,7 @@ export function isOverdueTask(task: EngineerTask) {
 
 export function isUpcomingTask(task: EngineerTask) {
   const value = taskDateValue(task);
-  if (!value || ['COMPLETED', 'CANCELLED'].includes(task.status)) return false;
+  if (!value || ['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status)) return false;
   const date = new Date(value);
   const today = new Date();
   today.setHours(0, 0, 0, 0);

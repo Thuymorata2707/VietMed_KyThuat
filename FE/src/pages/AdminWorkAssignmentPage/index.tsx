@@ -4,9 +4,10 @@ import { ApiUser, Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { checklistForCategory } from '../../config/medicalDeviceChecklists';
 
 type WorkKind = 'repair' | 'maintenance' | 'installation';
-type WorkFilter = 'all' | 'unassigned' | 'active' | 'review';
+type WorkFilter = 'action' | 'unassigned' | 'review' | 'active' | 'all';
 type WorkReviewStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'NEEDS_REVISION';
 type Tone = 'good' | 'warn' | 'danger' | 'neutral';
 
@@ -14,6 +15,7 @@ type WorkMachine = {
   machineCode?: string | null;
   serialNumber?: string | null;
   modelName?: string | null;
+  productCategory?: string | null;
   customer?: {
     name?: string | null;
     province?: string | null;
@@ -84,10 +86,11 @@ type WorkItem = {
 };
 
 const filterOptions: Array<{ value: WorkFilter; label: string }> = [
-  { value: 'all', label: 'Tất cả' },
+  { value: 'action', label: 'Cần xử lý' },
   { value: 'unassigned', label: 'Chưa phân' },
-  { value: 'active', label: 'Đang mở' },
   { value: 'review', label: 'Chờ xác nhận' },
+  { value: 'active', label: 'Đang thực hiện' },
+  { value: 'all', label: 'Tất cả' },
 ];
 
 export function AdminWorkAssignmentPage() {
@@ -96,7 +99,7 @@ export function AdminWorkAssignmentPage() {
   const [maintenances, setMaintenances] = useState<MaintenanceAssignment[]>([]);
   const [installations, setInstallations] = useState<InstallationAssignment[]>([]);
   const [assignmentByKey, setAssignmentByKey] = useState<Record<string, string>>({});
-  const [filter, setFilter] = useState<WorkFilter>('unassigned');
+  const [filter, setFilter] = useState<WorkFilter>('action');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -201,12 +204,13 @@ export function AdminWorkAssignmentPage() {
 
     return nextItems
       .filter((item) => {
+        if (filter === 'action') return !item.engineer?.id || item.reviewStatus === 'PENDING';
         if (filter === 'unassigned') return !item.engineer?.id;
-        if (filter === 'active') return !isClosed(item.status);
         if (filter === 'review') return item.reviewStatus === 'PENDING';
+        if (filter === 'active') return !isClosed(item.status) && Boolean(item.engineer?.id) && item.reviewStatus !== 'PENDING';
         return true;
       })
-      .sort((left, right) => Number(!right.engineer?.id) - Number(!left.engineer?.id) || left.code.localeCompare(right.code));
+      .sort((left, right) => actionRank(left) - actionRank(right) || dateRank(left) - dateRank(right) || left.code.localeCompare(right.code));
   }, [filter, installations, maintenances, repairs]);
 
   async function assignWork(item: WorkItem) {
@@ -274,23 +278,35 @@ export function AdminWorkAssignmentPage() {
     }
   }
 
-  const openCount =
-    repairs.filter((item) => !isClosed(item.status)).length +
-    maintenances.filter((item) => !isClosed(item.status)).length +
-    installations.filter((item) => !isClosed(item.status)).length;
-  const unassignedCount = repairs.filter((item) => !item.engineer?.id).length + maintenances.filter((item) => !item.engineer?.id).length;
+  const assignedActiveCount =
+    repairs.filter((item) => !isClosed(item.status) && Boolean(item.engineer?.id) && item.reviewStatus !== 'PENDING').length +
+    maintenances.filter((item) => !isClosed(item.status) && Boolean(item.engineer?.id) && item.reviewStatus !== 'PENDING').length +
+    installations.filter((item) => !isClosed(item.status) && Boolean(item.installedBy?.id) && item.reviewStatus !== 'PENDING').length;
+  const unassignedCount =
+    repairs.filter((item) => !item.engineer?.id).length +
+    maintenances.filter((item) => !item.engineer?.id).length +
+    installations.filter((item) => !item.installedBy?.id).length;
   const pendingReviewCount =
     repairs.filter((item) => item.reviewStatus === 'PENDING').length +
     maintenances.filter((item) => item.reviewStatus === 'PENDING').length +
     installations.filter((item) => item.reviewStatus === 'PENDING').length;
+  const actionCount = unassignedCount + pendingReviewCount;
+  const filterCounts: Record<WorkFilter, number> = {
+    action: actionCount,
+    unassigned: unassignedCount,
+    review: pendingReviewCount,
+    active: assignedActiveCount,
+    all: repairs.length + maintenances.length + installations.length,
+  };
+  const currentFilterLabel = filterOptions.find((option) => option.value === filter)?.label ?? 'Công việc';
 
   return (
     <PageFrame>
       <div className="grid gap-4 min-[821px]:flex min-[821px]:items-start min-[821px]:justify-between">
         <PageTitle
           eyebrow="Admin"
-          title="Phân việc kỹ sư"
-          description="Chọn kỹ sư phụ trách phiếu sửa chữa, bảo trì và lắp đặt."
+          title="Điều phối công việc"
+          description="Giao kỹ sư, theo dõi việc đang mở và xác nhận báo cáo sau khi kỹ sư hoàn tất."
         />
         <button
           className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-4 text-sm font-medium text-[#333333] shadow-sm hover:border-[#d71920] hover:text-[#d71920] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
@@ -303,30 +319,45 @@ export function AdminWorkAssignmentPage() {
         </button>
       </div>
 
-      <div className="grid gap-3.5 min-[821px]:grid-cols-3">
-        <div className={summaryCardClass}>
-          <span className="text-[13px] text-[#666666]">Chưa phân</span>
-          <strong className="text-[28px] leading-none text-[#1f1f1f]">{unassignedCount}</strong>
-        </div>
-        <div className={summaryCardClass}>
-          <span className="text-[13px] text-[#666666]">Đang mở</span>
-          <strong className="text-[28px] leading-none text-[#1f1f1f]">{openCount}</strong>
-        </div>
-        <div className={summaryCardClass}>
-          <span className="text-[13px] text-[#666666]">Chờ xác nhận</span>
-          <strong className="text-[28px] leading-none text-[#1f1f1f]">{pendingReviewCount}</strong>
-        </div>
+      <div className="grid gap-3.5 min-[721px]:grid-cols-2 min-[1181px]:grid-cols-4">
+        <button className={summaryCardClass(filter === 'action')} onClick={() => setFilter('action')} type="button">
+          <span className="text-[13px] font-medium text-[#666666]">Cần admin xử lý</span>
+          <strong className="text-[30px] leading-none text-[#1f1f1f]">{actionCount}</strong>
+          <span className="text-xs leading-5 text-[#666666]">Chưa phân hoặc chờ xác nhận</span>
+        </button>
+        <button className={summaryCardClass(filter === 'unassigned')} onClick={() => setFilter('unassigned')} type="button">
+          <span className="text-[13px] font-medium text-[#666666]">Chưa phân kỹ sư</span>
+          <strong className="text-[30px] leading-none text-[#1f1f1f]">{unassignedCount}</strong>
+          <span className="text-xs leading-5 text-[#666666]">Cần chọn người phụ trách</span>
+        </button>
+        <button className={summaryCardClass(filter === 'review')} onClick={() => setFilter('review')} type="button">
+          <span className="text-[13px] font-medium text-[#666666]">Chờ xác nhận</span>
+          <strong className="text-[30px] leading-none text-[#1f1f1f]">{pendingReviewCount}</strong>
+          <span className="text-xs leading-5 text-[#666666]">Duyệt hoặc trả về bổ sung</span>
+        </button>
+        <button className={summaryCardClass(filter === 'active')} onClick={() => setFilter('active')} type="button">
+          <span className="text-[13px] font-medium text-[#666666]">Đang thực hiện</span>
+          <strong className="text-[30px] leading-none text-[#1f1f1f]">{assignedActiveCount}</strong>
+          <span className="text-xs leading-5 text-[#666666]">Đã mở, cần theo dõi tiến độ</span>
+        </button>
       </div>
 
       {error ? <Notice message={error} /> : null}
       {success ? <Notice message={success} /> : null}
 
       <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] p-3.5">
-          <div className="inline-flex gap-[3px] rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] p-[3px]" aria-label="Lọc công việc">
+        <div className="grid gap-3 border-b border-[#eeeeee] p-4">
+          <div className="grid gap-1">
+            <h2 className="text-lg font-semibold text-[#1f1f1f]">{currentFilterLabel}</h2>
+            <p className="text-sm leading-6 text-[#666666]">
+              {filterDescription(filter)}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex max-w-full gap-[3px] overflow-x-auto rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] p-[3px]" aria-label="Lọc công việc">
             {filterOptions.map((option) => (
               <button
-                className={`min-h-8 whitespace-nowrap rounded-md px-3 text-sm font-medium ${
+                className={`inline-flex min-h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 text-sm font-medium ${
                   filter === option.value
                     ? 'bg-white text-[#d71920] shadow-[0_1px_4px_rgba(20,32,51,0.08)]'
                     : 'bg-transparent text-[#333333] hover:text-[#d71920]'
@@ -336,6 +367,9 @@ export function AdminWorkAssignmentPage() {
                 type="button"
               >
                 {option.label}
+                <span className={`rounded-md px-1.5 py-0.5 text-[11px] ${filter === option.value ? 'bg-[#fff1f3] text-[#b5121b]' : 'bg-white text-[#666666]'}`}>
+                  {filterCounts[option.value]}
+                </span>
               </button>
             ))}
           </div>
@@ -348,7 +382,8 @@ export function AdminWorkAssignmentPage() {
               value={query}
             />
           </label>
-          <span className="text-[13px] font-medium text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} công việc`}</span>
+          <span className="text-[13px] font-medium text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} công việc đang hiển thị`}</span>
+          </div>
         </div>
 
         <div className="grid">
@@ -388,6 +423,12 @@ export function AdminWorkAssignmentPage() {
                     </div>
                   </div>
                   <div className="col-span-full grid min-w-0 justify-items-start gap-2 min-[821px]:col-start-2 min-[821px]:col-span-1 min-[1181px]:col-auto">
+                    {actionLabel(item) ? (
+                      <span className={badgeClass(actionTone(item))}>
+                        <span className={badgeDotClass(actionTone(item))} />
+                        {actionLabel(item)}
+                      </span>
+                    ) : null}
                     <span className={badgeClass(statusTone(item.status))}>
                       <span className={badgeDotClass(statusTone(item.status))} />
                       {statusLabel(item.status)}
@@ -427,6 +468,7 @@ export function AdminWorkAssignmentPage() {
                     </button>
                     {item.reviewStatus === 'PENDING' ? (
                       <div className="col-span-full grid gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-2.5">
+                        <QualityReviewChecklist item={item} />
                         <textarea
                           className="min-h-16 rounded-lg border border-[#d6d6d6] bg-white px-3 py-2 text-sm text-[#1f1f1f] outline-none focus:border-[#d71920]"
                           onChange={(event) => setReviewNoteByKey((current) => ({ ...current, [item.key]: event.target.value }))}
@@ -463,8 +505,74 @@ export function AdminWorkAssignmentPage() {
   );
 }
 
-const summaryCardClass = 'grid gap-[7px] rounded-lg border border-[#e5e5e5] bg-white p-4';
+function summaryCardClass(active: boolean) {
+  return [
+    'grid min-h-[126px] gap-[7px] rounded-lg border p-4 text-left transition hover:-translate-y-[1px] hover:border-[#d71920] hover:shadow-[0_10px_28px_rgba(20,32,51,0.08)]',
+    active ? 'border-[#d71920] bg-[#fff7f7] shadow-[0_10px_28px_rgba(215,25,32,0.08)]' : 'border-[#e5e5e5] bg-white',
+  ].join(' ');
+}
+
 const metaClass = 'flex flex-wrap items-center gap-[7px] text-[13px] text-[#666666] [&>span]:[overflow-wrap:anywhere]';
+
+function QualityReviewChecklist({ item }: { item: WorkItem }) {
+  const scope = item.kind === 'installation' ? 'installation' : item.kind === 'maintenance' ? 'maintenance' : 'repair';
+  const checks = checklistForCategory(item.machine?.productCategory || item.machine?.modelName || item.title, 'review');
+
+  return (
+    <div className="grid gap-2 rounded-lg border border-[#dbe5ef] bg-white p-3">
+      <div>
+        <strong className="text-sm text-[#1f1f1f]">Điểm cần kiểm tra trước khi xác nhận</strong>
+        <p className="mt-1 text-xs leading-5 text-[#666666]">Loại việc: {kindLabel(item.kind)}. Checklist này giúp admin rà đủ hồ sơ trước khi duyệt.</p>
+      </div>
+      <div className="grid gap-1.5">
+        {checks.map((check) => (
+          <label className="flex items-start gap-2 rounded-md bg-[#fbfdff] px-2.5 py-2 text-xs leading-5 text-[#333333]" key={`${scope}-${check}`}>
+            <input className="mt-1" type="checkbox" />
+            <span>{check}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function filterDescription(filter: WorkFilter) {
+  const descriptions: Record<WorkFilter, string> = {
+    action: 'Những việc admin cần làm ngay: phân kỹ sư hoặc xác nhận báo cáo kỹ sư gửi về.',
+    unassigned: 'Danh sách phiếu chưa có người phụ trách. Chọn kỹ sư rồi bấm phân việc.',
+    review: 'Những báo cáo đã hoàn tất và đang chờ admin xác nhận hoặc trả về bổ sung.',
+    active: 'Những việc đã có kỹ sư phụ trách và chưa đóng, dùng để theo dõi tiến độ.',
+    all: 'Toàn bộ phiếu sửa chữa, bảo trì và lắp đặt trong phạm vi tìm kiếm hiện tại.',
+  };
+  return descriptions[filter];
+}
+
+function actionRank(item: WorkItem) {
+  if (item.reviewStatus === 'PENDING') return 0;
+  if (!item.engineer?.id) return 1;
+  if (!isClosed(item.status)) return 2;
+  return 3;
+}
+
+function dateRank(item: WorkItem) {
+  if (!item.date) return Number.MAX_SAFE_INTEGER;
+  const date = new Date(item.date);
+  return Number.isNaN(date.getTime()) ? Number.MAX_SAFE_INTEGER : date.getTime();
+}
+
+function actionLabel(item: WorkItem) {
+  if (item.reviewStatus === 'PENDING') return 'Cần xác nhận báo cáo';
+  if (!item.engineer?.id) return 'Cần phân công';
+  if (!isClosed(item.status)) return 'Đang theo dõi';
+  return '';
+}
+
+function actionTone(item: WorkItem): Tone {
+  if (item.reviewStatus === 'PENDING') return 'warn';
+  if (!item.engineer?.id) return 'danger';
+  if (!isClosed(item.status)) return 'neutral';
+  return 'good';
+}
 
 function kindIconClass(kind: WorkKind) {
   const base = 'flex h-[42px] w-[42px] items-center justify-center rounded-lg border';

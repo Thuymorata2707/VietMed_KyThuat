@@ -171,7 +171,7 @@ type PickerCustomer = {
   province?: string | null;
 };
 
-type BusinessTab = 'repair' | 'maintenance' | 'installation' | 'warranty' | 'calendar';
+type BusinessTab = 'all' | 'repair' | 'maintenance' | 'installation' | 'warranty' | 'calendar';
 
 type WeeklyReportStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'NEEDS_REVISION';
 
@@ -192,6 +192,7 @@ const weeklyReportStatusLabels: Record<WeeklyReportStatus | 'NONE', string> = {
 };
 
 const businessTabs: Array<{ value: BusinessTab; label: string }> = [
+  { value: 'all', label: 'Tổng việc' },
   { value: 'repair', label: 'Sửa chữa' },
   { value: 'maintenance', label: 'Bảo trì' },
   { value: 'installation', label: 'Lắp đặt' },
@@ -214,10 +215,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<TaskFilter>('open');
+  const [filter, setFilter] = useState<TaskFilter>('action');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('assigned');
-  const [businessTab, setBusinessTab] = useState<BusinessTab>('repair');
+  const [businessTab, setBusinessTab] = useState<BusinessTab>('all');
   const [selectedTask, setSelectedTask] = useState<EngineerTask | null>(null);
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [attachmentType, setAttachmentType] = useState<AttachmentType>('MACHINE_PHOTO');
@@ -274,6 +275,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
   const businessTabCounts = useMemo(
     () => ({
+      all: tasks.length,
       repair: tasks.filter((task) => matchesBusinessTab(task, 'repair')).length,
       maintenance: tasks.filter((task) => matchesBusinessTab(task, 'maintenance')).length,
       installation: tasks.filter((task) => matchesBusinessTab(task, 'installation')).length,
@@ -298,12 +300,15 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
   const taskStats = useMemo(
     () => ({
+      action: tasks.filter((task) => matchesFilter(task, 'action')).length,
       open: tasks.filter((task) => matchesFilter(task, 'open')).length,
       progress: tasks.filter((task) => matchesFilter(task, 'progress')).length,
       done: tasks.filter((task) => matchesFilter(task, 'done')).length,
       today: tasks.filter(isTodayTask).length,
       overdue: tasks.filter(isOverdueTask).length,
       upcoming: tasks.filter(isUpcomingTask).length,
+      review: tasks.filter((task) => task.reviewStatus === 'PENDING').length,
+      revision: tasks.filter((task) => task.reviewStatus === 'NEEDS_REVISION').length,
       missingMachine: tasks.filter(needsMachineProfile).length,
     }),
     [tasks],
@@ -311,8 +316,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
   const priorityTasks = useMemo(() => {
     return tasks
-      .filter((task) => !['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status))
-      .filter((task) => isOverdueTask(task) || isTodayTask(task) || needsMachineProfile(task))
+      .filter((task) => task.reviewStatus === 'NEEDS_REVISION' || !['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status))
+      .filter((task) => task.reviewStatus === 'NEEDS_REVISION' || isOverdueTask(task) || isTodayTask(task) || needsMachineProfile(task))
       .sort((a, b) => {
         const priorityA = taskPriorityScore(a);
         const priorityB = taskPriorityScore(b);
@@ -906,6 +911,13 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     }
   }
 
+  function focusTaskList(nextFilter: TaskFilter) {
+    setWorkspaceTab('assigned');
+    setBusinessTab('all');
+    setKindFilter('all');
+    setFilter(nextFilter);
+  }
+
   return (
     <PageFrame>
       <PageTitle
@@ -917,13 +929,53 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-        <SummaryTile label="Hôm nay" value={taskStats.today} />
-        <SummaryTile label="Quá hạn" value={taskStats.overdue} tone={taskStats.overdue > 0 ? 'danger' : 'neutral'} />
-        <SummaryTile label="Sắp tới" value={taskStats.upcoming} />
-        <SummaryTile label="Chờ xử lý" value={taskStats.open} />
-        <SummaryTile label="Đang xử lý" value={taskStats.progress} />
-        <SummaryTile label="Thiếu hồ sơ máy" value={taskStats.missingMachine} tone={taskStats.missingMachine > 0 ? 'danger' : 'neutral'} />
+      <section className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
+        <SummaryTile
+          active={filter === 'action' && businessTab === 'all'}
+          description="Việc cần làm tiếp"
+          label="Cần xử lý"
+          onClick={() => focusTaskList('action')}
+          tone={taskStats.action > 0 ? 'warn' : 'neutral'}
+          value={taskStats.action}
+        />
+        <SummaryTile
+          active={filter === 'revision'}
+          description="Admin trả về"
+          label="Cần bổ sung"
+          onClick={() => focusTaskList('revision')}
+          tone={taskStats.revision > 0 ? 'danger' : 'neutral'}
+          value={taskStats.revision}
+        />
+        <SummaryTile
+          active={filter === 'review'}
+          description="Đã gửi, chờ duyệt"
+          label="Chờ admin xác nhận"
+          onClick={() => focusTaskList('review')}
+          tone={taskStats.review > 0 ? 'warn' : 'neutral'}
+          value={taskStats.review}
+        />
+        <SummaryTile
+          active={filter === 'today'}
+          description="Theo ngày hẹn"
+          label="Hôm nay"
+          onClick={() => focusTaskList('today')}
+          value={taskStats.today}
+        />
+        <SummaryTile
+          active={filter === 'overdue'}
+          description="Cần ưu tiên"
+          label="Quá hạn"
+          onClick={() => focusTaskList('overdue')}
+          tone={taskStats.overdue > 0 ? 'danger' : 'neutral'}
+          value={taskStats.overdue}
+        />
+        <SummaryTile
+          active={filter === 'progress'}
+          description="Đang cập nhật"
+          label="Đang xử lý"
+          onClick={() => focusTaskList('progress')}
+          value={taskStats.progress}
+        />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -1439,7 +1491,9 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             </div>
             <div className="grid w-full grid-cols-2 gap-[3px] rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] p-[3px] min-[560px]:inline-flex min-[560px]:w-auto">
               {[
-                ['open', 'Cần xử lý'],
+                ['action', 'Cần xử lý'],
+                ['revision', 'Cần bổ sung'],
+                ['review', 'Chờ duyệt'],
                 ['progress', 'Đang làm'],
                 ['done', 'Hoàn tất'],
                 ['all', 'Tất cả'],
@@ -1460,7 +1514,14 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             <label className="grid min-w-0 gap-1.5 text-xs font-medium text-[#333333]">
               <span>Loại công việc</span>
               <select className="h-10 w-full rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
-                {businessTab === 'repair' ? (
+                {businessTab === 'all' ? (
+                  <>
+                    <option value="all">Tất cả loại việc</option>
+                    <option value="repair">Sửa chữa</option>
+                    <option value="maintenance">Bảo trì</option>
+                    <option value="installation">Lắp đặt</option>
+                  </>
+                ) : businessTab === 'repair' ? (
                   <>
                     <option value="all">Sửa chữa</option>
                     <option value="repair">Sửa chữa</option>
@@ -1561,6 +1622,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#666666]">
                       <span>{taskKindLabel(task.kind)}</span>
                       <span>{task.code}</span>
+                      <span className={`font-medium ${taskActionTextClass(task)}`}>{taskActionLabel(task)}</span>
                       {task.kind === 'repair' && task.createdBy?.fullName ? <span>Người tạo: {task.createdBy.fullName}</span> : null}
                       {isOverdueTask(task) ? <span className="font-medium text-[#b5121b]">Quá hạn</span> : null}
                       {needsMachineProfile(task) ? <span className="font-medium text-[#9b5a17]">Cần tạo hồ sơ máy</span> : null}
@@ -2258,6 +2320,10 @@ function weeklyReportHrefForDailyWork(note: DailyWorkNote) {
 }
 
 function matchesBusinessTab(task: EngineerTask, tab: BusinessTab) {
+  if (tab === 'all') {
+    return true;
+  }
+
   if (tab === 'repair') {
     return task.kind === 'repair' && task.warrantyStatus !== 'IN_WARRANTY';
   }
@@ -2320,6 +2386,7 @@ function buildInstallationEditForm(task: InstallationTask): CreateTicketForm {
 
 function defaultCreateKindForBusinessTab(tab: BusinessTab): TaskKind {
   if (tab === 'installation') return 'installation';
+  if (tab === 'maintenance') return 'maintenance';
   return 'repair';
 }
 
@@ -2374,6 +2441,10 @@ function PriorityTaskRow({ task }: { task: EngineerTask }) {
         : `/maintenance/${task.id}/update?returnTo=/my-tasks`;
   const reason = isOverdueTask(task)
     ? 'Quá hạn'
+    : task.reviewStatus === 'NEEDS_REVISION'
+      ? 'Cần bổ sung'
+    : task.reviewStatus === 'PENDING'
+      ? 'Chờ admin xác nhận'
     : needsMachineProfile(task)
       ? 'Cần tạo hồ sơ máy'
       : isTodayTask(task)
@@ -2386,7 +2457,7 @@ function PriorityTaskRow({ task }: { task: EngineerTask }) {
         <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#666666]">
           <span>{taskKindLabel(task.kind)}</span>
           <span>{task.code}</span>
-          <span className={reason === 'Quá hạn' ? 'font-medium text-[#b5121b]' : reason === 'Cần tạo hồ sơ máy' ? 'font-medium text-[#9b5a17]' : 'font-medium text-[#333333]'}>
+          <span className={reason === 'Quá hạn' || reason === 'Cần bổ sung' ? 'font-medium text-[#b5121b]' : reason === 'Cần tạo hồ sơ máy' || reason === 'Chờ admin xác nhận' ? 'font-medium text-[#9b5a17]' : 'font-medium text-[#333333]'}>
             {reason}
           </span>
         </div>
@@ -2408,12 +2479,33 @@ function PriorityTaskRow({ task }: { task: EngineerTask }) {
 
 function taskPriorityScore(task: EngineerTask) {
   let score = 0;
+  if (task.reviewStatus === 'NEEDS_REVISION') score += 140;
+  if (task.reviewStatus === 'PENDING') score += 10;
   if (isOverdueTask(task)) score += 100;
   if (isTodayTask(task)) score += 50;
   if (needsMachineProfile(task)) score += 30;
   if (task.kind === 'repair' && task.priority === 'URGENT') score += 25;
   if (task.kind === 'repair' && task.priority === 'HIGH') score += 15;
   return score;
+}
+
+function taskActionLabel(task: EngineerTask) {
+  if (task.reviewStatus === 'NEEDS_REVISION') return 'Cần bổ sung báo cáo';
+  if (task.reviewStatus === 'PENDING') return 'Chờ admin xác nhận';
+  if (isOverdueTask(task)) return 'Cần xử lý ngay';
+  if (isTodayTask(task)) return 'Cần làm hôm nay';
+  if (needsMachineProfile(task)) return 'Cần tạo hồ sơ máy';
+  if (['ASSIGNED', 'SCHEDULED', 'PENDING'].includes(task.status)) return 'Cần bắt đầu';
+  if (['IN_PROGRESS', 'WAITING_PARTS'].includes(task.status)) return 'Cần cập nhật kết quả';
+  if (['COMPLETED', 'INSTALLED'].includes(task.status)) return 'Đã hoàn tất';
+  return 'Theo dõi';
+}
+
+function taskActionTextClass(task: EngineerTask) {
+  if (task.reviewStatus === 'NEEDS_REVISION' || isOverdueTask(task)) return 'text-[#b5121b]';
+  if (task.reviewStatus === 'PENDING' || needsMachineProfile(task)) return 'text-[#9b5a17]';
+  if (['COMPLETED', 'INSTALLED'].includes(task.status)) return 'text-[#177245]';
+  return 'text-[#d71920]';
 }
 
 function createTicketHrefForTab(tab: BusinessTab) {

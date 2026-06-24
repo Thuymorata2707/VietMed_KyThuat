@@ -121,6 +121,10 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const maxWorkValue = Math.max(1, ...workMix.map((item) => item.value));
   const selectedEngineerName = selectedEngineer?.fullName || summary?.engineer?.fullName || summary?.engineer?.email || user.fullName || user.email;
   const weeklyRowCount = summary?.weeklyReports?.reduce((sum, report) => sum + report.rows.length, 0) ?? 0;
+  const weeklyNeedsRevision = summary?.weeklyReports?.filter((report) => report.status === 'NEEDS_REVISION').length ?? 0;
+  const weeklySubmitted = summary?.weeklyReports?.filter((report) => report.status === 'SUBMITTED').length ?? 0;
+  const closedActivities = summary?.activities?.filter((activity) => ['COMPLETED', 'INSTALLED', 'APPROVED'].includes(activity.status)).length ?? 0;
+  const unresolvedActivities = Math.max((summary?.activities.length ?? 0) - closedActivities, 0);
   const currentWeeklyReportHref = buildWeeklyReportHref(from, isAdmin ? engineerId : '');
   const sortedWeeklyReports = useMemo(
     () => [...(summary?.weeklyReports ?? [])].sort((left, right) => right.weekStart.localeCompare(left.weekStart)),
@@ -259,6 +263,20 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
         <MetricCard icon={<BarChart3 size={18} />} label="Máy tác động" value={summary?.totals.machines ?? 0} />
       </section>
 
+      <section className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <PanelHeader
+          eyebrow="Chất lượng kỹ thuật"
+          title="Rủi ro báo cáo và hoàn tất"
+          subtitle="Theo dõi các điểm admin thường cần kiểm tra: báo cáo bị trả về, chờ duyệt và việc chưa đóng."
+        />
+        <div className="grid gap-3 md:grid-cols-4">
+          <QualityCard label="Báo cáo cần sửa" value={weeklyNeedsRevision} tone={weeklyNeedsRevision > 0 ? 'danger' : 'good'} />
+          <QualityCard label="Báo cáo chờ duyệt" value={weeklySubmitted} tone={weeklySubmitted > 0 ? 'warn' : 'good'} />
+          <QualityCard label="Việc đã đóng" value={closedActivities} tone="good" />
+          <QualityCard label="Việc chưa đóng" value={unresolvedActivities} tone={unresolvedActivities > 0 ? 'warn' : 'good'} />
+        </div>
+      </section>
+
       <section className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-4 max-[1120px]:grid-cols-1">
         <div className="rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
           <PanelHeader eyebrow="Cơ cấu công việc" title="Tỷ trọng theo loại việc" subtitle={selectedEngineerName || ''} />
@@ -387,6 +405,21 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
         <span className="text-[#d71920]">{icon}</span>
       </div>
       <strong className="text-3xl leading-none text-[#1f1f1f]">{value}</strong>
+    </div>
+  );
+}
+
+function QualityCard({ label, tone, value }: { label: string; tone: 'good' | 'warn' | 'danger'; value: number }) {
+  const toneClass = tone === 'good'
+    ? 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]'
+    : tone === 'danger'
+      ? 'border-[#f5c7cb] bg-[#fff5f5] text-[#b5121b]'
+      : 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]';
+
+  return (
+    <div className={`grid min-h-[96px] gap-2 rounded-lg border p-4 ${toneClass}`}>
+      <span className="text-sm font-semibold">{label}</span>
+      <strong className="text-3xl leading-none">{value}</strong>
     </div>
   );
 }
