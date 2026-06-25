@@ -18,6 +18,7 @@ type SelectOption = { label: string; value: string; row?: TableRow };
 type OptionMap = Record<string, SelectOption[]>;
 type FormState = Record<string, string>;
 type FilterState = Record<string, string>;
+type CustomerStats = { active: number; assigned: number; withMachines: number };
 type PaginationState = {
   limit: number;
   page: number;
@@ -80,6 +81,8 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
   const searchableRows = useMemo(() => (pagination ? rows : filterRows(rows, query)), [pagination, query, rows]);
   const filteredRows = useMemo(() => applyColumnFilters(searchableRows, filters), [filters, searchableRows]);
   const quickFilters = useMemo(() => buildQuickFilters(config, rows), [config, rows]);
+  const isCustomerCrud = isCustomersEndpoint(config.endpoint);
+  const customerStats = useMemo(() => buildCustomerStats(rows), [rows]);
 
   useEffect(() => {
     if (!pagination) return;
@@ -222,7 +225,7 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
 
   return (
     <PageFrame>
-      <div className="admin-crud-heading">
+      <div className={isCustomerCrud ? 'admin-crud-heading customer-crud-heading' : 'admin-crud-heading'}>
         <PageTitle eyebrow="Quản trị" title={config.title} description={config.description} />
         <div className="admin-crud-heading-actions">
           {headerControl}
@@ -236,9 +239,18 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="admin-crud-list">
+      {isCustomerCrud ? (
+        <div className="customer-crud-summary">
+          <CustomerMetric label="Tổng khách hàng" value={pagination?.total ?? rows.length} />
+          <CustomerMetric label="Đang hoạt động" value={customerStats.active} />
+          <CustomerMetric label="Đã gán kỹ sư" value={customerStats.assigned} />
+          <CustomerMetric label="Có máy" value={customerStats.withMachines} />
+        </div>
+      ) : null}
+
+      <section className={isCustomerCrud ? 'admin-crud-list customer-crud-list' : 'admin-crud-list'}>
         <div className="list-toolbar">
-          <input onChange={(event) => handleSearchChange(event.target.value)} placeholder={config.searchPlaceholder} value={query} />
+          <input aria-label="Tìm kiếm" onChange={(event) => handleSearchChange(event.target.value)} placeholder={config.searchPlaceholder} value={query} />
           {quickFilters.length ? (
             <div className="quick-filters">
               {quickFilters.map((filter) => (
@@ -279,66 +291,90 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
           ) : null}
         </div>
 
-        <div className="crud-table-wrap">
+        <div className={isCustomerCrud ? 'crud-table-wrap customer-table-wrap' : 'crud-table-wrap'}>
           <table>
             <thead>
               <tr>
-                {config.columns.map((column) => (
-                  <th key={column.key}>{column.label}</th>
-                ))}
+                {isCustomerCrud ? (
+                  <>
+                    <th>Khách hàng</th>
+                    <th>Liên hệ</th>
+                    <th>Khu vực</th>
+                    <th>Phụ trách</th>
+                    <th>Máy</th>
+                    <th>Trạng thái</th>
+                  </>
+                ) : (
+                  config.columns.map((column) => (
+                    <th key={column.key}>{column.label}</th>
+                  ))
+                )}
                 {config.canUpdate !== false || config.canDelete !== false ? <th className="actions-column"></th> : null}
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((row, index) => (
-                <tr
-                  className="clickable-row"
-                  key={String(row.id ?? index)}
-                  onClick={() => setSelectedRow(row)}
-                  onKeyDown={(event) => handleRowKeyDown(event, row)}
-                  tabIndex={0}
-                >
-                  {config.columns.map((column) => (
-                    <td key={column.key}>{renderTableValue(readPath(row, column.key), column.key)}</td>
-                  ))}
-                  {config.canUpdate !== false || config.canDelete !== false ? (
-                    <td className="actions-cell">
-                      <div className="row-actions">
-                        {config.canUpdate !== false ? (
-                          adminCrudFormEditHref(config.endpoint, row) ? (
-                            <Link
-                              className="icon-button"
-                              onClick={(event) => event.stopPropagation()}
-                              title="Sửa"
-                              to={adminCrudFormEditHref(config.endpoint, row)!}
-                            >
-                              <Edit3 size={16} />
-                            </Link>
-                          ) : (
+                isCustomerCrud ? (
+                  <CustomerTableRow
+                    canDelete={config.canDelete !== false}
+                    canUpdate={config.canUpdate !== false}
+                    key={String(row.id ?? index)}
+                    onDelete={() => setDeletingRow(row)}
+                    onEdit={() => startEdit(row)}
+                    onKeyDown={(event) => handleRowKeyDown(event, row)}
+                    onSelect={() => setSelectedRow(row)}
+                    row={row}
+                  />
+                ) : (
+                  <tr
+                    className="clickable-row"
+                    key={String(row.id ?? index)}
+                    onClick={() => setSelectedRow(row)}
+                    onKeyDown={(event) => handleRowKeyDown(event, row)}
+                    tabIndex={0}
+                  >
+                    {config.columns.map((column) => (
+                      <td key={column.key}>{renderTableValue(readPath(row, column.key), column.key)}</td>
+                    ))}
+                    {config.canUpdate !== false || config.canDelete !== false ? (
+                      <td className="actions-cell">
+                        <div className="row-actions">
+                          {config.canUpdate !== false ? (
+                            adminCrudFormEditHref(config.endpoint, row) ? (
+                              <Link
+                                className="icon-button"
+                                onClick={(event) => event.stopPropagation()}
+                                title="Sửa"
+                                to={adminCrudFormEditHref(config.endpoint, row)!}
+                              >
+                                <Edit3 size={16} />
+                              </Link>
+                            ) : (
+                              <button
+                                className="icon-button"
+                                onClick={(event) => handleActionClick(event, () => startEdit(row))}
+                                title="Sửa"
+                                type="button"
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                            )
+                          ) : null}
+                          {config.canDelete !== false ? (
                             <button
-                              className="icon-button"
-                              onClick={(event) => handleActionClick(event, () => startEdit(row))}
-                              title="Sửa"
+                              className="icon-button danger"
+                              onClick={(event) => handleActionClick(event, () => setDeletingRow(row))}
+                              title="Xóa"
                               type="button"
                             >
-                              <Edit3 size={16} />
+                              <Trash2 size={16} />
                             </button>
-                          )
-                        ) : null}
-                        {config.canDelete !== false ? (
-                          <button
-                            className="icon-button danger"
-                            onClick={(event) => handleActionClick(event, () => setDeletingRow(row))}
-                            title="Xóa"
-                            type="button"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-                  ) : null}
-                </tr>
+                          ) : null}
+                        </div>
+                      </td>
+                    ) : null}
+                  </tr>
+                )
               ))}
               {loading ? (
                 <tr>
@@ -532,6 +568,7 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const listPath = config.endpoint;
+  const isCustomerForm = isCustomersEndpoint(config.endpoint);
 
   useEffect(() => {
     void loadForm();
@@ -624,7 +661,7 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="crud-form-page">
+      <section className={isCustomerForm ? 'crud-form-page customer-form-page' : 'crud-form-page'}>
         <div className="form-panel-heading">
           <div>
             <span>{isEditing ? 'Cập nhật' : 'Tạo mới'}</span>
@@ -639,19 +676,29 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
           </div>
         ) : (
           <form className="admin-crud-form" onSubmit={handleSubmit}>
-            <div className="form-grid">
-              {visibleFields(config.fields, isEditing, form, options, config.endpoint, row).map((field) => (
-                <FieldControl
-                  accessoryMode={field.type === 'accessories' ? machineAccessoryMode(form, options, row) : 'generic'}
-                  field={field}
-                  key={field.name}
-                  onChange={(value, optionRow) => handleFieldChange(field, value, optionRow)}
-                  options={options[field.name] || field.options || []}
-                  row={row}
-                  value={form[field.name] ?? ''}
-                />
-              ))}
-            </div>
+            {isCustomerForm ? (
+              <GroupedCustomerFields
+                fields={visibleFields(config.fields, isEditing, form, options, config.endpoint, row)}
+                form={form}
+                onFieldChange={handleFieldChange}
+                options={options}
+                row={row}
+              />
+            ) : (
+              <div className="form-grid">
+                {visibleFields(config.fields, isEditing, form, options, config.endpoint, row).map((field) => (
+                  <FieldControl
+                    accessoryMode={field.type === 'accessories' ? machineAccessoryMode(form, options, row) : 'generic'}
+                    field={field}
+                    key={field.name}
+                    onChange={(value, optionRow) => handleFieldChange(field, value, optionRow)}
+                    options={options[field.name] || field.options || []}
+                    row={row}
+                    value={form[field.name] ?? ''}
+                  />
+                ))}
+              </div>
+            )}
 
             <div className="modal-actions">
               <button className="secondary-button" onClick={() => navigate(listPath)} type="button">
@@ -886,6 +933,202 @@ function SearchableSelect({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function CustomerMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="customer-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function CustomerTableRow({
+  row,
+  canUpdate,
+  canDelete,
+  onSelect,
+  onEdit,
+  onDelete,
+  onKeyDown,
+}: {
+  row: TableRow;
+  canUpdate: boolean;
+  canDelete: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => void;
+}) {
+  const editHref = adminCrudFormEditHref('/customers', row);
+  const name = formatDisplayValue(readPath(row, 'hospitalName') || readPath(row, 'name'));
+  const code = formatDisplayValue(readPath(row, 'customerCode'));
+  const address = [readPath(row, 'address'), readPath(row, 'district'), readPath(row, 'province')]
+    .filter(Boolean)
+    .map((value) => String(value))
+    .join(', ');
+  const phone = formatDisplayValue(readPath(row, 'contactPhone') || readPath(row, 'phone'));
+  const contact = formatDisplayValue(readPath(row, 'contactPerson'));
+  const region = formatDisplayValue(readPath(row, 'region.name'));
+  const engineer = formatDisplayValue(readPath(row, 'primaryEngineer.fullName'));
+  const machineCount = Number(readPath(row, '_count.machines') ?? 0);
+
+  return (
+    <tr className="clickable-row customer-row" onClick={onSelect} onKeyDown={onKeyDown} tabIndex={0}>
+      <td>
+        <div className="customer-name-cell">
+          <strong>{name}</strong>
+          <span>{[code !== '-' ? code : '', displayLabel(String(readPath(row, 'customerType') ?? ''))].filter(Boolean).join(' - ') || 'Chưa phân loại'}</span>
+          {address ? <small>{address}</small> : null}
+        </div>
+      </td>
+      <td>
+        <div className="customer-stack-cell">
+          <strong>{contact}</strong>
+          <span>{phone}</span>
+        </div>
+      </td>
+      <td>{region}</td>
+      <td>
+        <span className={engineer === '-' ? 'customer-muted-chip' : 'customer-owner-chip'}>{engineer === '-' ? 'Chưa gán' : engineer}</span>
+      </td>
+      <td>
+        <span className="customer-machine-count">{machineCount}</span>
+      </td>
+      <td>{renderStatusBadge(readPath(row, 'status'))}</td>
+      {canUpdate || canDelete ? (
+        <td className="actions-cell">
+          <div className="row-actions">
+            {canUpdate ? (
+              editHref ? (
+                <Link className="icon-button" onClick={(event) => event.stopPropagation()} title="Sửa" to={editHref}>
+                  <Edit3 size={16} />
+                </Link>
+              ) : (
+                <button
+                  className="icon-button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onEdit();
+                  }}
+                  title="Sửa"
+                  type="button"
+                >
+                  <Edit3 size={16} />
+                </button>
+              )
+            ) : null}
+            {canDelete ? (
+              <button
+                className="icon-button danger"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete();
+                }}
+                title="Xóa"
+                type="button"
+              >
+                <Trash2 size={16} />
+              </button>
+            ) : null}
+          </div>
+        </td>
+      ) : null}
+    </tr>
+  );
+}
+
+function GroupedCustomerFields({
+  fields,
+  form,
+  options,
+  row,
+  onFieldChange,
+}: {
+  fields: CrudField[];
+  form: FormState;
+  options: OptionMap;
+  row: TableRow | null;
+  onFieldChange: (field: CrudField, value: string, optionRow?: TableRow) => void;
+}) {
+  const fieldMap = new Map(fields.map((field) => [field.name, field]));
+  const rendered = new Set<string>();
+  const groups = [
+    {
+      title: 'Thông tin chính',
+      description: 'Tên khách hàng, mã nội bộ, trạng thái và người phụ trách.',
+      fields: ['name', 'hospitalName', 'shortName', 'customerCode', 'customerType', 'status', 'regionId', 'primaryEngineerId'],
+    },
+    {
+      title: 'Liên hệ',
+      description: 'Thông tin để kỹ sư và admin liên lạc khi cần xử lý máy.',
+      fields: ['phone', 'email', 'taxCode', 'contactPerson', 'contactPhone', 'contactEmail'],
+    },
+    {
+      title: 'Địa chỉ',
+      description: 'Dùng cho lắp đặt, bảo trì và điều phối lịch công tác.',
+      fields: ['province', 'district', 'address', 'fullAddress'],
+    },
+    {
+      title: 'Ghi chú',
+      description: 'Các lưu ý nội bộ về khách hàng.',
+      fields: ['note'],
+    },
+  ];
+
+  return (
+    <div className="customer-form-sections">
+      {groups.map((group) => {
+        const groupFields = group.fields.map((name) => fieldMap.get(name)).filter(Boolean) as CrudField[];
+        if (!groupFields.length) return null;
+        groupFields.forEach((field) => rendered.add(field.name));
+
+        return (
+          <section className="customer-form-section" key={group.title}>
+            <div className="customer-form-section-heading">
+              <h3>{group.title}</h3>
+              <p>{group.description}</p>
+            </div>
+            <div className="form-grid">
+              {groupFields.map((field) => (
+                <FieldControl
+                  field={field}
+                  key={field.name}
+                  onChange={(value, optionRow) => onFieldChange(field, value, optionRow)}
+                  options={options[field.name] || field.options || []}
+                  row={row}
+                  value={form[field.name] ?? ''}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+      {fields.some((field) => !rendered.has(field.name)) ? (
+        <section className="customer-form-section">
+          <div className="customer-form-section-heading">
+            <h3>Thông tin khác</h3>
+            <p>Các trường bổ sung của hồ sơ khách hàng.</p>
+          </div>
+          <div className="form-grid">
+            {fields
+              .filter((field) => !rendered.has(field.name))
+              .map((field) => (
+                <FieldControl
+                  field={field}
+                  key={field.name}
+                  onChange={(value, optionRow) => onFieldChange(field, value, optionRow)}
+                  options={options[field.name] || field.options || []}
+                  row={row}
+                  value={form[field.name] ?? ''}
+                />
+              ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -1235,6 +1478,22 @@ function textareaPlaceholder(field: CrudField) {
 
 function isMachinesEndpoint(endpoint?: string) {
   return endpoint === '/machines';
+}
+
+function isCustomersEndpoint(endpoint?: string) {
+  return endpoint === '/customers';
+}
+
+function buildCustomerStats(rows: TableRow[]): CustomerStats {
+  return rows.reduce(
+    (stats: CustomerStats, row) => {
+      if (String(readPath(row, 'status') ?? '').toUpperCase() === 'ACTIVE') stats.active += 1;
+      if (readPath(row, 'primaryEngineer.id') || readPath(row, 'primaryEngineer.fullName')) stats.assigned += 1;
+      if (Number(readPath(row, '_count.machines') ?? 0) > 0) stats.withMachines += 1;
+      return stats;
+    },
+    { active: 0, assigned: 0, withMachines: 0 },
+  );
 }
 
 function serviceCreateHref(endpoint?: string) {

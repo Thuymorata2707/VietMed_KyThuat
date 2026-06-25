@@ -124,7 +124,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   customers: {
     title: 'Khách hàng',
     entityLabel: 'khách hàng',
-    description: 'Tạo, cập nhật và xóa hồ sơ khách hàng theo khu vực phụ trách.',
+    description: 'Quản lý hồ sơ bệnh viện, phòng khám, labo và người phụ trách kỹ thuật.',
     endpoint: '/customers',
     icon: null,
     searchPlaceholder: 'Tìm tên, mã, email, điện thoại',
@@ -139,6 +139,8 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
     ],
     fields: [
       { name: 'name', label: 'Tên khách hàng', required: true },
+      { name: 'hospitalName', label: 'Tên bệnh viện/đơn vị' },
+      { name: 'shortName', label: 'Tên viết tắt' },
       { name: 'customerCode', label: 'Mã khách hàng' },
       { name: 'customerType', label: 'Loại khách hàng', type: 'select', options: customerTypes },
       { name: 'status', label: 'Trạng thái', type: 'select', options: customerStatuses },
@@ -166,6 +168,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'province', label: 'Tỉnh/Thành' },
       { name: 'district', label: 'Quận/Huyện' },
       { name: 'address', label: 'Địa chỉ' },
+      { name: 'fullAddress', label: 'Địa chỉ đầy đủ' },
       { name: 'note', label: 'Ghi chú', type: 'textarea' },
     ],
   },
