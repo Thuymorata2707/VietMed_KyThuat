@@ -1001,6 +1001,11 @@ export class RepairsService {
     return {
       machine: {
         include: {
+          businessLine: {
+            include: {
+              productIndustry: true,
+            },
+          },
           customer: {
             include: {
               region: true,

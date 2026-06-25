@@ -1340,6 +1340,11 @@ export class InstallationsService {
         select: {
           id: true,
           businessLineId: true,
+          businessLine: {
+            include: {
+              productIndustry: true,
+            },
+          },
           machineCode: true,
           serialNumber: true,
           modelName: true,
@@ -1356,8 +1361,20 @@ export class InstallationsService {
           region: true,
         },
       },
-      businessLine: true,
-      plannedMachineModel: true,
+      businessLine: {
+        include: {
+          productIndustry: true,
+        },
+      },
+      plannedMachineModel: {
+        include: {
+          businessLine: {
+            include: {
+              productIndustry: true,
+            },
+          },
+        },
+      },
       installedBy: {
         select: {
           id: true,
