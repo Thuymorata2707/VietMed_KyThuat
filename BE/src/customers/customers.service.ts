@@ -136,6 +136,36 @@ export class CustomersService {
                 warrantyCard: true,
               },
             },
+            inventoryMovements: {
+              orderBy: { occurredAt: 'desc' },
+              take: 30,
+              include: {
+                createdBy: { select: this.userSummarySelect() },
+                customer: {
+                  select: {
+                    id: true,
+                    name: true,
+                    hospitalName: true,
+                  },
+                },
+              },
+            },
+            accessories: {
+              orderBy: { createdAt: 'desc' },
+              include: {
+                componentAccessory: {
+                  include: {
+                    component: {
+                      select: {
+                        id: true,
+                        code: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },

@@ -70,6 +70,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     ? 'Thiết lập tài khoản'
     : location.pathname.startsWith('/technical-machines')
       ? 'Máy phòng kỹ thuật'
+    : location.pathname.startsWith('/customer-profiles')
+      ? 'Hồ sơ khách hàng'
     : location.pathname.startsWith('/my-customers')
       ? 'Khách hàng phụ trách'
     : activeNavItem?.label || 'Tổng quan';
@@ -337,6 +339,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             element={
               <RequireRole
                 allowedRoles={['admin', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <EngineerCustomersPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/customer-profiles"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'manager']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >

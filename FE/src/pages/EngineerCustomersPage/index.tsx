@@ -1,7 +1,7 @@
 import { ArrowRight, Building2, CalendarClock, ChevronLeft, ClipboardList, Phone, Search, Stethoscope, UserRound, Wrench } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
 
@@ -50,6 +50,35 @@ type MachineHistory = {
   engineer?: UserSummary | null;
   installedBy?: UserSummary | null;
   warrantyCard?: { endDate?: string | null } | null;
+  accessories?: unknown;
+};
+
+type MachineAccessory = {
+  id: string;
+  code?: string | null;
+  name: string;
+  serialNumber?: string | null;
+  description?: string | null;
+  note?: string | null;
+  componentAccessory?: {
+    code?: string | null;
+    name?: string | null;
+    component?: {
+      code?: string | null;
+      name?: string | null;
+    } | null;
+  } | null;
+};
+
+type InventoryMovement = {
+  id: string;
+  code?: string | null;
+  type?: string | null;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  occurredAt?: string | null;
+  note?: string | null;
+  createdBy?: UserSummary | null;
 };
 
 type CustomerMachine = {
@@ -69,6 +98,8 @@ type CustomerMachine = {
   repairs?: MachineHistory[];
   maintenances?: MachineHistory[];
   installations?: MachineHistory[];
+  inventoryMovements?: InventoryMovement[];
+  accessories?: MachineAccessory[];
 };
 
 type CustomerDetail = CustomerSummary & {
@@ -82,7 +113,7 @@ type EngineerCustomersPageProps = {
 
 type TimelineItem = {
   id: string;
-  kind: 'installation' | 'repair' | 'maintenance';
+  kind: 'installation' | 'repair' | 'maintenance' | 'inventory';
   title: string;
   machine: CustomerMachine;
   date?: string | null;
@@ -108,6 +139,17 @@ const statusLabels: Record<string, string> = {
   CANCELLED: 'Đã hủy',
   SCHEDULED: 'Đã lên lịch',
   OVERDUE: 'Quá hạn',
+  IMPORT: 'Nhập kho',
+  SPLIT_ACCESSORY: 'Tách phụ kiện',
+  RESERVE: 'Giữ máy',
+  INSTALL: 'Giao/lắp máy',
+  RETURN: 'Thu hồi',
+  SELL: 'Bán',
+  ADJUST_STATUS: 'Điều chỉnh',
+  ACCESSORY_SPLIT: 'Đã tách phụ kiện',
+  RESERVED: 'Đã giữ máy',
+  RETURNED: 'Đã thu hồi',
+  SOLD: 'Đã bán',
 };
 
 const categoryLabels: Record<string, string> = {
@@ -123,6 +165,8 @@ const categoryLabels: Record<string, string> = {
 
 export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPageProps) {
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [search, setSearch] = useState('');
@@ -152,8 +196,9 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
         ? `/customers?limit=100&primaryEngineerId=${encodeURIComponent(user.id)}`
         : '/customers?limit=100';
       const result = await apiFetch<Paginated<CustomerSummary>>(query);
+      const requestedCustomerId = searchParams.get('customerId') || '';
       setCustomers(result.data);
-      setSelectedCustomerId((current) => current || result.data[0]?.id || '');
+      setSelectedCustomerId((current) => requestedCustomerId || current || result.data[0]?.id || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được danh sách khách hàng.');
     } finally {
@@ -195,7 +240,8 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
   const machines = detail?.machines ?? [];
   const timeline = useMemo(() => buildTimeline(machines), [machines]);
   const totalRepairs = machines.reduce((total, machine) => total + (machine.repairs?.length ?? 0), 0);
-  const totalMaintenances = machines.reduce((total, machine) => total + (machine.maintenances?.length ?? 0), 0);
+  const totalAccessories = machines.reduce((total, machine) => total + (machine.accessories?.length ?? 0), 0);
+  const isAdminProfile = location.pathname.startsWith('/customer-profiles');
 
   return (
     <section className="grid gap-5 p-6 max-sm:p-4">
@@ -203,9 +249,11 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <span className="text-xs font-semibold uppercase tracking-[0.04em] text-[#d71920]">Chăm sóc khách hàng</span>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[#1f1f1f]">Khách hàng phụ trách</h1>
+            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-[#1f1f1f]">{isAdminProfile ? 'Hồ sơ khách hàng' : 'Khách hàng phụ trách'}</h1>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#666666]">
-              Theo dõi máy đang lắp, lịch sử sửa chữa và các lần bảo trì của từng khách hàng trong một màn hình.
+              {isAdminProfile
+                ? 'Xem người phụ trách, máy đã lắp, lịch sử sửa chữa, bảo trì và phụ kiện liên quan của từng khách hàng.'
+                : 'Theo dõi máy đang lắp, lịch sử sửa chữa và các lần bảo trì của từng khách hàng trong một màn hình.'}
             </p>
           </div>
           <Link className="secondary-button" to="/">
@@ -218,7 +266,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
           <Metric icon={<Building2 size={18} />} label="Khách đang theo dõi" value={customers.length} />
           <Metric icon={<Stethoscope size={18} />} label="Máy tại khách chọn" value={machines.length} />
           <Metric icon={<Wrench size={18} />} label="Lượt sửa chữa" value={totalRepairs} />
-          <Metric icon={<CalendarClock size={18} />} label="Lượt bảo trì" value={totalMaintenances} />
+          <Metric icon={<ClipboardList size={18} />} label="Phụ kiện/linh kiện" value={totalAccessories} />
         </div>
       </div>
 
@@ -270,7 +318,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
         <main className="min-w-0">
           {selectedCustomer ? (
-            <CustomerDetailView customer={selectedCustomer} detailLoading={detailLoading} machines={machines} timeline={timeline} />
+            <CustomerDetailView customer={selectedCustomer} detailLoading={detailLoading} isAdminProfile={isAdminProfile} machines={machines} timeline={timeline} />
           ) : (
             <div className="grid min-h-[420px] place-items-center rounded-xl border border-dashed border-[#d7d7d7] bg-white p-8 text-center">
               <EmptyState title="Chọn một khách hàng để xem chi tiết" />
@@ -285,15 +333,31 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 function CustomerDetailView({
   customer,
   detailLoading,
+  isAdminProfile,
   machines,
   timeline,
 }: {
   customer: CustomerSummary;
   detailLoading: boolean;
+  isAdminProfile: boolean;
   machines: CustomerMachine[];
   timeline: TimelineItem[];
 }) {
-  const returnTo = encodeURIComponent('/my-customers');
+  const returnTo = encodeURIComponent(isAdminProfile ? `/customer-profiles?customerId=${customer.id}` : '/my-customers');
+  const accessories = machines.flatMap((machine) =>
+    (machine.accessories ?? []).map((accessory) => ({ ...accessory, machine })),
+  );
+  const installationAccessories = machines.flatMap((machine) =>
+    (machine.installations ?? []).flatMap((installation) =>
+      normalizeAccessoryList(installation.accessories).map((name) => ({
+        id: `${installation.id}-${name}`,
+        name,
+        machine,
+        installedAt: installation.installedAt,
+        code: installation.code,
+      })),
+    ),
+  );
 
   return (
     <div className="grid gap-5">
@@ -348,7 +412,7 @@ function CustomerDetailView({
               {timeline.map((item) => (
                 <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-3" key={`${item.kind}-${item.id}`}>
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-[#d71920] shadow-[inset_0_0_0_1px_#eeeeee]">
-                    {item.kind === 'repair' ? <Wrench size={16} /> : item.kind === 'maintenance' ? <CalendarClock size={16} /> : <Stethoscope size={16} />}
+                    {item.kind === 'repair' ? <Wrench size={16} /> : item.kind === 'maintenance' ? <CalendarClock size={16} /> : item.kind === 'inventory' ? <ClipboardList size={16} /> : <Stethoscope size={16} />}
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -368,6 +432,32 @@ function CustomerDetailView({
           )}
         </section>
       </div>
+
+      <section className="grid content-start gap-3 rounded-xl border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <PanelTitle title="Linh kiện và phụ kiện liên quan" subtitle="Phụ kiện đang gắn trên máy, phụ kiện bàn giao khi lắp đặt và ghi chú kho gần nhất" />
+        {detailLoading ? (
+          <EmptyState title="Đang tải phụ kiện..." />
+        ) : accessories.length || installationAccessories.length ? (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {accessories.map((accessory) => (
+              <div className="grid gap-2 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-3" key={accessory.id}>
+                <span className="text-xs font-semibold text-[#d71920]">{accessory.componentAccessory?.component?.name || accessory.componentAccessory?.name || accessory.code || 'Phụ kiện máy'}</span>
+                <strong className="text-sm text-[#1f1f1f]">{accessory.name}</strong>
+                <span className="text-xs leading-5 text-[#666666]">{[machineTitle(accessory.machine), accessory.serialNumber ? `S/N ${accessory.serialNumber}` : '', accessory.note || accessory.description].filter(Boolean).join(' - ')}</span>
+              </div>
+            ))}
+            {installationAccessories.map((item) => (
+              <div className="grid gap-2 rounded-lg border border-[#eeeeee] bg-[#fffafa] p-3" key={item.id}>
+                <span className="text-xs font-semibold text-[#d71920]">Phụ kiện bàn giao</span>
+                <strong className="text-sm text-[#1f1f1f]">{item.name}</strong>
+                <span className="text-xs leading-5 text-[#666666]">{[machineTitle(item.machine), item.code, formatDate(item.installedAt)].filter(Boolean).join(' - ')}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="Chưa ghi nhận phụ kiện hoặc linh kiện thay thế riêng cho khách hàng này" />
+        )}
+      </section>
     </div>
   );
 }
@@ -474,6 +564,16 @@ function buildTimeline(machines: CustomerMachine[]) {
         note: item.resultNote || item.description,
         person: item.engineer?.fullName,
       })),
+      ...(machine.inventoryMovements ?? []).map((item): TimelineItem => ({
+        id: item.id,
+        kind: 'inventory',
+        title: item.code ? `Kho máy ${item.code}` : 'Biến động kho máy',
+        machine,
+        date: item.occurredAt,
+        status: item.toStatus || item.type,
+        note: [displayStatus(item.type), item.note, item.fromStatus && item.toStatus ? `${displayStatus(item.fromStatus)} -> ${displayStatus(item.toStatus)}` : ''].filter(Boolean).join(' - '),
+        person: item.createdBy?.fullName,
+      })),
     ])
     .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
     .slice(0, 30);
@@ -486,6 +586,27 @@ function machineTitle(machine: CustomerMachine) {
 function displayStatus(status?: string | null) {
   if (!status) return '-';
   return statusLabels[status] || status;
+}
+
+function normalizeAccessoryList(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object') {
+          const record = item as Record<string, unknown>;
+          return String(record.name || record.itemName || record.code || '');
+        }
+        return '';
+      })
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value.split('\n').map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
 }
 
 function formatDate(value?: string | null) {

@@ -539,6 +539,31 @@
   min-width: 76px;
 }
 
+.customer-profile-link {
+  align-items: center;
+  background: #fff7f7;
+  border: 1px solid #f5c7cb;
+  border-radius: 8px;
+  color: #d71920;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 34px;
+  padding: 0 10px;
+  text-decoration: none;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+  white-space: nowrap;
+}
+
+.customer-profile-link:hover {
+  background: #ffffff;
+  border-color: #d71920;
+  transform: translateY(-1px);
+}
+
 .crud-modal {
   font-family: var(--font-sans);
   max-height: min(860px, calc(100vh - 36px));
