@@ -140,6 +140,7 @@ function toVietnameseApiError(message: string, statusCode: number) {
   if (normalized.includes('password must be at least')) return 'Mật khẩu phải có ít nhất 6 ký tự.';
   if (normalized.includes('role does not exist')) return 'Vai trò không tồn tại.';
   if (normalized.includes('region does not exist')) return 'Khu vực không tồn tại.';
+  if (normalized.includes('engineer does not exist')) return 'Kỹ sư phụ trách không tồn tại hoặc chưa hoạt động.';
   if (normalized.includes('not found')) return 'Không tìm thấy dữ liệu cần thao tác.';
   if (normalized.includes('limit must not be greater than')) return 'Số dòng tải lên không được vượt quá giới hạn backend cho phép.';
   if (normalized.includes('unauthorized') || statusCode === 401) return 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ.';

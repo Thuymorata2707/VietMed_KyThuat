@@ -85,4 +85,8 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsString()
   regionId?: string;
+
+  @IsOptional()
+  @IsString()
+  primaryEngineerId?: string | null;
 }

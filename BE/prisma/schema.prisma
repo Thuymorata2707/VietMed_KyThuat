@@ -260,6 +260,7 @@ model User {
   reviewedDailyWorkNotes DailyWorkNote[]           @relation("DailyWorkNoteReviewer")
   weeklyReports         WeeklyReport[]             @relation("WeeklyReportUser")
   reviewedWeeklyReports WeeklyReport[]             @relation("WeeklyReportReviewer")
+  primaryCustomers      Customer[]                 @relation("CustomerPrimaryEngineer")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -450,6 +451,9 @@ model Customer {
   regionId String
   region   Region @relation(fields: [regionId], references: [id])
 
+  primaryEngineerId String?
+  primaryEngineer   User?   @relation("CustomerPrimaryEngineer", fields: [primaryEngineerId], references: [id], onDelete: SetNull)
+
   machines             Machine[]
   inventoryMovements   MachineInventoryMovement[]
   machineInstallations MachineInstallation[]
@@ -457,6 +461,8 @@ model Customer {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([primaryEngineerId])
 }
 
 model BusinessLine {

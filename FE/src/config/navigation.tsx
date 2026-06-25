@@ -31,6 +31,7 @@ export type NavGroup = {
 export const navItems: NavItem[] = [
   { path: '/', label: 'Tổng quan', icon: <Gauge size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/customers', label: 'Khách hàng', icon: <Building2 size={18} />, roles: ['admin', 'manager'] },
+  { path: '/my-customers', label: 'Khách hàng phụ trách', icon: <Building2 size={18} />, roles: ['engineer'] },
   { path: '/installations', label: 'Lắp đặt', icon: <PackageCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/service-tickets', label: 'Sửa chữa / Bảo trì', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/daily-work', label: 'Lịch công việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
@@ -60,6 +61,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { path: '/my-tasks', label: 'Phân việc', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
       { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['manager', 'engineer'] },
+      { path: '/my-customers', label: 'Khách hàng phụ trách', icon: <Building2 size={18} />, roles: ['engineer'] },
       { path: '/business-lines', label: 'Sản phẩm & Thiết bị', icon: <BriefcaseBusiness size={18} />, roles: ['admin', 'manager', 'engineer'] },
       { path: '/service-tickets', label: 'Sửa chữa / Bảo trì', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
       { path: '/installations', label: 'Lắp đặt', icon: <PackageCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },

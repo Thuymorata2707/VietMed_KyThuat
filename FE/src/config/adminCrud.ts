@@ -135,6 +135,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { key: 'customerType', label: 'Loại' },
       { key: 'status', label: 'Trạng thái' },
       { key: 'region.name', label: 'Khu vực' },
+      { key: 'primaryEngineer.fullName', label: 'Kỹ sư phụ trách' },
     ],
     fields: [
       { name: 'name', label: 'Tên khách hàng', required: true },
@@ -148,6 +149,13 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         required: true,
         valuePath: 'region.id',
         optionSource: { endpoint: '/regions', labelPath: 'name', valuePath: 'id' },
+      },
+      {
+        name: 'primaryEngineerId',
+        label: 'Kỹ sư phụ trách',
+        type: 'select',
+        valuePath: 'primaryEngineer.id',
+        optionSource: engineerOptionSource,
       },
       { name: 'phone', label: 'Điện thoại' },
       { name: 'email', label: 'Email', type: 'email' },

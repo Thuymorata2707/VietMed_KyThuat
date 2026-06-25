@@ -21,6 +21,7 @@ const AdminWorkAssignmentPage = lazy(() => import('../../pages/AdminWorkAssignme
 const DashboardPage = lazy(() => import('../../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const DailyWorkCalendarPage = lazy(() => import('../../pages/DailyWorkCalendarPage').then((module) => ({ default: module.DailyWorkCalendarPage })));
 const EngineerPerformancePage = lazy(() => import('../../pages/EngineerPerformancePage').then((module) => ({ default: module.EngineerPerformancePage })));
+const EngineerCustomersPage = lazy(() => import('../../pages/EngineerCustomersPage').then((module) => ({ default: module.EngineerCustomersPage })));
 const EngineerTasksPage = lazy(() => import('../../pages/EngineerTasksPage').then((module) => ({ default: module.EngineerTasksPage })));
 const InstallationUpdatePage = lazy(() => import('../../pages/InstallationUpdatePage').then((module) => ({ default: module.InstallationUpdatePage })));
 const InventoryMovementsPage = lazy(() => import('../../pages/InventoryMovementsPage').then((module) => ({ default: module.InventoryMovementsPage })));
@@ -69,6 +70,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     ? 'Thiết lập tài khoản'
     : location.pathname.startsWith('/technical-machines')
       ? 'Máy phòng kỹ thuật'
+    : location.pathname.startsWith('/my-customers')
+      ? 'Khách hàng phụ trách'
     : activeNavItem?.label || 'Tổng quan';
   const unreadCount = useMemo(() => notifications.filter((item) => !item.readAt).length, [notifications]);
 
@@ -329,6 +332,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             }
           />
           <Route path="/my-tasks" element={role === 'admin' ? <AdminWorkAssignmentPage /> : <EngineerTasksPage user={user} />} />
+          <Route
+            path="/my-customers"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <EngineerCustomersPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
           <Route
             path="/users/new"
             element={

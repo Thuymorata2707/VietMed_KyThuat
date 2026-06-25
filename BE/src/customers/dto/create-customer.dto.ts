@@ -92,4 +92,8 @@ export class CreateCustomerDto {
   @IsString()
   @IsNotEmpty()
   regionId!: string;
+
+  @IsOptional()
+  @IsString()
+  primaryEngineerId?: string;
 }

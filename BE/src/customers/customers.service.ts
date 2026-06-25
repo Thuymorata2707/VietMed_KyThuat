@@ -26,6 +26,7 @@ export class CustomersService {
     this.validateCreateCustomer(dto);
     await this.ensureRegionExists(dto.regionId);
     await this.ensureCustomerCodeIsAvailable(dto.customerCode);
+    await this.ensureEngineerExists(dto.primaryEngineerId);
 
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.customer.create({
@@ -51,15 +52,9 @@ export class CustomersService {
           fullAddress: this.buildFullAddress(dto),
           note: dto.note?.trim() || null,
           regionId: dto.regionId,
+          primaryEngineerId: dto.primaryEngineerId?.trim() || null,
         },
-        include: {
-          region: true,
-          _count: {
-            select: {
-              machines: true,
-            },
-          },
-        },
+        include: this.customerListInclude(),
       });
 
       await this.auditLogsService.create(
@@ -73,6 +68,7 @@ export class CustomersService {
             name: created.name,
             regionId: created.regionId,
             status: created.status,
+            primaryEngineerId: created.primaryEngineerId,
           },
         },
         tx,
@@ -93,14 +89,7 @@ export class CustomersService {
     const [data, total] = await this.prisma.$transaction([
       this.prisma.customer.findMany({
         where,
-        include: {
-          region: true,
-          _count: {
-            select: {
-              machines: true,
-            },
-          },
-        },
+        include: this.customerListInclude(),
         orderBy: {
           createdAt: 'desc',
         },
@@ -117,10 +106,36 @@ export class CustomersService {
     const customer = await this.prisma.customer.findFirst({
       where: this.withAccessScope({ id }, user),
       include: {
-        region: true,
+        ...this.customerListInclude(),
         machines: {
           orderBy: {
             createdAt: 'desc',
+          },
+          include: {
+            primaryEngineer: { select: this.userSummarySelect() },
+            installedBy: { select: this.userSummarySelect() },
+            repairs: {
+              orderBy: { reportedAt: 'desc' },
+              take: 30,
+              include: {
+                engineer: { select: this.userSummarySelect() },
+              },
+            },
+            maintenances: {
+              orderBy: { scheduledDate: 'desc' },
+              take: 30,
+              include: {
+                engineer: { select: this.userSummarySelect() },
+              },
+            },
+            installations: {
+              orderBy: { installedAt: 'desc' },
+              take: 20,
+              include: {
+                installedBy: { select: this.userSummarySelect() },
+                warrantyCard: true,
+              },
+            },
           },
         },
       },
@@ -142,6 +157,10 @@ export class CustomersService {
 
     if (dto.customerCode) {
       await this.ensureCustomerCodeIsAvailable(dto.customerCode, id);
+    }
+
+    if (dto.primaryEngineerId !== undefined) {
+      await this.ensureEngineerExists(dto.primaryEngineerId);
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -206,15 +225,12 @@ export class CustomersService {
               : dto.fullAddress?.trim() || null,
           note: dto.note === undefined ? undefined : dto.note?.trim() || null,
           regionId: dto.regionId,
+          primaryEngineerId:
+            dto.primaryEngineerId === undefined
+              ? undefined
+              : dto.primaryEngineerId?.trim() || null,
         },
-        include: {
-          region: true,
-          _count: {
-            select: {
-              machines: true,
-            },
-          },
-        },
+        include: this.customerListInclude(),
       });
 
       await this.auditLogsService.create(
@@ -245,6 +261,7 @@ export class CustomersService {
             'fullAddress',
             'note',
             'regionId',
+            'primaryEngineerId',
           ]),
         },
         tx,
@@ -331,6 +348,28 @@ export class CustomersService {
     }
   }
 
+  private async ensureEngineerExists(userId?: string | null) {
+    if (!userId?.trim()) {
+      return;
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId.trim(),
+        status: 'ACTIVE',
+        role: {
+          name: {
+            equals: 'engineer',
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Engineer does not exist');
+    }
+  }
+
   private async ensureCustomerCodeIsAvailable(
     customerCode?: string | null,
     currentCustomerId?: string,
@@ -363,6 +402,7 @@ export class CustomersService {
       status: query.status,
       customerType: query.customerType,
       regionId: query.regionId,
+      primaryEngineerId: query.primaryEngineerId,
       OR: search
         ? [
             { customerCode: { contains: search,  } },
@@ -405,5 +445,29 @@ export class CustomersService {
       .filter(Boolean);
 
     return addressParts.length ? addressParts.join(', ') : null;
+  }
+
+  private userSummarySelect() {
+    return {
+      id: true,
+      email: true,
+      fullName: true,
+      phone: true,
+    } satisfies Prisma.UserSelect;
+  }
+
+  private customerListInclude() {
+    return {
+      region: true,
+      primaryEngineer: {
+        select: this.userSummarySelect(),
+      },
+      _count: {
+        select: {
+          machines: true,
+          machineInstallations: true,
+        },
+      },
+    } satisfies Prisma.CustomerInclude;
   }
 }

@@ -34,6 +34,7 @@ export function machineAccessWhere(user?: RequestUser): Prisma.MachineWhereInput
       OR: [
         { installedById: user.id },
         { primaryEngineerId: user.id },
+        { customer: { primaryEngineerId: user.id } },
         { repairs: { some: { engineerId: user.id } } },
         { maintenances: { some: { engineerId: user.id } } },
         { installations: { some: { installedById: user.id } } },
@@ -57,9 +58,14 @@ export function customerAccessWhere(
 
   if (isEngineer(user)) {
     return {
-      machines: {
-        some: machineAccessWhere(user),
-      },
+      OR: [
+        { primaryEngineerId: user.id },
+        {
+          machines: {
+            some: machineAccessWhere(user),
+          },
+        },
+      ],
     };
   }
 
@@ -82,7 +88,12 @@ export function repairAccessWhere(user?: RequestUser): Prisma.RepairWhereInput {
   }
 
   if (isEngineer(user)) {
-    return { engineerId: user.id };
+    return {
+      OR: [
+        { engineerId: user.id },
+        { machine: { customer: { primaryEngineerId: user.id } } },
+      ],
+    };
   }
 
   return { id: '__no_access__' };
@@ -106,7 +117,12 @@ export function maintenanceAccessWhere(
   }
 
   if (isEngineer(user)) {
-    return { engineerId: user.id };
+    return {
+      OR: [
+        { engineerId: user.id },
+        { machine: { customer: { primaryEngineerId: user.id } } },
+      ],
+    };
   }
 
   return { id: '__no_access__' };
@@ -128,7 +144,12 @@ export function installationAccessWhere(
   }
 
   if (isEngineer(user)) {
-    return { installedById: user.id };
+    return {
+      OR: [
+        { installedById: user.id },
+        { customer: { primaryEngineerId: user.id } },
+      ],
+    };
   }
 
   return { id: '__no_access__' };

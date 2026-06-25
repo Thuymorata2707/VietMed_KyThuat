@@ -20,7 +20,11 @@ type CustomerOption = {
   customerCode?: string | null;
   name: string;
   phone?: string | null;
+  contactPerson?: string | null;
+  contactPhone?: string | null;
   province?: string | null;
+  address?: string | null;
+  fullAddress?: string | null;
   region?: Region | null;
 };
 type EngineerOption = {
@@ -113,6 +117,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const [searchParams, setSearchParams] = useSearchParams();
   const initialKind = fixedKind ?? normalizeKind(searchParams.get('kind'));
   const initialMachineId = searchParams.get('machineId') ?? '';
+  const initialCustomerId = searchParams.get('customerId') ?? '';
   const initialWarrantyStatus = searchParams.get('warrantyStatus') ?? '';
   const returnTo = searchParams.get('returnTo') ?? '';
   const role = getRoleName(user);
@@ -135,7 +140,13 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const [success, setSuccess] = useState('');
   const scope = fixedKind === 'installation' || initialKind === 'installation' ? 'installation' : 'service';
 
-  const visibleMachines = useMemo(() => machines.filter((machine) => canEngineerUseMachine(user, machine)), [machines, user]);
+  const visibleMachines = useMemo(
+    () =>
+      machines
+        .filter((machine) => canEngineerUseMachine(user, machine))
+        .filter((machine) => kind === 'installation' || !form.customerId || machine.customer?.id === form.customerId),
+    [form.customerId, kind, machines, user],
+  );
   const visibleMachineModels = useMemo(() => machineModels.filter((model) => canEngineerUseModel(user, model)), [machineModels, user]);
   const selectedMachine = useMemo(() => visibleMachines.find((machine) => machine.id === form.machineId), [form.machineId, visibleMachines]);
   const selectedModel = useMemo(
@@ -155,11 +166,11 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
   useEffect(() => {
     if (!fixedKind) {
-      setSearchParams(compactSearchParams({ kind, machineId: initialMachineId, returnTo, warrantyStatus: initialWarrantyStatus }));
+      setSearchParams(compactSearchParams({ kind, machineId: initialMachineId, customerId: initialCustomerId, returnTo, warrantyStatus: initialWarrantyStatus }));
     }
     setForm((current) => ({
       ...emptyTicketForm(user, kind),
-      customerId: current.customerId,
+      customerId: current.customerId || initialCustomerId,
       engineerId: current.engineerId,
       machineId: '',
       warrantyStatus: initialWarrantyStatus || current.warrantyStatus,
@@ -167,7 +178,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     loadMachines(kind).catch((err) => {
       setError(err instanceof Error ? err.message : 'Không tải được danh sách thiết bị.');
     });
-  }, [fixedKind, initialMachineId, initialWarrantyStatus, kind, returnTo]);
+  }, [fixedKind, initialCustomerId, initialMachineId, initialWarrantyStatus, kind, returnTo]);
 
   async function loadOptions() {
     setLoading(true);
@@ -181,6 +192,10 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
       setCustomers(customersResult.data);
       setMachineModels(modelsResult);
+      const initialCustomer = customersResult.data.find((customer) => customer.id === initialCustomerId);
+      if (initialCustomer) {
+        applyCustomer(initialCustomer);
+      }
 
       if (role === 'engineer') {
         setEngineers([{ id: user.id, email: user.email, fullName: user.fullName }]);
@@ -220,6 +235,22 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   function selectMachine(machineId: string) {
     const machine = machines.find((item) => item.id === machineId);
     applyMachine(machine, machineId);
+  }
+
+  function selectCustomer(customerId: string) {
+    const customer = customers.find((item) => item.id === customerId);
+    applyCustomer(customer, customerId);
+  }
+
+  function applyCustomer(customer?: CustomerOption, fallbackCustomerId = customer?.id ?? '') {
+    updateForm({
+      customerId: customer?.id || fallbackCustomerId,
+      usingDepartment: customer?.name || form.usingDepartment,
+      representative: customer?.contactPerson || form.representative,
+      address: customer?.fullAddress || customer?.address || form.address,
+      contactPhone: customer?.contactPhone || customer?.phone || form.contactPhone,
+    });
+    setQuickMachineForm((current) => ({ ...current, customerId: customer?.id || fallbackCustomerId || current.customerId }));
   }
 
   function applyMachine(machine?: MachineOption, fallbackMachineId = machine?.id ?? '') {
@@ -493,10 +524,24 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 </label>
               )}
 
+              {kind !== 'installation' ? (
+                <label className={labelClass}>
+                  Khách hàng
+                  <select className={fieldClass} disabled={loading} onChange={(event) => selectCustomer(event.target.value)} value={form.customerId}>
+                    <option value="">Tất cả khách hàng</option>
+                    {customers.map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customerLabel(customer)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+
               {kind === 'installation' ? (
                 <label className={labelClass}>
                   Khách hàng
-                  <select className={fieldClass} disabled={loading} onChange={(event) => updateForm({ customerId: event.target.value })} required value={form.customerId}>
+                  <select className={fieldClass} disabled={loading} onChange={(event) => selectCustomer(event.target.value)} required value={form.customerId}>
                     <option value="">Chọn khách hàng</option>
                     {customers.map((customer) => (
                       <option key={customer.id} value={customer.id}>
