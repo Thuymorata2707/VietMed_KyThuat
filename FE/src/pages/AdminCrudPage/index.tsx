@@ -1002,7 +1002,7 @@ function CustomerTableRow({
       {canUpdate || canDelete ? (
         <td className="actions-cell">
           <div className="row-actions">
-            <Link className="customer-profile-link" onClick={(event) => event.stopPropagation()} to={`/customer-profiles?customerId=${String(readPath(row, 'id') ?? '')}`}>
+            <Link className="customer-profile-link" onClick={(event) => event.stopPropagation()} to={`/customers/profile?customerId=${String(readPath(row, 'id') ?? '')}`}>
               Hồ sơ
             </Link>
             {canUpdate ? (

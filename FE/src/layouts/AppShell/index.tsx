@@ -70,7 +70,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     ? 'Thiết lập tài khoản'
     : location.pathname.startsWith('/technical-machines')
       ? 'Máy phòng kỹ thuật'
-    : location.pathname.startsWith('/customer-profiles')
+    : location.pathname.startsWith('/customers/profile')
       ? 'Hồ sơ khách hàng'
     : location.pathname.startsWith('/my-customers')
       ? 'Khách hàng phụ trách'
@@ -347,7 +347,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             }
           />
           <Route
-            path="/customer-profiles"
+            path="/customers/profile"
             element={
               <RequireRole
                 allowedRoles={['admin', 'manager']}
@@ -358,6 +358,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
               </RequireRole>
             }
           />
+          <Route path="/customer-profiles" element={<Navigate replace to={`/customers/profile${location.search}`} />} />
           <Route
             path="/users/new"
             element={

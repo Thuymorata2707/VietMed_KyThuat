@@ -12,6 +12,10 @@ type UserSummary = {
   phone?: string | null;
 };
 
+type EngineerOption = UserSummary & {
+  region?: { id: string; name: string } | null;
+};
+
 type CustomerSummary = {
   id: string;
   customerCode?: string | null;
@@ -165,6 +169,8 @@ const categoryLabels: Record<string, string> = {
 
 export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPageProps) {
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
+  const [engineers, setEngineers] = useState<EngineerOption[]>([]);
+  const [selectedEngineerId, setSelectedEngineerId] = useState('');
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -176,7 +182,12 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
   useEffect(() => {
     void loadCustomers();
-  }, [currentRole, user.id]);
+  }, [currentRole, selectedEngineerId, user.id]);
+
+  useEffect(() => {
+    if (currentRole === 'engineer') return;
+    void loadEngineers();
+  }, [currentRole]);
 
   useEffect(() => {
     if (!selectedCustomerId) {
@@ -192,17 +203,33 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
     setError('');
 
     try {
-      const query = currentRole === 'engineer'
-        ? `/customers?limit=100&primaryEngineerId=${encodeURIComponent(user.id)}`
-        : '/customers?limit=100';
+      const params = new URLSearchParams({ limit: '100' });
+      if (currentRole === 'engineer') {
+        params.set('primaryEngineerId', user.id);
+      } else if (selectedEngineerId) {
+        params.set('primaryEngineerId', selectedEngineerId);
+      }
+      const query = `/customers?${params.toString()}`;
       const result = await apiFetch<Paginated<CustomerSummary>>(query);
       const requestedCustomerId = searchParams.get('customerId') || '';
       setCustomers(result.data);
-      setSelectedCustomerId((current) => requestedCustomerId || current || result.data[0]?.id || '');
+      setSelectedCustomerId((current) => {
+        const nextId = requestedCustomerId || current;
+        return result.data.some((customer) => customer.id === nextId) ? nextId : result.data[0]?.id || '';
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được danh sách khách hàng.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadEngineers() {
+    try {
+      const result = await apiFetch<Paginated<EngineerOption>>('/users?limit=100&roleName=engineer&status=ACTIVE');
+      setEngineers(result.data);
+    } catch {
+      setEngineers([]);
     }
   }
 
@@ -241,7 +268,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
   const timeline = useMemo(() => buildTimeline(machines), [machines]);
   const totalRepairs = machines.reduce((total, machine) => total + (machine.repairs?.length ?? 0), 0);
   const totalAccessories = machines.reduce((total, machine) => total + (machine.accessories?.length ?? 0), 0);
-  const isAdminProfile = location.pathname.startsWith('/customer-profiles');
+  const isAdminProfile = location.pathname.startsWith('/customers/profile');
 
   return (
     <section className="grid gap-5 p-6 max-sm:p-4">
@@ -261,6 +288,27 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
             Tổng quan
           </Link>
         </div>
+
+        {isAdminProfile ? (
+          <label className="grid max-w-sm gap-1.5 text-sm font-medium text-[#333333]">
+            Lọc theo kỹ sư quản lý
+            <select
+              className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+              onChange={(event) => {
+                setSelectedEngineerId(event.target.value);
+                setSelectedCustomerId('');
+              }}
+              value={selectedEngineerId}
+            >
+              <option value="">Tất cả kỹ sư</option>
+              {engineers.map((engineer) => (
+                <option key={engineer.id} value={engineer.id}>
+                  {[engineer.fullName || engineer.email, engineer.region?.name].filter(Boolean).join(' - ')}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         <div className="grid gap-3 md:grid-cols-4">
           <Metric icon={<Building2 size={18} />} label="Khách đang theo dõi" value={customers.length} />
@@ -343,7 +391,7 @@ function CustomerDetailView({
   machines: CustomerMachine[];
   timeline: TimelineItem[];
 }) {
-  const returnTo = encodeURIComponent(isAdminProfile ? `/customer-profiles?customerId=${customer.id}` : '/my-customers');
+  const returnTo = encodeURIComponent(isAdminProfile ? `/customers/profile?customerId=${customer.id}` : '/my-customers');
   const accessories = machines.flatMap((machine) =>
     (machine.accessories ?? []).map((accessory) => ({ ...accessory, machine })),
   );

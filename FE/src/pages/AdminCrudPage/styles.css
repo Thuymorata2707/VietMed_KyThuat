@@ -25,6 +25,16 @@
   align-items: flex-start;
 }
 
+.customer-crud-heading,
+.customer-crud-summary,
+.customer-crud-list,
+.customer-form-page {
+  font-family: "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "tnum" 1, "cv05" 1;
+  letter-spacing: 0;
+  text-rendering: geometricPrecision;
+}
+
 .customer-crud-summary {
   display: grid;
   gap: 12px;
@@ -44,14 +54,16 @@
 
 .customer-metric span {
   color: #666666;
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .customer-metric strong {
   color: #1f1f1f;
-  font-size: 28px;
+  font-size: 27px;
   font-variant-numeric: tabular-nums;
+  font-weight: 650;
   line-height: 1;
 }
 
@@ -72,13 +84,18 @@
 .customer-table-wrap th {
   background: #fbfbfb;
   color: #666666;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.35;
   text-transform: none;
 }
 
 .customer-table-wrap td {
-  padding: 15px 14px;
+  color: #333333;
+  font-size: 13.5px;
+  line-height: 1.55;
+  padding: 16px 14px;
 }
 
 .customer-row:hover {
@@ -94,17 +111,18 @@
 
 .customer-name-cell strong {
   color: #1f1f1f;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.35;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.42;
+  text-wrap: pretty;
 }
 
 .customer-name-cell span,
 .customer-stack-cell span,
 .customer-name-cell small {
   color: #666666;
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 12.5px;
+  line-height: 1.55;
 }
 
 .customer-name-cell small {
@@ -113,8 +131,9 @@
 
 .customer-stack-cell strong {
   color: #333333;
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .customer-owner-chip,
@@ -123,8 +142,8 @@
   align-items: center;
   border-radius: 8px;
   display: inline-flex;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 650;
   min-height: 30px;
   padding: 7px 10px;
   white-space: nowrap;
@@ -677,15 +696,15 @@
 
 .customer-form-section-heading h3 {
   color: #1f1f1f;
-  font-size: 16px;
-  font-weight: 750;
-  line-height: 1.25;
+  font-size: 16.5px;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .customer-form-section-heading p {
   color: #666666;
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 13.5px;
+  line-height: 1.65;
   max-width: 680px;
 }
 
@@ -701,8 +720,9 @@
 .customer-form-page .admin-crud-form label,
 .customer-form-page .searchable-field {
   color: #333333;
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .customer-form-page .admin-crud-form input,
@@ -710,6 +730,9 @@
 .customer-form-page .admin-crud-form textarea,
 .customer-form-page .searchable-select input {
   background: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
   min-height: 48px;
 }
 
