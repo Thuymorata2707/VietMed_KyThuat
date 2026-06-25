@@ -32,6 +32,9 @@ type CustomerSummary = {
   fullAddress?: string | null;
   region?: { id: string; name: string } | null;
   primaryEngineer?: UserSummary | null;
+  directRepairs?: MachineHistory[];
+  directMaintenances?: MachineHistory[];
+  directInstallations?: MachineHistory[];
   _count?: {
     machines?: number;
     machineInstallations?: number;
@@ -55,6 +58,28 @@ type MachineHistory = {
   installedBy?: UserSummary | null;
   warrantyCard?: { endDate?: string | null } | null;
   accessories?: unknown;
+  machine?: DirectMachineRef | null;
+  plannedMachineModel?: {
+    code?: string | null;
+    name?: string | null;
+    displayName?: string | null;
+  } | null;
+  businessLine?: {
+    name?: string | null;
+    productIndustry?: {
+      name?: string | null;
+    } | null;
+  } | null;
+  deviceName?: string | null;
+  modelName?: string | null;
+  serialNumber?: string | null;
+};
+
+type DirectMachineRef = {
+  id?: string | null;
+  machineCode?: string | null;
+  serialNumber?: string | null;
+  modelName?: string | null;
 };
 
 type MachineAccessory = {
@@ -119,11 +144,16 @@ type TimelineItem = {
   id: string;
   kind: 'installation' | 'repair' | 'maintenance' | 'inventory';
   title: string;
-  machine: CustomerMachine;
+  machine?: CustomerMachine;
+  machineLabel?: string;
   date?: string | null;
   status?: string | null;
   note?: string | null;
   person?: string | null;
+};
+
+type OpenTaskItem = TimelineItem & {
+  href: string;
 };
 
 const statusLabels: Record<string, string> = {
@@ -265,10 +295,18 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
   const selectedCustomer = detail ?? customers.find((customer) => customer.id === selectedCustomerId) ?? null;
   const machines = detail?.machines ?? [];
-  const timeline = useMemo(() => buildTimeline(machines), [machines]);
-  const totalRepairs = machines.reduce((total, machine) => total + (machine.repairs?.length ?? 0), 0);
-  const totalAccessories = machines.reduce((total, machine) => total + (machine.accessories?.length ?? 0), 0);
   const isAdminProfile = location.pathname.startsWith('/customers/profile');
+  const timeline = useMemo(() => buildTimeline(machines, selectedCustomer), [machines, selectedCustomer]);
+  const openTasks = useMemo(() => buildOpenTasks(machines, selectedCustomer, isAdminProfile), [isAdminProfile, machines, selectedCustomer]);
+  const totalRepairs = countUnique([
+    ...machines.flatMap((machine) => machine.repairs ?? []),
+    ...(selectedCustomer?.directRepairs ?? []),
+  ]);
+  const totalMaintenances = countUnique([
+    ...machines.flatMap((machine) => machine.maintenances ?? []),
+    ...(selectedCustomer?.directMaintenances ?? []),
+  ]);
+  const totalAccessories = machines.reduce((total, machine) => total + (machine.accessories?.length ?? 0), 0);
 
   return (
     <section className="grid gap-5 p-6 max-sm:p-4">
@@ -310,10 +348,11 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
           </label>
         ) : null}
 
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-5">
           <Metric icon={<Building2 size={18} />} label="Khách đang theo dõi" value={customers.length} />
           <Metric icon={<Stethoscope size={18} />} label="Máy tại khách chọn" value={machines.length} />
           <Metric icon={<Wrench size={18} />} label="Lượt sửa chữa" value={totalRepairs} />
+          <Metric icon={<CalendarClock size={18} />} label="Lượt bảo trì" value={totalMaintenances} />
           <Metric icon={<ClipboardList size={18} />} label="Phụ kiện/linh kiện" value={totalAccessories} />
         </div>
       </div>
@@ -366,7 +405,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
         <main className="min-w-0">
           {selectedCustomer ? (
-            <CustomerDetailView customer={selectedCustomer} detailLoading={detailLoading} isAdminProfile={isAdminProfile} machines={machines} timeline={timeline} />
+            <CustomerDetailView customer={selectedCustomer} detailLoading={detailLoading} isAdminProfile={isAdminProfile} machines={machines} openTasks={openTasks} timeline={timeline} />
           ) : (
             <div className="grid min-h-[420px] place-items-center rounded-xl border border-dashed border-[#d7d7d7] bg-white p-8 text-center">
               <EmptyState title="Chọn một khách hàng để xem chi tiết" />
@@ -383,12 +422,14 @@ function CustomerDetailView({
   detailLoading,
   isAdminProfile,
   machines,
+  openTasks,
   timeline,
 }: {
   customer: CustomerSummary;
   detailLoading: boolean;
   isAdminProfile: boolean;
   machines: CustomerMachine[];
+  openTasks: OpenTaskItem[];
   timeline: TimelineItem[];
 }) {
   const returnTo = encodeURIComponent(isAdminProfile ? `/customers/profile?customerId=${customer.id}` : '/my-customers');
@@ -435,6 +476,36 @@ function CustomerDetailView({
         </div>
       </div>
 
+      <section className="grid content-start gap-3 rounded-xl border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <PanelTitle title="Việc đang mở" subtitle="Các phiếu cần xử lý, đang làm hoặc chờ xác nhận của khách hàng này" />
+        {detailLoading ? (
+          <EmptyState title="Đang tải việc đang mở..." />
+        ) : openTasks.length ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {openTasks.map((task) => (
+              <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-3" key={`${task.kind}-${task.id}`}>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="text-xs font-semibold text-[#d71920]">{taskKindLabel(task.kind)}</span>
+                    <strong className="mt-1 block text-sm text-[#1f1f1f]">{task.title}</strong>
+                  </div>
+                  <span className="rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-[#555555]">{displayStatus(task.status)}</span>
+                </div>
+                <span className="text-xs leading-5 text-[#666666]">
+                  {[formatDate(task.date), task.machine ? machineTitle(task.machine) : task.machineLabel, task.person].filter(Boolean).join(' - ') || 'Chưa có thông tin máy/kỹ sư'}
+                </span>
+                {task.note ? <p className="line-clamp-2 text-xs leading-5 text-[#666666]">{task.note}</p> : null}
+                <Link className="secondary-button justify-center" to={task.href}>
+                  Cập nhật phiếu
+                </Link>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="Không có việc đang mở cho khách hàng này" />
+        )}
+      </section>
+
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
         <section className="grid content-start gap-3 rounded-xl border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
           <PanelTitle title="Máy đang quản lý" subtitle={`${machines.length} máy gắn với khách hàng này`} />
@@ -468,7 +539,7 @@ function CustomerDetailView({
                       <span className="rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-[#555555]">{displayStatus(item.status)}</span>
                     </div>
                     <span className="mt-1 block text-xs text-[#666666]">
-                      {[formatDate(item.date), machineTitle(item.machine), item.person].filter(Boolean).join(' - ')}
+                      {[formatDate(item.date), item.machine ? machineTitle(item.machine) : item.machineLabel, item.person].filter(Boolean).join(' - ')}
                     </span>
                     {item.note ? <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#666666]">{item.note}</p> : null}
                   </div>
@@ -579,8 +650,9 @@ function EmptyState({ title }: { title: string }) {
   return <div className="rounded-lg border border-dashed border-[#dddddd] bg-[#fafafa] px-4 py-6 text-center text-sm font-medium text-[#666666]">{title}</div>;
 }
 
-function buildTimeline(machines: CustomerMachine[]) {
-  return machines
+function buildTimeline(machines: CustomerMachine[], customer?: CustomerSummary | null) {
+  const seen = new Set<string>();
+  const machineItems = machines
     .flatMap((machine) => [
       ...(machine.installations ?? []).map((item): TimelineItem => ({
         id: item.id,
@@ -622,9 +694,91 @@ function buildTimeline(machines: CustomerMachine[]) {
         note: [displayStatus(item.type), item.note, item.fromStatus && item.toStatus ? `${displayStatus(item.fromStatus)} -> ${displayStatus(item.toStatus)}` : ''].filter(Boolean).join(' - '),
         person: item.createdBy?.fullName,
       })),
-    ])
+    ]);
+  const directItems: TimelineItem[] = [
+    ...(customer?.directInstallations ?? []).map((item): TimelineItem => ({
+      id: item.id,
+      kind: 'installation',
+      title: item.code ? `Lắp đặt ${item.code}` : 'Lắp đặt máy',
+      machineLabel: directMachineLabel(item),
+      date: item.installedAt,
+      status: item.status,
+      note: item.warrantyCard?.endDate ? `Bảo hành đến ${formatDate(item.warrantyCard.endDate)}` : item.description,
+      person: item.installedBy?.fullName,
+    })),
+    ...(customer?.directRepairs ?? []).map((item): TimelineItem => ({
+      id: item.id,
+      kind: 'repair',
+      title: item.title || item.code || 'Sửa chữa',
+      machineLabel: directMachineLabel(item),
+      date: item.reportedAt || item.completedAt,
+      status: item.status,
+      note: item.resultNote || item.description,
+      person: item.engineer?.fullName,
+    })),
+    ...(customer?.directMaintenances ?? []).map((item): TimelineItem => ({
+      id: item.id,
+      kind: 'maintenance',
+      title: item.title || item.code || 'Bảo trì',
+      machineLabel: directMachineLabel(item),
+      date: item.scheduledDate || item.completedAt,
+      status: item.status,
+      note: item.resultNote || item.description,
+      person: item.engineer?.fullName,
+    })),
+  ];
+
+  return [...machineItems, ...directItems]
+    .filter((item) => {
+      const key = `${item.kind}-${item.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
     .slice(0, 30);
+}
+
+function buildOpenTasks(machines: CustomerMachine[], customer: CustomerSummary | null, isAdminProfile: boolean): OpenTaskItem[] {
+  const returnTo = encodeURIComponent(isAdminProfile && customer ? `/customers/profile?customerId=${customer.id}` : '/my-customers');
+  return buildTimeline(machines, customer)
+    .filter((item) => item.kind !== 'inventory' && !isClosedStatus(item.status))
+    .slice(0, 8)
+    .map((item) => ({
+      ...item,
+      href:
+        item.kind === 'installation'
+          ? `/installations/${item.id}/update?returnTo=${returnTo}`
+          : item.kind === 'maintenance'
+            ? `/maintenance/${item.id}/update?returnTo=${returnTo}`
+            : `/repairs/${item.id}/update?returnTo=${returnTo}`,
+    }));
+}
+
+function countUnique(items: Array<{ id: string }>) {
+  return new Set(items.map((item) => item.id)).size;
+}
+
+function isClosedStatus(status?: string | null) {
+  return ['APPROVED', 'CANCELLED', 'COMPLETED', 'INSTALLED'].includes(status || '');
+}
+
+function taskKindLabel(kind: TimelineItem['kind']) {
+  if (kind === 'installation') return 'Lắp đặt';
+  if (kind === 'maintenance') return 'Bảo trì';
+  if (kind === 'repair') return 'Sửa chữa';
+  return 'Kho máy';
+}
+
+function directMachineLabel(item: MachineHistory) {
+  return [
+    item.machine?.machineCode,
+    item.machine?.modelName || item.plannedMachineModel?.displayName || item.plannedMachineModel?.name || item.deviceName || item.modelName,
+    item.machine?.serialNumber || item.serialNumber ? `S/N ${item.machine?.serialNumber || item.serialNumber}` : '',
+    item.businessLine?.productIndustry?.name,
+  ]
+    .filter(Boolean)
+    .join(' - ');
 }
 
 function machineTitle(machine: CustomerMachine) {

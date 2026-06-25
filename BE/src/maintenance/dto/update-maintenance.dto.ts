@@ -33,6 +33,10 @@ export class UpdateMaintenanceDto {
   machineId?: string | null;
 
   @IsOptional()
+  @IsString()
+  customerId?: string | null;
+
+  @IsOptional()
   @IsDateString()
   scheduledDate?: string;
 

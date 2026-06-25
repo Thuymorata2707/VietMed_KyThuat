@@ -431,6 +431,13 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
     fields: [
       { name: 'title', label: 'Tiêu đề', required: true },
       { name: 'description', label: 'Mô tả', type: 'textarea' },
+      {
+        name: 'customerId',
+        label: 'Khách hàng',
+        type: 'select',
+        valuePath: 'customer.id',
+        optionSource: customerOptionSource,
+      },
       { name: 'usingDepartment', label: 'Đơn vị sử dụng thiết bị' },
       { name: 'representative', label: 'Người đại diện' },
       { name: 'address', label: 'Địa chỉ', wide: true },
@@ -492,6 +499,13 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'title', label: 'Tiêu đề', required: true },
       { name: 'description', label: 'Mô tả', type: 'textarea' },
       { name: 'type', label: 'Loại bảo trì', type: 'select', options: maintenanceTypes },
+      {
+        name: 'customerId',
+        label: 'Khách hàng',
+        type: 'select',
+        valuePath: 'customer.id',
+        optionSource: customerOptionSource,
+      },
       {
         name: 'machineId',
         label: 'Thiết bị',

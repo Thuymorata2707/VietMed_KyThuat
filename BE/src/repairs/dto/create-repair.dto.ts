@@ -22,6 +22,10 @@ export class CreateRepairDto {
 
   @IsOptional()
   @IsString()
+  customerId?: string;
+
+  @IsOptional()
+  @IsString()
   engineerId?: string;
 
   @IsOptional()

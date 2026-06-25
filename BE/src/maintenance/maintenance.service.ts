@@ -68,6 +68,10 @@ export class MaintenanceService {
     if (engineerId) {
       await this.ensureEngineerExists(engineerId);
     }
+    const customerId = await this.resolveTicketCustomerId(
+      machine,
+      dto.customerId,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const maintenance = await tx.maintenance.create({
@@ -82,6 +86,7 @@ export class MaintenanceService {
               ? MaintenanceStatus.ASSIGNED
               : MaintenanceStatus.SCHEDULED,
           machineId: machine?.id ?? null,
+          customerId,
           engineerId: engineerId || null,
           scheduledDate: this.parseRequiredDate(
             dto.scheduledDate,
@@ -110,6 +115,7 @@ export class MaintenanceService {
           metadata: {
             code: maintenance.code,
             machineId: maintenance.machineId,
+            customerId: maintenance.customerId,
             engineerId: maintenance.engineerId,
             status: maintenance.status,
           },
@@ -201,6 +207,14 @@ export class MaintenanceService {
         : dto.machineId
           ? await this.ensureMachineExists(dto.machineId)
           : null;
+    const nextCustomerId = await this.resolveTicketCustomerId(
+      nextMachine,
+      dto.customerId === undefined
+        ? dto.machineId === undefined
+          ? maintenance.customerId
+          : nextMachine?.customerId ?? null
+        : dto.customerId,
+    );
 
     if (nextMachine) {
       await this.assertEngineerCanUseMachine(
@@ -235,6 +249,10 @@ export class MaintenanceService {
             dto.engineerId === undefined ? undefined : nextEngineerId,
           machineId:
             dto.machineId === undefined ? undefined : nextMachine?.id ?? null,
+          customerId:
+            dto.customerId === undefined && dto.machineId === undefined
+              ? undefined
+              : nextCustomerId,
           status: dto.status,
           assignedAt:
             dto.engineerId !== undefined &&
@@ -320,6 +338,7 @@ export class MaintenanceService {
             'title',
             'description',
             'type',
+            'customerId',
             'engineerId',
             'status',
             'scheduledDate',
@@ -737,6 +756,38 @@ export class MaintenanceService {
     return machine;
   }
 
+  private async resolveTicketCustomerId(
+    machine: ({ customerId?: string | null } & MachineExpertiseSource) | null,
+    customerId?: string | null,
+  ) {
+    const cleanedCustomerId = customerId?.trim() || null;
+
+    if (machine?.customerId) {
+      if (cleanedCustomerId && cleanedCustomerId !== machine.customerId) {
+        throw new BadRequestException(
+          'Customer does not match selected machine',
+        );
+      }
+
+      return machine.customerId;
+    }
+
+    if (!cleanedCustomerId) {
+      return null;
+    }
+
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: cleanedCustomerId },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      throw new BadRequestException('Customer does not exist');
+    }
+
+    return customer.id;
+  }
+
   private async assertEngineerCanUseMachine(
     actor: RequestUser,
     machine: MachineExpertiseSource,
@@ -853,21 +904,33 @@ export class MaintenanceService {
   ): Prisma.MaintenanceWhereInput {
     const search = query.search?.trim();
     const machineWhere: Prisma.MachineWhereInput = {
-      customerId: query.customerId,
       businessLine: query.productIndustryId
         ? {
             productIndustryId: query.productIndustryId,
           }
         : undefined,
     };
-    const hasMachineWhere = Boolean(query.customerId || query.productIndustryId);
+    const and: Prisma.MaintenanceWhereInput[] = [];
+
+    if (query.customerId) {
+      and.push({
+        OR: [
+          { customerId: query.customerId },
+          { machine: { customerId: query.customerId } },
+        ],
+      });
+    }
+
+    if (query.productIndustryId) {
+      and.push({ machine: machineWhere });
+    }
 
     return {
       status: query.status,
       type: query.type,
       machineId: query.machineId,
       engineerId: query.engineerId,
-      machine: hasMachineWhere ? machineWhere : undefined,
+      AND: and.length ? and : undefined,
       scheduledDate:
         query.scheduledFrom || query.scheduledTo
           ? {
@@ -1056,6 +1119,11 @@ export class MaintenanceService {
               region: true,
             },
           },
+        },
+      },
+      customer: {
+        include: {
+          region: true,
         },
       },
       engineer: {

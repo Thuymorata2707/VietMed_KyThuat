@@ -27,6 +27,10 @@ export class CreateMaintenanceDto {
 
   @IsOptional()
   @IsString()
+  customerId?: string;
+
+  @IsOptional()
+  @IsString()
   engineerId?: string;
 
   @IsDateString()

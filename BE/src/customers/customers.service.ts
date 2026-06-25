@@ -168,6 +168,65 @@ export class CustomersService {
             },
           },
         },
+        repairs: {
+          orderBy: { reportedAt: 'desc' },
+          take: 50,
+          include: {
+            engineer: { select: this.userSummarySelect() },
+            machine: {
+              select: {
+                id: true,
+                machineCode: true,
+                serialNumber: true,
+                modelName: true,
+              },
+            },
+          },
+        },
+        maintenances: {
+          orderBy: { scheduledDate: 'desc' },
+          take: 50,
+          include: {
+            engineer: { select: this.userSummarySelect() },
+            machine: {
+              select: {
+                id: true,
+                machineCode: true,
+                serialNumber: true,
+                modelName: true,
+              },
+            },
+          },
+        },
+        machineInstallations: {
+          orderBy: { installedAt: 'desc' },
+          take: 50,
+          include: {
+            installedBy: { select: this.userSummarySelect() },
+            warrantyCard: true,
+            machine: {
+              select: {
+                id: true,
+                machineCode: true,
+                serialNumber: true,
+                modelName: true,
+              },
+            },
+            plannedMachineModel: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                displayName: true,
+              },
+            },
+            businessLine: {
+              include: {
+                productIndustry: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -175,7 +234,12 @@ export class CustomersService {
       throw new NotFoundException('Customer not found');
     }
 
-    return customer;
+    return {
+      ...customer,
+      directInstallations: customer.machineInstallations,
+      directRepairs: customer.repairs,
+      directMaintenances: customer.maintenances,
+    };
   }
 
   async update(id: string, dto: UpdateCustomerDto, actor?: RequestUser) {

@@ -55,6 +55,11 @@ type ServiceRow = {
   completedAt?: string | null;
   reviewStatus?: string | null;
   engineer?: EngineerOption | null;
+  customer?: {
+    name?: string | null;
+    hospitalName?: string | null;
+    province?: string | null;
+  } | null;
   machine?: MachineSummary | null;
   usingDepartment?: string | null;
 };
@@ -128,7 +133,7 @@ export function ServiceTicketsPage(_props: { user: ApiUser }) {
       description="Theo dõi phiếu sửa chữa và bảo trì theo hàng đợi xử lý, ngành hàng, kỹ sư và trạng thái."
       kind={kind}
       kindSelector={
-        <label className="service-kind-select">
+        <label className="operation-filter-field operation-filter-field--compact">
           <span>Loại phiếu</span>
           <select onChange={(event) => setKind(event.target.value as ServiceTicketKind)} value={kind}>
             {serviceTicketOptions.map((option) => (
@@ -221,7 +226,7 @@ function OperationsBoard({
     <PageFrame>
       <div className="grid gap-4 min-[900px]:flex min-[900px]:items-start min-[900px]:justify-between">
         <PageTitle eyebrow="Vận hành kỹ thuật" title={title} description={description} />
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="operation-board-actions">
           {kindSelector}
           <Link className="primary-button" to={createHref}>
             <Plus size={16} />
@@ -243,19 +248,21 @@ function OperationsBoard({
         ))}
       </div>
 
-      <section className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
-        <div className="grid gap-2 min-[900px]:grid-cols-[minmax(260px,1fr)_220px_220px]">
-          <label className="flex h-11 min-w-0 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#666666] focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
-            <Search size={16} />
-            <input
-              className="min-w-0 flex-1 border-0 text-sm font-medium text-[#1f1f1f] outline-none"
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Tìm mã phiếu, máy, khách hàng, serial"
-              value={query}
-            />
+      <section className="operation-filter-panel">
+        <div className="operation-filter-grid">
+          <label className="operation-search-field">
+            <span>Tìm kiếm</span>
+            <div>
+              <Search size={16} />
+              <input
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Tìm mã phiếu, máy, khách hàng, serial"
+                value={query}
+              />
+            </div>
           </label>
           <ProductIndustryFilter onChange={setProductIndustryId} value={productIndustryId} />
-          <label className="service-kind-select">
+          <label className="operation-filter-field">
             <span>Kỹ sư</span>
             <select onChange={(event) => setEngineerId(event.target.value)} value={engineerId}>
               <option value="">Tất cả kỹ sư</option>
@@ -356,7 +363,7 @@ function ProductIndustryFilter({ onChange, value }: { onChange: (value: string) 
   }, []);
 
   return (
-    <label className="service-kind-select">
+    <label className="operation-filter-field">
       <span>Ngành hàng</span>
       <select onChange={(event) => onChange(event.target.value)} value={value}>
         <option value="">Tất cả ngành hàng</option>
@@ -403,7 +410,7 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
     date: isMaintenance ? item.scheduledDate : item.reportedAt,
     engineer: item.engineer,
     machine: item.machine,
-    customer: item.machine?.customer || (item.usingDepartment ? { name: item.usingDepartment } : null),
+    customer: item.customer || item.machine?.customer || (item.usingDepartment ? { name: item.usingDepartment } : null),
     productIndustry: item.machine?.businessLine?.productIndustry?.name,
     secondary: isMaintenance ? displayLabel(item.type || '') : displayLabel(item.priority || ''),
   };

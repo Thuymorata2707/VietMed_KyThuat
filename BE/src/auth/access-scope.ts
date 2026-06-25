@@ -79,11 +79,20 @@ export function repairAccessWhere(user?: RequestUser): Prisma.RepairWhereInput {
 
   if (isManager(user)) {
     return {
-      machine: {
-        customer: {
-          regionId: user.regionId,
+      OR: [
+        {
+          customer: {
+            regionId: user.regionId,
+          },
         },
-      },
+        {
+          machine: {
+            customer: {
+              regionId: user.regionId,
+            },
+          },
+        },
+      ],
     };
   }
 
@@ -91,6 +100,7 @@ export function repairAccessWhere(user?: RequestUser): Prisma.RepairWhereInput {
     return {
       OR: [
         { engineerId: user.id },
+        { customer: { primaryEngineerId: user.id } },
         { machine: { customer: { primaryEngineerId: user.id } } },
       ],
     };
@@ -108,11 +118,20 @@ export function maintenanceAccessWhere(
 
   if (isManager(user)) {
     return {
-      machine: {
-        customer: {
-          regionId: user.regionId,
+      OR: [
+        {
+          customer: {
+            regionId: user.regionId,
+          },
         },
-      },
+        {
+          machine: {
+            customer: {
+              regionId: user.regionId,
+            },
+          },
+        },
+      ],
     };
   }
 
@@ -120,6 +139,7 @@ export function maintenanceAccessWhere(
     return {
       OR: [
         { engineerId: user.id },
+        { customer: { primaryEngineerId: user.id } },
         { machine: { customer: { primaryEngineerId: user.id } } },
       ],
     };

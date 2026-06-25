@@ -28,6 +28,10 @@ export class UpdateRepairDto {
 
   @IsOptional()
   @IsString()
+  customerId?: string | null;
+
+  @IsOptional()
+  @IsString()
   resultNote?: string | null;
 
   @IsOptional()
