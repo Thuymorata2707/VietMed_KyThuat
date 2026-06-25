@@ -21,5 +21,9 @@ export class ListRepairsQueryDto extends PaginationQueryDto {
 
   @IsOptional()
   @IsString()
+  productIndustryId?: string;
+
+  @IsOptional()
+  @IsString()
   engineerId?: string;
 }

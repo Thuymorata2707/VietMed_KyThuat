@@ -21,6 +21,10 @@ export class ListInstallationsQueryDto extends PaginationQueryDto {
 
   @IsOptional()
   @IsString()
+  productIndustryId?: string;
+
+  @IsOptional()
+  @IsString()
   installedById?: string;
 
   @IsOptional()

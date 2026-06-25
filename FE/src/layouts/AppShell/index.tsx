@@ -33,6 +33,7 @@ const RepairUpdatePage = lazy(() => import('../../pages/RepairUpdatePage').then(
 const ResourcePage = lazy(() => import('../../pages/ResourcePage').then((module) => ({ default: module.ResourcePage })));
 const ServiceTicketCreatePage = lazy(() => import('../../pages/ServiceTicketCreatePage').then((module) => ({ default: module.ServiceTicketCreatePage })));
 const ServiceTicketsPage = lazy(() => import('../../pages/ServiceTicketsPage').then((module) => ({ default: module.ServiceTicketsPage })));
+const InstallationsPage = lazy(() => import('../../pages/ServiceTicketsPage').then((module) => ({ default: module.InstallationsPage })));
 const TechnicalMachinesPage = lazy(() => import('../../pages/TechnicalMachinesPage').then((module) => ({ default: module.TechnicalMachinesPage })));
 const WeeklyReportsPage = lazy(() => import('../../pages/WeeklyReportsPage').then((module) => ({ default: module.WeeklyReportsPage })));
 
@@ -579,17 +580,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 >
                   {key === 'business-lines' ? (
                     <ProductCatalogPage user={user} />
-                  ) : key === 'installations' && role !== 'admin' ? (
-                    <ResourcePage
-                      config={resources[key]}
-                      getEditHref={(row) => (row.id ? `/installations/${String(row.id)}/update?returnTo=/installations` : null)}
-                      toolbarControl={
-                        <Link className="primary-button" to="/installations/create?returnTo=/installations">
-                          <Plus size={16} />
-                          Tạo phiếu
-                        </Link>
-                      }
-                    />
+                  ) : key === 'installations' ? (
+                    <InstallationsPage user={user} />
                   ) : role === 'admin' && adminCrudConfigs[key] ? (
                     <AdminCrudPage config={adminCrudConfigs[key]} />
                   ) : (

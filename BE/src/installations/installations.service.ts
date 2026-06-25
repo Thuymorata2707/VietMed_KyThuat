@@ -1147,8 +1147,7 @@ export class InstallationsService {
     query: ListInstallationsQueryDto,
   ): Prisma.MachineInstallationWhereInput {
     const search = query.search?.trim();
-
-    return {
+    const baseWhere: Prisma.MachineInstallationWhereInput = {
       status: query.status,
       customerId: query.customerId,
       machineId: query.machineId,
@@ -1196,6 +1195,39 @@ export class InstallationsService {
             },
           ]
         : undefined,
+    };
+
+    if (!query.productIndustryId) {
+      return baseWhere;
+    }
+
+    return {
+      AND: [
+        baseWhere,
+        {
+          OR: [
+            {
+              businessLine: {
+                productIndustryId: query.productIndustryId,
+              },
+            },
+            {
+              machine: {
+                businessLine: {
+                  productIndustryId: query.productIndustryId,
+                },
+              },
+            },
+            {
+              plannedMachineModel: {
+                businessLine: {
+                  productIndustryId: query.productIndustryId,
+                },
+              },
+            },
+          ],
+        },
+      ],
     };
   }
 

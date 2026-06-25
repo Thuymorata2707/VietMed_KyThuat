@@ -8,6 +8,7 @@ import { checklistForCategory } from '../../config/medicalDeviceChecklists';
 
 type WorkKind = 'repair' | 'maintenance' | 'installation';
 type WorkFilter = 'action' | 'unassigned' | 'review' | 'active' | 'all';
+type KindFilter = WorkKind | 'all';
 type WorkReviewStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'NEEDS_REVISION';
 type Tone = 'good' | 'warn' | 'danger' | 'neutral';
 
@@ -100,6 +101,8 @@ export function AdminWorkAssignmentPage() {
   const [installations, setInstallations] = useState<InstallationAssignment[]>([]);
   const [assignmentByKey, setAssignmentByKey] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<WorkFilter>('action');
+  const [kindFilter, setKindFilter] = useState<KindFilter>('all');
+  const [engineerFilter, setEngineerFilter] = useState('');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -210,8 +213,14 @@ export function AdminWorkAssignmentPage() {
         if (filter === 'active') return !isClosed(item.status) && Boolean(item.engineer?.id) && item.reviewStatus !== 'PENDING';
         return true;
       })
+      .filter((item) => kindFilter === 'all' || item.kind === kindFilter)
+      .filter((item) => {
+        if (!engineerFilter) return true;
+        if (engineerFilter === '__unassigned') return !item.engineer?.id;
+        return item.engineer?.id === engineerFilter;
+      })
       .sort((left, right) => actionRank(left) - actionRank(right) || dateRank(left) - dateRank(right) || left.code.localeCompare(right.code));
-  }, [filter, installations, maintenances, repairs]);
+  }, [engineerFilter, filter, installations, kindFilter, maintenances, repairs]);
 
   async function assignWork(item: WorkItem) {
     const engineerId = assignmentByKey[item.key];
@@ -299,6 +308,7 @@ export function AdminWorkAssignmentPage() {
     all: repairs.length + maintenances.length + installations.length,
   };
   const currentFilterLabel = filterOptions.find((option) => option.value === filter)?.label ?? 'Công việc';
+  const groupedItems = useMemo(() => groupWorkItems(items, filter), [filter, items]);
 
   return (
     <PageFrame>
@@ -354,35 +364,61 @@ export function AdminWorkAssignmentPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex max-w-full gap-[3px] overflow-x-auto rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] p-[3px]" aria-label="Lọc công việc">
-            {filterOptions.map((option) => (
-              <button
-                className={`inline-flex min-h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 text-sm font-medium ${
-                  filter === option.value
-                    ? 'bg-white text-[#d71920] shadow-[0_1px_4px_rgba(20,32,51,0.08)]'
-                    : 'bg-transparent text-[#333333] hover:text-[#d71920]'
-                }`}
-                key={option.value}
-                onClick={() => setFilter(option.value)}
-                type="button"
-              >
-                {option.label}
-                <span className={`rounded-md px-1.5 py-0.5 text-[11px] ${filter === option.value ? 'bg-[#fff1f3] text-[#b5121b]' : 'bg-white text-[#666666]'}`}>
-                  {filterCounts[option.value]}
-                </span>
-              </button>
-            ))}
+            <div className="inline-flex max-w-full gap-[3px] overflow-x-auto rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] p-[3px]" aria-label="Lọc công việc">
+              {filterOptions.map((option) => (
+                <button
+                  className={`inline-flex min-h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 text-sm font-medium ${
+                    filter === option.value
+                      ? 'bg-white text-[#d71920] shadow-[0_1px_4px_rgba(20,32,51,0.08)]'
+                      : 'bg-transparent text-[#333333] hover:text-[#d71920]'
+                  }`}
+                  key={option.value}
+                  onClick={() => setFilter(option.value)}
+                  type="button"
+                >
+                  {option.label}
+                  <span className={`rounded-md px-1.5 py-0.5 text-[11px] ${filter === option.value ? 'bg-[#fff1f3] text-[#b5121b]' : 'bg-white text-[#666666]'}`}>
+                    {filterCounts[option.value]}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <span className="text-[13px] font-medium text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} công việc đang hiển thị`}</span>
           </div>
-          <label className="flex h-10 min-w-60 flex-[1_1_320px] items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#666666] focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
-            <Search size={16} />
-            <input
-              className="min-w-0 flex-1 border-0 text-[#1f1f1f] outline-none"
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Tìm mã phiếu, S/N, mã máy, khách hàng"
-              value={query}
-            />
-          </label>
-          <span className="text-[13px] font-medium text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} công việc đang hiển thị`}</span>
+
+          <div className="grid gap-2 min-[861px]:grid-cols-[minmax(260px,1fr)_190px_220px]">
+            <label className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#666666] focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
+              <Search size={16} />
+              <input
+                className="min-w-0 flex-1 border-0 text-[#1f1f1f] outline-none"
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Tìm mã phiếu, S/N, mã máy, khách hàng"
+                value={query}
+              />
+            </label>
+            <select
+              className="h-10 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+              onChange={(event) => setKindFilter(event.target.value as KindFilter)}
+              value={kindFilter}
+            >
+              <option value="all">Tất cả loại việc</option>
+              <option value="installation">Lắp đặt</option>
+              <option value="repair">Sửa chữa</option>
+              <option value="maintenance">Bảo trì</option>
+            </select>
+            <select
+              className="h-10 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+              onChange={(event) => setEngineerFilter(event.target.value)}
+              value={engineerFilter}
+            >
+              <option value="">Tất cả kỹ sư</option>
+              <option value="__unassigned">Chưa phân kỹ sư</option>
+              {engineers.map((engineer) => (
+                <option key={engineer.id} value={engineer.id}>
+                  {engineer.fullName || engineer.email}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -403,7 +439,16 @@ export function AdminWorkAssignmentPage() {
           ) : null}
 
           {!loading
-            ? items.map((item) => (
+            ? groupedItems.map((group) => (
+              <section className="border-b border-[#eeeeee] last:border-b-0" key={group.key}>
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#fafafa] px-4 py-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#1f1f1f]">{group.title}</h3>
+                    <p className="mt-0.5 text-xs leading-5 text-[#666666]">{group.description}</p>
+                  </div>
+                  <span className="rounded-lg border border-[#eeeeee] bg-white px-2.5 py-1 text-xs font-semibold text-[#333333]">{group.items.length} việc</span>
+                </div>
+                {group.items.map((item) => (
                 <article
                   className="grid items-start gap-3.5 border-b border-[#eeeeee] px-4 py-[15px] last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(220px,320px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(140px,190px)_minmax(260px,330px)]"
                   key={item.key}
@@ -497,7 +542,9 @@ export function AdminWorkAssignmentPage() {
                     ) : null}
                   </div>
                 </article>
-              ))
+                ))}
+              </section>
+            ))
             : null}
         </div>
       </section>
@@ -545,6 +592,41 @@ function filterDescription(filter: WorkFilter) {
     all: 'Toàn bộ phiếu sửa chữa, bảo trì và lắp đặt trong phạm vi tìm kiếm hiện tại.',
   };
   return descriptions[filter];
+}
+
+function groupWorkItems(items: WorkItem[], filter: WorkFilter) {
+  const groups = [
+    {
+      key: 'review',
+      title: 'Chờ admin xác nhận',
+      description: 'Kỹ sư đã gửi kết quả, admin cần duyệt hoặc trả về bổ sung.',
+      items: items.filter((item) => item.reviewStatus === 'PENDING'),
+    },
+    {
+      key: 'unassigned',
+      title: 'Chưa phân kỹ sư',
+      description: 'Cần chọn người phụ trách để việc bắt đầu chạy.',
+      items: items.filter((item) => !item.engineer?.id),
+    },
+    {
+      key: 'active',
+      title: 'Đang thực hiện',
+      description: 'Đã có kỹ sư phụ trách, cần theo dõi tiến độ và lịch hẹn.',
+      items: items.filter((item) => item.engineer?.id && item.reviewStatus !== 'PENDING' && !isClosed(item.status)),
+    },
+    {
+      key: 'closed',
+      title: 'Đã đóng',
+      description: 'Các việc đã hoàn tất, đã lắp đặt hoặc đã hủy.',
+      items: items.filter((item) => item.engineer?.id && item.reviewStatus !== 'PENDING' && isClosed(item.status)),
+    },
+  ];
+
+  if (filter === 'review') return groups.filter((group) => group.key === 'review' && group.items.length);
+  if (filter === 'unassigned') return groups.filter((group) => group.key === 'unassigned' && group.items.length);
+  if (filter === 'active') return groups.filter((group) => group.key === 'active' && group.items.length);
+  if (filter === 'action') return groups.filter((group) => ['review', 'unassigned'].includes(group.key) && group.items.length);
+  return groups.filter((group) => group.items.length);
 }
 
 function actionRank(item: WorkItem) {

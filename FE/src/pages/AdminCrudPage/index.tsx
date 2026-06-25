@@ -39,7 +39,15 @@ const quickFilterKeys = [
   'primaryEngineer.fullName',
 ];
 
-export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConfig; headerControl?: ReactNode }) {
+export function AdminCrudPage({
+  config,
+  extraQueryParams,
+  headerControl,
+}: {
+  config: AdminCrudConfig;
+  extraQueryParams?: Record<string, string>;
+  headerControl?: ReactNode;
+}) {
   const [rows, setRows] = useState<TableRow[]>([]);
   const [options, setOptions] = useState<OptionMap>({});
   const [query, setQuery] = useState('');
@@ -60,7 +68,7 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
 
   useEffect(() => {
     loadPage();
-  }, [config.endpoint, debouncedQuery, page, pageSize]);
+  }, [config.endpoint, debouncedQuery, JSON.stringify(extraQueryParams ?? {}), page, pageSize]);
 
   useEffect(() => {
     setPage(1);
@@ -95,7 +103,7 @@ export function AdminCrudPage({ config, headerControl }: { config: AdminCrudConf
 
     try {
       const [rowsResult, optionsResult] = await Promise.all([
-        loadRows(config.endpoint, page, pageSize, debouncedQuery),
+        loadRows(config.endpoint, page, pageSize, debouncedQuery, extraQueryParams),
         loadOptions(config.fields),
       ]);
       setRows(rowsResult.rows);
@@ -1317,8 +1325,9 @@ function inputType(field: CrudField) {
   return field.type || 'text';
 }
 
-async function loadRows(endpoint: string, page: number, limit: number, search: string) {
+async function loadRows(endpoint: string, page: number, limit: number, search: string, extraQueryParams: Record<string, string> = {}) {
   const endpointWithQuery = withQueryParams(endpoint, {
+    ...extraQueryParams,
     limit: String(limit),
     page: String(page),
     search,

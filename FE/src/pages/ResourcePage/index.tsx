@@ -10,10 +10,12 @@ import { TableRow, filterRows, formatValue, readPath } from '../../utils/format'
 
 export function ResourcePage({
   config,
-  toolbarControl,
+  extraQueryParams,
   getEditHref,
+  toolbarControl,
 }: {
   config: ResourceConfig;
+  extraQueryParams?: Record<string, string>;
   toolbarControl?: ReactNode;
   getEditHref?: (row: TableRow) => string | null;
 }) {
@@ -24,7 +26,7 @@ export function ResourcePage({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const search = new URLSearchParams({ page: '1', limit: '10' });
+    const search = new URLSearchParams({ ...extraQueryParams, page: '1', limit: '10' });
     if (config.searchEnabled !== false && query.trim()) search.set('search', query.trim());
 
     setLoading(true);
@@ -49,7 +51,7 @@ export function ResourcePage({
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Không tải được dữ liệu'))
       .finally(() => setLoading(false));
-  }, [config.endpoint, config.searchEnabled, query]);
+  }, [config.endpoint, config.searchEnabled, JSON.stringify(extraQueryParams ?? {}), query]);
 
   return (
     <PageFrame>

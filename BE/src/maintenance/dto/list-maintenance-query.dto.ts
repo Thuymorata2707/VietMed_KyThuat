@@ -21,6 +21,10 @@ export class ListMaintenanceQueryDto extends PaginationQueryDto {
 
   @IsOptional()
   @IsString()
+  productIndustryId?: string;
+
+  @IsOptional()
+  @IsString()
   engineerId?: string;
 
   @IsOptional()

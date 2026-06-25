@@ -820,17 +820,22 @@ export class RepairsService {
     query: ListRepairsQueryDto,
   ): Prisma.RepairWhereInput {
     const search = query.search?.trim();
+    const machineWhere: Prisma.MachineWhereInput = {
+      customerId: query.customerId,
+      businessLine: query.productIndustryId
+        ? {
+            productIndustryId: query.productIndustryId,
+          }
+        : undefined,
+    };
+    const hasMachineWhere = Boolean(query.customerId || query.productIndustryId);
 
     return {
       status: query.status,
       priority: query.priority,
       machineId: query.machineId,
       engineerId: query.engineerId,
-      machine: query.customerId
-        ? {
-            customerId: query.customerId,
-          }
-        : undefined,
+      machine: hasMachineWhere ? machineWhere : undefined,
       OR: search
         ? [
             { code: { contains: search,  } },
