@@ -53,7 +53,7 @@ export const emptyCreateTicketForm = (kind: TaskKind = 'repair'): CreateTicketFo
 });
 
 export function compareTasks(a: EngineerTask, b: EngineerTask) {
-  return taskSortDate(a).getTime() - taskSortDate(b).getTime();
+  return taskSortDate(b).getTime() - taskSortDate(a).getTime();
 }
 
 function taskSortDate(task: EngineerTask) {

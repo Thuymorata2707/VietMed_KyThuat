@@ -171,9 +171,10 @@ export class RepairsService {
       this.prisma.repair.findMany({
         where,
         include: this.defaultInclude(),
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: [
+          { reportedAt: 'desc' },
+          { createdAt: 'desc' },
+        ],
         skip: (page - 1) * limit,
         take: limit,
       }),

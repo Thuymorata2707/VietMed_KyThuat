@@ -12,6 +12,7 @@ import { displayLabel } from '../../utils/displayLabels';
 type ServiceTicketKind = 'repairs' | 'maintenance';
 type BoardKind = ServiceTicketKind | 'installations';
 type QueueKey = 'action' | 'active' | 'review' | 'closed' | 'all';
+type GroupByKey = 'date' | 'engineer' | 'industry' | 'customer';
 
 type ProductIndustry = {
   id: string;
@@ -110,6 +111,7 @@ type BoardItem = {
   customer?: { name?: string | null; hospitalName?: string | null; province?: string | null } | null;
   productIndustry?: string | null;
   secondary?: string | null;
+  urgency?: string | null;
 };
 
 const serviceTicketOptions: Array<{ label: string; value: ServiceTicketKind }> = [
@@ -123,6 +125,13 @@ const queues: Array<{ key: QueueKey; label: string }> = [
   { key: 'review', label: 'Chờ xác nhận' },
   { key: 'closed', label: 'Hoàn tất' },
   { key: 'all', label: 'Tất cả' },
+];
+
+const groupOptions: Array<{ label: string; value: GroupByKey }> = [
+  { label: 'Theo ngày', value: 'date' },
+  { label: 'Theo kỹ sư', value: 'engineer' },
+  { label: 'Theo ngành hàng', value: 'industry' },
+  { label: 'Theo khách hàng', value: 'customer' },
 ];
 
 export function ServiceTicketsPage({ user }: { user: ApiUser }) {
@@ -188,6 +197,7 @@ function OperationsBoard({
   const [productIndustryId, setProductIndustryId] = useState('');
   const [engineerId, setEngineerId] = useState('');
   const [queue, setQueue] = useState<QueueKey>('action');
+  const [groupBy, setGroupBy] = useState<GroupByKey>('date');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -230,7 +240,7 @@ function OperationsBoard({
 
   const counts = useMemo(() => buildQueueCounts(items), [items]);
   const visibleItems = useMemo(() => filterByQueue(items, queue), [items, queue]);
-  const groupedItems = useMemo(() => groupByDate(visibleItems), [visibleItems]);
+  const groupedItems = useMemo(() => groupItems(visibleItems, groupBy), [groupBy, visibleItems]);
 
   return (
     <PageFrame>
@@ -265,7 +275,7 @@ function OperationsBoard({
       </div>
 
       <section className="operation-filter-panel">
-        <div className="operation-filter-grid">
+        <div className="grid gap-2 min-[900px]:grid-cols-[minmax(260px,1fr)_220px_220px_180px]">
           <label className="operation-search-field">
             <span>Tìm kiếm</span>
             <div>
@@ -289,6 +299,16 @@ function OperationsBoard({
               ))}
             </select>
           </label>
+          <label className="operation-filter-field">
+            <span>Nhóm theo</span>
+            <select onChange={(event) => setGroupBy(event.target.value as GroupByKey)} value={groupBy}>
+              {groupOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </section>
 
@@ -298,7 +318,7 @@ function OperationsBoard({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
           <div>
             <h2 className="text-base font-semibold text-[#1f1f1f]">{queues.find((item) => item.key === queue)?.label}</h2>
-            <p className="mt-1 text-sm text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${visibleItems.length} phiếu đang hiển thị`}</p>
+            <p className="mt-1 text-sm text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${visibleItems.length} phiếu - ${groupOptions.find((item) => item.value === groupBy)?.label.toLowerCase()}`}</p>
           </div>
         </div>
 
@@ -341,7 +361,7 @@ function OperationsBoard({
 
 function TicketCard({ item }: { item: BoardItem }) {
   return (
-    <article className="grid gap-3 border-t border-[#eeeeee] px-4 py-4 first:border-t-0 min-[960px]:grid-cols-[42px_minmax(0,1fr)_220px_auto] min-[960px]:items-center">
+    <article className={ticketCardClass(item)}>
       <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
       <div className="grid min-w-0 gap-1.5">
         <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#666666]">
@@ -351,6 +371,11 @@ function TicketCard({ item }: { item: BoardItem }) {
           {item.productIndustry ? <span>{item.productIndustry}</span> : null}
         </div>
         <h3 className="text-[16px] font-semibold leading-snug text-[#1f1f1f]">{item.title}</h3>
+        <div className="flex flex-wrap gap-1.5">
+          {alertBadges(item).map((badge) => (
+            <Badge key={badge.label} tone={badge.tone}>{badge.label}</Badge>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-2 text-[13px] leading-5 text-[#666666]">
           <span>{customerText(item)}</span>
           <span>{machineText(item)}</span>
@@ -367,6 +392,13 @@ function TicketCard({ item }: { item: BoardItem }) {
       </Link>
     </article>
   );
+}
+
+function ticketCardClass(item: BoardItem) {
+  const base = 'grid gap-3 border-t px-4 py-4 first:border-t-0 min-[960px]:grid-cols-[42px_minmax(0,1fr)_220px_auto] min-[960px]:items-center';
+  if (urgencyRank(item) >= 70) return `${base} border-[#f5c7cb] bg-[#fffafa]`;
+  if (urgencyRank(item) >= 30) return `${base} border-[#efd8a8] bg-[#fffdf8]`;
+  return `${base} border-[#eeeeee] bg-white`;
 }
 
 function ProductIndustryFilter({ onChange, value }: { onChange: (value: string) => void; value: string }) {
@@ -410,7 +442,8 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
       machine,
       customer,
       productIndustry: item.businessLine?.productIndustry?.name || machine?.businessLine?.productIndustry?.name || item.plannedMachineModel?.businessLine?.productIndustry?.name,
-      secondary: item.businessLine?.name || item.plannedMachineModel?.businessLine?.name || machine?.businessLine?.name,
+      secondary: [item.businessLine?.name || item.plannedMachineModel?.businessLine?.name || machine?.businessLine?.name, item.plannedMachineModel?.displayName || item.plannedMachineModel?.name || item.plannedModelName].filter(Boolean).join(' - '),
+      urgency: null,
     };
   }
 
@@ -429,6 +462,7 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
     customer: item.customer || item.machine?.customer || (item.usingDepartment ? { name: item.usingDepartment } : null),
     productIndustry: item.machine?.businessLine?.productIndustry?.name,
     secondary: isMaintenance ? displayLabel(item.type || '') : displayLabel(item.priority || ''),
+    urgency: isMaintenance ? item.type : item.priority,
   };
 }
 
@@ -450,24 +484,89 @@ function filterByQueue(items: BoardItem[], queue: QueueKey) {
   return items;
 }
 
-function groupByDate(items: BoardItem[]) {
+function groupItems(items: BoardItem[], groupBy: GroupByKey) {
   const groups = new Map<string, BoardItem[]>();
   items.forEach((item) => {
-    const key = item.date ? new Date(item.date).toISOString().slice(0, 10) : 'no-date';
+    const key = groupKey(item, groupBy);
     groups.set(key, [...(groups.get(key) ?? []), item]);
   });
 
   return Array.from(groups.entries())
-    .sort(([left], [right]) => (left === 'no-date' ? 1 : right === 'no-date' ? -1 : left.localeCompare(right)))
+    .sort(([left], [right]) => compareGroupKeys(left, right, groupBy))
     .map(([key, groupItems]) => ({
       key,
-      label: key === 'no-date' ? 'Chưa có ngày hẹn' : formatDate(key),
-      items: groupItems.sort((left, right) => left.code.localeCompare(right.code)),
+      label: groupLabel(key, groupBy),
+      items: groupItems.sort(
+        (left, right) =>
+          urgencyRank(right) - urgencyRank(left) ||
+          compareItemDateDesc(left, right) ||
+          left.code.localeCompare(right.code),
+      ),
     }));
+}
+
+function groupKey(item: BoardItem, groupBy: GroupByKey) {
+  if (groupBy === 'date') return item.date ? safeDateKey(item.date) : '__missing__';
+  if (groupBy === 'engineer') return item.engineer?.fullName || item.engineer?.email || '__missing__';
+  if (groupBy === 'industry') return item.productIndustry || '__missing__';
+  return customerText(item) === 'Chưa có khách hàng' ? '__missing__' : customerText(item);
+}
+
+function groupLabel(key: string, groupBy: GroupByKey) {
+  if (key !== '__missing__') return groupBy === 'date' ? formatDate(key) : key;
+  if (groupBy === 'date') return 'Chưa có ngày hẹn';
+  if (groupBy === 'engineer') return 'Chưa phân kỹ sư';
+  if (groupBy === 'industry') return 'Chưa phân ngành hàng';
+  return 'Chưa có khách hàng';
+}
+
+function compareGroupKeys(left: string, right: string, groupBy: GroupByKey) {
+  if (left === '__missing__') return 1;
+  if (right === '__missing__') return -1;
+  return groupBy === 'date' ? right.localeCompare(left) : left.localeCompare(right, 'vi');
+}
+
+function safeDateKey(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '__missing__';
+  return date.toISOString().slice(0, 10);
+}
+
+function compareItemDateDesc(left: BoardItem, right: BoardItem) {
+  const leftTime = left.date ? new Date(left.date).getTime() : 0;
+  const rightTime = right.date ? new Date(right.date).getTime() : 0;
+  return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
 }
 
 function isAction(item: BoardItem) {
   return !item.engineer?.id || item.reviewStatus === 'PENDING' || ['PENDING', 'WAITING_PARTS', 'OVERDUE'].includes(item.status);
+}
+
+function alertBadges(item: BoardItem): Array<{ label: string; tone: 'good' | 'warn' | 'danger' | 'neutral' }> {
+  const badges: Array<{ label: string; tone: 'good' | 'warn' | 'danger' | 'neutral' }> = [];
+
+  if (!item.engineer?.id) badges.push({ label: 'Chưa phân kỹ sư', tone: 'danger' });
+  if (item.reviewStatus === 'PENDING') badges.push({ label: 'Chờ xác nhận', tone: 'warn' });
+  if (item.reviewStatus === 'NEEDS_REVISION') badges.push({ label: 'Cần bổ sung', tone: 'danger' });
+  if (item.status === 'WAITING_PARTS') badges.push({ label: 'Chờ linh kiện', tone: 'danger' });
+  if (item.status === 'OVERDUE') badges.push({ label: 'Quá hạn', tone: 'danger' });
+  if (item.urgency === 'URGENT') badges.push({ label: 'Khẩn cấp', tone: 'danger' });
+  if (item.urgency === 'HIGH') badges.push({ label: 'Ưu tiên cao', tone: 'warn' });
+  if (item.kind === 'installation' && item.reviewStatus === 'APPROVED') badges.push({ label: 'Đã nghiệm thu', tone: 'good' });
+
+  return badges.slice(0, 3);
+}
+
+function urgencyRank(item: BoardItem) {
+  let score = 0;
+  if (!item.engineer?.id) score += 80;
+  if (item.reviewStatus === 'PENDING') score += 70;
+  if (item.reviewStatus === 'NEEDS_REVISION') score += 65;
+  if (item.status === 'WAITING_PARTS' || item.status === 'OVERDUE') score += 60;
+  if (item.urgency === 'URGENT') score += 50;
+  if (item.urgency === 'HIGH') score += 30;
+  if (item.status === 'PENDING') score += 20;
+  return score;
 }
 
 function isClosed(status: string) {

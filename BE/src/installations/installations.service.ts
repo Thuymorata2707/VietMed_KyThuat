@@ -199,9 +199,10 @@ export class InstallationsService {
       this.prisma.machineInstallation.findMany({
         where,
         include: this.defaultInclude(),
-        orderBy: {
-          installedAt: 'desc',
-        },
+        orderBy: [
+          { installedAt: 'desc' },
+          { createdAt: 'desc' },
+        ],
         skip: (page - 1) * limit,
         take: limit,
       }),

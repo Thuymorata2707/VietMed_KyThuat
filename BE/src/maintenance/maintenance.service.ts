@@ -168,9 +168,10 @@ export class MaintenanceService {
       this.prisma.maintenance.findMany({
         where,
         include: this.defaultInclude(),
-        orderBy: {
-          scheduledDate: 'asc',
-        },
+        orderBy: [
+          { scheduledDate: 'desc' },
+          { createdAt: 'desc' },
+        ],
         skip: (page - 1) * limit,
         take: limit,
       }),
