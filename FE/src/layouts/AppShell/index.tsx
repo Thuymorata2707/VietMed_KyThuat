@@ -341,7 +341,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/technical-statistics"
             element={
               <RequireRole
-                allowedRoles={['admin', 'manager']}
+                allowedRoles={['admin', 'manager', 'engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >

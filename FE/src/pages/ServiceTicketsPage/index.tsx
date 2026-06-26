@@ -1,8 +1,9 @@
-import { ClipboardCheck, Loader2, Plus, RefreshCw, Search, Stethoscope, Wrench } from 'lucide-react';
+import { BarChart3, ClipboardCheck, Loader2, Plus, RefreshCw, Search, Stethoscope, Wrench } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
+import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -124,7 +125,7 @@ const queues: Array<{ key: QueueKey; label: string }> = [
   { key: 'all', label: 'Tất cả' },
 ];
 
-export function ServiceTicketsPage(_props: { user: ApiUser }) {
+export function ServiceTicketsPage({ user }: { user: ApiUser }) {
   const [kind, setKind] = useState<ServiceTicketKind>('repairs');
 
   return (
@@ -144,18 +145,22 @@ export function ServiceTicketsPage(_props: { user: ApiUser }) {
           </select>
         </label>
       }
+      reportHref={`/technical-statistics?workType=${kind === 'maintenance' ? 'maintenance' : 'repair'}&returnTo=/service-tickets`}
       title="Phiếu kỹ thuật"
+      user={user}
     />
   );
 }
 
-export function InstallationsPage(_props: { user: ApiUser }) {
+export function InstallationsPage({ user }: { user: ApiUser }) {
   return (
     <OperationsBoard
       createHref="/installations/create?returnTo=/installations"
       description="Theo dõi kế hoạch lắp đặt, kỹ sư phụ trách, nghiệm thu và bảo hành theo ngành hàng."
       kind="installations"
+      reportHref="/technical-statistics?workType=installation&returnTo=/installations"
       title="Kế hoạch lắp đặt"
+      user={user}
     />
   );
 }
@@ -165,14 +170,19 @@ function OperationsBoard({
   description,
   kind,
   kindSelector,
+  reportHref,
   title,
+  user,
 }: {
   createHref: string;
   description: string;
   kind: BoardKind;
   kindSelector?: ReactNode;
+  reportHref: string;
   title: string;
+  user: ApiUser;
 }) {
+  const role = getRoleName(user);
   const [items, setItems] = useState<BoardItem[]>([]);
   const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [productIndustryId, setProductIndustryId] = useState('');
@@ -232,6 +242,12 @@ function OperationsBoard({
             <Plus size={16} />
             Tạo phiếu
           </Link>
+          {role !== 'engineer' ? (
+            <Link className="secondary-button" to={reportHref}>
+              <BarChart3 size={16} />
+              Xem báo cáo
+            </Link>
+          ) : null}
           <button className="secondary-button" disabled={loading} onClick={() => void loadBoard()} type="button">
             {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
             Làm mới

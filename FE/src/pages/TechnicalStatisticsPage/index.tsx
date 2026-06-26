@@ -1,6 +1,7 @@
-import { BarChart3, ClipboardCheck, Loader2, RefreshCw, SlidersHorizontal, Users } from 'lucide-react';
+import { ArrowLeft, BarChart3, ClipboardCheck, Loader2, RefreshCw, SlidersHorizontal, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -92,10 +93,12 @@ const workTypeOptions = [
 ];
 
 export function TechnicalStatisticsPage() {
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
-  const [engineerId, setEngineerId] = useState('');
-  const [productIndustryId, setProductIndustryId] = useState('');
-  const [workType, setWorkType] = useState('');
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '';
+  const [month, setMonth] = useState(() => searchParams.get('month') || new Date().toISOString().slice(0, 7));
+  const [engineerId, setEngineerId] = useState(() => searchParams.get('engineerId') || '');
+  const [productIndustryId, setProductIndustryId] = useState(() => searchParams.get('productIndustryId') || '');
+  const [workType, setWorkType] = useState(() => normalizeWorkType(searchParams.get('workType')));
   const [data, setData] = useState<TechnicalStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -133,10 +136,18 @@ export function TechnicalStatisticsPage() {
           title="Thống kê kỹ thuật"
           description="Theo dõi sửa chữa, bảo trì và lắp đặt theo tháng, kỹ sư và ngành hàng."
         />
-        <button className="secondary-button" disabled={loading} onClick={() => void loadStatistics()} type="button">
-          {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
-          Làm mới
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {returnTo ? (
+            <Link className="secondary-button" to={returnTo}>
+              <ArrowLeft size={16} />
+              Quay lại
+            </Link>
+          ) : null}
+          <button className="secondary-button" disabled={loading} onClick={() => void loadStatistics()} type="button">
+            {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
+            Làm mới
+          </button>
+        </div>
       </div>
 
       <section className="operation-filter-panel">
@@ -408,6 +419,10 @@ function TrendBars({ max, trend }: { max: number; trend: TrendItem[] }) {
 
 function EmptyPanel({ text }: { text: string }) {
   return <div className="grid min-h-[160px] place-items-center rounded-lg border border-dashed border-[#dddddd] bg-[#fafafa] p-6 text-center text-sm font-semibold text-[#666666]">{text}</div>;
+}
+
+function normalizeWorkType(value: string | null) {
+  return workTypeOptions.some((option) => option.value === value) ? value || '' : '';
 }
 
 function formatDay(value: string) {
