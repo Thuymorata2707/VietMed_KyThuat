@@ -35,6 +35,7 @@ const ServiceTicketCreatePage = lazy(() => import('../../pages/ServiceTicketCrea
 const ServiceTicketsPage = lazy(() => import('../../pages/ServiceTicketsPage').then((module) => ({ default: module.ServiceTicketsPage })));
 const InstallationsPage = lazy(() => import('../../pages/ServiceTicketsPage').then((module) => ({ default: module.InstallationsPage })));
 const TechnicalMachinesPage = lazy(() => import('../../pages/TechnicalMachinesPage').then((module) => ({ default: module.TechnicalMachinesPage })));
+const TechnicalStatisticsPage = lazy(() => import('../../pages/TechnicalStatisticsPage').then((module) => ({ default: module.TechnicalStatisticsPage })));
 const WeeklyReportsPage = lazy(() => import('../../pages/WeeklyReportsPage').then((module) => ({ default: module.WeeklyReportsPage })));
 
 type AppShellProps = {
@@ -73,6 +74,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Máy phòng kỹ thuật'
     : location.pathname.startsWith('/customers/profile')
       ? 'Hồ sơ khách hàng'
+    : location.pathname.startsWith('/technical-statistics')
+      ? 'Thống kê kỹ thuật'
     : location.pathname.startsWith('/my-customers')
       ? 'Khách hàng phụ trách'
     : activeNavItem?.label || 'Tổng quan';
@@ -331,6 +334,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <EngineerPerformancePage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/technical-statistics"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'manager']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <TechnicalStatisticsPage />
               </RequireRole>
             }
           />

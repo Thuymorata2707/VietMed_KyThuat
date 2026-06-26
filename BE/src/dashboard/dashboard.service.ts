@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import {
   customerAccessWhere,
   inventoryMovementAccessWhere,
+  installationAccessWhere,
   isAdmin,
   isEngineer,
   isManager,
@@ -53,10 +54,358 @@ type MaintenanceStatusValue =
   | 'COMPLETED'
   | 'OVERDUE'
   | 'CANCELLED';
+type TechnicalTaskKind = 'repair' | 'maintenance' | 'installation';
+type TechnicalTask = {
+  id: string;
+  kind: TechnicalTaskKind;
+  status: string;
+  reviewStatus: string;
+  date: Date;
+  completedAt?: Date | null;
+  engineerId?: string | null;
+  engineerName?: string | null;
+  customerId?: string | null;
+  machineId?: string | null;
+  productIndustryId?: string | null;
+  productIndustryName: string;
+};
 
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async getTechnicalStatistics(
+    user: RequestUser,
+    query: Record<string, string | undefined> = {},
+  ) {
+    const period = this.resolveStatisticsPeriod(query);
+    const engineerId = query.engineerId?.trim();
+    const productIndustryId = query.productIndustryId?.trim();
+    const workType = query.workType?.trim();
+    const includeRepairs = !workType || workType === 'repair';
+    const includeMaintenances = !workType || workType === 'maintenance';
+    const includeInstallations = !workType || workType === 'installation';
+
+    const repairWhere: Prisma.RepairWhereInput = {
+      AND: [
+        repairAccessWhere(user),
+        { reportedAt: { gte: period.start, lt: period.end } },
+        engineerId ? { engineerId } : {},
+        productIndustryId
+          ? {
+              machine: {
+                businessLine: {
+                  productIndustryId,
+                },
+              },
+            }
+          : {},
+      ],
+    };
+    const maintenanceWhere: Prisma.MaintenanceWhereInput = {
+      AND: [
+        maintenanceAccessWhere(user),
+        { scheduledDate: { gte: period.start, lt: period.end } },
+        engineerId ? { engineerId } : {},
+        productIndustryId
+          ? {
+              machine: {
+                businessLine: {
+                  productIndustryId,
+                },
+              },
+            }
+          : {},
+      ],
+    };
+    const installationWhere: Prisma.MachineInstallationWhereInput = {
+      AND: [
+        installationAccessWhere(user),
+        { installedAt: { gte: period.start, lt: period.end } },
+        engineerId ? { installedById: engineerId } : {},
+        productIndustryId
+          ? {
+              OR: [
+                {
+                  businessLine: {
+                    productIndustryId,
+                  },
+                },
+                {
+                  machine: {
+                    businessLine: {
+                      productIndustryId,
+                    },
+                  },
+                },
+                {
+                  plannedMachineModel: {
+                    businessLine: {
+                      productIndustryId,
+                    },
+                  },
+                },
+              ],
+            }
+          : {},
+      ],
+    };
+
+    const [repairs, maintenances, installations, engineers, industries] =
+      await Promise.all([
+        includeRepairs
+          ? this.prisma.repair.findMany({
+              where: repairWhere,
+              select: {
+                id: true,
+                status: true,
+                reviewStatus: true,
+                reportedAt: true,
+                completedAt: true,
+                engineer: { select: this.userSummarySelect() },
+                engineerId: true,
+                customerId: true,
+                customer: { select: this.customerSummarySelect() },
+                machineId: true,
+                machine: {
+                  select: {
+                    id: true,
+                    customerId: true,
+                    customer: { select: this.customerSummarySelect() },
+                    businessLine: {
+                      select: {
+                        productIndustry: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            })
+          : [],
+        includeMaintenances
+          ? this.prisma.maintenance.findMany({
+              where: maintenanceWhere,
+              select: {
+                id: true,
+                status: true,
+                reviewStatus: true,
+                scheduledDate: true,
+                completedAt: true,
+                engineer: { select: this.userSummarySelect() },
+                engineerId: true,
+                customerId: true,
+                customer: { select: this.customerSummarySelect() },
+                machineId: true,
+                machine: {
+                  select: {
+                    id: true,
+                    customerId: true,
+                    customer: { select: this.customerSummarySelect() },
+                    businessLine: {
+                      select: {
+                        productIndustry: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            })
+          : [],
+        includeInstallations
+          ? this.prisma.machineInstallation.findMany({
+              where: installationWhere,
+              select: {
+                id: true,
+                status: true,
+                reviewStatus: true,
+                installedAt: true,
+                installedBy: { select: this.userSummarySelect() },
+                installedById: true,
+                customerId: true,
+                customer: { select: this.customerSummarySelect() },
+                machineId: true,
+                machine: {
+                  select: {
+                    id: true,
+                    businessLine: {
+                      select: {
+                        productIndustry: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                businessLine: {
+                  select: {
+                    productIndustry: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+                plannedMachineModel: {
+                  select: {
+                    businessLine: {
+                      select: {
+                        productIndustry: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            })
+          : [],
+        this.prisma.user.findMany({
+          where: {
+            status: 'ACTIVE',
+            role: {
+              name: {
+                equals: 'engineer',
+              },
+            },
+          },
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            region: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            fullName: 'asc',
+          },
+        }),
+        this.prisma.productIndustry.findMany({
+          where: {
+            status: 'ACTIVE',
+          },
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            sortOrder: true,
+          },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        }),
+      ]);
+
+    const tasks = [
+      ...repairs.map((item) => ({
+        id: item.id,
+        kind: 'repair' as const,
+        status: item.status,
+        reviewStatus: item.reviewStatus,
+        date: item.reportedAt,
+        completedAt: item.completedAt,
+        engineerId: item.engineerId,
+        engineerName: item.engineer?.fullName || item.engineer?.email || null,
+        customerId: item.customerId || item.machine?.customerId || null,
+        machineId: item.machineId,
+        productIndustryId: item.machine?.businessLine?.productIndustry?.id || null,
+        productIndustryName: item.machine?.businessLine?.productIndustry?.name || 'Chưa phân ngành',
+      })),
+      ...maintenances.map((item) => ({
+        id: item.id,
+        kind: 'maintenance' as const,
+        status: item.status,
+        reviewStatus: item.reviewStatus,
+        date: item.scheduledDate,
+        completedAt: item.completedAt,
+        engineerId: item.engineerId,
+        engineerName: item.engineer?.fullName || item.engineer?.email || null,
+        customerId: item.customerId || item.machine?.customerId || null,
+        machineId: item.machineId,
+        productIndustryId: item.machine?.businessLine?.productIndustry?.id || null,
+        productIndustryName: item.machine?.businessLine?.productIndustry?.name || 'Chưa phân ngành',
+      })),
+      ...installations.map((item) => {
+        const productIndustry =
+          item.businessLine?.productIndustry ||
+          item.machine?.businessLine?.productIndustry ||
+          item.plannedMachineModel?.businessLine?.productIndustry ||
+          null;
+        return {
+          id: item.id,
+          kind: 'installation' as const,
+          status: item.status,
+          reviewStatus: item.reviewStatus,
+          date: item.installedAt,
+          completedAt: item.status === 'INSTALLED' ? item.installedAt : null,
+          engineerId: item.installedById,
+          engineerName:
+            item.installedBy?.fullName || item.installedBy?.email || null,
+          customerId: item.customerId,
+          machineId: item.machineId,
+          productIndustryId: productIndustry?.id || null,
+          productIndustryName: productIndustry?.name || 'Chưa phân ngành',
+        };
+      }),
+    ];
+
+    const customers = new Set(tasks.map((item) => item.customerId).filter(Boolean));
+    const machines = new Set(tasks.map((item) => item.machineId).filter(Boolean));
+    const completed = tasks.filter((item) => this.isCompletedTask(item.kind, item.status)).length;
+    const open = tasks.filter((item) => !this.isClosedTask(item.kind, item.status)).length;
+    const waitingReview = tasks.filter((item) => item.reviewStatus === 'PENDING').length;
+    const overdue = tasks.filter((item) => this.isOverdueTask(item.kind, item.status)).length;
+    const completionRate = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
+    const typeCounts = {
+      repair: tasks.filter((item) => item.kind === 'repair').length,
+      maintenance: tasks.filter((item) => item.kind === 'maintenance').length,
+      installation: tasks.filter((item) => item.kind === 'installation').length,
+    };
+
+    return {
+      period: {
+        month: period.month,
+        start: period.start.toISOString(),
+        end: period.end.toISOString(),
+      },
+      filters: {
+        engineers,
+        productIndustries: industries,
+      },
+      summary: {
+        total: tasks.length,
+        completed,
+        open,
+        waitingReview,
+        overdue,
+        customers: customers.size,
+        machines: machines.size,
+        completionRate,
+      },
+      typeCounts,
+      byEngineer: this.buildEngineerStatistics(tasks),
+      byIndustry: this.buildIndustryStatistics(tasks),
+      trend: this.buildDailyTrend(tasks, period.start, period.end),
+    };
+  }
 
   async getTechnicalMachines(
     user?: RequestUser,
@@ -1104,5 +1453,194 @@ export class DashboardService {
     }
 
     return { id: '__no_access__' };
+  }
+
+  private resolveStatisticsPeriod(query: Record<string, string | undefined>) {
+    const now = new Date();
+    const month = /^\d{4}-\d{2}$/.test(query.month || '')
+      ? query.month!
+      : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const [year, monthIndex] = month.split('-').map(Number);
+    const start = new Date(year, monthIndex - 1, 1);
+    const end = new Date(year, monthIndex, 1);
+
+    return { month, start, end };
+  }
+
+  private buildEngineerStatistics(tasks: TechnicalTask[]) {
+    const map = new Map<
+      string,
+      {
+        engineerId: string;
+        engineerName: string;
+        total: number;
+        repair: number;
+        maintenance: number;
+        installation: number;
+        completed: number;
+        open: number;
+        waitingReview: number;
+        overdue: number;
+        customers: Set<string>;
+        machines: Set<string>;
+      }
+    >();
+
+    tasks.forEach((task) => {
+      const engineerId = task.engineerId || '__unassigned__';
+      const current =
+        map.get(engineerId) ??
+        {
+          engineerId,
+          engineerName: task.engineerName || 'Chưa phân kỹ sư',
+          total: 0,
+          repair: 0,
+          maintenance: 0,
+          installation: 0,
+          completed: 0,
+          open: 0,
+          waitingReview: 0,
+          overdue: 0,
+          customers: new Set<string>(),
+          machines: new Set<string>(),
+        };
+
+      current.total += 1;
+      current[task.kind] += 1;
+      if (this.isCompletedTask(task.kind, task.status)) current.completed += 1;
+      if (!this.isClosedTask(task.kind, task.status)) current.open += 1;
+      if (task.reviewStatus === 'PENDING') current.waitingReview += 1;
+      if (this.isOverdueTask(task.kind, task.status)) current.overdue += 1;
+      if (task.customerId) current.customers.add(task.customerId);
+      if (task.machineId) current.machines.add(task.machineId);
+      map.set(engineerId, current);
+    });
+
+    return Array.from(map.values())
+      .map((item) => ({
+        engineerId: item.engineerId,
+        engineerName: item.engineerName,
+        total: item.total,
+        repair: item.repair,
+        maintenance: item.maintenance,
+        installation: item.installation,
+        completed: item.completed,
+        open: item.open,
+        waitingReview: item.waitingReview,
+        overdue: item.overdue,
+        customers: item.customers.size,
+        machines: item.machines.size,
+        completionRate: item.total
+          ? Math.round((item.completed / item.total) * 100)
+          : 0,
+      }))
+      .sort((left, right) => right.total - left.total);
+  }
+
+  private buildIndustryStatistics(tasks: TechnicalTask[]) {
+    const map = new Map<
+      string,
+      {
+        productIndustryId: string;
+        productIndustryName: string;
+        total: number;
+        repair: number;
+        maintenance: number;
+        installation: number;
+        completed: number;
+        open: number;
+      }
+    >();
+
+    tasks.forEach((task) => {
+      const productIndustryId = task.productIndustryId || '__unassigned__';
+      const current =
+        map.get(productIndustryId) ??
+        {
+          productIndustryId,
+          productIndustryName: task.productIndustryName || 'Chưa phân ngành',
+          total: 0,
+          repair: 0,
+          maintenance: 0,
+          installation: 0,
+          completed: 0,
+          open: 0,
+        };
+
+      current.total += 1;
+      current[task.kind] += 1;
+      if (this.isCompletedTask(task.kind, task.status)) current.completed += 1;
+      if (!this.isClosedTask(task.kind, task.status)) current.open += 1;
+      map.set(productIndustryId, current);
+    });
+
+    return Array.from(map.values()).sort((left, right) => right.total - left.total);
+  }
+
+  private buildDailyTrend(tasks: TechnicalTask[], start: Date, end: Date) {
+    const days: Array<{
+      date: string;
+      repair: number;
+      maintenance: number;
+      installation: number;
+      total: number;
+    }> = [];
+    const cursor = new Date(start);
+
+    while (cursor < end) {
+      days.push({
+        date: cursor.toISOString().slice(0, 10),
+        repair: 0,
+        maintenance: 0,
+        installation: 0,
+        total: 0,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const map = new Map(days.map((item) => [item.date, item]));
+    tasks.forEach((task) => {
+      const key = task.date.toISOString().slice(0, 10);
+      const item = map.get(key);
+      if (!item) return;
+      item[task.kind] += 1;
+      item.total += 1;
+    });
+
+    return days;
+  }
+
+  private isCompletedTask(kind: TechnicalTaskKind, status: string) {
+    if (kind === 'installation') return status === 'INSTALLED';
+    return status === 'COMPLETED';
+  }
+
+  private isClosedTask(kind: TechnicalTaskKind, status: string) {
+    if (kind === 'installation') return ['INSTALLED', 'CANCELLED'].includes(status);
+    return ['COMPLETED', 'CANCELLED'].includes(status);
+  }
+
+  private isOverdueTask(kind: TechnicalTaskKind, status: string) {
+    if (kind === 'maintenance') return status === 'OVERDUE';
+    if (kind === 'repair') return status === 'WAITING_PARTS';
+    return false;
+  }
+
+  private userSummarySelect() {
+    return {
+      id: true,
+      email: true,
+      fullName: true,
+    } satisfies Prisma.UserSelect;
+  }
+
+  private customerSummarySelect() {
+    return {
+      id: true,
+      name: true,
+      hospitalName: true,
+      customerCode: true,
+      province: true,
+    } satisfies Prisma.CustomerSelect;
   }
 }

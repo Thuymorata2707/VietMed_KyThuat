@@ -21,4 +21,12 @@ export class DashboardController {
   ) {
     return this.dashboardService.getTechnicalMachines(user, query);
   }
+
+  @Get('technical-statistics')
+  getTechnicalStatistics(
+    @CurrentUser() user: RequestUser,
+    @Query() query: Record<string, string | undefined>,
+  ) {
+    return this.dashboardService.getTechnicalStatistics(user, query);
+  }
 }
