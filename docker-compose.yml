@@ -1,0 +1,54 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: vietmed-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-vietmed_root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-vietmed_kythuat}
+      MYSQL_USER: ${MYSQL_USER:-vietmed}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-vietmed_password}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./BE
+    container_name: vietmed-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: mysql://${MYSQL_USER:-vietmed}:${MYSQL_PASSWORD:-vietmed_password}@db:3306/${MYSQL_DATABASE:-vietmed_kythuat}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-86400}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      - backend-uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./FE
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
+    container_name: vietmed-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql-data:
+  backend-uploads:

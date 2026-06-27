@@ -341,15 +341,26 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/technical-statistics"
             element={
               <RequireRole
-                allowedRoles={['admin', 'manager', 'engineer']}
+                allowedRoles={['admin', 'engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <TechnicalStatisticsPage />
+                <TechnicalStatisticsPage currentRole={role} user={user} />
               </RequireRole>
             }
           />
-          <Route path="/my-tasks" element={role === 'admin' ? <AdminWorkAssignmentPage /> : <EngineerTasksPage user={user} />} />
+          <Route
+            path="/my-tasks"
+            element={
+              role === 'admin' ? (
+                <AdminWorkAssignmentPage />
+              ) : role === 'engineer' ? (
+                <EngineerTasksPage user={user} />
+              ) : (
+                <AccessDeniedPage message="Tài khoản quản lý không dùng màn việc cá nhân của kỹ sư." />
+              )
+            }
+          />
           <Route
             path="/my-customers"
             element={
@@ -499,7 +510,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/service-tickets"
             element={
               <RequireRole
-                allowedRoles={['admin', 'engineer']}
+                allowedRoles={resources.repairs.roles}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >

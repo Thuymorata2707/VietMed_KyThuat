@@ -41,7 +41,7 @@ type NoteForm = {
 const colorOptions = [
   { label: 'Đỏ', value: '#d71920' },
   { label: 'Xanh lá', value: '#177245' },
-  { label: 'Xanh dương', value: '#d71920' },
+  { label: 'Xanh dương', value: '#2563eb' },
   { label: 'Vàng', value: '#9b5a17' },
 ];
 

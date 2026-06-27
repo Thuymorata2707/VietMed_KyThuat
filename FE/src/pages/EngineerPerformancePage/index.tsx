@@ -126,6 +126,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const closedActivities = summary?.activities?.filter((activity) => ['COMPLETED', 'INSTALLED', 'APPROVED'].includes(activity.status)).length ?? 0;
   const unresolvedActivities = Math.max((summary?.activities.length ?? 0) - closedActivities, 0);
   const currentWeeklyReportHref = buildWeeklyReportHref(from, isAdmin ? engineerId : '');
+  const currentTechnicalReportHref = buildTechnicalReportHref(from, to, isAdmin ? engineerId : user.id, isAdmin);
   const sortedWeeklyReports = useMemo(
     () => [...(summary?.weeklyReports ?? [])].sort((left, right) => right.weekStart.localeCompare(left.weekStart)),
     [summary],
@@ -242,6 +243,12 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
             Cập nhật
           </button>
+          {currentTechnicalReportHref ? (
+            <Link className="secondary-button self-end" to={currentTechnicalReportHref}>
+              <FileText size={16} />
+              Báo cáo
+            </Link>
+          ) : null}
           <button className="secondary-button self-end" disabled={!summary?.activities.length} onClick={exportCsv} type="button">
             <Download size={16} />
             CSV
@@ -541,6 +548,16 @@ function buildWeeklyReportHref(weekStart: string, engineerId?: string) {
   const params = new URLSearchParams({ weekStart: toDateInput(startOfWeek(new Date(`${weekStart}T00:00:00`))) });
   if (engineerId) params.set('userId', engineerId);
   return `/weekly-reports?${params.toString()}`;
+}
+
+function buildTechnicalReportHref(from: string, to: string, engineerId: string, includeEngineerId: boolean) {
+  if (!from || !to || !engineerId) return '';
+  const params = new URLSearchParams({ from, to, returnTo: `/engineer-performance?from=${from}&to=${to}` });
+  if (includeEngineerId) {
+    params.set('engineerId', engineerId);
+    params.set('returnTo', `/engineer-performance?engineerId=${engineerId}&from=${from}&to=${to}`);
+  }
+  return `/technical-statistics?${params.toString()}`;
 }
 
 function toneText(tone: 'good' | 'warn' | 'neutral') {

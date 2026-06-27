@@ -2,7 +2,8 @@ import { ArrowLeft, BarChart3, ClipboardCheck, Loader2, RefreshCw, SlidersHorizo
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { apiFetch } from '../../api';
+import { ApiUser, apiFetch } from '../../api';
+import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -92,11 +93,22 @@ const workTypeOptions = [
   { label: 'Lắp đặt', value: 'installation' },
 ];
 
-export function TechnicalStatisticsPage() {
+type TechnicalStatisticsPageProps = {
+  currentRole: RoleName;
+  user: ApiUser;
+};
+
+const currentMonthStart = startOfMonth(new Date());
+const currentMonthEnd = endOfMonth(new Date());
+
+export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisticsPageProps) {
   const [searchParams] = useSearchParams();
+  const isAdmin = currentRole === 'admin';
   const returnTo = searchParams.get('returnTo') || '';
-  const [month, setMonth] = useState(() => searchParams.get('month') || new Date().toISOString().slice(0, 7));
-  const [engineerId, setEngineerId] = useState(() => searchParams.get('engineerId') || '');
+  const initialMonth = searchParams.get('month');
+  const [from, setFrom] = useState(() => searchParams.get('from') || monthStartFromParam(initialMonth) || toDateInput(currentMonthStart));
+  const [to, setTo] = useState(() => searchParams.get('to') || monthEndFromParam(initialMonth) || toDateInput(currentMonthEnd));
+  const [engineerId, setEngineerId] = useState(() => (isAdmin ? searchParams.get('engineerId') || '' : user.id));
   const [productIndustryId, setProductIndustryId] = useState(() => searchParams.get('productIndustryId') || '');
   const [workType, setWorkType] = useState(() => normalizeWorkType(searchParams.get('workType')));
   const [data, setData] = useState<TechnicalStatistics | null>(null);
@@ -105,15 +117,16 @@ export function TechnicalStatisticsPage() {
 
   useEffect(() => {
     void loadStatistics();
-  }, [month, engineerId, productIndustryId, workType]);
+  }, [currentRole, engineerId, from, productIndustryId, to, user.id, workType]);
 
   async function loadStatistics() {
     setLoading(true);
     setError('');
 
     try {
-      const params = new URLSearchParams({ month });
-      if (engineerId) params.set('engineerId', engineerId);
+      const params = new URLSearchParams({ from, to });
+      const effectiveEngineerId = isAdmin ? engineerId : user.id;
+      if (effectiveEngineerId) params.set('engineerId', effectiveEngineerId);
       if (productIndustryId) params.set('productIndustryId', productIndustryId);
       if (workType) params.set('workType', workType);
       setData(await apiFetch<TechnicalStatistics>(`/dashboard/technical-statistics?${params.toString()}`));
@@ -134,7 +147,7 @@ export function TechnicalStatisticsPage() {
         <PageTitle
           eyebrow="Báo cáo kỹ thuật"
           title="Thống kê kỹ thuật"
-          description="Theo dõi sửa chữa, bảo trì và lắp đặt theo tháng, kỹ sư và ngành hàng."
+          description={isAdmin ? 'Theo dõi sửa chữa, bảo trì và lắp đặt theo khoảng ngày, kỹ sư và ngành hàng.' : 'Báo cáo kỹ thuật chi tiết theo khoảng ngày của kỹ sư đang đăng nhập.'}
         />
         <div className="flex flex-wrap gap-2">
           {returnTo ? (
@@ -151,21 +164,31 @@ export function TechnicalStatisticsPage() {
       </div>
 
       <section className="operation-filter-panel">
-        <div className="grid gap-3 min-[1040px]:grid-cols-[180px_minmax(190px,1fr)_minmax(190px,1fr)_180px]">
+        <div className="grid gap-3 min-[1180px]:grid-cols-[160px_160px_minmax(190px,1fr)_minmax(190px,1fr)_180px]">
           <label className="operation-filter-field">
-            <span>Tháng</span>
-            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => setMonth(event.target.value)} type="month" value={month} />
+            <span>Từ ngày</span>
+            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => setFrom(event.target.value)} type="date" value={from} />
+          </label>
+          <label className="operation-filter-field">
+            <span>Đến ngày</span>
+            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => setTo(event.target.value)} type="date" value={to} />
           </label>
           <label className="operation-filter-field">
             <span>Kỹ sư</span>
-            <select onChange={(event) => setEngineerId(event.target.value)} value={engineerId}>
-              <option value="">Tất cả kỹ sư</option>
-              {(data?.filters.engineers ?? []).map((engineer) => (
-                <option key={engineer.id} value={engineer.id}>
-                  {[engineer.fullName || engineer.email, engineer.region?.name].filter(Boolean).join(' - ')}
-                </option>
-              ))}
-            </select>
+            {isAdmin ? (
+              <select onChange={(event) => setEngineerId(event.target.value)} value={engineerId}>
+                <option value="">Tất cả kỹ sư</option>
+                {(data?.filters.engineers ?? []).map((engineer) => (
+                  <option key={engineer.id} value={engineer.id}>
+                    {[engineer.fullName || engineer.email, engineer.region?.name].filter(Boolean).join(' - ')}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="grid min-h-[42px] content-center rounded-lg border border-[#d6d6d6] bg-[#fafafa] px-3 text-sm font-semibold text-[#1f1f1f]">
+                {user.fullName || user.email}
+              </div>
+            )}
           </label>
           <label className="operation-filter-field">
             <span>Ngành hàng</span>
@@ -203,7 +226,7 @@ export function TechnicalStatisticsPage() {
       {data ? (
         <>
           <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard icon={<BarChart3 size={18} />} label="Tổng việc" value={data.summary.total} hint={`Tháng ${data.period.month}`} />
+            <StatCard icon={<BarChart3 size={18} />} label="Tổng việc" value={data.summary.total} hint={`${formatDay(from)} - ${formatDay(to)}`} />
             <StatCard icon={<ClipboardCheck size={18} />} label="Hoàn tất" value={data.summary.completed} hint={`${data.summary.completionRate}% tỷ lệ hoàn tất`} />
             <StatCard icon={<SlidersHorizontal size={18} />} label="Đang mở" value={data.summary.open} hint={`${data.summary.waitingReview} việc chờ xác nhận`} />
             <StatCard icon={<Users size={18} />} label="Khách hàng / máy" value={`${data.summary.customers}/${data.summary.machines}`} hint={`${data.summary.overdue} việc cần chú ý`} />
@@ -423,6 +446,31 @@ function EmptyPanel({ text }: { text: string }) {
 
 function normalizeWorkType(value: string | null) {
   return workTypeOptions.some((option) => option.value === value) ? value || '' : '';
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function endOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+}
+
+function toDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function monthStartFromParam(month: string | null) {
+  return /^\d{4}-\d{2}$/.test(month || '') ? `${month}-01` : '';
+}
+
+function monthEndFromParam(month: string | null) {
+  if (!/^\d{4}-\d{2}$/.test(month || '')) return '';
+  const [year, monthIndex] = month!.split('-').map(Number);
+  return toDateInput(new Date(year, monthIndex, 0));
 }
 
 function formatDay(value: string) {

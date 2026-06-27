@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   customerAccessWhere,
@@ -1457,6 +1457,26 @@ export class DashboardService {
 
   private resolveStatisticsPeriod(query: Record<string, string | undefined>) {
     const now = new Date();
+    const from = query.from?.trim();
+    const to = query.to?.trim();
+
+    if (from || to) {
+      const start = this.parseDateInput(from || this.firstDayOfCurrentMonth(now), 'from');
+      const endDate = this.parseDateInput(to || from || this.firstDayOfCurrentMonth(now), 'to');
+      const end = new Date(endDate);
+      end.setDate(end.getDate() + 1);
+
+      if (end <= start) {
+        throw new BadRequestException('to must be after from');
+      }
+
+      return {
+        month: start.toISOString().slice(0, 7),
+        start,
+        end,
+      };
+    }
+
     const month = /^\d{4}-\d{2}$/.test(query.month || '')
       ? query.month!
       : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -1465,6 +1485,24 @@ export class DashboardService {
     const end = new Date(year, monthIndex, 1);
 
     return { month, start, end };
+  }
+
+  private firstDayOfCurrentMonth(date: Date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+  }
+
+  private parseDateInput(value: string, fieldName: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      throw new BadRequestException(`${fieldName} must be YYYY-MM-DD`);
+    }
+
+    const date = new Date(`${value}T00:00:00.000Z`);
+
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException(`Invalid ${fieldName}`);
+    }
+
+    return date;
   }
 
   private buildEngineerStatistics(tasks: TechnicalTask[]) {
