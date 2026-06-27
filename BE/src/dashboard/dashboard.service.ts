@@ -80,23 +80,47 @@ export class DashboardService {
   ) {
     const period = this.resolveStatisticsPeriod(query);
     const engineerId = query.engineerId?.trim();
-    const productIndustryId = query.productIndustryId?.trim();
+    const requestedProductIndustryId = query.productIndustryId?.trim();
     const workType = query.workType?.trim();
     const includeRepairs = !workType || workType === 'repair';
     const includeMaintenances = !workType || workType === 'maintenance';
     const includeInstallations = !workType || workType === 'installation';
+    const selectedEngineer = engineerId
+      ? await this.prisma.user.findUnique({
+          where: { id: engineerId },
+          select: {
+            engineerProfile: {
+              select: {
+                expertiseGroup: true,
+              },
+            },
+          },
+        })
+      : null;
+    const engineerExpertiseGroup =
+      selectedEngineer?.engineerProfile?.expertiseGroup || null;
+    const productIndustryId = engineerExpertiseGroup
+      ? ''
+      : requestedProductIndustryId;
+    const businessLineIndustryScope = productIndustryId
+      ? { productIndustryId }
+      : engineerExpertiseGroup
+        ? {
+            productIndustry: {
+              expertiseGroup: engineerExpertiseGroup,
+            },
+          }
+        : {};
 
     const repairWhere: Prisma.RepairWhereInput = {
       AND: [
         repairAccessWhere(user),
         { reportedAt: { gte: period.start, lt: period.end } },
         engineerId ? { engineerId } : {},
-        productIndustryId
+        productIndustryId || engineerExpertiseGroup
           ? {
               machine: {
-                businessLine: {
-                  productIndustryId,
-                },
+                businessLine: businessLineIndustryScope,
               },
             }
           : {},
@@ -107,12 +131,10 @@ export class DashboardService {
         maintenanceAccessWhere(user),
         { scheduledDate: { gte: period.start, lt: period.end } },
         engineerId ? { engineerId } : {},
-        productIndustryId
+        productIndustryId || engineerExpertiseGroup
           ? {
               machine: {
-                businessLine: {
-                  productIndustryId,
-                },
+                businessLine: businessLineIndustryScope,
               },
             }
           : {},
@@ -123,26 +145,20 @@ export class DashboardService {
         installationAccessWhere(user),
         { installedAt: { gte: period.start, lt: period.end } },
         engineerId ? { installedById: engineerId } : {},
-        productIndustryId
+        productIndustryId || engineerExpertiseGroup
           ? {
               OR: [
                 {
-                  businessLine: {
-                    productIndustryId,
-                  },
+                  businessLine: businessLineIndustryScope,
                 },
                 {
                   machine: {
-                    businessLine: {
-                      productIndustryId,
-                    },
+                    businessLine: businessLineIndustryScope,
                   },
                 },
                 {
                   plannedMachineModel: {
-                    businessLine: {
-                      productIndustryId,
-                    },
+                    businessLine: businessLineIndustryScope,
                   },
                 },
               ],
@@ -295,6 +311,11 @@ export class DashboardService {
                 name: true,
               },
             },
+            engineerProfile: {
+              select: {
+                expertiseGroup: true,
+              },
+            },
           },
           orderBy: {
             fullName: 'asc',
@@ -308,6 +329,7 @@ export class DashboardService {
             id: true,
             name: true,
             code: true,
+            expertiseGroup: true,
             sortOrder: true,
           },
           orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],

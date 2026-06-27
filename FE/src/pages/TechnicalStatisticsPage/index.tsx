@@ -13,13 +13,19 @@ type EngineerOption = {
   email: string;
   fullName?: string | null;
   region?: { id: string; name: string } | null;
+  engineerProfile?: {
+    expertiseGroup?: ExpertiseGroup | null;
+  } | null;
 };
 
 type ProductIndustryOption = {
   id: string;
   name: string;
   code?: string | null;
+  expertiseGroup?: ExpertiseGroup | null;
 };
+
+type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING';
 
 type EngineerStat = {
   engineerId: string;
@@ -119,6 +125,28 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
     void loadStatistics();
   }, [currentRole, engineerId, from, productIndustryId, to, user.id, workType]);
 
+  const selectedEngineer = useMemo(
+    () => (isAdmin ? data?.filters.engineers.find((engineer) => engineer.id === engineerId) : null),
+    [data, engineerId, isAdmin],
+  );
+  const selectedExpertiseGroup = isAdmin
+    ? selectedEngineer?.engineerProfile?.expertiseGroup || null
+    : user.engineerProfile?.expertiseGroup || null;
+  const isIndustryLocked = Boolean((isAdmin ? engineerId : user.id) && selectedExpertiseGroup);
+  const lockedIndustryOptions = useMemo(
+    () => (data?.filters.productIndustries ?? []).filter((industry) => industry.expertiseGroup === selectedExpertiseGroup),
+    [data, selectedExpertiseGroup],
+  );
+  const industrySelectLabel = isIndustryLocked
+    ? `Theo nhóm ${expertiseGroupLabel(selectedExpertiseGroup)}${lockedIndustryOptions.length ? ` (${lockedIndustryOptions.map((industry) => industry.name).join(', ')})` : ''}`
+    : 'Tất cả ngành hàng';
+
+  useEffect(() => {
+    if (isIndustryLocked && productIndustryId) {
+      setProductIndustryId('');
+    }
+  }, [isIndustryLocked, productIndustryId]);
+
   async function loadStatistics() {
     setLoading(true);
     setError('');
@@ -127,7 +155,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
       const params = new URLSearchParams({ from, to });
       const effectiveEngineerId = isAdmin ? engineerId : user.id;
       if (effectiveEngineerId) params.set('engineerId', effectiveEngineerId);
-      if (productIndustryId) params.set('productIndustryId', productIndustryId);
+      if (!isIndustryLocked && productIndustryId) params.set('productIndustryId', productIndustryId);
       if (workType) params.set('workType', workType);
       setData(await apiFetch<TechnicalStatistics>(`/dashboard/technical-statistics?${params.toString()}`));
     } catch (err) {
@@ -192,14 +220,15 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
           </label>
           <label className="operation-filter-field">
             <span>Ngành hàng</span>
-            <select onChange={(event) => setProductIndustryId(event.target.value)} value={productIndustryId}>
-              <option value="">Tất cả ngành hàng</option>
+            <select disabled={isIndustryLocked} onChange={(event) => setProductIndustryId(event.target.value)} value={isIndustryLocked ? '' : productIndustryId}>
+              <option value="">{industrySelectLabel}</option>
               {(data?.filters.productIndustries ?? []).map((industry) => (
                 <option key={industry.id} value={industry.id}>
                   {industry.name}
                 </option>
               ))}
             </select>
+            {isIndustryLocked ? <small>Tự khóa theo nhóm chuyên môn của kỹ sư đã chọn.</small> : null}
           </label>
           <label className="operation-filter-field">
             <span>Loại việc</span>
@@ -446,6 +475,12 @@ function EmptyPanel({ text }: { text: string }) {
 
 function normalizeWorkType(value: string | null) {
   return workTypeOptions.some((option) => option.value === value) ? value || '' : '';
+}
+
+function expertiseGroupLabel(value?: ExpertiseGroup | null) {
+  if (value === 'IMAGING') return 'Chẩn đoán hình ảnh';
+  if (value === 'LAB_TESTING') return 'Xét nghiệm';
+  return 'chuyên môn';
 }
 
 function startOfMonth(date: Date) {
