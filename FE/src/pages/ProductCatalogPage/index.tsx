@@ -696,10 +696,11 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                 />
               </label>
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
-                Mã máy nội bộ
+                Mã máy nội bộ (tự sinh nếu để trống)
                 <input
                   className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                   onChange={(event) => updateField('machineCode', event.target.value)}
+                  placeholder="VD: XCUBE50-001"
                   value={form.machineCode}
                 />
               </label>

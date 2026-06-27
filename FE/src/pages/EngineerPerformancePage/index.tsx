@@ -213,7 +213,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       {error ? <Notice message={error} /> : null}
 
       <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
-        <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_160px_160px_auto_auto]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_160px_160px_auto]">
           {isAdmin ? (
             <label className="grid gap-1.5 text-sm font-medium text-[#333333]">
               Kỹ sư
@@ -239,20 +239,22 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             Đến ngày
             <input className={fieldClass} onChange={(event) => setTo(event.target.value)} type="date" value={to} />
           </label>
-          <button className="secondary-button self-end" disabled={loading} onClick={loadSummary} type="button">
-            {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
-            Cập nhật
-          </button>
-          {currentTechnicalReportHref ? (
-            <Link className="secondary-button self-end" to={currentTechnicalReportHref}>
-              <FileText size={16} />
-              Báo cáo
-            </Link>
-          ) : null}
-          <button className="secondary-button self-end" disabled={!summary?.activities.length} onClick={exportCsv} type="button">
-            <Download size={16} />
-            CSV
-          </button>
+          <div className="flex flex-wrap items-end justify-start gap-2 self-end lg:justify-end">
+            <button className="secondary-button" disabled={loading} onClick={loadSummary} type="button">
+              {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
+              Cập nhật
+            </button>
+            {currentTechnicalReportHref ? (
+              <Link className="secondary-button" to={currentTechnicalReportHref}>
+                <FileText size={16} />
+                Báo cáo
+              </Link>
+            ) : null}
+            <button className="secondary-button" disabled={!summary?.activities.length} onClick={exportCsv} type="button">
+              <Download size={16} />
+              CSV
+            </button>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 border-t border-[#eeeeee] pt-3">
           <button className="secondary-button" onClick={() => setDateRange(addDays(today, -60), today)} type="button">60 ngày</button>

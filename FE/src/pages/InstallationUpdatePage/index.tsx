@@ -296,8 +296,8 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   <input className={fieldClass} onChange={(event) => setMachineSerialNumber(event.target.value)} required={status === 'INSTALLED'} value={machineSerialNumber} />
                 </label>
                 <label className={labelClass}>
-                  Mã máy nội bộ
-                  <input className={fieldClass} onChange={(event) => setMachineCode(event.target.value)} value={machineCode} />
+                  Mã máy nội bộ (tự sinh nếu để trống)
+                  <input className={fieldClass} onChange={(event) => setMachineCode(event.target.value)} placeholder="VD: XCUBE50-001" value={machineCode} />
                 </label>
                 <div className="md:col-span-2">
                   {accessoryMode ? (

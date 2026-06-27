@@ -29,9 +29,11 @@ export class CustomersService {
     await this.ensureEngineerExists(dto.primaryEngineerId);
 
     return this.prisma.$transaction(async (tx) => {
+      const customerCode =
+        dto.customerCode?.trim() || (await this.generateCustomerCode(tx, dto));
       const created = await tx.customer.create({
         data: {
-          customerCode: dto.customerCode?.trim() || null,
+          customerCode,
           name: dto.name.trim(),
           shortName: dto.shortName?.trim() || null,
           hospitalName: dto.hospitalName?.trim() || null,
@@ -481,6 +483,63 @@ export class CustomersService {
     if (customer && customer.id !== currentCustomerId) {
       throw new ConflictException('Customer code already exists');
     }
+  }
+
+  private async generateCustomerCode(
+    tx: Prisma.TransactionClient,
+    dto: CreateCustomerDto,
+  ) {
+    const region = await tx.region.findUnique({
+      where: { id: dto.regionId },
+      select: { code: true },
+    });
+    const prefix = [
+      this.customerTypePrefix(dto.customerType),
+      this.normalizeCodeSegment(region?.code || dto.province || 'KH'),
+    ].join('-');
+    const latest = await tx.customer.findFirst({
+      where: {
+        customerCode: {
+          startsWith: `${prefix}-`,
+        },
+      },
+      orderBy: {
+        customerCode: 'desc',
+      },
+      select: {
+        customerCode: true,
+      },
+    });
+    const latestNumber = latest?.customerCode
+      ? Number(latest.customerCode.slice(latest.customerCode.lastIndexOf('-') + 1))
+      : 0;
+    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
+
+    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  private customerTypePrefix(type?: CustomerType) {
+    if (type === CustomerType.HOSPITAL) return 'BV';
+    if (type === CustomerType.CLINIC) return 'PK';
+    if (type === CustomerType.LAB) return 'XN';
+    if (type === CustomerType.DISTRIBUTOR) return 'NPP';
+    if (type === CustomerType.UNIVERSITY) return 'DH';
+    if (type === CustomerType.COMPANY) return 'CTY';
+    return 'KH';
+  }
+
+  private normalizeCodeSegment(value: string) {
+    const normalized = value
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/Đ/g, 'D')
+      .replace(/[^A-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-');
+
+    return normalized || 'KH';
   }
 
   private normalizeOptionalEmail(email?: string | null): string | null {

@@ -1237,15 +1237,25 @@ export class MachinesService {
     tx: Prisma.TransactionClient,
   ): Promise<string> {
     const prefix = this.getDailyCodePrefix('WAR');
-    const count = await tx.warrantyCard.count({
+    const latest = await tx.warrantyCard.findFirst({
       where: {
         code: {
-          startsWith: prefix,
+          startsWith: `${prefix}-`,
         },
       },
+      orderBy: {
+        code: 'desc',
+      },
+      select: {
+        code: true,
+      },
     });
+    const latestNumber = latest?.code
+      ? Number(latest.code.slice(prefix.length + 1))
+      : 0;
+    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
 
-    return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+    return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
   }
 
   private getDailyCodePrefix(prefix: string) {

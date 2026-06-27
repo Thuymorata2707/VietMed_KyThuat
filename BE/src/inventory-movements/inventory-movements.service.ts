@@ -198,15 +198,25 @@ export class InventoryMovementsService {
     const day = String(now.getDate()).padStart(2, '0');
     const prefix = `INV-${year}${month}${day}`;
 
-    const count = await this.prisma.machineInventoryMovement.count({
+    const latest = await this.prisma.machineInventoryMovement.findFirst({
       where: {
         code: {
-          startsWith: prefix,
+          startsWith: `${prefix}-`,
         },
       },
+      orderBy: {
+        code: 'desc',
+      },
+      select: {
+        code: true,
+      },
     });
+    const latestNumber = latest?.code
+      ? Number(latest.code.slice(prefix.length + 1))
+      : 0;
+    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
 
-    return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+    return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
   }
 
   private parseOptionalDate(value?: string): Date | undefined {

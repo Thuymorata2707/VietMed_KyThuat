@@ -822,8 +822,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
             <div className="grid gap-3 md:grid-cols-2">
               <label className={editLabelClass}>
-                Mã máy
-                <input className={editFieldClass} onChange={(event) => updateEditForm({ machineCode: event.target.value })} value={editForm.machineCode} />
+                Mã máy (tự sinh nếu để trống khi tạo mới)
+                <input className={editFieldClass} onChange={(event) => updateEditForm({ machineCode: event.target.value })} placeholder="VD: XCUBE50-001" value={editForm.machineCode} />
               </label>
               <label className={editLabelClass}>
                 Serial
@@ -1645,8 +1645,8 @@ function MachineEditForm({
 
       <div className="grid gap-3 md:grid-cols-2">
         <label className={editLabelClass}>
-          Mã máy
-          <input className={editFieldClass} onChange={(event) => onUpdateForm({ machineCode: event.target.value })} value={editForm.machineCode} />
+          Mã máy (tự sinh nếu để trống khi tạo mới)
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ machineCode: event.target.value })} placeholder="VD: XCUBE50-001" value={editForm.machineCode} />
         </label>
         <label className={editLabelClass}>
           Serial

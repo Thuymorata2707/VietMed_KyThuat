@@ -806,7 +806,13 @@ function FieldControl({
   return (
     <label className={field.wide ? 'wide-field' : undefined}>
       {field.label}
-      <input onChange={(event) => onChange(event.target.value)} required={field.required} type={inputType(field)} value={value} />
+      <input
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={field.placeholder}
+        required={field.required}
+        type={inputType(field)}
+        value={value}
+      />
       {field.type === 'image' && value ? (
         <span className="image-field-preview">
           <img alt="" src={value} />

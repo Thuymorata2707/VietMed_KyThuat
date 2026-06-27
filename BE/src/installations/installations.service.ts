@@ -80,6 +80,7 @@ export class InstallationsService {
         machine,
         machineModel,
         businessLine,
+        engineer,
       );
         const installation = await tx.machineInstallation.create({
           data: {
@@ -1059,6 +1060,7 @@ export class InstallationsService {
       where: { id: engineerId },
       include: {
         role: true,
+        engineerProfile: true,
       },
     });
 
@@ -1246,17 +1248,48 @@ export class InstallationsService {
     machine: Awaited<ReturnType<InstallationsService['findMachine']>> | null,
     machineModel?: Awaited<ReturnType<InstallationsService['findMachineModel']>> | null,
     businessLine?: Awaited<ReturnType<InstallationsService['findBusinessLine']>> | null,
+    engineer?: Awaited<ReturnType<InstallationsService['findEngineer']>> | null,
   ): Promise<string> {
-    const prefix = `LD-${this.getExpertiseGroupCode(machine, machineModel, businessLine)}-${new Date().getFullYear()}`;
-    const count = await tx.machineInstallation.count({
+    const engineerCode = this.normalizeCodeSegment(
+      engineer?.engineerProfile?.employeeCode ||
+        engineer?.fullName ||
+        engineer?.email ||
+        '',
+    );
+    const prefix = `LD-${engineerCode ?? this.getExpertiseGroupCode(machine, machineModel, businessLine)}-${new Date().getFullYear()}`;
+    const latest = await tx.machineInstallation.findFirst({
       where: {
         code: {
-          startsWith: prefix,
+          startsWith: `${prefix}-`,
         },
       },
+      orderBy: {
+        code: 'desc',
+      },
+      select: {
+        code: true,
+      },
     });
+    const latestNumber = latest?.code
+      ? Number(latest.code.slice(prefix.length + 1))
+      : 0;
+    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
 
-    return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  private normalizeCodeSegment(value: string) {
+    const normalized = value
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/Đ/g, 'D')
+      .replace(/[^A-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-');
+
+    return normalized || null;
   }
 
   private getExpertiseGroupCode(
@@ -1283,30 +1316,50 @@ export class InstallationsService {
     tx: Prisma.TransactionClient,
   ): Promise<string> {
     const prefix = this.getDailyCodePrefix('WAR');
-    const count = await tx.warrantyCard.count({
+    const latest = await tx.warrantyCard.findFirst({
       where: {
         code: {
-          startsWith: prefix,
+          startsWith: `${prefix}-`,
         },
       },
+      orderBy: {
+        code: 'desc',
+      },
+      select: {
+        code: true,
+      },
     });
+    const latestNumber = latest?.code
+      ? Number(latest.code.slice(prefix.length + 1))
+      : 0;
+    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
 
-    return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+    return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
   }
 
   private async generateMovementCode(
     tx: Prisma.TransactionClient,
   ): Promise<string> {
     const prefix = this.getDailyCodePrefix('INV');
-    const count = await tx.machineInventoryMovement.count({
+    const latest = await tx.machineInventoryMovement.findFirst({
       where: {
         code: {
-          startsWith: prefix,
+          startsWith: `${prefix}-`,
         },
       },
+      orderBy: {
+        code: 'desc',
+      },
+      select: {
+        code: true,
+      },
     });
+    const latestNumber = latest?.code
+      ? Number(latest.code.slice(prefix.length + 1))
+      : 0;
+    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
 
-    return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+    return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
   }
 
   private getDailyCodePrefix(prefix: string) {

@@ -77,7 +77,12 @@ export class RepairsService {
     return this.prisma.$transaction(async (tx) => {
       const repair = await tx.repair.create({
         data: {
-          code: await this.generateRepairCode(machine, dto.warrantyStatus),
+          code: await this.generateRepairCode(
+            tx,
+            machine,
+            dto.warrantyStatus,
+            engineerId,
+          ),
           title: dto.title.trim(),
           description: dto.description?.trim() || null,
           machineId: machine?.id ?? null,
@@ -820,24 +825,81 @@ export class RepairsService {
   }
 
   private async generateRepairCode(
+    tx: Prisma.TransactionClient,
     machine: MachineExpertiseSource,
     warrantyStatus?: string | null,
+    engineerId?: string | null,
   ): Promise<string> {
     const now = new Date();
     const year = now.getFullYear();
     const typePrefix = warrantyStatus === 'IN_WARRANTY' ? 'BH' : 'SC';
-    const groupPrefix = this.getExpertiseGroupCode(machine);
+    const groupPrefix =
+      (await this.getEngineerCode(tx, engineerId)) ??
+      this.getExpertiseGroupCode(machine);
     const prefix = `${typePrefix}-${groupPrefix}-${year}`;
 
-    const count = await this.prisma.repair.count({
+    const latest = await tx.repair.findFirst({
       where: {
         code: {
-          startsWith: prefix,
+          startsWith: `${prefix}-`,
         },
+      },
+      orderBy: {
+        code: 'desc',
+      },
+      select: {
+        code: true,
+      },
+    });
+    const latestNumber = latest?.code
+      ? Number(latest.code.slice(prefix.length + 1))
+      : 0;
+    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
+
+    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  private async getEngineerCode(
+    tx: Prisma.TransactionClient,
+    engineerId?: string | null,
+  ) {
+    if (!engineerId) {
+      return null;
+    }
+
+    const engineer = await tx.user.findUnique({
+      where: { id: engineerId },
+      select: {
+        engineerProfile: {
+          select: {
+            employeeCode: true,
+          },
+        },
+        fullName: true,
+        email: true,
       },
     });
 
-    return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+    return this.normalizeCodeSegment(
+      engineer?.engineerProfile?.employeeCode ||
+        engineer?.fullName ||
+        engineer?.email ||
+        '',
+    );
+  }
+
+  private normalizeCodeSegment(value: string) {
+    const normalized = value
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/Đ/g, 'D')
+      .replace(/[^A-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-');
+
+    return normalized || null;
   }
 
   private getExpertiseGroupCode(

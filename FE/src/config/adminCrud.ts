@@ -4,6 +4,7 @@ import { enumOptions } from '../utils/displayLabels';
 export type CrudField = {
   name: string;
   label: string;
+  placeholder?: string;
   type?: 'text' | 'email' | 'url' | 'image' | 'date' | 'select' | 'textarea' | 'tags' | 'accessories';
   required?: boolean;
   createOnly?: boolean;
@@ -141,7 +142,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'name', label: 'Tên khách hàng', required: true },
       { name: 'hospitalName', label: 'Tên bệnh viện/đơn vị' },
       { name: 'shortName', label: 'Tên viết tắt' },
-      { name: 'customerCode', label: 'Mã khách hàng' },
+      { name: 'customerCode', label: 'Mã khách hàng', placeholder: 'Để trống để tự sinh, ví dụ BV-HN-001' },
       { name: 'customerType', label: 'Loại khách hàng', type: 'select', options: customerTypes },
       { name: 'status', label: 'Trạng thái', type: 'select', options: customerStatuses },
       {
@@ -365,7 +366,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
     ],
     fields: [
       { name: 'serialNumber', label: 'Serial', required: true },
-      { name: 'machineCode', label: 'Mã máy' },
+      { name: 'machineCode', label: 'Mã máy', placeholder: 'Để trống để tự sinh theo model, ví dụ XCUBE50-001' },
       {
         name: 'machineModelId',
         label: 'Model máy',
