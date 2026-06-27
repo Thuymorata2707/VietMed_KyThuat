@@ -185,18 +185,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           </button>
         </div>
 
-        <nav className={`${isSidebarCollapsed ? 'grid w-full gap-3' : 'grid gap-4'} max-[980px]:flex max-[980px]:gap-2.5 max-[980px]:overflow-x-auto`}>
+        <nav className={`${isSidebarCollapsed ? 'grid w-full justify-items-center gap-2' : 'grid gap-4'} max-[980px]:flex max-[980px]:justify-start max-[980px]:gap-2.5 max-[980px]:overflow-x-auto`}>
           {visibleNavGroups.map((group) => (
-            <div className={`grid gap-1.5 max-[980px]:contents ${isSidebarCollapsed ? 'gap-1.5' : ''}`} key={group.label}>
-              <span className={`px-3 text-[12px] font-medium text-[#8a8a8a] transition ${isSidebarCollapsed ? 'h-px overflow-hidden p-0 opacity-0' : ''} max-[980px]:hidden`}>{group.label}</span>
-              <div className="grid gap-1 max-[980px]:flex max-[980px]:gap-2">
+            <div className={`${isSidebarCollapsed ? 'contents' : 'grid gap-1.5'} max-[980px]:contents`} key={group.label}>
+              <span className={`${isSidebarCollapsed ? 'hidden' : 'px-3 text-[12px] font-medium text-[#8a8a8a]'} max-[980px]:hidden`}>{group.label}</span>
+              <div className={`${isSidebarCollapsed ? 'contents' : 'grid gap-1'} max-[980px]:flex max-[980px]:gap-2`}>
                 {group.items.map((item) => {
                   const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
                   return (
                     <Link
                       className={`relative flex min-h-[42px] items-center rounded-lg text-[14px] font-medium text-[#555555] transition hover:bg-white hover:text-[#d71920] max-[980px]:shrink-0 max-[980px]:gap-2.5 max-[980px]:px-3 ${
                         isActive ? 'bg-white text-[#1f1f1f] shadow-[inset_0_0_0_1px_rgba(201,217,238,0.95),0_1px_2px_rgba(20,32,51,0.04)] before:absolute before:left-0 before:h-[22px] before:w-[3px] before:rounded-full before:bg-[#d71920]' : ''
-                      } ${isSidebarCollapsed ? 'justify-center gap-0 px-0 max-[980px]:justify-start' : 'gap-2.5 px-3'}`}
+                      } ${isSidebarCollapsed ? 'h-[42px] w-[42px] justify-center gap-0 px-0 max-[980px]:w-auto max-[980px]:justify-start max-[980px]:px-3' : 'gap-2.5 px-3'}`}
                       key={item.path}
                       title={item.label}
                       to={item.path}
@@ -211,15 +211,15 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           ))}
         </nav>
 
-        <div className={`mt-auto grid gap-3 border-t border-[#e5e5e5] pt-[18px] max-[980px]:hidden ${isSidebarCollapsed ? 'w-full' : ''}`}>
-          <Link className={`grid items-center gap-2.5 rounded-lg p-1.5 hover:bg-white ${isSidebarCollapsed ? 'flex justify-center' : 'grid-cols-[40px_minmax(0,1fr)]'}`} title="Thiết lập tài khoản" to="/account-settings">
+        <div className={`mt-auto grid gap-2 border-t border-[#e5e5e5] pt-[18px] max-[980px]:hidden ${isSidebarCollapsed ? 'w-full justify-items-center' : ''}`}>
+          <Link className={`grid items-center gap-2.5 rounded-lg p-1.5 hover:bg-white ${isSidebarCollapsed ? 'flex h-[42px] w-[42px] justify-center p-0' : 'grid-cols-[40px_minmax(0,1fr)]'}`} title="Thiết lập tài khoản" to="/account-settings">
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#e5e5e5] bg-white text-[13px] font-medium text-[#1f1f1f]">{initials(user.fullName || user.email)}</div>
             <div>
               <strong className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-[#1f1f1f] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{user.fullName || user.email}</strong>
               <span className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium text-[#666666] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{roleLabel(role)}</span>
             </div>
           </Link>
-          <button className={`inline-flex min-h-10 items-center justify-center rounded-lg bg-transparent px-2.5 text-[14px] font-medium text-[#555555] hover:bg-white hover:text-[#d71920] ${isSidebarCollapsed ? 'w-full px-0' : 'gap-2'}`} onClick={logout} title="Đăng xuất" type="button">
+          <button className={`inline-flex min-h-10 items-center justify-center rounded-lg bg-transparent px-2.5 text-[14px] font-medium text-[#555555] hover:bg-white hover:text-[#d71920] ${isSidebarCollapsed ? 'h-[42px] w-[42px] px-0' : 'gap-2'}`} onClick={logout} title="Đăng xuất" type="button">
             <LogOut size={17} />
             <span className={`transition ${isSidebarCollapsed ? 'w-0 overflow-hidden opacity-0' : ''}`}>Đăng xuất</span>
           </button>
