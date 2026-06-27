@@ -1,4 +1,5 @@
 import { Bell, ChevronsLeft, ChevronsRight, LogOut, Plus } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiUser, apiFetch, clearToken, getApiBaseUrl } from '../../api';
@@ -9,6 +10,7 @@ import { navGroupsForRole, navItemsForRole } from '../../config/navigation';
 import { resources } from '../../config/resources';
 import { adminCrudConfigs } from '../../config/adminCrud';
 import { queryClient } from '../../lib/queryClient';
+import { queryKeys } from '../../lib/queryKeys';
 import { initials } from '../../utils/format';
 
 const AccessDeniedPage = lazy(() => import('../../pages/AccessDeniedPage').then((module) => ({ default: module.AccessDeniedPage })));
@@ -60,9 +62,49 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const notificationsQuery = useQuery({
+    queryKey: queryKeys.notifications.list,
+    queryFn: () => apiFetch<NotificationItem[]>('/notifications?limit=50'),
+    refetchInterval: 15_000,
+  });
+  const notifications = notificationsQuery.data ?? [];
+  const markNotificationReadMutation = useMutation({
+    mutationFn: (notificationId: string) => apiFetch(`/notifications/${notificationId}/read`, { method: 'PATCH' }),
+    onMutate: async (notificationId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.notifications.list });
+      const previous = queryClient.getQueryData<NotificationItem[]>(queryKeys.notifications.list);
+      queryClient.setQueryData<NotificationItem[]>(queryKeys.notifications.list, (current = []) =>
+        current.map((item) => (item.id === notificationId ? { ...item, readAt: item.readAt ?? new Date().toISOString() } : item)),
+      );
+      return { previous };
+    },
+    onError: (_error, _notificationId, context) => {
+      queryClient.setQueryData(queryKeys.notifications.list, context?.previous);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list });
+    },
+  });
+  const markAllNotificationsReadMutation = useMutation({
+    mutationFn: () => apiFetch('/notifications/read-all', { method: 'PATCH' }),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.notifications.list });
+      const previous = queryClient.getQueryData<NotificationItem[]>(queryKeys.notifications.list);
+      const now = new Date().toISOString();
+      queryClient.setQueryData<NotificationItem[]>(queryKeys.notifications.list, (current = []) =>
+        current.map((item) => ({ ...item, readAt: item.readAt ?? now })),
+      );
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      queryClient.setQueryData(queryKeys.notifications.list, context?.previous);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list });
+    },
+  });
   const role = getRoleName(user);
   const visibleNavItems = navItemsForRole(role);
   const visibleNavGroups = navGroupsForRole(role);
@@ -81,12 +123,6 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Khách hàng phụ trách'
     : activeNavItem?.label || 'Tổng quan';
   const unreadCount = useMemo(() => notifications.filter((item) => !item.readAt).length, [notifications]);
-
-  useEffect(() => {
-    void loadNotifications();
-    const interval = window.setInterval(() => void loadNotifications(), 15000);
-    return () => window.clearInterval(interval);
-  }, [user.id]);
 
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
@@ -118,19 +154,9 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     navigate('/login');
   }
 
-  async function loadNotifications() {
-    try {
-      const result = await apiFetch<NotificationItem[]>('/notifications?limit=50');
-      setNotifications(result);
-    } catch {
-      setNotifications([]);
-    }
-  }
-
   async function openNotification(notification: NotificationItem) {
     if (!notification.readAt) {
-      await apiFetch(`/notifications/${notification.id}/read`, { method: 'PATCH' }).catch(() => null);
-      setNotifications((current) => current.map((item) => (item.id === notification.id ? { ...item, readAt: new Date().toISOString() } : item)));
+      await markNotificationReadMutation.mutateAsync(notification.id).catch(() => null);
     }
 
     setIsNotificationOpen(false);
@@ -140,14 +166,12 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   }
 
   async function markAllNotificationsRead() {
-    await apiFetch('/notifications/read-all', { method: 'PATCH' }).catch(() => null);
-    const now = new Date().toISOString();
-    setNotifications((current) => current.map((item) => ({ ...item, readAt: item.readAt ?? now })));
+    await markAllNotificationsReadMutation.mutateAsync().catch(() => null);
   }
 
   return (
-    <div className={`grid min-h-screen w-full overflow-x-hidden bg-[#f7f7f7] transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
-      <aside className={`flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#e5e5e5] bg-[#ffffff] px-4 py-5 shadow-[1px_0_0_rgba(20,32,51,0.02)] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-5 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-5 max-[980px]:gap-4'}`}>
+    <div className={`app-shell grid min-h-screen w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
+      <aside className={`app-sidebar flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#dde3ea] px-4 py-5 shadow-[1px_0_0_rgba(28,39,56,0.03)] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-5 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-5 max-[980px]:gap-4'}`}>
         <div className={`flex min-w-0 items-center gap-2.5 ${isSidebarCollapsed ? 'grid justify-items-center' : 'justify-between'} max-[980px]:flex max-[980px]:justify-between`}>
           <Brand compact={isSidebarCollapsed} />
           <button
@@ -202,8 +226,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
         </div>
       </aside>
 
-      <main ref={mainRef} className="min-w-0 overflow-x-hidden overscroll-contain bg-[#f7f7f7] [&>*]:min-w-0 min-[981px]:h-screen min-[981px]:overflow-y-auto">
-        <header className="sticky top-0 z-[2] flex min-h-[66px] items-center justify-between border-b border-[#e5e5e5] bg-white/88 px-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)] backdrop-blur-md backdrop-saturate-150 [transform:translateZ(0)] [will-change:transform] max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:p-4">
+      <main ref={mainRef} id="main-content" className="min-w-0 overflow-x-hidden overscroll-contain bg-transparent [&>*]:min-w-0 min-[981px]:h-screen min-[981px]:overflow-y-auto">
+        <header className="app-header sticky top-0 z-[2] flex min-h-[66px] items-center justify-between border-b border-[#dde3ea] px-6 backdrop-blur-md backdrop-saturate-150 [transform:translateZ(0)] [will-change:transform] max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:p-4">
           <div className="min-w-0">
             <span className="block text-[12px] font-medium text-[#666666]">VietMed Kỹ Thuật</span>
             <strong className="block text-[18px] leading-tight text-[#1f1f1f]">{pageTitle}</strong>

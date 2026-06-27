@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -24,6 +25,7 @@ import { RepairsModule } from './repairs/repairs.module';
 import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
 import { WeeklyReportsModule } from './weekly-reports/weekly-reports.module';
+import { HttpCacheInterceptor } from './common/interceptors/http-cache.interceptor';
 
 @Module({
   imports: [
@@ -52,6 +54,12 @@ import { WeeklyReportsModule } from './weekly-reports/weekly-reports.module';
     WeeklyReportsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: HttpCacheInterceptor,
+    },
+  ],
 })
 export class AppModule {}

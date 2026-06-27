@@ -15,7 +15,8 @@ import {
   Users,
   Wrench,
 } from 'lucide-react';
-import { ReactNode, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiUser, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
@@ -23,6 +24,7 @@ import { AdminShortcut } from '../../components/AdminShortcut';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { queryKeys } from '../../lib/queryKeys';
 
 type Summary = {
   totalCustomers?: number;
@@ -60,34 +62,23 @@ type TechnicalMachines = {
 type Tone = 'good' | 'neutral' | 'warn' | 'danger';
 
 export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser }) {
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
-  const [technicalMachines, setTechnicalMachines] = useState<TechnicalMachines | null>(null);
-
-  useEffect(() => {
-    void loadSummary();
-  }, []);
-
-  async function loadSummary() {
-    setLoading(true);
-    setError('');
-
-    try {
-      const [nextSummary, nextTechnicalMachines] = await Promise.all([
+  const dashboardQuery = useQuery({
+    queryKey: queryKeys.dashboard.overview,
+    queryFn: async () => {
+      const [summary, technicalMachines] = await Promise.all([
         apiFetch<Summary>('/dashboard/summary'),
         apiFetch<TechnicalMachines>('/dashboard/technical-machines'),
       ]);
-      setSummary(nextSummary);
-      setTechnicalMachines(nextTechnicalMachines);
-      setLastUpdatedAt(new Date().toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được dashboard');
-    } finally {
-      setLoading(false);
-    }
-  }
+      return { summary, technicalMachines };
+    },
+  });
+  const summary = dashboardQuery.data?.summary ?? null;
+  const technicalMachines = dashboardQuery.data?.technicalMachines ?? null;
+  const loading = dashboardQuery.isLoading || dashboardQuery.isFetching;
+  const error = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : dashboardQuery.isError ? 'Không tải được dashboard' : '';
+  const lastUpdatedAt = dashboardQuery.dataUpdatedAt
+    ? new Date(dashboardQuery.dataUpdatedAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+    : null;
 
   const activeCustomers = count(summary?.customerStatusCounts, 'ACTIVE');
   const activeMachines = count(summary?.machineStatusCounts, 'ACTIVE');
@@ -234,7 +225,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
           title={isAdmin ? 'Tổng quan vận hành' : `Tổng quan của ${user.fullName || 'kỹ sư'}`}
           description={isAdmin ? 'Máy, kho và phiếu kỹ thuật đang cần xử lý.' : 'Việc, lịch và máy đang gắn với tài khoản của bạn.'}
         />
-        <button className="secondary-button shrink-0 max-[860px]:self-start" disabled={loading} onClick={loadSummary} type="button">
+        <button className="secondary-button shrink-0 max-[860px]:self-start" disabled={loading} onClick={() => void dashboardQuery.refetch()} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
           {loading ? 'Đang tải' : 'Tải lại'}
         </button>

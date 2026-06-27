@@ -41,6 +41,16 @@ export type ApiError = {
   error?: string;
 };
 
+export class ApiRequestError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.statusCode = statusCode;
+  }
+}
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -81,7 +91,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     const message = Array.isArray(payload.message)
       ? payload.message.join(', ')
       : payload.message || 'Không thể kết nối API';
-    throw new Error(toVietnameseApiError(message, response.status));
+    throw new ApiRequestError(toVietnameseApiError(message, response.status), response.status);
   }
 
   if (response.status === 204) {

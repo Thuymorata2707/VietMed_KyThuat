@@ -1,26 +1,41 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ApiUser, apiFetch, clearToken, getToken } from './api';
 import { Splash } from './components/Splash';
 import { AppShell } from './layouts/AppShell';
+import { queryClient } from './lib/queryClient';
+import { queryKeys } from './lib/queryKeys';
 import { LoginPage } from './pages/LoginPage';
 
 function App() {
   const [user, setUser] = useState<ApiUser | null>(null);
-  const [checkingSession, setCheckingSession] = useState(true);
+  const hasToken = Boolean(getToken());
+  const currentUserQuery = useQuery({
+    queryKey: queryKeys.auth.me,
+    queryFn: () => apiFetch<ApiUser>('/auth/me'),
+    enabled: hasToken,
+    retry: false,
+  });
 
   useEffect(() => {
-    if (!getToken()) {
-      setCheckingSession(false);
+    if (!hasToken) {
+      setUser(null);
       return;
     }
 
-    apiFetch<ApiUser>('/auth/me')
-    
-      .then(setUser)
-      .catch(() => clearToken())
-      .finally(() => setCheckingSession(false));
-  }, []);
+    if (currentUserQuery.data) {
+      setUser(currentUserQuery.data);
+    }
+
+    if (currentUserQuery.isError) {
+      clearToken();
+      queryClient.clear();
+      setUser(null);
+    }
+  }, [currentUserQuery.data, currentUserQuery.isError, hasToken]);
+
+  const checkingSession = hasToken && currentUserQuery.isPending && !user;
 
   if (checkingSession) {
     return <Splash />;
