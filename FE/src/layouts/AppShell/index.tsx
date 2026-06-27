@@ -8,6 +8,7 @@ import { RequireRole } from '../../components/RequireRole';
 import { navGroupsForRole, navItemsForRole } from '../../config/navigation';
 import { resources } from '../../config/resources';
 import { adminCrudConfigs } from '../../config/adminCrud';
+import { queryClient } from '../../lib/queryClient';
 import { initials } from '../../utils/format';
 
 const AccessDeniedPage = lazy(() => import('../../pages/AccessDeniedPage').then((module) => ({ default: module.AccessDeniedPage })));
@@ -112,6 +113,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
 
   function logout() {
     clearToken();
+    queryClient.clear();
     onLogout();
     navigate('/login');
   }

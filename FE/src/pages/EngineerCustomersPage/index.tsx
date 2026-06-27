@@ -1,88 +1,65 @@
 import { Building2, CalendarClock, ChevronLeft, ClipboardList, Search, Stethoscope, Wrench } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
+import { Button } from '../../components/ui/button';
 import { CustomerDetailView, EmptyState, Metric } from './components';
 import type { CustomerDetail, CustomerSummary, EngineerCustomersPageProps, EngineerOption } from './types';
 import { buildOpenTasks, buildTimeline, countUnique } from './utils';
 
 export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPageProps) {
-  const [customers, setCustomers] = useState<CustomerSummary[]>([]);
-  const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [selectedEngineerId, setSelectedEngineerId] = useState('');
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
-  const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [error, setError] = useState('');
+  const isAdminProfile = location.pathname.startsWith('/customers/profile');
+  const requestedCustomerId = searchParams.get('customerId') || '';
 
-  useEffect(() => {
-    void loadCustomers();
-  }, [currentRole, selectedEngineerId, user.id]);
-
-  useEffect(() => {
-    if (currentRole === 'engineer') return;
-    void loadEngineers();
-  }, [currentRole]);
-
-  useEffect(() => {
-    if (!selectedCustomerId) {
-      setDetail(null);
-      return;
-    }
-
-    void loadCustomerDetail(selectedCustomerId);
-  }, [selectedCustomerId]);
-
-  async function loadCustomers() {
-    setLoading(true);
-    setError('');
-
-    try {
+  const customersQuery = useQuery({
+    queryKey: ['customers', 'profile-list', currentRole, selectedEngineerId, user.id],
+    queryFn: async () => {
       const params = new URLSearchParams({ limit: '100' });
       if (currentRole === 'engineer') {
         params.set('primaryEngineerId', user.id);
       } else if (selectedEngineerId) {
         params.set('primaryEngineerId', selectedEngineerId);
       }
-      const query = `/customers?${params.toString()}`;
-      const result = await apiFetch<Paginated<CustomerSummary>>(query);
-      const requestedCustomerId = searchParams.get('customerId') || '';
-      setCustomers(result.data);
-      setSelectedCustomerId((current) => {
-        const nextId = requestedCustomerId || current;
-        return result.data.some((customer) => customer.id === nextId) ? nextId : result.data[0]?.id || '';
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được danh sách khách hàng.');
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  async function loadEngineers() {
-    try {
+      const result = await apiFetch<Paginated<CustomerSummary>>(`/customers?${params.toString()}`);
+      return result.data;
+    },
+  });
+
+  const engineersQuery = useQuery({
+    enabled: currentRole !== 'engineer',
+    queryKey: ['users', 'engineers', 'active'],
+    queryFn: async () => {
       const result = await apiFetch<Paginated<EngineerOption>>('/users?limit=100&roleName=engineer&status=ACTIVE');
-      setEngineers(result.data);
-    } catch {
-      setEngineers([]);
-    }
-  }
+      return result.data;
+    },
+  });
 
-  async function loadCustomerDetail(customerId: string) {
-    setDetailLoading(true);
+  const customerDetailQuery = useQuery({
+    enabled: Boolean(selectedCustomerId),
+    queryKey: ['customers', 'profile-detail', selectedCustomerId],
+    queryFn: () => apiFetch<CustomerDetail>(`/customers/${selectedCustomerId}`),
+  });
 
-    try {
-      setDetail(await apiFetch<CustomerDetail>(`/customers/${customerId}`));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được chi tiết khách hàng.');
-    } finally {
-      setDetailLoading(false);
-    }
-  }
+  const customers = customersQuery.data ?? [];
+  const engineers = engineersQuery.data ?? [];
+  const detail = customerDetailQuery.data ?? null;
+  const loading = customersQuery.isLoading;
+  const detailLoading = customerDetailQuery.isFetching;
+  const error = errorMessage(customersQuery.error) || errorMessage(engineersQuery.error) || errorMessage(customerDetailQuery.error);
+
+  useEffect(() => {
+    setSelectedCustomerId((current) => {
+      const nextId = requestedCustomerId || current;
+      return customers.some((customer) => customer.id === nextId) ? nextId : customers[0]?.id || '';
+    });
+  }, [customers, requestedCustomerId]);
 
   const visibleCustomers = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -104,7 +81,6 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
   const selectedCustomer = detail ?? customers.find((customer) => customer.id === selectedCustomerId) ?? null;
   const machines = detail?.machines ?? [];
-  const isAdminProfile = location.pathname.startsWith('/customers/profile');
   const timeline = useMemo(() => buildTimeline(machines, selectedCustomer), [machines, selectedCustomer]);
   const openTasks = useMemo(() => buildOpenTasks(machines, selectedCustomer, isAdminProfile), [isAdminProfile, machines, selectedCustomer]);
   const totalRepairs = countUnique([
@@ -118,7 +94,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
   const totalAccessories = machines.reduce((total, machine) => total + (machine.accessories?.length ?? 0), 0);
 
   return (
-    <section className="grid gap-5 p-6 max-sm:p-4">
+    <section className="grid min-w-0 gap-5 overflow-x-hidden p-6 max-sm:p-4">
       <div className="grid gap-4 rounded-xl border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
@@ -130,10 +106,12 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
                 : 'Theo dõi máy đang lắp, lịch sử sửa chữa và các lần bảo trì của từng khách hàng trong một màn hình.'}
             </p>
           </div>
-          <Link className="secondary-button" to="/">
-            <ChevronLeft size={16} />
-            Tổng quan
-          </Link>
+          <Button asChild variant="secondary">
+            <Link to="/">
+              <ChevronLeft size={16} />
+              Tổng quan
+            </Link>
+          </Button>
         </div>
 
         {isAdminProfile ? (
@@ -168,8 +146,8 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
       {error ? <div className="rounded-lg border border-[#ffd5d8] bg-[#fff5f5] px-4 py-3 text-sm font-medium text-[#b51219]">{error}</div> : null}
 
-      <div className="grid min-h-[620px] gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className="grid content-start gap-3 rounded-xl border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+        <aside className="grid min-w-0 content-start gap-3 rounded-xl border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8a8a]" size={16} />
             <input
@@ -180,7 +158,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
             />
           </label>
 
-          <div className="grid max-h-[560px] gap-2 overflow-y-auto pr-1">
+          <div className="grid min-w-0 gap-2">
             {loading ? (
               <EmptyState title="Đang tải danh sách..." />
             ) : visibleCustomers.length ? (
@@ -188,7 +166,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
                 const isActive = customer.id === selectedCustomerId;
                 return (
                   <button
-                    className={`grid gap-2 rounded-lg border p-3 text-left transition ${
+                    className={`grid min-w-0 gap-2 rounded-lg border p-3 text-left transition ${
                       isActive
                         ? 'border-[#f5c7cb] bg-[#fff7f7] shadow-[inset_3px_0_0_#d71920]'
                         : 'border-[#eeeeee] bg-white hover:border-[#f5c7cb] hover:bg-[#fffafa]'
@@ -198,11 +176,11 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
                     type="button"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <strong className="line-clamp-2 text-sm leading-5 text-[#1f1f1f]">{customer.hospitalName || customer.name}</strong>
+                      <strong className="line-clamp-2 min-w-0 [overflow-wrap:anywhere] text-sm leading-5 text-[#1f1f1f]">{customer.hospitalName || customer.name}</strong>
                       <span className="shrink-0 rounded-md bg-[#f2f2f2] px-2 py-1 text-[11px] font-semibold text-[#555555]">{customer._count?.machines ?? 0} máy</span>
                     </div>
-                    <span className="text-xs font-medium text-[#666666]">{[customer.customerCode, customer.province].filter(Boolean).join(' - ') || 'Chưa có mã/tỉnh'}</span>
-                    <span className="text-xs text-[#8a8a8a]">{customer.primaryEngineer?.fullName ? `Phụ trách: ${customer.primaryEngineer.fullName}` : 'Chưa gán kỹ sư phụ trách'}</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere] text-xs font-medium text-[#666666]">{[customer.customerCode, customer.province].filter(Boolean).join(' - ') || 'Chưa có mã/tỉnh'}</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere] text-xs text-[#8a8a8a]">{customer.primaryEngineer?.fullName ? `Phụ trách: ${customer.primaryEngineer.fullName}` : 'Chưa gán kỹ sư phụ trách'}</span>
                   </button>
                 );
               })
@@ -224,4 +202,8 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
       </div>
     </section>
   );
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : '';
 }
