@@ -636,10 +636,10 @@ function UserForm({
         </label>
 
         {shouldShowEngineerProfile ? (
-          <div className="col-span-full grid gap-3.5 rounded-lg border border-[#eeeeee] bg-[#f8fbfd] p-3.5">
-            <div className="grid gap-1">
-              <span className="text-sm font-semibold text-[#1f1f1f]">Hồ sơ kỹ sư</span>
-              <p className="leading-snug text-[#666666]">Thông tin chuyên môn dùng cho phân công lắp đặt, bảo trì và sửa chữa.</p>
+          <div className="engineer-profile-section">
+            <div className="engineer-profile-heading">
+              <span>Hồ sơ kỹ sư</span>
+              <p>Thông tin chuyên môn dùng cho phân công lắp đặt, bảo trì và sửa chữa.</p>
             </div>
 
             <div className="form-grid compact-grid">

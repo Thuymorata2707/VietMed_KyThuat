@@ -296,14 +296,140 @@ p {
   margin-top: 4px;
 }
 
+.crud-form-page {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.user-form-page-grid {
+  display: grid;
+  gap: 18px;
+}
+
 .form-grid {
   display: grid;
   gap: 13px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.form-grid label {
+  color: var(--color-muted-strong);
+  display: grid;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 6px;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.form-grid input,
+.form-grid select,
+.form-grid textarea {
+  background: #ffffff;
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  min-height: 42px;
+  min-width: 0;
+  outline: none;
+  padding: 0 12px;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+  width: 100%;
+}
+
+.form-grid select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-muted-strong) 50%),
+    linear-gradient(135deg, var(--color-muted-strong) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 18px,
+    calc(100% - 12px) 18px;
+  background-repeat: no-repeat;
+  background-size:
+    6px 6px,
+    6px 6px;
+  cursor: pointer;
+  padding-right: 40px;
+}
+
+.form-grid textarea {
+  line-height: 1.45;
+  min-height: 104px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.form-grid input::placeholder,
+.form-grid textarea::placeholder {
+  color: #8a8a8a;
+  font-weight: 400;
+}
+
+.form-grid input:hover,
+.form-grid select:hover,
+.form-grid textarea:hover {
+  border-color: #c7c7c7;
+}
+
+.form-grid input:focus,
+.form-grid select:focus,
+.form-grid textarea:focus {
+  border-color: var(--color-brand);
+  box-shadow: var(--focus-ring);
+}
+
+.compact-grid {
+  gap: 12px;
+}
+
 .wide-field {
   grid-column: 1 / -1;
+}
+
+.wide-field img {
+  max-height: 260px;
+}
+
+.engineer-profile-section {
+  background: #f8fbfd;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 14px;
+  grid-column: 1 / -1;
+  padding: 14px;
+}
+
+.engineer-profile-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.engineer-profile-heading span {
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.engineer-profile-heading p {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.user-form-page-grid .modal-actions {
+  background: #ffffff;
+  margin: 0 -18px -18px;
+  padding: 16px 18px 18px;
 }
 
 .modal-actions {
