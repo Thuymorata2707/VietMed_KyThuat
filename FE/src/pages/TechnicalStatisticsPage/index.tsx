@@ -1,4 +1,4 @@
-import { ArrowLeft, BarChart3, ClipboardCheck, Loader2, RefreshCw, SlidersHorizontal, Users } from 'lucide-react';
+import { ArrowLeft, BarChart3, ClipboardCheck, FileText, Loader2, RefreshCw, SlidersHorizontal, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -114,6 +114,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
   const initialMonth = searchParams.get('month');
   const [from, setFrom] = useState(() => searchParams.get('from') || monthStartFromParam(initialMonth) || toDateInput(currentMonthStart));
   const [to, setTo] = useState(() => searchParams.get('to') || monthEndFromParam(initialMonth) || toDateInput(currentMonthEnd));
+  const [weekStart, setWeekStart] = useState(() => searchParams.get('weekStart') || toDateInput(startOfWeek(new Date(`${searchParams.get('from') || monthStartFromParam(initialMonth) || toDateInput(currentMonthStart)}T00:00:00`))));
   const [engineerId, setEngineerId] = useState(() => (isAdmin ? searchParams.get('engineerId') || '' : user.id));
   const [productIndustryId, setProductIndustryId] = useState(() => searchParams.get('productIndustryId') || '');
   const [workType, setWorkType] = useState(() => normalizeWorkType(searchParams.get('workType')));
@@ -168,6 +169,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
   const maxEngineerTotal = useMemo(() => Math.max(...(data?.byEngineer ?? []).map((item) => item.total), 1), [data]);
   const maxIndustryTotal = useMemo(() => Math.max(...(data?.byIndustry ?? []).map((item) => item.total), 1), [data]);
   const maxTrendTotal = useMemo(() => Math.max(...(data?.trend ?? []).map((item) => item.total), 1), [data]);
+  const weeklyReportHref = buildWeeklyReportHref(weekStart, isAdmin ? engineerId : user.id);
 
   return (
     <PageFrame>
@@ -188,11 +190,19 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
             {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
             Làm mới
           </button>
+          <Link
+            aria-disabled={isAdmin && !engineerId}
+            className={`secondary-button ${isAdmin && !engineerId ? 'pointer-events-none opacity-60' : ''}`}
+            to={weeklyReportHref}
+          >
+            <FileText size={16} />
+            Báo cáo tuần
+          </Link>
         </div>
       </div>
 
       <section className="operation-filter-panel">
-        <div className="grid gap-3 min-[1180px]:grid-cols-[160px_160px_minmax(190px,1fr)_minmax(190px,1fr)_180px]">
+        <div className="grid gap-3 min-[1180px]:grid-cols-[150px_150px_150px_minmax(190px,1fr)_minmax(190px,1fr)_170px]">
           <label className="operation-filter-field">
             <span>Từ ngày</span>
             <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => setFrom(event.target.value)} type="date" value={from} />
@@ -200,6 +210,10 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
           <label className="operation-filter-field">
             <span>Đến ngày</span>
             <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => setTo(event.target.value)} type="date" value={to} />
+          </label>
+          <label className="operation-filter-field">
+            <span>Tuần báo cáo</span>
+            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => setWeekStart(toDateInput(startOfWeek(new Date(`${event.target.value}T00:00:00`))))} type="date" value={weekStart} />
           </label>
           <label className="operation-filter-field">
             <span>Kỹ sư</span>
@@ -481,6 +495,20 @@ function expertiseGroupLabel(value?: ExpertiseGroup | null) {
   if (value === 'IMAGING') return 'Chẩn đoán hình ảnh';
   if (value === 'LAB_TESTING') return 'Xét nghiệm';
   return 'chuyên môn';
+}
+
+function buildWeeklyReportHref(weekStart: string, engineerId: string) {
+  const params = new URLSearchParams({ weekStart });
+  if (engineerId) params.set('userId', engineerId);
+  return `/weekly-reports?${params.toString()}`;
+}
+
+function startOfWeek(value: Date) {
+  const date = new Date(value);
+  const day = date.getDay() || 7;
+  date.setDate(date.getDate() - day + 1);
+  date.setHours(0, 0, 0, 0);
+  return date;
 }
 
 function startOfMonth(date: Date) {

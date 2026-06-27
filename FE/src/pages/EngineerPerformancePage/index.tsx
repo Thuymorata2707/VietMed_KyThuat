@@ -97,6 +97,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const [engineerId, setEngineerId] = useState(() => searchParams.get('engineerId') || searchParams.get('userId') || (isAdmin ? '' : user.id));
   const [from, setFrom] = useState(() => searchParams.get('from') || defaultFrom);
   const [to, setTo] = useState(() => searchParams.get('to') || defaultTo);
+  const [weekStart, setWeekStart] = useState(() => searchParams.get('weekStart') || toDateInput(startOfWeek(new Date(`${searchParams.get('from') || defaultFrom}T00:00:00`))));
   const [summary, setSummary] = useState<EngineerWorkSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -108,9 +109,13 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
   useEffect(() => {
     if (isAdmin && !engineerId) return;
-    syncUrl();
     void loadSummary();
   }, [engineerId, from, to, isAdmin]);
+
+  useEffect(() => {
+    if (isAdmin && !engineerId) return;
+    syncUrl();
+  }, [engineerId, from, to, weekStart, isAdmin]);
 
   const selectedEngineer = engineers.find((engineer) => engineer.id === engineerId);
   const workMix = [
@@ -125,7 +130,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const weeklySubmitted = summary?.weeklyReports?.filter((report) => report.status === 'SUBMITTED').length ?? 0;
   const closedActivities = summary?.activities?.filter((activity) => ['COMPLETED', 'INSTALLED', 'APPROVED'].includes(activity.status)).length ?? 0;
   const unresolvedActivities = Math.max((summary?.activities.length ?? 0) - closedActivities, 0);
-  const currentWeeklyReportHref = buildWeeklyReportHref(from, isAdmin ? engineerId : '');
+  const currentWeeklyReportHref = buildWeeklyReportHref(weekStart, isAdmin ? engineerId : '');
   const currentTechnicalReportHref = buildTechnicalReportHref(from, to, isAdmin ? engineerId : user.id, isAdmin);
   const sortedWeeklyReports = useMemo(
     () => [...(summary?.weeklyReports ?? [])].sort((left, right) => right.weekStart.localeCompare(left.weekStart)),
@@ -174,7 +179,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   }
 
   function syncUrl() {
-    const next = new URLSearchParams({ from, to });
+    const next = new URLSearchParams({ from, to, weekStart });
     if (isAdmin && engineerId) next.set('engineerId', engineerId);
     setSearchParams(next, { replace: true });
   }
@@ -213,7 +218,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       {error ? <Notice message={error} /> : null}
 
       <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
-        <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_160px_160px_auto]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_150px_150px_150px_auto]">
           {isAdmin ? (
             <label className="grid gap-1.5 text-sm font-medium text-[#333333]">
               Kỹ sư
@@ -239,11 +244,26 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             Đến ngày
             <input className={fieldClass} onChange={(event) => setTo(event.target.value)} type="date" value={to} />
           </label>
+          <label className="grid gap-1.5 text-sm font-medium text-[#333333]">
+            Tuần báo cáo
+            <input
+              className={fieldClass}
+              onChange={(event) => setWeekStart(toDateInput(startOfWeek(new Date(`${event.target.value}T00:00:00`))))}
+              type="date"
+              value={weekStart}
+            />
+          </label>
           <div className="flex flex-wrap items-end justify-start gap-2 self-end lg:justify-end">
             <button className="secondary-button" disabled={loading} onClick={loadSummary} type="button">
               {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
               Cập nhật
             </button>
+            {currentWeeklyReportHref ? (
+              <Link className="secondary-button" to={currentWeeklyReportHref}>
+                <FileText size={16} />
+                Báo cáo tuần
+              </Link>
+            ) : null}
             {currentTechnicalReportHref ? (
               <Link className="secondary-button" to={currentTechnicalReportHref}>
                 <FileText size={16} />
@@ -403,6 +423,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   function setDateRange(nextFrom: Date, nextTo: Date) {
     setFrom(toDateInput(nextFrom));
     setTo(toDateInput(nextTo));
+    setWeekStart(toDateInput(startOfWeek(nextFrom)));
   }
 }
 

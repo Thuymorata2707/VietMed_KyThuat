@@ -74,7 +74,7 @@ const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
 
 export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps) {
   const isAdmin = currentRole === 'admin';
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialWeekStart = searchParams.get('weekStart') || toDateInput(startOfWeek(new Date()));
   const initialEngineerId = searchParams.get('engineerId') || searchParams.get('userId') || '';
   const [weekStart, setWeekStart] = useState(() => initialWeekStart);
@@ -100,6 +100,13 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     void loadReport();
     void loadDailyWorkRows();
   }, [weekStart, selectedEngineerId, isAdmin]);
+
+  useEffect(() => {
+    if (isAdmin && !selectedEngineerId) return;
+    const next = new URLSearchParams({ weekStart });
+    if (isAdmin && selectedEngineerId) next.set('userId', selectedEngineerId);
+    setSearchParams(next, { replace: true });
+  }, [isAdmin, selectedEngineerId, setSearchParams, weekStart]);
 
   const reportStatus = report?.status ?? 'DRAFT';
   const canSubmit = !isAdmin && Boolean(report?.id) && rows.some(rowHasReportData);
