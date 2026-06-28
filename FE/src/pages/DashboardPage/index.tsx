@@ -23,7 +23,6 @@ import { RoleName } from '../../auth/roles';
 import { AdminShortcut } from '../../components/AdminShortcut';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
-import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
 
 type Summary = {
@@ -216,31 +215,108 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
       to: '/inventory-movements?tab=stock&q=RETURNED',
     },
   ];
+  const operationalPulse = [
+    {
+      label: 'Việc đang mở',
+      value: totalOpenWork,
+      tone: totalOpenWork > 0 ? ('warn' as const) : ('good' as const),
+    },
+    {
+      label: 'Máy sẵn sàng',
+      value: `${availabilityRate}%`,
+      tone: availabilityRate >= 80 ? ('good' as const) : ('warn' as const),
+    },
+    {
+      label: 'Cần bổ sung',
+      value: (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine,
+      tone: (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine > 0 ? ('warn' as const) : ('good' as const),
+    },
+  ];
 
   return (
     <PageFrame>
-      <div className="flex items-start justify-between gap-4 max-[860px]:flex-col">
-        <PageTitle
-          eyebrow={isAdmin ? 'Admin console' : 'Trung tâm kỹ sư'}
-          title={isAdmin ? 'Tổng quan vận hành' : `Tổng quan của ${user.fullName || 'kỹ sư'}`}
-          description={isAdmin ? 'Máy, kho và phiếu kỹ thuật đang cần xử lý.' : 'Việc, lịch và máy đang gắn với tài khoản của bạn.'}
-        />
-        <button className="secondary-button shrink-0 max-[860px]:self-start" disabled={loading} onClick={() => void dashboardQuery.refetch()} type="button">
-          {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-          {loading ? 'Đang tải' : 'Tải lại'}
-        </button>
-      </div>
+      <section className="relative overflow-hidden rounded-[14px] border border-[#d9e1eb] bg-[#111827] p-5 text-white shadow-[0_28px_80px_rgba(17,24,39,0.18)]">
+        <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:34px_34px]" />
+        <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#c91f2d]/24 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-56 w-96 rounded-full bg-white/8 blur-3xl" />
+
+        <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
+          <div className="grid content-between gap-10 rounded-[10px] border border-white/10 bg-white/[0.055] p-6 backdrop-blur-md max-sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="inline-flex rounded-lg border border-white/12 bg-white/8 px-3 py-2 text-[12px] font-semibold text-white/68">
+                {isAdmin ? 'Admin console' : 'Trung tâm kỹ sư'}
+              </span>
+              <button
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/14 bg-white/10 px-3.5 text-[14px] font-semibold text-white/86 transition hover:-translate-y-px hover:bg-white/14 disabled:hover:translate-y-0"
+                disabled={loading}
+                onClick={() => void dashboardQuery.refetch()}
+                type="button"
+              >
+                {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
+                {loading ? 'Đang tải' : 'Làm mới'}
+              </button>
+            </div>
+
+            <div className="max-w-[780px]">
+              <h1 className="max-w-[720px] text-[clamp(34px,5vw,62px)] font-bold leading-[0.98] tracking-normal text-white">
+                {isAdmin ? 'Không gian điều phối kỹ thuật' : `Không gian làm việc của ${user.fullName || 'kỹ sư'}`}
+              </h1>
+              <p className="mt-5 max-w-[620px] text-[15px] leading-7 text-white/66">
+                {isAdmin
+                  ? 'Theo dõi máy, kho và phiếu kỹ thuật cần xử lý trong ngày.'
+                  : 'Theo dõi phần việc, lịch và hồ sơ máy đang gắn với tài khoản của bạn.'}
+              </p>
+            </div>
+
+            <div className="grid max-w-[720px] grid-cols-3 gap-3 max-sm:grid-cols-1">
+              {operationalPulse.map((item) => (
+                <PulseTile key={item.label} {...item} loading={loading} />
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-3 rounded-[10px] border border-white/10 bg-[#f8fafc] p-4 text-[#18212f] shadow-[0_20px_54px_rgba(0,0,0,0.16)]">
+            <div className="flex items-start justify-between gap-3 border-b border-[#e9edf2] pb-3">
+              <div>
+                <span className="text-[12px] font-semibold text-[#647084]">Ưu tiên lúc này</span>
+                <h2 className="mt-1 text-lg font-semibold text-[#18212f]">Cần nhìn trước</h2>
+              </div>
+              <span className="rounded-lg border border-[#dde3ea] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[#647084]">
+                {lastUpdatedAt ?? 'Chưa cập nhật'}
+              </span>
+            </div>
+
+            <div className="grid gap-2">
+              {priorityRows.slice(0, 4).map((row) => (
+                <Link
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-transparent bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(28,39,56,0.05)] transition hover:-translate-y-px hover:border-[#f1c4c9]"
+                  key={row.code}
+                  to={row.to}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[13px] font-semibold text-[#303a4b]">{row.name}</span>
+                    <span className="mt-0.5 block text-[12px] font-medium text-[#647084]">{row.status}</span>
+                  </span>
+                  <strong className={row.tone === 'danger' ? 'text-[#a81524]' : row.tone === 'warn' ? 'text-[#996018]' : 'text-[#1b7a4c]'}>
+                    {loading ? '-' : row.value}
+                  </strong>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="grid gap-5 rounded-[10px] border border-[#e5e5e5] bg-[linear-gradient(180deg,#ffffff_0%,#ffffff_100%)] p-5 shadow-[0_1px_2px_rgba(20,32,51,0.05)]">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
+      <section className="grid gap-5 rounded-[10px] border border-[#dde3ea] bg-[linear-gradient(145deg,#ffffff_0%,#f8fafc_100%)] p-5 shadow-[0_18px_46px_rgba(28,39,56,0.07)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#e9edf2] pb-4">
           <div className="min-w-0">
-            <span className="text-[12px] font-semibold text-[#d71920]">{scopeTitle}</span>
-            <h2 className="mt-1 text-xl font-semibold text-[#1f1f1f]">Thiết bị đang quản lý</h2>
-            <p className="mt-1 max-w-[760px] text-sm leading-6 text-[#666666]">{scopeDescription}</p>
+            <span className="text-[12px] font-semibold text-[#c91f2d]">{scopeTitle}</span>
+            <h2 className="mt-1 text-xl font-semibold text-[#18212f]">Thiết bị đang quản lý</h2>
+            <p className="mt-1 max-w-[760px] text-sm leading-6 text-[#647084]">{scopeDescription}</p>
           </div>
-          <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-right text-xs font-medium text-[#666666]">
+          <span className="rounded-lg border border-[#dde3ea] bg-white/80 px-3 py-2 text-right text-xs font-medium text-[#647084] shadow-[0_1px_2px_rgba(28,39,56,0.04)]">
             Cập nhật: {lastUpdatedAt ?? 'Chưa có'}
           </span>
         </div>
@@ -263,24 +339,24 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[10px] border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.05)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#ffffff] px-5 py-4">
+      <section className="overflow-hidden rounded-[10px] border border-[#dde3ea] bg-[#f8fafc] shadow-[0_18px_46px_rgba(28,39,56,0.07)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e9edf2] bg-white/86 px-5 py-4">
           <div>
-            <span className="text-[12px] font-medium text-[#666666]">Công việc</span>
-            <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">Phiếu kỹ thuật đang mở</h2>
+            <span className="text-[12px] font-medium text-[#647084]">Công việc</span>
+            <h2 className="mt-1 text-lg font-semibold text-[#18212f]">Phiếu kỹ thuật đang mở</h2>
           </div>
-          <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-right text-xs font-medium text-[#666666]">
+          <span className="rounded-lg border border-[#dde3ea] bg-white px-3 py-2 text-right text-xs font-medium text-[#647084]">
             {isAdmin ? 'Dữ liệu chung' : 'Phần việc cá nhân'}
           </span>
         </div>
 
-        <div className="grid grid-cols-4 divide-x divide-[#eeeeee] border-b border-[#eeeeee] max-[1180px]:grid-cols-2 max-sm:grid-cols-1 max-sm:divide-x-0">
+        <div className="grid grid-cols-4 gap-3 border-b border-[#e9edf2] p-3 max-[1180px]:grid-cols-2 max-sm:grid-cols-1">
           {commandKpis.map((item) => (
             <CommandKpi key={item.label} loading={loading} {...item} />
           ))}
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] divide-x divide-[#eeeeee] max-[1180px]:grid-cols-1 max-[1180px]:divide-x-0">
+        <div className="grid grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] gap-3 p-3 max-[1180px]:grid-cols-1">
           <BoardPanel eyebrow="Phiếu kỹ thuật" title="Sửa chữa và bảo trì">
             <LineWorkChart items={workQueues} loading={loading} />
             <div className="grid grid-cols-3 gap-2.5 border-t border-[#eeeeee] pt-3 max-sm:grid-cols-1">
@@ -304,10 +380,10 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
       </section>
 
       <Link
-        className="grid min-h-[104px] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-[10px] border border-[#e5e5e5] bg-white p-4 text-left shadow-[0_1px_2px_rgba(20,32,51,0.05)] transition hover:-translate-y-px hover:border-[#f5c7cb] hover:shadow-[0_12px_30px_rgba(20,32,51,0.08)] max-sm:grid-cols-[auto_minmax(0,1fr)]"
+        className="grid min-h-[104px] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-[10px] border border-[#dde3ea] bg-white/90 p-4 text-left shadow-[0_10px_30px_rgba(28,39,56,0.06)] transition hover:-translate-y-px hover:border-[#f1c4c9] hover:bg-white hover:shadow-[0_18px_42px_rgba(28,39,56,0.10)] max-sm:grid-cols-[auto_minmax(0,1fr)]"
         to="/technical-machines"
       >
-        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#fff5f5] text-[#d71920]">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#fff3f4] text-[#c91f2d]">
           <PackageSearch size={22} />
         </span>
         <span className="grid min-w-0 gap-1">
@@ -358,27 +434,27 @@ function MachineTotalCard({
 }) {
   return (
     <Link
-      className="grid min-h-[228px] gap-5 rounded-[10px] border border-[#f5c7cb] bg-white p-5 text-left shadow-[0_10px_28px_rgba(47,95,152,0.08)] transition hover:-translate-y-px hover:border-[#9fb8d7]"
+      className="grid min-h-[228px] gap-5 rounded-[10px] border border-[#f1c4c9] bg-white/92 p-5 text-left shadow-[0_16px_36px_rgba(28,39,56,0.08)] transition hover:-translate-y-px hover:border-[#cfd7e2] hover:bg-white"
       to="/technical-machines"
     >
       <div className="flex items-start justify-between gap-3">
-        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#fff5f5] text-[#d71920] shadow-[0_1px_2px_rgba(20,32,51,0.06)]">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#fff3f4] text-[#c91f2d] shadow-[0_1px_2px_rgba(28,39,56,0.06)]">
           <PackageSearch size={22} />
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-[#ffffff] px-2.5 py-1 text-xs font-semibold text-[#333333]">
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#dde3ea] bg-[#ffffff] px-2.5 py-1 text-xs font-semibold text-[#303a4b]">
           Chi tiết <ArrowRight size={13} />
         </span>
       </div>
       <div>
-        <span className="text-sm font-semibold text-[#666666]">Tổng số máy</span>
-        <strong className="mt-2 block text-[clamp(42px,7vw,68px)] font-semibold leading-none text-[#1f1f1f]">
+        <span className="text-sm font-semibold text-[#647084]">Tổng số máy</span>
+        <strong className="mt-2 block text-[clamp(42px,7vw,68px)] font-semibold leading-none text-[#18212f]">
           {loading ? '-' : total}
         </strong>
       </div>
       <div className="grid gap-2 text-sm text-[#333333] sm:grid-cols-3">
-        <span className="rounded-lg border border-[#eeeeee] bg-[#ffffff] px-3 py-2 font-medium">{loading ? '-' : active} hoạt động</span>
-        <span className="rounded-lg border border-[#eeeeee] bg-[#ffffff] px-3 py-2 font-medium">{loading ? '-' : installed} đã lắp</span>
-        <span className="rounded-lg border border-[#eeeeee] bg-[#ffffff] px-3 py-2 font-medium">{loading ? '-' : verified} xác minh</span>
+        <span className="rounded-lg border border-[#e9edf2] bg-[#f8fafc] px-3 py-2 font-medium">{loading ? '-' : active} hoạt động</span>
+        <span className="rounded-lg border border-[#e9edf2] bg-[#f8fafc] px-3 py-2 font-medium">{loading ? '-' : installed} đã lắp</span>
+        <span className="rounded-lg border border-[#e9edf2] bg-[#f8fafc] px-3 py-2 font-medium">{loading ? '-' : verified} xác minh</span>
       </div>
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-3 text-xs font-medium text-[#666666]">
@@ -396,6 +472,28 @@ function MachineTotalCard({
   );
 }
 
+function PulseTile({
+  label,
+  value,
+  tone,
+  loading,
+}: {
+  label: string;
+  value: number | string;
+  tone: Tone;
+  loading: boolean;
+}) {
+  const style = toneClass(tone);
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.08] p-3.5 backdrop-blur-md">
+      <span className="block text-[12px] font-semibold text-white/56">{label}</span>
+      <strong className="mt-2 block text-[30px] leading-none text-white">{loading ? '-' : value}</strong>
+      <span className={`mt-3 block h-1.5 rounded-full ${style.bar}`} />
+    </div>
+  );
+}
+
 function MachineScopeCard({
   label,
   value,
@@ -410,9 +508,9 @@ function MachineScopeCard({
   const style = toneClass(tone);
 
   return (
-    <div className="grid min-h-[104px] gap-3 rounded-[10px] border border-[#eeeeee] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <div className="grid min-h-[104px] gap-3 rounded-[10px] border border-[#e9edf2] bg-white/86 p-4 shadow-[0_10px_28px_rgba(28,39,56,0.05)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold text-[#333333]">{label}</span>
+        <span className="text-sm font-semibold text-[#303a4b]">{label}</span>
         {tone === 'warn' || tone === 'danger' ? <AlertTriangle className={style.icon} size={17} /> : <Activity className={style.icon} size={17} />}
       </div>
       <strong className={`text-3xl leading-none ${style.text}`}>{loading ? '-' : value}</strong>
@@ -439,7 +537,7 @@ function CommandKpi({
   const style = toneClass(tone);
 
   return (
-    <div className="grid min-h-[122px] gap-2 p-5">
+    <div className="grid min-h-[122px] gap-2 rounded-lg border border-[#e9edf2] bg-white p-4 shadow-[0_8px_24px_rgba(28,39,56,0.04)]">
       <div className="flex items-start justify-between gap-3">
         <span className="text-[13px] font-semibold text-[#333333]">{label}</span>
         {tone === 'good' ? <CheckCircle2 className={style.icon} size={17} /> : tone === 'neutral' ? null : <AlertTriangle className={style.icon} size={17} />}
@@ -452,7 +550,7 @@ function CommandKpi({
 
 function BoardPanel({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
   return (
-    <section className="grid gap-4 p-5">
+    <section className="grid gap-4 rounded-lg border border-[#e9edf2] bg-white p-5 shadow-[0_8px_24px_rgba(28,39,56,0.04)]">
       <div>
         <span className="text-[12px] font-medium text-[#666666]">{eyebrow}</span>
         <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">{title}</h2>

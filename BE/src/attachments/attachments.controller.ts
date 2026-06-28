@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -15,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
+import { randomUUID } from 'crypto';
 import { join } from 'path';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -24,6 +26,13 @@ import { RequestUser } from '../common/request-user.type';
 import { AttachmentsService } from './attachments.service';
 import { ListAttachmentsQueryDto } from './dto/list-attachments-query.dto';
 import { UploadAttachmentDto } from './dto/upload-attachment.dto';
+
+const ALLOWED_UPLOAD_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'application/pdf': 'pdf',
+};
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('attachments')
@@ -36,6 +45,19 @@ export class AttachmentsController {
       limits: {
         fileSize: 15 * 1024 * 1024,
       },
+      fileFilter: (_req, file, callback) => {
+        if (!ALLOWED_UPLOAD_EXTENSIONS[file.mimetype]) {
+          callback(
+            new BadRequestException(
+              'Only JPEG, PNG, WEBP and PDF files are allowed',
+            ),
+            false,
+          );
+          return;
+        }
+
+        callback(null, true);
+      },
       storage: diskStorage({
         destination: (_req, _file, callback) => {
           const uploadRoot = join(process.cwd(), 'uploads');
@@ -43,9 +65,8 @@ export class AttachmentsController {
           callback(null, uploadRoot);
         },
         filename: (_req, file, callback) => {
-          const extension = file.originalname.split('.').pop();
-          const random = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          callback(null, `${random}.${extension}`);
+          const extension = ALLOWED_UPLOAD_EXTENSIONS[file.mimetype];
+          callback(null, `${Date.now()}-${randomUUID()}.${extension}`);
         },
       }),
     }),
@@ -59,8 +80,11 @@ export class AttachmentsController {
   }
 
   @Get()
-  findAll(@Query() query: ListAttachmentsQueryDto) {
-    return this.attachmentsService.findAll(query);
+  findAll(
+    @Query() query: ListAttachmentsQueryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.attachmentsService.findAll(query, user);
   }
 
   @Get('types')
@@ -69,19 +93,21 @@ export class AttachmentsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.attachmentsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.attachmentsService.findOne(id, user);
   }
 
   @Get(':storedName/file')
   async download(
     @Param('storedName') storedName: string,
+    @CurrentUser() user: RequestUser,
     @Res() res: Response,
   ) {
     const attachment =
-      await this.attachmentsService.findFileByStoredName(storedName);
+      await this.attachmentsService.findFileByStoredName(storedName, user);
 
     res.setHeader('Content-Type', attachment.mimeType);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader(
       'Content-Disposition',
       `inline; filename="${encodeURIComponent(attachment.originalName)}"`,

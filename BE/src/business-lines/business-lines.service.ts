@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { BusinessLineStatus, ExpertiseGroup, MachineProductCategory } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { pickChangedFields } from '../common/audit-changes';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,6 +21,7 @@ export class BusinessLinesService {
   ) {}
 
   async create(dto: CreateBusinessLineDto, actor?: RequestUser) {
+    assertPermission(actor, PERMISSIONS.MASTER_DATA_WRITE);
     this.validateCreate(dto);
     await this.ensureCodeIsAvailable(dto.code);
     await this.ensureManagerExists(dto.managerId);
@@ -136,6 +138,7 @@ export class BusinessLinesService {
   }
 
   async update(id: string, dto: UpdateBusinessLineDto, actor?: RequestUser) {
+    assertPermission(actor, PERMISSIONS.MASTER_DATA_WRITE);
     const current = await this.findOne(id);
 
     if (dto.code) {
@@ -230,6 +233,7 @@ export class BusinessLinesService {
   }
 
   async remove(id: string, actor?: RequestUser) {
+    assertPermission(actor, PERMISSIONS.MASTER_DATA_WRITE);
     const businessLine = await this.prisma.businessLine.findUnique({
       where: { id },
       include: {

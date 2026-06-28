@@ -12,6 +12,7 @@ export class AppConfigService {
     86400,
     'JWT_EXPIRES_IN',
   );
+  readonly corsOrigins = this.readCorsOrigins();
 
   validate() {
     if (!process.env.DATABASE_URL) {
@@ -39,6 +40,23 @@ export class AppConfigService {
 
   private parsePort(value?: string): number {
     return this.parsePositiveInteger(value, 3000, 'PORT');
+  }
+
+  private readCorsOrigins(): string[] {
+    const configuredOrigins = process.env.CORS_ORIGINS?.split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+
+    if (configuredOrigins?.length) {
+      return configuredOrigins;
+    }
+
+    return [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:3000',
+      'https://viet-med-ky-thuat.vercel.app',
+    ];
   }
 
   private parsePositiveInteger(

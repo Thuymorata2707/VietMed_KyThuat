@@ -1,7 +1,9 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { BusinessLineStatus, Prisma } from '@prisma/client';
+import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductIndustryDto } from './dto/create-product-industry.dto';
 import { UpdateProductIndustryDto } from './dto/update-product-industry.dto';
@@ -10,7 +12,8 @@ import { UpdateProductIndustryDto } from './dto/update-product-industry.dto';
 export class ProductIndustriesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateProductIndustryDto) {
+  async create(dto: CreateProductIndustryDto, actor?: RequestUser) {
+    assertPermission(actor, PERMISSIONS.MASTER_DATA_WRITE);
     this.validate(dto.code, dto.name);
     await this.ensureCodeAvailable(dto.code);
 
@@ -63,7 +66,8 @@ export class ProductIndustriesService {
     return industry;
   }
 
-  async update(id: string, dto: UpdateProductIndustryDto) {
+  async update(id: string, dto: UpdateProductIndustryDto, actor?: RequestUser) {
+    assertPermission(actor, PERMISSIONS.MASTER_DATA_WRITE);
     const current = await this.findOne(id);
     if (dto.code) await this.ensureCodeAvailable(dto.code, id);
 
@@ -81,7 +85,8 @@ export class ProductIndustriesService {
     });
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor?: RequestUser) {
+    assertPermission(actor, PERMISSIONS.MASTER_DATA_WRITE);
     const industry = await this.findOne(id);
     if (industry.businessLines.length > 0) {
       throw new BadRequestException('Cannot delete product industry with products');

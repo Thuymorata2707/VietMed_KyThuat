@@ -7,6 +7,7 @@ import {
 import { CustomerStatus, CustomerType, Prisma } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { customerAccessWhere } from '../auth/access-scope';
+import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { pickChangedFields } from '../common/audit-changes';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
@@ -23,6 +24,7 @@ export class CustomersService {
   ) {}
 
   async create(dto: CreateCustomerDto, actor?: RequestUser) {
+    assertPermission(actor, PERMISSIONS.CUSTOMER_CREATE);
     this.validateCreateCustomer(dto);
     await this.ensureRegionExists(dto.regionId);
     await this.ensureCustomerCodeIsAvailable(dto.customerCode);
@@ -84,6 +86,7 @@ export class CustomersService {
     query: ListCustomersQueryDto,
     user?: RequestUser,
   ): Promise<PaginatedResult<unknown>> {
+    assertPermission(user, PERMISSIONS.CUSTOMER_READ);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const where = this.withAccessScope(this.buildFindAllWhere(query), user);
@@ -105,6 +108,7 @@ export class CustomersService {
   }
 
   async findOne(id: string, user?: RequestUser) {
+    assertPermission(user, PERMISSIONS.CUSTOMER_READ);
     const customer = await this.prisma.customer.findFirst({
       where: this.withAccessScope({ id }, user),
       include: {
@@ -245,7 +249,8 @@ export class CustomersService {
   }
 
   async update(id: string, dto: UpdateCustomerDto, actor?: RequestUser) {
-    const current = await this.findOne(id);
+    assertPermission(actor, PERMISSIONS.CUSTOMER_UPDATE);
+    const current = await this.findOne(id, actor);
 
     if (dto.regionId) {
       await this.ensureRegionExists(dto.regionId);
@@ -368,6 +373,7 @@ export class CustomersService {
   }
 
   async remove(id: string, actor?: RequestUser) {
+    assertPermission(actor, PERMISSIONS.CUSTOMER_DELETE);
     const customer = await this.prisma.customer.findUnique({
       where: { id },
       include: {

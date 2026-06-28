@@ -16,6 +16,7 @@ import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { isEngineer, machineAccessWhere } from '../auth/access-scope';
+import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { pickChangedFields } from '../common/audit-changes';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMachineDto } from './dto/create-machine.dto';
@@ -38,6 +39,7 @@ export class MachinesService {
   ) {}
 
   async create(dto: CreateMachineDto, actor?: RequestUser) {
+    assertPermission(actor, PERMISSIONS.MACHINE_CREATE);
     const input = this.applyCreateDefaults(dto, actor);
     this.validateCreateMachine(input);
     const machineModel = await this.ensureMachineModelExists(
@@ -152,6 +154,7 @@ export class MachinesService {
     query: ListMachinesQueryDto,
     user?: RequestUser,
   ): Promise<PaginatedResult<unknown>> {
+    assertPermission(user, PERMISSIONS.MACHINE_READ);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const where = this.withAccessScope(this.buildFindAllWhere(query), user);
@@ -176,6 +179,7 @@ export class MachinesService {
   }
 
   async findOne(id: string, user?: RequestUser) {
+    assertPermission(user, PERMISSIONS.MACHINE_READ);
     const machine = await this.prisma.machine.findFirst({
       where: this.withAccessScope({ id }, user),
       include: {
@@ -260,6 +264,7 @@ export class MachinesService {
   }
 
   async findBySerialNumber(serialNumber: string, user?: RequestUser) {
+    assertPermission(user, PERMISSIONS.MACHINE_READ);
     const machine = await this.prisma.machine.findFirst({
       where: this.withAccessScope(
         {
@@ -349,6 +354,7 @@ export class MachinesService {
   }
 
   async findAccessories(machineId: string, user?: RequestUser) {
+    assertPermission(user, PERMISSIONS.MACHINE_READ);
     await this.ensureMachineCanBeRead(machineId, user);
 
     return this.prisma.machineAccessory.findMany({
@@ -363,7 +369,8 @@ export class MachinesService {
     dto: CreateMachineAccessoryDto,
     actor?: RequestUser,
   ) {
-    const machine = await this.ensureMachineCanBeRead(machineId);
+    assertPermission(actor, PERMISSIONS.MACHINE_UPDATE);
+    const machine = await this.ensureMachineCanBeRead(machineId, actor);
     const [accessoryInput] = await this.prepareAccessoryInputs(
       [dto],
       machine.machineModelId,
@@ -404,7 +411,8 @@ export class MachinesService {
     dto: UpdateMachineAccessoryDto,
     actor?: RequestUser,
   ) {
-    const machine = await this.ensureMachineCanBeRead(machineId);
+    assertPermission(actor, PERMISSIONS.MACHINE_UPDATE);
+    const machine = await this.ensureMachineCanBeRead(machineId, actor);
     const current = await this.prisma.machineAccessory.findFirst({
       where: { id: accessoryId, machineId },
       include: this.machineAccessoriesInclude(),
@@ -494,6 +502,8 @@ export class MachinesService {
     accessoryId: string,
     actor?: RequestUser,
   ) {
+    assertPermission(actor, PERMISSIONS.MACHINE_UPDATE);
+    await this.ensureMachineCanBeRead(machineId, actor);
     const accessory = await this.prisma.machineAccessory.findFirst({
       where: { id: accessoryId, machineId },
     });
@@ -526,7 +536,8 @@ export class MachinesService {
   }
 
   async update(id: string, dto: UpdateMachineDto, actor?: RequestUser) {
-    const currentMachine = await this.findOne(id);
+    assertPermission(actor, PERMISSIONS.MACHINE_UPDATE);
+    const currentMachine = await this.findOne(id, actor);
     const machineModel =
       dto.machineModelId === undefined
         ? undefined
@@ -726,7 +737,8 @@ export class MachinesService {
   }
 
   async setStatus(id: string, status: MachineStatus, actor?: RequestUser) {
-    const machine = await this.findOne(id);
+    assertPermission(actor, PERMISSIONS.MACHINE_STATUS_UPDATE);
+    const machine = await this.findOne(id, actor);
     validateMachineState(status, machine.inventoryStatus, machine.customerId);
 
     return this.prisma.$transaction(async (tx) => {
@@ -757,6 +769,7 @@ export class MachinesService {
   }
 
   async remove(id: string, actor?: RequestUser) {
+    assertPermission(actor, PERMISSIONS.MACHINE_DELETE);
     const machine = await this.prisma.machine.findUnique({
       where: { id },
       include: {

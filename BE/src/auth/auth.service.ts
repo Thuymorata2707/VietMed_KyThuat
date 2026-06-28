@@ -11,16 +11,21 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { UpdateMeDto, UpdateMyEngineerProfileDto } from './dto/update-me.dto';
 import { JwtService } from './jwt.service';
+import { LoginThrottleService } from './login-throttle.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly loginThrottle: LoginThrottleService,
   ) {}
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ip?: string) {
+    this.loginThrottle.assertCanAttempt(dto.email, ip);
+
     if (!dto.email || !dto.password) {
+      this.loginThrottle.recordFailure(dto.email, ip);
       throw new UnauthorizedException('Email and password are required');
     }
 
@@ -34,14 +39,18 @@ export class AuthService {
     });
 
     if (!user || user.status !== 'ACTIVE') {
+      this.loginThrottle.recordFailure(dto.email, ip);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
 
     if (!isPasswordValid) {
+      this.loginThrottle.recordFailure(dto.email, ip);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    this.loginThrottle.recordSuccess(dto.email, ip);
 
     const requestUser = {
       id: user.id,

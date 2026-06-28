@@ -194,8 +194,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                   const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
                   return (
                     <Link
-                      className={`relative flex min-h-[42px] items-center rounded-lg text-[14px] font-medium text-[#555555] transition hover:bg-white hover:text-[#d71920] max-[980px]:shrink-0 max-[980px]:gap-2.5 max-[980px]:px-3 ${
-                        isActive ? 'bg-white text-[#1f1f1f] shadow-[inset_0_0_0_1px_rgba(201,217,238,0.95),0_1px_2px_rgba(20,32,51,0.04)] before:absolute before:left-0 before:h-[22px] before:w-[3px] before:rounded-full before:bg-[#d71920]' : ''
+                      className={`relative flex min-h-[42px] items-center rounded-lg text-[14px] font-medium text-[#647084] transition hover:bg-white hover:text-[#c91f2d] max-[980px]:shrink-0 max-[980px]:gap-2.5 max-[980px]:px-3 ${
+                        isActive ? 'bg-[#fff3f4] text-[#18212f] shadow-[inset_0_0_0_1px_rgba(241,196,201,0.95),0_8px_22px_rgba(201,31,45,0.06)] before:absolute before:left-0 before:h-[18px] before:w-[3px] before:rounded-full before:bg-[#c91f2d]' : ''
                       } ${isSidebarCollapsed ? 'h-[42px] w-[42px] justify-center gap-0 px-0 max-[980px]:w-auto max-[980px]:justify-start max-[980px]:px-3' : 'gap-2.5 px-3'}`}
                       key={item.path}
                       title={item.label}
@@ -233,8 +233,15 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             <strong className="block text-[18px] leading-tight text-[#1f1f1f]">{pageTitle}</strong>
           </div>
           <div className="flex items-center gap-2.5 max-sm:w-full max-sm:flex-wrap">
-            <span className="inline-flex min-h-[34px] items-center whitespace-nowrap rounded-lg border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-[7px] text-[12px] font-medium text-[#177245] before:mr-[7px] before:h-[7px] before:w-[7px] before:rounded-full before:bg-[#177245] before:content-['']" title={getApiBaseUrl()}>
-              API sẵn sàng
+            <Link
+              className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg bg-[#18212f] px-3.5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(28,39,56,0.14)] transition hover:-translate-y-px hover:bg-[#c91f2d]"
+              to="/service-tickets/create"
+            >
+              <Plus size={16} />
+              Tạo phiếu
+            </Link>
+            <span className="inline-flex min-h-[34px] items-center whitespace-nowrap rounded-lg border border-[#b9dfc9] bg-[#edf8f2] px-2.5 py-[7px] text-[12px] font-medium text-[#1b7a4c] before:mr-[7px] before:h-[7px] before:w-[7px] before:rounded-full before:bg-[#1b7a4c] before:content-['']" title={getApiBaseUrl()}>
+              Kết nối ổn định
             </span>
             <span className="min-h-[34px] rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-2.5 py-[7px] text-[12px] font-medium text-[#333333]">{roleLabel(role)}</span>
             <div className="relative" ref={notificationRef}>

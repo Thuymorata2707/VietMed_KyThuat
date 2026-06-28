@@ -113,6 +113,7 @@ export class InventoryMovementsService {
   }
 
   findAll(user?: RequestUser) {
+    assertPermission(user, PERMISSIONS.INVENTORY_READ);
     return this.prisma.machineInventoryMovement.findMany({
       where: inventoryMovementAccessWhere(user),
       include: this.defaultInclude(),
@@ -123,6 +124,7 @@ export class InventoryMovementsService {
   }
 
   async findOne(id: string, user?: RequestUser) {
+    assertPermission(user, PERMISSIONS.INVENTORY_READ);
     const movement = await this.prisma.machineInventoryMovement.findFirst({
       where: {
         AND: [{ id }, inventoryMovementAccessWhere(user)],

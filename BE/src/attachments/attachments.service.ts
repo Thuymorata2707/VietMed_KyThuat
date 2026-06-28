@@ -7,6 +7,7 @@ import { AttachmentType, Prisma } from '@prisma/client';
 import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
@@ -64,6 +65,7 @@ export class AttachmentsService {
     file: Express.Multer.File,
     actor: RequestUser,
   ) {
+    assertPermission(actor, PERMISSIONS.ATTACHMENT_CREATE);
     this.validateUploadFile(file);
     await this.ensureEntityExists(dto.entityType, dto.entityId);
 
@@ -112,7 +114,9 @@ export class AttachmentsService {
 
   async findAll(
     query: ListAttachmentsQueryDto,
+    user?: RequestUser,
   ): Promise<PaginatedResult<unknown>> {
+    assertPermission(user, PERMISSIONS.ATTACHMENT_READ);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const where = this.buildFindAllWhere(query);
@@ -133,7 +137,8 @@ export class AttachmentsService {
     return this.toPaginatedResult(data, page, limit, total);
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user?: RequestUser) {
+    assertPermission(user, PERMISSIONS.ATTACHMENT_READ);
     const attachment = await this.prisma.attachment.findFirst({
       where: {
         id,
@@ -149,7 +154,8 @@ export class AttachmentsService {
     return attachment;
   }
 
-  async findFileByStoredName(storedName: string) {
+  async findFileByStoredName(storedName: string, user?: RequestUser) {
+    assertPermission(user, PERMISSIONS.ATTACHMENT_READ);
     const attachment = await this.prisma.attachment.findFirst({
       where: {
         storedName,
@@ -165,7 +171,8 @@ export class AttachmentsService {
   }
 
   async remove(id: string, actor: RequestUser) {
-    const attachment = await this.findOne(id);
+    assertPermission(actor, PERMISSIONS.ATTACHMENT_DELETE);
+    const attachment = await this.findOne(id, actor);
 
     const deleted = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.attachment.update({

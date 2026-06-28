@@ -44,11 +44,7 @@ async function bootstrap() {
   config.validate();
 
   app.enableCors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'https://viet-med-ky-thuat.vercel.app',
-    ],
+    origin: config.corsOrigins,
     credentials: true,
   });
 
