@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
@@ -17,5 +17,29 @@ export class ReportsController {
   ) {
     assertPermission(user, PERMISSIONS.INSTALLATION_READ);
     return this.reportsService.getInstallationReport(user, query);
+  }
+
+  @Get('engineers/:engineerId')
+  getEngineerReport(
+    @CurrentUser() user: RequestUser,
+    @Param('engineerId') engineerId: string,
+    @Query() query: Record<string, string | undefined>,
+  ) {
+    assertPermission(user, PERMISSIONS.INSTALLATION_READ);
+    assertPermission(user, PERMISSIONS.REPAIR_READ);
+    assertPermission(user, PERMISSIONS.MAINTENANCE_READ);
+    return this.reportsService.getEngineerReport(user, engineerId, query);
+  }
+
+  @Get('models/:modelKey')
+  getModelReport(
+    @CurrentUser() user: RequestUser,
+    @Param('modelKey') modelKey: string,
+    @Query() query: Record<string, string | undefined>,
+  ) {
+    assertPermission(user, PERMISSIONS.INSTALLATION_READ);
+    assertPermission(user, PERMISSIONS.REPAIR_READ);
+    assertPermission(user, PERMISSIONS.MAINTENANCE_READ);
+    return this.reportsService.getModelReport(user, modelKey, query);
   }
 }

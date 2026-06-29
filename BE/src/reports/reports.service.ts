@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { installationAccessWhere } from '../auth/access-scope';
+import {
+  customerAccessWhere,
+  installationAccessWhere,
+  maintenanceAccessWhere,
+  repairAccessWhere,
+} from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -21,13 +26,37 @@ type InstallationDetailRow = {
   status: string;
   reviewStatus: string;
   installedAt: Date;
+  engineerId: string | null;
   engineer: string;
+  customerId: string | null;
   customer: string;
   province: string;
   region: string;
+  machineId: string | null;
+  machineModelId: string | null;
   model: string;
   machineCode: string;
   serialNumber: string;
+};
+
+type WorkReportRow = {
+  id: string;
+  code: string;
+  kind: 'installation' | 'repair' | 'maintenance';
+  title: string;
+  status: string;
+  date: Date;
+  completedAt: Date | null;
+  engineer: string;
+  customerId: string | null;
+  customer: string;
+  province: string;
+  machineId: string | null;
+  machineModelId: string | null;
+  model: string;
+  machineCode: string;
+  serialNumber: string;
+  note: string | null;
 };
 
 type MutableGroup = {
@@ -150,10 +179,14 @@ export class ReportsService {
       status: item.status,
       reviewStatus: item.reviewStatus,
       installedAt: item.installedAt,
+      engineerId: item.installedById,
       engineer: this.personName(item.installedBy?.fullName, item.installedBy?.email),
+      customerId: item.customerId,
       customer: item.customer?.shortName || item.customer?.name || 'Chưa có khách hàng',
       province: item.customer?.province || 'Chưa có tỉnh',
       region: item.customer?.region?.name || 'Chưa có vùng',
+      machineId: item.machineId,
+      machineModelId: item.plannedMachineModelId || item.machine?.machineModelId || null,
       model: this.modelName(item),
       machineCode: item.machine?.machineCode || '-',
       serialNumber: item.machine?.serialNumber || '-',
@@ -199,6 +232,240 @@ export class ReportsService {
         label: item.customer?.province || 'Chưa có tỉnh',
       })),
       rows,
+    };
+  }
+
+  async getEngineerReport(
+    user: RequestUser,
+    engineerId: string,
+    query: Record<string, string | undefined> = {},
+  ) {
+    const period = this.resolvePeriod(query);
+    const [engineer, installations, repairs, maintenances, assignedCustomers] =
+      await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: engineerId },
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            region: { select: { id: true, name: true } },
+            engineerProfile: {
+              select: {
+                employeeCode: true,
+                position: true,
+                department: true,
+                expertiseGroup: true,
+              },
+            },
+          },
+        }),
+        this.prisma.machineInstallation.findMany({
+          where: {
+            AND: [
+              installationAccessWhere(user),
+              { installedById: engineerId },
+              { installedAt: { gte: period.start, lt: period.end } },
+            ],
+          },
+          orderBy: { installedAt: 'desc' },
+          select: this.installationWorkSelect(),
+        }),
+        this.prisma.repair.findMany({
+          where: {
+            AND: [
+              repairAccessWhere(user),
+              { engineerId },
+              { reportedAt: { gte: period.start, lt: period.end } },
+            ],
+          },
+          orderBy: { reportedAt: 'desc' },
+          select: this.repairWorkSelect(),
+        }),
+        this.prisma.maintenance.findMany({
+          where: {
+            AND: [
+              maintenanceAccessWhere(user),
+              { engineerId },
+              { scheduledDate: { gte: period.start, lt: period.end } },
+            ],
+          },
+          orderBy: { scheduledDate: 'desc' },
+          select: this.maintenanceWorkSelect(),
+        }),
+        this.prisma.customer.findMany({
+          where: {
+            AND: [customerAccessWhere(user), { primaryEngineerId: engineerId }],
+          },
+          orderBy: { name: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            province: true,
+            region: { select: { name: true } },
+            _count: { select: { machines: true, repairs: true, maintenances: true, machineInstallations: true } },
+          },
+        }),
+      ]);
+
+    const workRows = [
+      ...installations.map((item) => this.installationToWorkRow(item)),
+      ...repairs.map((item) => this.repairToWorkRow(item)),
+      ...maintenances.map((item) => this.maintenanceToWorkRow(item)),
+    ].sort((first, second) => second.date.getTime() - first.date.getTime());
+    const customers = this.groupWorkByCustomer(workRows, assignedCustomers);
+    const machines = this.groupWorkByMachine(workRows);
+
+    return {
+      filters: {
+        from: this.formatDateInput(period.start),
+        to: this.formatDateInput(new Date(period.end.getTime() - 1)),
+      },
+      engineer: engineer
+        ? {
+            id: engineer.id,
+            name: this.personName(engineer.fullName, engineer.email),
+            email: engineer.email,
+            region: engineer.region?.name || null,
+            profile: engineer.engineerProfile,
+          }
+        : {
+            id: engineerId,
+            name: 'Kỹ sư không còn trong hệ thống',
+            email: null,
+            region: null,
+            profile: null,
+          },
+      summary: {
+        installations: installations.length,
+        repairs: repairs.length,
+        maintenances: maintenances.length,
+        customers: customers.length,
+        machines: machines.length,
+        assignedCustomers: assignedCustomers.length,
+      },
+      customers,
+      machines,
+      workRows,
+    };
+  }
+
+  async getModelReport(
+    user: RequestUser,
+    modelKey: string,
+    query: Record<string, string | undefined> = {},
+  ) {
+    const period = this.resolvePeriod(query);
+    const decodedModelKey = decodeURIComponent(modelKey);
+    const model = await this.prisma.machineModel.findFirst({
+      where: {
+        OR: [
+          { id: decodedModelKey },
+          { name: decodedModelKey },
+          { displayName: decodedModelKey },
+          { code: decodedModelKey },
+        ],
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        displayName: true,
+        manufacturer: true,
+        businessLine: {
+          select: {
+            name: true,
+            productIndustry: { select: { name: true } },
+          },
+        },
+      },
+    });
+    const modelNames = [model?.id, model?.name, model?.displayName, model?.code, decodedModelKey]
+      .filter(Boolean)
+      .map((value) => String(value));
+    const modelWhere = {
+      OR: [
+        { plannedMachineModelId: model?.id || decodedModelKey },
+        { plannedModelName: { in: modelNames } },
+        { machine: { machineModelId: model?.id || decodedModelKey } },
+        { machine: { modelName: { in: modelNames } } },
+      ],
+    };
+    const machineModelWhere = {
+      OR: [
+        { machine: { machineModelId: model?.id || decodedModelKey } },
+        { machine: { modelName: { in: modelNames } } },
+        { modelName: { in: modelNames } },
+      ],
+    };
+    const [installations, repairs, maintenances] = await Promise.all([
+      this.prisma.machineInstallation.findMany({
+        where: {
+          AND: [
+            installationAccessWhere(user),
+            modelWhere,
+            { installedAt: { gte: period.start, lt: period.end } },
+          ],
+        },
+        orderBy: { installedAt: 'desc' },
+        select: this.installationWorkSelect(),
+      }),
+      this.prisma.repair.findMany({
+        where: {
+          AND: [
+            repairAccessWhere(user),
+            machineModelWhere,
+            { reportedAt: { gte: period.start, lt: period.end } },
+          ],
+        },
+        orderBy: { reportedAt: 'desc' },
+        select: this.repairWorkSelect(),
+      }),
+      this.prisma.maintenance.findMany({
+        where: {
+          AND: [
+            maintenanceAccessWhere(user),
+            machineModelWhere,
+            { scheduledDate: { gte: period.start, lt: period.end } },
+          ],
+        },
+        orderBy: { scheduledDate: 'desc' },
+        select: this.maintenanceWorkSelect(),
+      }),
+    ]);
+
+    const workRows = [
+      ...installations.map((item) => this.installationToWorkRow(item)),
+      ...repairs.map((item) => this.repairToWorkRow(item)),
+      ...maintenances.map((item) => this.maintenanceToWorkRow(item)),
+    ].sort((first, second) => second.date.getTime() - first.date.getTime());
+    const machines = this.groupWorkByMachine(workRows);
+    const customers = this.groupWorkByCustomer(workRows, []);
+
+    return {
+      filters: {
+        from: this.formatDateInput(period.start),
+        to: this.formatDateInput(new Date(period.end.getTime() - 1)),
+      },
+      model: {
+        id: model?.id || decodedModelKey,
+        name: model?.displayName || model?.name || decodedModelKey,
+        code: model?.code || null,
+        manufacturer: model?.manufacturer || null,
+        businessLine: model?.businessLine?.name || null,
+        productIndustry: model?.businessLine?.productIndustry?.name || null,
+      },
+      summary: {
+        installations: installations.length,
+        repairs: repairs.length,
+        maintenances: maintenances.length,
+        customers: customers.length,
+        machines: machines.length,
+      },
+      machines,
+      customers,
+      workRows,
     };
   }
 
@@ -311,5 +578,321 @@ export class ReportsService {
       item.machine?.modelName ||
       'Chưa có model'
     );
+  }
+
+  private installationWorkSelect() {
+    return {
+      id: true,
+      code: true,
+      status: true,
+      reviewStatus: true,
+      installedAt: true,
+      installedById: true,
+      installedBy: { select: { email: true, fullName: true } },
+      customerId: true,
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          shortName: true,
+          province: true,
+          region: { select: { name: true } },
+        },
+      },
+      plannedMachineModelId: true,
+      plannedModelName: true,
+      plannedMachineModel: { select: { id: true, name: true, displayName: true, code: true } },
+      machineId: true,
+      machine: {
+        select: {
+          id: true,
+          machineCode: true,
+          serialNumber: true,
+          modelName: true,
+          machineModelId: true,
+          machineModel: { select: { id: true, name: true, displayName: true, code: true } },
+        },
+      },
+      note: true,
+    } satisfies Prisma.MachineInstallationSelect;
+  }
+
+  private repairWorkSelect() {
+    return {
+      id: true,
+      code: true,
+      title: true,
+      status: true,
+      reportedAt: true,
+      completedAt: true,
+      engineer: { select: { email: true, fullName: true } },
+      customerId: true,
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          shortName: true,
+          province: true,
+          region: { select: { name: true } },
+        },
+      },
+      machineId: true,
+      machine: {
+        select: {
+          id: true,
+          machineCode: true,
+          serialNumber: true,
+          modelName: true,
+          machineModelId: true,
+          machineModel: { select: { id: true, name: true, displayName: true, code: true } },
+          customer: { select: { id: true, name: true, shortName: true, province: true } },
+        },
+      },
+      modelName: true,
+      serialNumber: true,
+      resultNote: true,
+      repairMethod: true,
+      description: true,
+    } satisfies Prisma.RepairSelect;
+  }
+
+  private maintenanceWorkSelect() {
+    return {
+      id: true,
+      code: true,
+      title: true,
+      status: true,
+      scheduledDate: true,
+      completedAt: true,
+      engineer: { select: { email: true, fullName: true } },
+      customerId: true,
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          shortName: true,
+          province: true,
+          region: { select: { name: true } },
+        },
+      },
+      machineId: true,
+      machine: {
+        select: {
+          id: true,
+          machineCode: true,
+          serialNumber: true,
+          modelName: true,
+          machineModelId: true,
+          machineModel: { select: { id: true, name: true, displayName: true, code: true } },
+          customer: { select: { id: true, name: true, shortName: true, province: true } },
+        },
+      },
+      modelName: true,
+      serialNumber: true,
+      resultNote: true,
+      description: true,
+    } satisfies Prisma.MaintenanceSelect;
+  }
+
+  private installationToWorkRow(item: Prisma.MachineInstallationGetPayload<{ select: ReturnType<ReportsService['installationWorkSelect']> }>): WorkReportRow {
+    return {
+      id: item.id,
+      code: item.code,
+      kind: 'installation',
+      title: 'Lắp đặt máy',
+      status: item.status,
+      date: item.installedAt,
+      completedAt: item.installedAt,
+      engineer: this.personName(item.installedBy?.fullName, item.installedBy?.email),
+      customerId: item.customerId,
+      customer: item.customer?.shortName || item.customer?.name || 'Chưa có khách hàng',
+      province: item.customer?.province || 'Chưa có tỉnh',
+      machineId: item.machineId,
+      machineModelId: item.plannedMachineModelId || item.machine?.machineModelId || null,
+      model: this.modelName(item),
+      machineCode: item.machine?.machineCode || '-',
+      serialNumber: item.machine?.serialNumber || '-',
+      note: item.note,
+    };
+  }
+
+  private repairToWorkRow(item: Prisma.RepairGetPayload<{ select: ReturnType<ReportsService['repairWorkSelect']> }>): WorkReportRow {
+    return {
+      id: item.id,
+      code: item.code,
+      kind: 'repair',
+      title: item.title || 'Sửa chữa',
+      status: item.status,
+      date: item.reportedAt,
+      completedAt: item.completedAt,
+      engineer: this.personName(item.engineer?.fullName, item.engineer?.email),
+      customerId: item.customerId || item.machine?.customer?.id || null,
+      customer: item.customer?.shortName || item.customer?.name || item.machine?.customer?.shortName || item.machine?.customer?.name || 'Chưa có khách hàng',
+      province: item.customer?.province || item.machine?.customer?.province || 'Chưa có tỉnh',
+      machineId: item.machineId,
+      machineModelId: item.machine?.machineModelId || null,
+      model: item.machine?.machineModel?.displayName || item.machine?.machineModel?.name || item.machine?.modelName || item.modelName || 'Chưa có model',
+      machineCode: item.machine?.machineCode || '-',
+      serialNumber: item.machine?.serialNumber || item.serialNumber || '-',
+      note: item.repairMethod || item.resultNote || item.description,
+    };
+  }
+
+  private maintenanceToWorkRow(item: Prisma.MaintenanceGetPayload<{ select: ReturnType<ReportsService['maintenanceWorkSelect']> }>): WorkReportRow {
+    return {
+      id: item.id,
+      code: item.code,
+      kind: 'maintenance',
+      title: item.title || 'Bảo trì',
+      status: item.status,
+      date: item.scheduledDate,
+      completedAt: item.completedAt,
+      engineer: this.personName(item.engineer?.fullName, item.engineer?.email),
+      customerId: item.customerId || item.machine?.customer?.id || null,
+      customer: item.customer?.shortName || item.customer?.name || item.machine?.customer?.shortName || item.machine?.customer?.name || 'Chưa có khách hàng',
+      province: item.customer?.province || item.machine?.customer?.province || 'Chưa có tỉnh',
+      machineId: item.machineId,
+      machineModelId: item.machine?.machineModelId || null,
+      model: item.machine?.machineModel?.displayName || item.machine?.machineModel?.name || item.machine?.modelName || item.modelName || 'Chưa có model',
+      machineCode: item.machine?.machineCode || '-',
+      serialNumber: item.machine?.serialNumber || item.serialNumber || '-',
+      note: item.resultNote || item.description,
+    };
+  }
+
+  private groupWorkByCustomer(
+    workRows: WorkReportRow[],
+    assignedCustomers: Array<{
+      id: string;
+      name: string;
+      shortName?: string | null;
+      province?: string | null;
+      region?: { name: string } | null;
+      _count?: {
+        machines: number;
+        repairs: number;
+        maintenances: number;
+        machineInstallations: number;
+      };
+    }>,
+  ) {
+    const groups = new Map<string, {
+      id: string;
+      label: string;
+      province: string;
+      installations: number;
+      repairs: number;
+      maintenances: number;
+      machines: Set<string>;
+      lastWorkedAt: Date | null;
+      assigned: boolean;
+    }>();
+
+    for (const customer of assignedCustomers) {
+      groups.set(customer.id, {
+        id: customer.id,
+        label: customer.shortName || customer.name,
+        province: customer.province || customer.region?.name || 'Chưa có tỉnh',
+        installations: 0,
+        repairs: 0,
+        maintenances: 0,
+        machines: new Set<string>(),
+        lastWorkedAt: null,
+        assigned: true,
+      });
+    }
+
+    for (const row of workRows) {
+      const id = row.customerId || row.customer;
+      const current =
+        groups.get(id) ??
+        {
+          id,
+          label: row.customer,
+          province: row.province,
+          installations: 0,
+          repairs: 0,
+          maintenances: 0,
+          machines: new Set<string>(),
+          lastWorkedAt: null,
+          assigned: false,
+        };
+      if (row.kind === 'installation') current.installations += 1;
+      if (row.kind === 'repair') current.repairs += 1;
+      if (row.kind === 'maintenance') current.maintenances += 1;
+      current.machines.add(row.machineId || row.serialNumber || row.code);
+      current.lastWorkedAt =
+        !current.lastWorkedAt || row.date > current.lastWorkedAt ? row.date : current.lastWorkedAt;
+      groups.set(id, current);
+    }
+
+    return [...groups.values()]
+      .map((item) => ({
+        id: item.id,
+        label: item.label,
+        province: item.province,
+        installations: item.installations,
+        repairs: item.repairs,
+        maintenances: item.maintenances,
+        machines: item.machines.size,
+        lastWorkedAt: item.lastWorkedAt,
+        assigned: item.assigned,
+      }))
+      .sort((first, second) => {
+        const firstTotal = first.installations + first.repairs + first.maintenances;
+        const secondTotal = second.installations + second.repairs + second.maintenances;
+        return secondTotal - firstTotal || first.label.localeCompare(second.label, 'vi');
+      });
+  }
+
+  private groupWorkByMachine(workRows: WorkReportRow[]) {
+    const groups = new Map<string, {
+      id: string;
+      label: string;
+      serialNumber: string;
+      model: string;
+      customerId: string | null;
+      customer: string;
+      province: string;
+      installations: number;
+      repairs: number;
+      maintenances: number;
+      lastWorkedAt: Date | null;
+      notes: string[];
+    }>();
+
+    for (const row of workRows) {
+      const id = row.machineId || row.serialNumber || row.code;
+      const current =
+        groups.get(id) ??
+        {
+          id,
+          label: row.machineCode !== '-' ? row.machineCode : row.serialNumber,
+          serialNumber: row.serialNumber,
+          model: row.model,
+          customerId: row.customerId,
+          customer: row.customer,
+          province: row.province,
+          installations: 0,
+          repairs: 0,
+          maintenances: 0,
+          lastWorkedAt: null,
+          notes: [],
+        };
+      if (row.kind === 'installation') current.installations += 1;
+      if (row.kind === 'repair') current.repairs += 1;
+      if (row.kind === 'maintenance') current.maintenances += 1;
+      if (row.note) current.notes.push(row.note);
+      current.lastWorkedAt =
+        !current.lastWorkedAt || row.date > current.lastWorkedAt ? row.date : current.lastWorkedAt;
+      groups.set(id, current);
+    }
+
+    return [...groups.values()]
+      .map((item) => ({
+        ...item,
+        notes: item.notes.slice(0, 3),
+      }))
+      .sort((first, second) => (second.lastWorkedAt?.getTime() ?? 0) - (first.lastWorkedAt?.getTime() ?? 0));
   }
 }
