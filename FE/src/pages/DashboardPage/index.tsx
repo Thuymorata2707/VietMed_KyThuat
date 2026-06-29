@@ -105,24 +105,26 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
   const totalOpenWork = openRepairWork + openMaintenanceWork;
   const availabilityRate = totalMachines > 0 ? Math.round((activeMachines / totalMachines) * 100) : 0;
   const isAdmin = role === 'admin';
+  const canOpenReports = role === 'admin' || role === 'manager';
+  const reportsHref = (view: string) => `/reports?view=${view}`;
   const scopeTitle = isAdmin ? 'Toàn hệ thống' : user.fullName || user.email;
   const scopeDescription = isAdmin
-    ? 'Máy, khách hàng, kho và phiếu kỹ thuật đang mở.'
-    : 'Số liệu theo hồ sơ máy và phiếu bạn phụ trách.';
+    ? 'Tóm tắt những gì cần quan tâm trước: việc mở, máy vướng và dữ liệu còn thiếu.'
+    : 'Tóm tắt phần việc, lịch và hồ sơ máy đang gắn với tài khoản của bạn.';
   const machineHealthItems = [
-    { label: 'Đã lắp', value: installedMachines, tone: 'good' as const },
-    { label: 'Trong kho', value: inStockMachines, tone: 'neutral' as const },
-    { label: 'Đang sửa', value: repairingMachines, tone: 'warn' as const },
-    { label: 'Trả về kho', value: returnedMachines, tone: returnedMachines > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Đang hoạt động', value: activeMachines, tone: 'good' as const, href: canOpenReports ? reportsHref('machines') : undefined },
+    { label: 'Đã lắp tại khách', value: installedMachines, tone: 'good' as const, href: canOpenReports ? reportsHref('machines') : undefined },
+    { label: 'Trong kho', value: inStockMachines, tone: 'neutral' as const, href: canOpenReports ? reportsHref('machines') : undefined },
+    { label: 'Cần kỹ thuật chú ý', value: repairingMachines + maintenanceMachines + returnedMachines, tone: repairingMachines + maintenanceMachines + returnedMachines > 0 ? ('warn' as const) : ('good' as const), href: canOpenReports ? reportsHref('details') : undefined },
   ];
 
   const workQueues = [
-    { label: 'Sửa chữa chờ nhận', value: pendingRepairs, tone: 'warn' as const },
-    { label: 'Đã phân công', value: assignedRepairs, tone: 'neutral' as const },
-    { label: 'Đang xử lý', value: inProgressRepairs, tone: 'neutral' as const },
-    { label: 'Đợi linh kiện', value: waitingPartsRepairs, tone: 'warn' as const },
+    { label: 'Cần nhận việc', value: pendingRepairs, tone: pendingRepairs > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Đang có người phụ trách', value: assignedRepairs + assignedMaintenances, tone: 'neutral' as const },
+    { label: 'Đang xử lý tại hiện trường', value: inProgressRepairs + inProgressMaintenances, tone: 'neutral' as const },
+    { label: 'Đợi linh kiện', value: waitingPartsRepairs, tone: waitingPartsRepairs > 0 ? ('warn' as const) : ('good' as const) },
     { label: 'Bảo trì sắp tới', value: summary?.upcomingMaintenances ?? scheduledMaintenances, tone: 'good' as const },
-    { label: 'Bảo trì quá hạn', value: overdueMaintenances, tone: 'danger' as const },
+    { label: 'Quá hạn', value: overdueMaintenances, tone: overdueMaintenances > 0 ? ('danger' as const) : ('good' as const) },
   ];
 
   const machineQueues = [
@@ -134,28 +136,32 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
   const commandKpis = [
     {
-      label: isAdmin ? 'Khách hàng hoạt động' : 'Khách hàng của tôi',
-      value: activeCustomers,
-      detail: `${summary?.totalCustomers ?? 0} khách hàng trong phạm vi`,
+      label: 'Cần xử lý ngay',
+      value: overdueMaintenances + pendingRepairs + waitingPartsRepairs,
+      detail: `${overdueMaintenances} quá hạn, ${pendingRepairs} chờ nhận, ${waitingPartsRepairs} đợi linh kiện`,
+      tone: overdueMaintenances + pendingRepairs + waitingPartsRepairs > 0 ? ('warn' as const) : ('good' as const),
+      href: canOpenReports ? reportsHref('details') : undefined,
+    },
+    {
+      label: 'Đang thực hiện',
+      value: assignedRepairs + inProgressRepairs + assignedMaintenances + inProgressMaintenances,
+      detail: `${inProgressRepairs + inProgressMaintenances} đang xử lý, ${assignedRepairs + assignedMaintenances} đã phân công`,
       tone: 'neutral' as const,
+      href: canOpenReports ? reportsHref('engineers') : undefined,
     },
     {
-      label: 'Máy đang vướng',
-      value: unavailableMachines,
-      detail: `${repairingMachines} đang sửa, ${maintenanceMachines} bảo trì`,
-      tone: unavailableMachines > 0 ? ('warn' as const) : ('good' as const),
+      label: 'Máy cần chú ý',
+      value: unavailableMachines + returnedMachines,
+      detail: `${repairingMachines} sửa, ${maintenanceMachines} bảo trì, ${returnedMachines} trả kho`,
+      tone: unavailableMachines + returnedMachines > 0 ? ('warn' as const) : ('good' as const),
+      href: canOpenReports ? reportsHref('machines') : undefined,
     },
     {
-      label: 'Việc chưa xong',
-      value: totalOpenWork,
-      detail: `${openRepairWork} sửa chữa, ${openMaintenanceWork} bảo trì`,
-      tone: totalOpenWork > 0 ? ('warn' as const) : ('good' as const),
-    },
-    {
-      label: isAdmin ? 'Thiếu dữ liệu' : 'Cần bổ sung',
+      label: 'Dữ liệu cần bổ sung',
       value: (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine,
       detail: `${summary?.pendingReviewMachines ?? 0} máy chờ duyệt, ${openTicketsWithoutMachine} phiếu thiếu hồ sơ`,
       tone: (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine > 0 ? ('warn' as const) : ('good' as const),
+      href: canOpenReports ? reportsHref('details') : undefined,
     },
   ];
 
@@ -217,21 +223,28 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
   ];
   const operationalPulse = [
     {
-      label: 'Việc đang mở',
+      label: 'Việc chưa xong',
       value: totalOpenWork,
+      detail: `${openRepairWork} sửa chữa · ${openMaintenanceWork} bảo trì`,
       tone: totalOpenWork > 0 ? ('warn' as const) : ('good' as const),
+      href: canOpenReports ? reportsHref('summary') : undefined,
     },
     {
       label: 'Máy sẵn sàng',
       value: `${availabilityRate}%`,
+      detail: `${activeMachines}/${totalMachines} máy hoạt động`,
       tone: availabilityRate >= 80 ? ('good' as const) : ('warn' as const),
+      href: canOpenReports ? reportsHref('machines') : undefined,
     },
     {
       label: 'Cần bổ sung',
       value: (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine,
+      detail: 'Dữ liệu thiếu hoặc chờ duyệt',
       tone: (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine > 0 ? ('warn' as const) : ('good' as const),
+      href: canOpenReports ? reportsHref('details') : undefined,
     },
   ];
+  const topPriorityRows = loading ? priorityRows.slice(0, 4) : priorityRows.filter((row) => row.value > 0).slice(0, 4);
 
   return (
     <PageFrame>
@@ -259,12 +272,22 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
             <div className="max-w-[780px]">
               <h1 className="max-w-[720px] text-[clamp(34px,5vw,62px)] font-bold leading-[0.98] tracking-normal text-white">
-                {isAdmin ? 'Không gian điều phối kỹ thuật' : `Không gian làm việc của ${user.fullName || 'kỹ sư'}`}
+                {loading
+                  ? 'Đang tổng hợp số liệu kỹ thuật'
+                  : totalOpenWork > 0
+                  ? isAdmin
+                    ? 'Có việc kỹ thuật cần điều phối'
+                    : 'Việc của bạn trong hôm nay'
+                  : isAdmin
+                    ? 'Vận hành kỹ thuật đang ổn định'
+                    : 'Không có việc gấp cần xử lý'}
               </h1>
               <p className="mt-5 max-w-[620px] text-[15px] leading-7 text-white/66">
-                {isAdmin
-                  ? 'Theo dõi máy, kho và phiếu kỹ thuật cần xử lý trong ngày.'
-                  : 'Theo dõi phần việc, lịch và hồ sơ máy đang gắn với tài khoản của bạn.'}
+                {loading
+                  ? 'Hệ thống đang gom dữ liệu máy, ticket và lịch bảo trì để tạo bức tranh vận hành mới nhất.'
+                  : totalOpenWork > 0
+                  ? `Còn ${totalOpenWork} việc chưa xong. Ưu tiên kiểm tra các mục quá hạn, chờ nhận và đợi linh kiện.`
+                  : 'Các hàng đợi chính không có cảnh báo lớn. Bạn có thể kiểm tra lịch bảo trì sắp tới hoặc hồ sơ cần bổ sung.'}
               </p>
             </div>
 
@@ -287,21 +310,31 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             </div>
 
             <div className="grid gap-2">
-              {priorityRows.slice(0, 4).map((row) => (
-                <Link
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-transparent bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(28,39,56,0.05)] transition hover:-translate-y-px hover:border-[#f1c4c9]"
-                  key={row.code}
-                  to={row.to}
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-[13px] font-semibold text-[#303a4b]">{row.name}</span>
-                    <span className="mt-0.5 block text-[12px] font-medium text-[#647084]">{row.status}</span>
+              {topPriorityRows.length > 0 ? (
+                topPriorityRows.map((row) => (
+                  <Link
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-transparent bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(28,39,56,0.05)] transition hover:-translate-y-px hover:border-[#f1c4c9]"
+                    key={row.code}
+                    to={row.to}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13px] font-semibold text-[#303a4b]">{row.name}</span>
+                      <span className="mt-0.5 block text-[12px] font-medium text-[#647084]">{row.status}</span>
+                    </span>
+                    <strong className={row.tone === 'danger' ? 'text-[#a81524]' : row.tone === 'warn' ? 'text-[#996018]' : 'text-[#1b7a4c]'}>
+                      {loading ? '-' : row.value}
+                    </strong>
+                  </Link>
+                ))
+              ) : (
+                <div className="grid min-h-[188px] place-items-center rounded-lg border border-[#e9edf2] bg-white px-4 text-center">
+                  <span>
+                    <CheckCircle2 className="mx-auto text-[#1b7a4c]" size={28} />
+                    <strong className="mt-3 block text-sm text-[#18212f]">Không có cảnh báo ưu tiên</strong>
+                    <span className="mt-1 block text-[13px] leading-5 text-[#647084]">Các nhóm việc chính đang ở trạng thái ổn định.</span>
                   </span>
-                  <strong className={row.tone === 'danger' ? 'text-[#a81524]' : row.tone === 'warn' ? 'text-[#996018]' : 'text-[#1b7a4c]'}>
-                    {loading ? '-' : row.value}
-                  </strong>
-                </Link>
-              ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -330,6 +363,8 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             pendingReview={summary?.pendingReviewMachines ?? 0}
             total={totalMachines}
             verified={verifiedMachines}
+            href={canOpenReports ? reportsHref('machines') : '/technical-machines'}
+            openInNewTab={canOpenReports}
           />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {machineHealthItems.map((item) => (
@@ -357,8 +392,8 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
         </div>
 
         <div className="grid grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] gap-3 p-3 max-[1180px]:grid-cols-1">
-          <BoardPanel eyebrow="Phiếu kỹ thuật" title="Sửa chữa và bảo trì">
-            <LineWorkChart items={workQueues} loading={loading} />
+          <BoardPanel eyebrow="Hàng đợi công việc" title="Việc đang nằm ở đâu">
+            <QueueBars items={workQueues} loading={loading} />
             <div className="grid grid-cols-3 gap-2.5 border-t border-[#eeeeee] pt-3 max-sm:grid-cols-1">
               <ActionLink icon={<Wrench size={17} />} label={isAdmin ? 'Điều phối ticket' : 'Ticket của tôi'} to={isAdmin ? '/service-tickets' : '/my-tasks'} />
               <ActionLink icon={<ClipboardCheck size={17} />} label="Lịch công việc" to="/daily-work" />
@@ -366,12 +401,12 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             </div>
           </BoardPanel>
 
-          <BoardPanel eyebrow="Tình trạng máy" title="Máy đang vướng">
+          <BoardPanel eyebrow="Tình trạng máy" title="Máy có sẵn để phục vụ không">
             <DonutMachineChart activeRate={availabilityRate} items={machineQueues} loading={loading} total={totalMachines} />
             <div className="grid grid-cols-3 gap-2.5 border-t border-[#eeeeee] pt-3 max-sm:grid-cols-1">
-              <MiniStat label={isAdmin ? 'Khách hàng hoạt động' : 'Khách hàng liên quan'} loading={loading} value={activeCustomers} />
-              <MiniStat label="Máy trả về" loading={loading} value={returnedMachines} />
-              <MiniStat label="Thiếu hồ sơ máy" loading={loading} value={openTicketsWithoutMachine} />
+              <MiniStat href={canOpenReports ? reportsHref('customers') : undefined} label={isAdmin ? 'Khách hàng hoạt động' : 'Khách hàng liên quan'} loading={loading} value={activeCustomers} />
+              <MiniStat href={canOpenReports ? reportsHref('machines') : undefined} label="Máy trả về" loading={loading} value={returnedMachines} />
+              <MiniStat href={canOpenReports ? reportsHref('details') : undefined} label="Thiếu hồ sơ máy" loading={loading} value={openTicketsWithoutMachine} />
             </div>
           </BoardPanel>
         </div>
@@ -418,16 +453,20 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 function MachineTotalCard({
   active,
   availabilityRate,
+  href,
   installed,
   loading,
+  openInNewTab,
   pendingReview,
   total,
   verified,
 }: {
   active: number;
   availabilityRate: number;
+  href: string;
   installed: number;
   loading: boolean;
+  openInNewTab?: boolean;
   pendingReview: number;
   total: number;
   verified: number;
@@ -435,7 +474,9 @@ function MachineTotalCard({
   return (
     <Link
       className="grid min-h-[228px] gap-5 rounded-[10px] border border-[#f1c4c9] bg-white/92 p-5 text-left shadow-[0_16px_36px_rgba(28,39,56,0.08)] transition hover:-translate-y-px hover:border-[#cfd7e2] hover:bg-white"
-      to="/technical-machines"
+      rel={openInNewTab ? 'noreferrer' : undefined}
+      target={openInNewTab ? '_blank' : undefined}
+      to={href}
     >
       <div className="flex items-start justify-between gap-3">
         <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#fff3f4] text-[#c91f2d] shadow-[0_1px_2px_rgba(28,39,56,0.06)]">
@@ -475,40 +516,55 @@ function MachineTotalCard({
 function PulseTile({
   label,
   value,
+  detail,
+  href,
   tone,
   loading,
 }: {
   label: string;
   value: number | string;
+  detail: string;
+  href?: string;
   tone: Tone;
   loading: boolean;
 }) {
   const style = toneClass(tone);
-
-  return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.08] p-3.5 backdrop-blur-md">
+  const content = (
+    <>
       <span className="block text-[12px] font-semibold text-white/56">{label}</span>
       <strong className="mt-2 block text-[30px] leading-none text-white">{loading ? '-' : value}</strong>
+      <span className="mt-2 block min-h-8 text-[12px] leading-4 text-white/56">{loading ? 'Đang tải dữ liệu' : detail}</span>
       <span className={`mt-3 block h-1.5 rounded-full ${style.bar}`} />
-    </div>
+    </>
+  );
+
+  if (!href) {
+    return <div className="rounded-lg border border-white/10 bg-white/[0.08] p-3.5 backdrop-blur-md">{content}</div>;
+  }
+
+  return (
+    <Link className="rounded-lg border border-white/10 bg-white/[0.08] p-3.5 backdrop-blur-md transition hover:-translate-y-px hover:border-white/30 hover:bg-white/[0.12]" rel="noreferrer" target="_blank" to={href}>
+      {content}
+    </Link>
   );
 }
 
 function MachineScopeCard({
   label,
   value,
+  href,
   tone,
   loading,
 }: {
   label: string;
   value: number;
+  href?: string;
   tone: Tone;
   loading: boolean;
 }) {
   const style = toneClass(tone);
-
-  return (
-    <div className="grid min-h-[104px] gap-3 rounded-[10px] border border-[#e9edf2] bg-white/86 p-4 shadow-[0_10px_28px_rgba(28,39,56,0.05)]">
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold text-[#303a4b]">{label}</span>
         {tone === 'warn' || tone === 'danger' ? <AlertTriangle className={style.icon} size={17} /> : <Activity className={style.icon} size={17} />}
@@ -517,7 +573,17 @@ function MachineScopeCard({
       <div className="h-1.5 overflow-hidden rounded-full bg-[#eeeeee]">
         <span className={`block h-full rounded-full ${style.bar}`} style={{ width: `${loading ? 0 : Math.min(100, Math.max(8, value * 8))}%` }} />
       </div>
-    </div>
+    </>
+  );
+
+  if (!href) {
+    return <div className="grid min-h-[104px] gap-3 rounded-[10px] border border-[#e9edf2] bg-white/86 p-4 shadow-[0_10px_28px_rgba(28,39,56,0.05)]">{content}</div>;
+  }
+
+  return (
+    <Link className="grid min-h-[104px] gap-3 rounded-[10px] border border-[#e9edf2] bg-white/86 p-4 shadow-[0_10px_28px_rgba(28,39,56,0.05)] transition hover:-translate-y-px hover:border-[#f1c4c9] hover:bg-white" rel="noreferrer" target="_blank" to={href}>
+      {content}
+    </Link>
   );
 }
 
@@ -525,26 +591,37 @@ function CommandKpi({
   label,
   value,
   detail,
+  href,
   tone,
   loading,
 }: {
   label: string;
   value: number;
   detail: string;
+  href?: string;
   tone: Tone;
   loading: boolean;
 }) {
   const style = toneClass(tone);
-
-  return (
-    <div className="grid min-h-[122px] gap-2 rounded-lg border border-[#e9edf2] bg-white p-4 shadow-[0_8px_24px_rgba(28,39,56,0.04)]">
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
-        <span className="text-[13px] font-semibold text-[#333333]">{label}</span>
+        <span className="text-[13px] font-semibold text-[#303a4b]">{label}</span>
         {tone === 'good' ? <CheckCircle2 className={style.icon} size={17} /> : tone === 'neutral' ? null : <AlertTriangle className={style.icon} size={17} />}
       </div>
       <strong className={`text-[34px] leading-none ${style.text}`}>{loading ? '-' : value}</strong>
-      <span className="text-xs leading-snug text-[#666666]">{detail}</span>
-    </div>
+      <span className="text-xs leading-5 text-[#647084]">{loading ? 'Đang tổng hợp dữ liệu mới nhất.' : detail}</span>
+    </>
+  );
+
+  if (!href) {
+    return <div className="grid min-h-[130px] gap-2 rounded-lg border border-[#e9edf2] bg-white p-4 shadow-[0_8px_24px_rgba(28,39,56,0.04)]">{content}</div>;
+  }
+
+  return (
+    <Link className="grid min-h-[130px] gap-2 rounded-lg border border-[#e9edf2] bg-white p-4 shadow-[0_8px_24px_rgba(28,39,56,0.04)] transition hover:-translate-y-px hover:border-[#f1c4c9] hover:bg-white" rel="noreferrer" target="_blank" to={href}>
+      {content}
+    </Link>
   );
 }
 
@@ -695,7 +772,7 @@ function PriorityTable({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <span className="text-[12px] font-medium text-[#666666]">Hàng đợi ưu tiên</span>
-          <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">Top vấn đề cần xử lý trong ngày</h2>
+          <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">Những việc nên xử lý trước</h2>
         </div>
         <Link className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-3 text-sm font-semibold text-[#333333] hover:border-[#f5c7cb] hover:bg-[#fff5f5] hover:text-[#d71920]" to="/service-tickets">
           Mở danh sách <ArrowRight size={15} />
@@ -705,10 +782,10 @@ function PriorityTable({
         <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr className="text-[11px] text-[#666666]">
-              <th className="border-b border-[#eeeeee] px-3 py-2 font-medium">Code</th>
+              <th className="border-b border-[#eeeeee] px-3 py-2 font-medium">Mã</th>
               <th className="border-b border-[#eeeeee] px-3 py-2 font-medium">Vấn đề</th>
-              <th className="border-b border-[#eeeeee] px-3 py-2 font-medium">Phụ trách</th>
-              <th className="border-b border-[#eeeeee] px-3 py-2 font-medium">Số lượng</th>
+              <th className="border-b border-[#eeeeee] px-3 py-2 font-medium">Ai xử lý</th>
+              <th className="border-b border-[#eeeeee] px-3 py-2 font-medium">Còn lại</th>
               <th className="border-b border-[#eeeeee] px-3 py-2 font-medium">Trạng thái</th>
             </tr>
           </thead>
@@ -764,12 +841,22 @@ function QueueBars({ items, loading }: { items: Array<{ label: string; value: nu
   );
 }
 
-function MiniStat({ label, value, loading }: { label: string; value?: number; loading: boolean }) {
-  return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#ffffff] px-3 py-2.5">
+function MiniStat({ label, value, loading, href }: { label: string; value?: number; loading: boolean; href?: string }) {
+  const content = (
+    <>
       <span className="text-sm font-semibold text-[#666666]">{label}</span>
       <strong className="text-xl text-[#1f1f1f]">{loading ? '-' : value ?? 0}</strong>
-    </div>
+    </>
+  );
+
+  if (!href) {
+    return <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#ffffff] px-3 py-2.5">{content}</div>;
+  }
+
+  return (
+    <Link className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#ffffff] px-3 py-2.5 transition hover:-translate-y-px hover:border-[#f1c4c9] hover:bg-[#fffafa]" rel="noreferrer" target="_blank" to={href}>
+      {content}
+    </Link>
   );
 }
 

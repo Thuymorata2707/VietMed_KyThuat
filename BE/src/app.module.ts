@@ -21,6 +21,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductIndustriesModule } from './product-industries/product-industries.module';
 import { RegionsModule } from './regions/regions.module';
+import { ReportsModule } from './reports/reports.module';
 import { RepairsModule } from './repairs/repairs.module';
 import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
@@ -52,6 +53,7 @@ import { HttpCacheInterceptor } from './common/interceptors/http-cache.intercept
     MachineComponentsModule,
     ProductIndustriesModule,
     WeeklyReportsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [

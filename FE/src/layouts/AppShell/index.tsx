@@ -33,6 +33,7 @@ const ProductAddPage = lazy(() => import('../../pages/ProductCatalogPage').then(
 const ProductCatalogPage = lazy(() => import('../../pages/ProductCatalogPage').then((module) => ({ default: module.ProductCatalogPage })));
 const ProductModelDetailPage = lazy(() => import('../../pages/ProductCatalogPage').then((module) => ({ default: module.ProductModelDetailPage })));
 const RepairUpdatePage = lazy(() => import('../../pages/RepairUpdatePage').then((module) => ({ default: module.RepairUpdatePage })));
+const ReportsPage = lazy(() => import('../../pages/ReportsPage').then((module) => ({ default: module.ReportsPage })));
 const ResourcePage = lazy(() => import('../../pages/ResourcePage').then((module) => ({ default: module.ResourcePage })));
 const ServiceTicketCreatePage = lazy(() => import('../../pages/ServiceTicketCreatePage').then((module) => ({ default: module.ServiceTicketCreatePage })));
 const ServiceTicketsPage = lazy(() => import('../../pages/ServiceTicketsPage').then((module) => ({ default: module.ServiceTicketsPage })));
@@ -119,6 +120,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Hồ sơ khách hàng'
     : location.pathname.startsWith('/technical-statistics')
       ? 'Thống kê kỹ thuật'
+    : location.pathname.startsWith('/reports')
+      ? 'Báo cáo'
     : location.pathname.startsWith('/my-customers')
       ? 'Khách hàng phụ trách'
     : activeNavItem?.label || 'Tổng quan';
@@ -379,6 +382,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <TechnicalStatisticsPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'manager']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <ReportsPage />
               </RequireRole>
             }
           />

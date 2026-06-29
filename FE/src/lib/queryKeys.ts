@@ -5,6 +5,9 @@ export const queryKeys = {
   dashboard: {
     overview: ['dashboard', 'overview'] as const,
   },
+  reports: {
+    installations: (params: string) => ['reports', 'installations', params] as const,
+  },
   notifications: {
     list: ['notifications', 'list'] as const,
   },
