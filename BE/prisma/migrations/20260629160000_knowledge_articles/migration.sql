@@ -1,0 +1,157 @@
+-- CreateTable
+CREATE TABLE `KnowledgeArticle` (
+    `id` VARCHAR(191) NOT NULL,
+    `title` VARCHAR(191) NOT NULL,
+    `summary` TEXT NULL,
+    `content` TEXT NULL,
+    `modelHint` VARCHAR(191) NULL,
+    `ownerTeam` VARCHAR(191) NULL,
+    `category` ENUM('COMMON_FAULT', 'PACKING', 'REPAIR', 'INSTALLATION', 'MAINTENANCE', 'SAFETY', 'OTHER') NOT NULL DEFAULT 'OTHER',
+    `status` ENUM('DRAFT', 'PUBLISHED', 'ARCHIVED') NOT NULL DEFAULT 'PUBLISHED',
+    `tags` JSON NOT NULL,
+    `symptoms` JSON NOT NULL,
+    `steps` JSON NOT NULL,
+    `checklist` JSON NOT NULL,
+    `note` TEXT NULL,
+    `sortOrder` INTEGER NOT NULL DEFAULT 0,
+    `createdById` VARCHAR(191) NULL,
+    `updatedById` VARCHAR(191) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    INDEX `KnowledgeArticle_category_idx`(`category`),
+    INDEX `KnowledgeArticle_status_idx`(`status`),
+    INDEX `KnowledgeArticle_createdById_idx`(`createdById`),
+    INDEX `KnowledgeArticle_updatedById_idx`(`updatedById`),
+    INDEX `KnowledgeArticle_sortOrder_idx`(`sortOrder`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `KnowledgeArticle` ADD CONSTRAINT `KnowledgeArticle_createdById_fkey` FOREIGN KEY (`createdById`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `KnowledgeArticle` ADD CONSTRAINT `KnowledgeArticle_updatedById_fkey` FOREIGN KEY (`updatedById`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- SeedDefaultKnowledgeArticles
+INSERT INTO `KnowledgeArticle` (`id`, `title`, `summary`, `modelHint`, `ownerTeam`, `category`, `status`, `tags`, `symptoms`, `steps`, `checklist`, `note`, `sortOrder`, `createdAt`, `updatedAt`)
+VALUES
+(
+  'knowledge_default_bc_clog',
+  'Máy xét nghiệm huyết học báo tắc kim hút mẫu',
+  'Cách khoanh vùng lỗi khi BC series báo tắc, hút mẫu yếu hoặc kết quả bất thường.',
+  'BC-20s, BC-30s, BC-60s, BC-6800',
+  'Nhóm xét nghiệm',
+  'COMMON_FAULT',
+  'PUBLISHED',
+  JSON_ARRAY('Huyết học', 'Mindray', 'Kim hút mẫu'),
+  JSON_ARRAY('Máy báo clog/aperture block.', 'Mẫu hút chậm hoặc không đủ thể tích.', 'Kết quả WBC/RBC/PLT dao động bất thường.'),
+  JSON_ARRAY('Hỏi khách hàng thời điểm phát sinh lỗi và loại mẫu chạy gần nhất.', 'Kiểm tra hóa chất, mức dung dịch rửa, đường ống xả và bình thải.', 'Chạy quy trình probe cleanser theo hướng dẫn từng model.', 'Kiểm tra kim hút mẫu, tubing và bơm định lượng nếu lỗi lặp lại.', 'Chạy QC sau xử lý và lưu ảnh màn hình kết quả vào phiếu.'),
+  JSON_ARRAY('Găng tay, khăn thấm, dung dịch rửa.', 'Ảnh cảnh báo lỗi trước/sau xử lý.', 'Kết quả QC hoặc mẫu kiểm chứng.'),
+  'Không tháo cụm kim khi chưa xả áp và chưa ghi nhận tình trạng ban đầu.',
+  1,
+  CURRENT_TIMESTAMP(3),
+  CURRENT_TIMESTAMP(3)
+),
+(
+  'knowledge_default_ultrasound_noise',
+  'Máy siêu âm mất hình hoặc nhiễu mạnh',
+  'Checklist nhanh để phân biệt lỗi đầu dò, cổng probe, setting hoặc bo xử lý hình ảnh.',
+  'HD-350, X-CUBE 50, P series',
+  'Nhóm CĐHA',
+  'COMMON_FAULT',
+  'PUBLISHED',
+  JSON_ARRAY('Siêu âm', 'Đầu dò', 'Hình ảnh'),
+  JSON_ARRAY('Màn hình có sọc/nhiễu.', 'Một đầu dò mất hình, đầu dò khác bình thường.', 'Freeze hoặc gain không phản hồi ổn định.'),
+  JSON_ARRAY('Chụp lại preset, đầu dò đang dùng và tình trạng hình ảnh.', 'Đổi đầu dò sang cổng khác nếu máy có nhiều cổng.', 'Kiểm tra chân connector, khóa đầu dò và vết nứt cáp.', 'Reset preset hoặc thử exam type khác để loại trừ setting.', 'Nếu nhiều đầu dò cùng lỗi, kiểm tra log và bo xử lý theo service manual.'),
+  JSON_ARRAY('Ảnh connector đầu dò.', 'Video ngắn mô tả nhiễu.', 'Tên preset và phiên bản phần mềm.'),
+  'Không kéo cáp đầu dò khi đầu dò còn khóa trên cổng máy.',
+  2,
+  CURRENT_TIMESTAMP(3),
+  CURRENT_TIMESTAMP(3)
+),
+(
+  'knowledge_default_pack_ultrasound',
+  'Đóng hàng máy siêu âm dạng trolley',
+  'Quy trình đóng máy trước khi chuyển kho, chuyển tỉnh hoặc gửi bảo hành.',
+  'Máy siêu âm có trolley',
+  'Kho máy',
+  'PACKING',
+  'PUBLISHED',
+  JSON_ARRAY('Đóng hàng', 'Siêu âm', 'Trolley'),
+  JSON_ARRAY(),
+  JSON_ARRAY('Tắt máy đúng quy trình, rút nguồn và chờ máy nguội.', 'Tháo đầu dò, bọc riêng từng đầu dò bằng túi chống sốc.', 'Cố định màn hình, bàn phím, bánh xe và các khay phụ kiện.', 'Bọc thân máy bằng màng PE, foam góc và lớp chống ẩm.', 'Dán tem hướng đặt, tem dễ vỡ và ghi rõ danh sách phụ kiện đi kèm.'),
+  JSON_ARRAY('Biên bản tình trạng máy.', 'Ảnh 4 mặt trước khi đóng.', 'Danh sách đầu dò/phụ kiện.', 'Tem serial ngoài kiện.'),
+  'Đầu dò luôn đi hộp riêng hoặc khoang riêng, không đặt đè lên thân máy.',
+  3,
+  CURRENT_TIMESTAMP(3),
+  CURRENT_TIMESTAMP(3)
+),
+(
+  'knowledge_default_repair_onsite',
+  'Chuẩn bị trước khi đi sửa chữa onsite',
+  'Các bước cần có trước khi kỹ sư xuất phát để tránh thiếu linh kiện và thiếu thông tin lỗi.',
+  'Tất cả model',
+  'Điều phối kỹ thuật',
+  'REPAIR',
+  'PUBLISHED',
+  JSON_ARRAY('Onsite', 'Sửa chữa', 'Chuẩn bị'),
+  JSON_ARRAY(),
+  JSON_ARRAY('Đọc phiếu lỗi, lịch sử bảo trì và lịch sử thay linh kiện của máy.', 'Gọi xác nhận người phụ trách tại bệnh viện và thời gian được phép thao tác.', 'Chuẩn bị linh kiện nghi ngờ, cáp, dụng cụ đo và vật tư tiêu hao.', 'Kiểm tra phiên bản phần mềm hoặc tài liệu service cần mang theo.', 'Cập nhật trạng thái di chuyển để admin và khách hàng theo dõi.'),
+  JSON_ARRAY('Phiếu lỗi.', 'Serial/model máy.', 'Dụng cụ đo.', 'Linh kiện nghi ngờ.', 'Thông tin liên hệ khách hàng.'),
+  'Nếu lỗi ảnh hưởng vận hành khoa, ưu tiên phương án tạm chạy an toàn trước khi xử lý triệt để.',
+  4,
+  CURRENT_TIMESTAMP(3),
+  CURRENT_TIMESTAMP(3)
+),
+(
+  'knowledge_default_install_handover',
+  'Lắp đặt và bàn giao máy mới',
+  'Khung thao tác từ nhận mặt bằng, lắp đặt, chạy thử đến ký nghiệm thu.',
+  'Máy siêu âm, nội soi, xét nghiệm',
+  'Nhóm lắp đặt',
+  'INSTALLATION',
+  'PUBLISHED',
+  JSON_ARRAY('Lắp đặt', 'Bàn giao', 'Nghiệm thu'),
+  JSON_ARRAY(),
+  JSON_ARRAY('Kiểm tra mặt bằng, nguồn điện, tiếp địa, điều hòa và vị trí đặt máy.', 'Đối chiếu serial máy, phụ kiện, đầu dò/module với phiếu xuất kho.', 'Lắp đặt theo thứ tự cơ khí, nguồn, phụ kiện, kết nối mạng nếu có.', 'Chạy test chức năng chính, in/lưu kết quả mẫu và chụp ảnh hiện trạng.', 'Hướng dẫn vận hành cơ bản, vệ sinh, tắt mở máy và cảnh báo an toàn.', 'Ký biên bản bàn giao, nghiệm thu và cập nhật hồ sơ máy.'),
+  JSON_ARRAY('Biên bản lắp đặt.', 'Ảnh serial.', 'Ảnh vị trí máy.', 'Kết quả test.', 'Thông tin người nhận bàn giao.'),
+  'Không nghiệm thu khi nguồn điện hoặc tiếp địa chưa đạt điều kiện tối thiểu.',
+  5,
+  CURRENT_TIMESTAMP(3),
+  CURRENT_TIMESTAMP(3)
+),
+(
+  'knowledge_default_quarterly_maintenance',
+  'Bảo trì định kỳ theo quý',
+  'Checklist chung cho các máy đang hoạt động tại khách hàng.',
+  'Tất cả model đang vận hành',
+  'Nhóm bảo trì',
+  'MAINTENANCE',
+  'PUBLISHED',
+  JSON_ARRAY('Bảo trì', 'Checklist', 'Định kỳ'),
+  JSON_ARRAY(),
+  JSON_ARRAY('Ghi nhận số giờ chạy, số lần test hoặc counter liên quan.', 'Vệ sinh bề mặt, khe gió, lọc bụi, khu vực lấy mẫu hoặc cổng kết nối.', 'Kiểm tra cảnh báo tồn đọng, log lỗi và tình trạng phụ kiện tiêu hao.', 'Chạy kiểm tra chức năng chính theo từng dòng máy.', 'Khuyến nghị vật tư cần thay trong kỳ tới và cập nhật phiếu bảo trì.'),
+  JSON_ARRAY('Ảnh trước/sau bảo trì.', 'Log lỗi nếu có.', 'Counter máy.', 'Khuyến nghị vật tư.'),
+  'Luôn hỏi khách hàng về lỗi nhỏ lặp lại, vì nhiều lỗi không xuất hiện trong ngày bảo trì.',
+  6,
+  CURRENT_TIMESTAMP(3),
+  CURRENT_TIMESTAMP(3)
+),
+(
+  'knowledge_default_electrical_safety',
+  'An toàn điện trước khi thao tác máy',
+  'Các điểm cần kiểm tra trước khi mở vỏ máy, đo nguồn hoặc thay linh kiện.',
+  'Tất cả model',
+  'Quản lý kỹ thuật',
+  'SAFETY',
+  'PUBLISHED',
+  JSON_ARRAY('An toàn', 'Nguồn điện', 'Linh kiện'),
+  JSON_ARRAY(),
+  JSON_ARRAY('Tắt máy đúng quy trình và rút nguồn khỏi ổ cắm.', 'Chờ tụ xả theo khuyến nghị của từng dòng máy.', 'Dùng đồng hồ đo xác nhận điểm nguồn đã an toàn trước khi chạm tay.', 'Đeo vòng chống tĩnh điện khi thao tác bo mạch.', 'Chỉ cấp nguồn lại khi tất cả connector, vỏ che và dây tiếp địa đã đúng vị trí.'),
+  JSON_ARRAY('Đồng hồ đo.', 'Găng tay phù hợp.', 'Vòng ESD.', 'Ảnh connector trước khi tháo.'),
+  'Nếu môi trường ẩm hoặc nguồn không ổn định, dừng thao tác và báo quản lý kỹ thuật.',
+  7,
+  CURRENT_TIMESTAMP(3),
+  CURRENT_TIMESTAMP(3)
+);

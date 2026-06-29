@@ -197,6 +197,22 @@ enum DailyWorkStatus {
   CANCELLED
 }
 
+enum KnowledgeArticleCategory {
+  COMMON_FAULT
+  PACKING
+  REPAIR
+  INSTALLATION
+  MAINTENANCE
+  SAFETY
+  OTHER
+}
+
+enum KnowledgeArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model Region {
   id String @id @default(cuid())
 
@@ -261,9 +277,46 @@ model User {
   weeklyReports         WeeklyReport[]             @relation("WeeklyReportUser")
   reviewedWeeklyReports WeeklyReport[]             @relation("WeeklyReportReviewer")
   primaryCustomers      Customer[]                 @relation("CustomerPrimaryEngineer")
+  createdKnowledgeArticles KnowledgeArticle[]      @relation("KnowledgeArticleCreatedBy")
+  updatedKnowledgeArticles KnowledgeArticle[]      @relation("KnowledgeArticleUpdatedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model KnowledgeArticle {
+  id String @id @default(cuid())
+
+  title     String
+  summary   String? @db.Text
+  content   String? @db.Text
+  modelHint String?
+  ownerTeam String?
+
+  category KnowledgeArticleCategory @default(OTHER)
+  status   KnowledgeArticleStatus   @default(PUBLISHED)
+
+  tags      Json @default("[]")
+  symptoms  Json @default("[]")
+  steps     Json @default("[]")
+  checklist Json @default("[]")
+  note      String? @db.Text
+
+  sortOrder Int @default(0)
+
+  createdById String?
+  createdBy   User?   @relation("KnowledgeArticleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy   User?   @relation("KnowledgeArticleUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([sortOrder])
 }
 
 model DailyWorkNote {

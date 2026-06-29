@@ -445,7 +445,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <KnowledgeBasePage />
+                <KnowledgeBasePage user={user} />
               </RequireRole>
             }
           />

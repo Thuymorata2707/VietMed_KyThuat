@@ -13,6 +13,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { EngineerProfilesModule } from './engineer-profiles/engineer-profiles.module';
 import { InventoryMovementsModule } from './inventory-movements/inventory-movements.module';
 import { InstallationsModule } from './installations/installations.module';
+import { KnowledgeArticlesModule } from './knowledge-articles/knowledge-articles.module';
 import { MachineModelsModule } from './machine-models/machine-models.module';
 import { MachineComponentsModule } from './machine-components/machine-components.module';
 import { MachinesModule } from './machines/machines.module';
@@ -49,6 +50,7 @@ import { HttpCacheInterceptor } from './common/interceptors/http-cache.intercept
     NotificationsModule,
     InventoryMovementsModule,
     InstallationsModule,
+    KnowledgeArticlesModule,
     MachineModelsModule,
     MachineComponentsModule,
     ProductIndustriesModule,

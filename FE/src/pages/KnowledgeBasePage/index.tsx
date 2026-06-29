@@ -1,245 +1,241 @@
-import { AlertTriangle, BookOpenCheck, Boxes, ClipboardCheck, Clock3, FileText, PackageCheck, Search, ShieldCheck, Wrench } from 'lucide-react';
-import { ReactNode, useMemo, useState } from 'react';
+import { AlertTriangle, BookOpenCheck, Boxes, ClipboardCheck, Clock3, FileText, Loader2, PackageCheck, Pencil, Plus, Search, ShieldCheck, Trash2, Wrench, X } from 'lucide-react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { ApiUser, Paginated, apiFetch } from '../../api';
+import { getRoleName } from '../../auth/roles';
 import { PageFrame } from '../../components/PageFrame';
 
-type ExperienceCategory = 'common-faults' | 'packing' | 'repair' | 'installation' | 'maintenance' | 'safety';
+type KnowledgeArticleCategory = 'COMMON_FAULT' | 'PACKING' | 'REPAIR' | 'INSTALLATION' | 'MAINTENANCE' | 'SAFETY' | 'OTHER';
+type KnowledgeArticleStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+type CategoryFilter = KnowledgeArticleCategory | 'ALL';
 
-type ExperienceArticle = {
+type KnowledgeArticle = {
   id: string;
-  category: ExperienceCategory;
   title: string;
-  summary: string;
-  modelHint: string;
-  owner: string;
-  updatedAt: string;
-  readMinutes: number;
+  summary?: string | null;
+  content?: string | null;
+  modelHint?: string | null;
+  ownerTeam?: string | null;
+  category: KnowledgeArticleCategory;
+  status: KnowledgeArticleStatus;
   tags: string[];
-  symptoms?: string[];
+  symptoms: string[];
   steps: string[];
   checklist: string[];
-  note: string;
+  note?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: { id: string; fullName?: string | null; email?: string | null } | null;
+  updatedBy?: { id: string; fullName?: string | null; email?: string | null } | null;
 };
 
-const categoryMeta: Record<ExperienceCategory, { label: string; shortLabel: string; icon: ReactNode; tone: string }> = {
-  'common-faults': {
+type ArticleForm = {
+  title: string;
+  summary: string;
+  content: string;
+  modelHint: string;
+  ownerTeam: string;
+  category: KnowledgeArticleCategory;
+  status: KnowledgeArticleStatus;
+  tagsText: string;
+  symptomsText: string;
+  stepsText: string;
+  checklistText: string;
+  note: string;
+  sortOrder: string;
+};
+
+const categoryMeta: Record<KnowledgeArticleCategory, { label: string; shortLabel: string; icon: ReactNode; tone: string }> = {
+  COMMON_FAULT: {
     label: 'Lỗi thường gặp',
     shortLabel: 'Lỗi',
     icon: <AlertTriangle size={18} />,
     tone: 'bg-[#fff7f8] text-[#b5121b] border-[#f5c7cb]',
   },
-  packing: {
+  PACKING: {
     label: 'Quy trình đóng hàng',
     shortLabel: 'Đóng hàng',
     icon: <Boxes size={18} />,
     tone: 'bg-[#f7fbff] text-[#155e8a] border-[#cfe7f7]',
   },
-  repair: {
+  REPAIR: {
     label: 'Quy trình sửa chữa',
     shortLabel: 'Sửa chữa',
     icon: <Wrench size={18} />,
     tone: 'bg-[#fff9ed] text-[#9a5b00] border-[#f4ddb5]',
   },
-  installation: {
+  INSTALLATION: {
     label: 'Quy trình lắp đặt',
     shortLabel: 'Lắp đặt',
     icon: <PackageCheck size={18} />,
     tone: 'bg-[#f3fbf6] text-[#197044] border-[#ccebd8]',
   },
-  maintenance: {
+  MAINTENANCE: {
     label: 'Bảo trì định kỳ',
     shortLabel: 'Bảo trì',
     icon: <ClipboardCheck size={18} />,
     tone: 'bg-[#f8f6ff] text-[#5840a6] border-[#ddd5ff]',
   },
-  safety: {
+  SAFETY: {
     label: 'An toàn & bàn giao',
     shortLabel: 'An toàn',
     icon: <ShieldCheck size={18} />,
     tone: 'bg-[#f7f7f7] text-[#444444] border-[#dddddd]',
   },
+  OTHER: {
+    label: 'Kinh nghiệm khác',
+    shortLabel: 'Khác',
+    icon: <BookOpenCheck size={18} />,
+    tone: 'bg-[#f7f7f7] text-[#444444] border-[#dddddd]',
+  },
 };
 
-const articles: ExperienceArticle[] = [
-  {
-    id: 'bc-series-sample-clog',
-    category: 'common-faults',
-    title: 'Máy xét nghiệm huyết học báo tắc kim hút mẫu',
-    summary: 'Cách khoanh vùng lỗi khi BC series báo tắc, hút mẫu yếu hoặc kết quả bất thường.',
-    modelHint: 'BC-20s, BC-30s, BC-60s, BC-6800',
-    owner: 'Nhóm xét nghiệm',
-    updatedAt: '2026-06-20',
-    readMinutes: 6,
-    tags: ['Huyết học', 'Mindray', 'Kim hút mẫu'],
-    symptoms: ['Máy báo clog/aperture block.', 'Mẫu hút chậm hoặc không đủ thể tích.', 'Kết quả WBC/RBC/PLT dao động bất thường.'],
-    steps: [
-      'Hỏi khách hàng thời điểm phát sinh lỗi và loại mẫu chạy gần nhất.',
-      'Kiểm tra hóa chất, mức dung dịch rửa, đường ống xả và bình thải.',
-      'Chạy quy trình probe cleanser theo hướng dẫn từng model.',
-      'Kiểm tra kim hút mẫu, tubing và bơm định lượng nếu lỗi lặp lại.',
-      'Chạy QC sau xử lý và lưu ảnh màn hình kết quả vào phiếu.',
-    ],
-    checklist: ['Găng tay, khăn thấm, dung dịch rửa.', 'Ảnh cảnh báo lỗi trước/sau xử lý.', 'Kết quả QC hoặc mẫu kiểm chứng.'],
-    note: 'Không tháo cụm kim khi chưa xả áp và chưa ghi nhận tình trạng ban đầu.',
-  },
-  {
-    id: 'ultrasound-no-image',
-    category: 'common-faults',
-    title: 'Máy siêu âm mất hình hoặc nhiễu mạnh',
-    summary: 'Checklist nhanh để phân biệt lỗi đầu dò, cổng probe, setting hoặc bo xử lý hình ảnh.',
-    modelHint: 'HD-350, X-CUBE 50, P series',
-    owner: 'Nhóm CĐHA',
-    updatedAt: '2026-06-18',
-    readMinutes: 5,
-    tags: ['Siêu âm', 'Đầu dò', 'Hình ảnh'],
-    symptoms: ['Màn hình có sọc/nhiễu.', 'Một đầu dò mất hình, đầu dò khác bình thường.', 'Freeze hoặc gain không phản hồi ổn định.'],
-    steps: [
-      'Chụp lại preset, đầu dò đang dùng và tình trạng hình ảnh.',
-      'Đổi đầu dò sang cổng khác nếu máy có nhiều cổng.',
-      'Kiểm tra chân connector, khóa đầu dò và vết nứt cáp.',
-      'Reset preset hoặc thử exam type khác để loại trừ setting.',
-      'Nếu nhiều đầu dò cùng lỗi, kiểm tra log và bo xử lý theo service manual.',
-    ],
-    checklist: ['Ảnh connector đầu dò.', 'Video ngắn mô tả nhiễu.', 'Tên preset và phiên bản phần mềm.'],
-    note: 'Không kéo cáp đầu dò khi đầu dò còn khóa trên cổng máy.',
-  },
-  {
-    id: 'packing-ultrasound-machine',
-    category: 'packing',
-    title: 'Đóng hàng máy siêu âm dạng trolley',
-    summary: 'Quy trình đóng máy trước khi chuyển kho, chuyển tỉnh hoặc gửi bảo hành.',
-    modelHint: 'Máy siêu âm có trolley',
-    owner: 'Kho máy',
-    updatedAt: '2026-06-15',
-    readMinutes: 7,
-    tags: ['Đóng hàng', 'Siêu âm', 'Trolley'],
-    steps: [
-      'Tắt máy đúng quy trình, rút nguồn và chờ máy nguội.',
-      'Tháo đầu dò, bọc riêng từng đầu dò bằng túi chống sốc.',
-      'Cố định màn hình, bàn phím, bánh xe và các khay phụ kiện.',
-      'Bọc thân máy bằng màng PE, foam góc và lớp chống ẩm.',
-      'Dán tem hướng đặt, tem dễ vỡ và ghi rõ danh sách phụ kiện đi kèm.',
-    ],
-    checklist: ['Biên bản tình trạng máy.', 'Ảnh 4 mặt trước khi đóng.', 'Danh sách đầu dò/phụ kiện.', 'Tem serial ngoài kiện.'],
-    note: 'Đầu dò luôn đi hộp riêng hoặc khoang riêng, không đặt đè lên thân máy.',
-  },
-  {
-    id: 'repair-before-onsite',
-    category: 'repair',
-    title: 'Chuẩn bị trước khi đi sửa chữa onsite',
-    summary: 'Các bước cần có trước khi kỹ sư xuất phát để tránh thiếu linh kiện và thiếu thông tin lỗi.',
-    modelHint: 'Tất cả model',
-    owner: 'Điều phối kỹ thuật',
-    updatedAt: '2026-06-12',
-    readMinutes: 4,
-    tags: ['Onsite', 'Sửa chữa', 'Chuẩn bị'],
-    steps: [
-      'Đọc phiếu lỗi, lịch sử bảo trì và lịch sử thay linh kiện của máy.',
-      'Gọi xác nhận người phụ trách tại bệnh viện và thời gian được phép thao tác.',
-      'Chuẩn bị linh kiện nghi ngờ, cáp, dụng cụ đo và vật tư tiêu hao.',
-      'Kiểm tra phiên bản phần mềm hoặc tài liệu service cần mang theo.',
-      'Cập nhật trạng thái di chuyển để admin và khách hàng theo dõi.',
-    ],
-    checklist: ['Phiếu lỗi.', 'Serial/model máy.', 'Dụng cụ đo.', 'Linh kiện nghi ngờ.', 'Thông tin liên hệ khách hàng.'],
-    note: 'Nếu lỗi ảnh hưởng vận hành khoa, ưu tiên phương án tạm chạy an toàn trước khi xử lý triệt để.',
-  },
-  {
-    id: 'installation-handover',
-    category: 'installation',
-    title: 'Lắp đặt và bàn giao máy mới',
-    summary: 'Khung thao tác từ nhận mặt bằng, lắp đặt, chạy thử đến ký nghiệm thu.',
-    modelHint: 'Máy siêu âm, nội soi, xét nghiệm',
-    owner: 'Nhóm lắp đặt',
-    updatedAt: '2026-06-10',
-    readMinutes: 8,
-    tags: ['Lắp đặt', 'Bàn giao', 'Nghiệm thu'],
-    steps: [
-      'Kiểm tra mặt bằng, nguồn điện, tiếp địa, điều hòa và vị trí đặt máy.',
-      'Đối chiếu serial máy, phụ kiện, đầu dò/module với phiếu xuất kho.',
-      'Lắp đặt theo thứ tự cơ khí, nguồn, phụ kiện, kết nối mạng nếu có.',
-      'Chạy test chức năng chính, in/lưu kết quả mẫu và chụp ảnh hiện trạng.',
-      'Hướng dẫn vận hành cơ bản, vệ sinh, tắt mở máy và cảnh báo an toàn.',
-      'Ký biên bản bàn giao, nghiệm thu và cập nhật hồ sơ máy.',
-    ],
-    checklist: ['Biên bản lắp đặt.', 'Ảnh serial.', 'Ảnh vị trí máy.', 'Kết quả test.', 'Thông tin người nhận bàn giao.'],
-    note: 'Không nghiệm thu khi nguồn điện hoặc tiếp địa chưa đạt điều kiện tối thiểu.',
-  },
-  {
-    id: 'maintenance-quarterly',
-    category: 'maintenance',
-    title: 'Bảo trì định kỳ theo quý',
-    summary: 'Checklist chung cho các máy đang hoạt động tại khách hàng.',
-    modelHint: 'Tất cả model đang vận hành',
-    owner: 'Nhóm bảo trì',
-    updatedAt: '2026-06-08',
-    readMinutes: 5,
-    tags: ['Bảo trì', 'Checklist', 'Định kỳ'],
-    steps: [
-      'Ghi nhận số giờ chạy, số lần test hoặc counter liên quan.',
-      'Vệ sinh bề mặt, khe gió, lọc bụi, khu vực lấy mẫu hoặc cổng kết nối.',
-      'Kiểm tra cảnh báo tồn đọng, log lỗi và tình trạng phụ kiện tiêu hao.',
-      'Chạy kiểm tra chức năng chính theo từng dòng máy.',
-      'Khuyến nghị vật tư cần thay trong kỳ tới và cập nhật phiếu bảo trì.',
-    ],
-    checklist: ['Ảnh trước/sau bảo trì.', 'Log lỗi nếu có.', 'Counter máy.', 'Khuyến nghị vật tư.'],
-    note: 'Luôn hỏi khách hàng về lỗi nhỏ lặp lại, vì nhiều lỗi không xuất hiện trong ngày bảo trì.',
-  },
-  {
-    id: 'safety-electrical',
-    category: 'safety',
-    title: 'An toàn điện trước khi thao tác máy',
-    summary: 'Các điểm cần kiểm tra trước khi mở vỏ máy, đo nguồn hoặc thay linh kiện.',
-    modelHint: 'Tất cả model',
-    owner: 'Quản lý kỹ thuật',
-    updatedAt: '2026-06-05',
-    readMinutes: 4,
-    tags: ['An toàn', 'Nguồn điện', 'Linh kiện'],
-    steps: [
-      'Tắt máy đúng quy trình và rút nguồn khỏi ổ cắm.',
-      'Chờ tụ xả theo khuyến nghị của từng dòng máy.',
-      'Dùng đồng hồ đo xác nhận điểm nguồn đã an toàn trước khi chạm tay.',
-      'Đeo vòng chống tĩnh điện khi thao tác bo mạch.',
-      'Chỉ cấp nguồn lại khi tất cả connector, vỏ che và dây tiếp địa đã đúng vị trí.',
-    ],
-    checklist: ['Đồng hồ đo.', 'Găng tay phù hợp.', 'Vòng ESD.', 'Ảnh connector trước khi tháo.'],
-    note: 'Nếu môi trường ẩm hoặc nguồn không ổn định, dừng thao tác và báo quản lý kỹ thuật.',
-  },
-];
+const categoryOptions = Object.keys(categoryMeta) as KnowledgeArticleCategory[];
+const statusOptions: KnowledgeArticleStatus[] = ['PUBLISHED', 'DRAFT', 'ARCHIVED'];
 
-const allCategoryKey = 'all';
+const emptyForm: ArticleForm = {
+  title: '',
+  summary: '',
+  content: '',
+  modelHint: '',
+  ownerTeam: '',
+  category: 'COMMON_FAULT',
+  status: 'PUBLISHED',
+  tagsText: '',
+  symptomsText: '',
+  stepsText: '',
+  checklistText: '',
+  note: '',
+  sortOrder: '0',
+};
 
-export function KnowledgeBasePage() {
-  const [selectedCategory, setSelectedCategory] = useState<ExperienceCategory | typeof allCategoryKey>(allCategoryKey);
+export function KnowledgeBasePage({ user }: { user: ApiUser }) {
+  const role = getRoleName(user);
+  const canManage = role === 'admin' || role === 'manager';
+  const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('ALL');
   const [query, setQuery] = useState('');
-  const [selectedArticleId, setSelectedArticleId] = useState(articles[0]?.id ?? '');
+  const [selectedArticleId, setSelectedArticleId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [editingArticle, setEditingArticle] = useState<KnowledgeArticle | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [form, setForm] = useState<ArticleForm>(emptyForm);
 
-  const filteredArticles = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return articles.filter((article) => {
-      const matchCategory = selectedCategory === allCategoryKey || article.category === selectedCategory;
-      const haystack = [
-        article.title,
-        article.summary,
-        article.modelHint,
-        article.owner,
-        categoryMeta[article.category].label,
-        ...article.tags,
-      ].join(' ').toLowerCase();
-      return matchCategory && (!normalizedQuery || haystack.includes(normalizedQuery));
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadArticles();
+    }, 160);
+    return () => window.clearTimeout(timeout);
+  }, [query, selectedCategory, canManage]);
+
+  const categoryCounts = useMemo(() => {
+    return categoryOptions.reduce<Record<KnowledgeArticleCategory, number>>((acc, category) => {
+      acc[category] = articles.filter((article) => article.category === category).length;
+      return acc;
+    }, {} as Record<KnowledgeArticleCategory, number>);
+  }, [articles]);
+
+  const selectedArticle = articles.find((article) => article.id === selectedArticleId) ?? articles[0];
+  const totalSteps = articles.reduce((total, article) => total + safeList(article.steps).length, 0);
+
+  async function loadArticles() {
+    setLoading(true);
+    setError('');
+    try {
+      const params = new URLSearchParams({ limit: '100' });
+      if (query.trim()) params.set('search', query.trim());
+      if (selectedCategory !== 'ALL') params.set('category', selectedCategory);
+      const result = await apiFetch<Paginated<KnowledgeArticle>>(`/knowledge-articles?${params.toString()}`);
+      setArticles(result.data);
+      setSelectedArticleId((current) => (result.data.some((article) => article.id === current) ? current : result.data[0]?.id ?? ''));
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Không tải được sổ tay kinh nghiệm.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function openCreateForm() {
+    setEditingArticle(null);
+    setForm(emptyForm);
+    setIsFormOpen(true);
+  }
+
+  function openEditForm(article: KnowledgeArticle) {
+    setEditingArticle(article);
+    setForm({
+      title: article.title,
+      summary: article.summary ?? '',
+      content: article.content ?? '',
+      modelHint: article.modelHint ?? '',
+      ownerTeam: article.ownerTeam ?? '',
+      category: article.category,
+      status: article.status,
+      tagsText: safeList(article.tags).join('\n'),
+      symptomsText: safeList(article.symptoms).join('\n'),
+      stepsText: safeList(article.steps).join('\n'),
+      checklistText: safeList(article.checklist).join('\n'),
+      note: article.note ?? '',
+      sortOrder: String(article.sortOrder ?? 0),
     });
-  }, [query, selectedCategory]);
+    setIsFormOpen(true);
+  }
 
-  const selectedArticle = articles.find((article) => article.id === selectedArticleId) ?? filteredArticles[0] ?? articles[0];
-  const totalSteps = articles.reduce((total, article) => total + article.steps.length, 0);
-  const activeArticlesByCategory = Object.entries(categoryMeta).map(([key, meta]) => ({
-    id: key as ExperienceCategory,
-    ...meta,
-    count: articles.filter((article) => article.category === key).length,
-  }));
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    const payload = {
+      title: form.title,
+      summary: form.summary || null,
+      content: form.content || null,
+      modelHint: form.modelHint || null,
+      ownerTeam: form.ownerTeam || null,
+      category: form.category,
+      status: form.status,
+      tags: linesToList(form.tagsText),
+      symptoms: linesToList(form.symptomsText),
+      steps: linesToList(form.stepsText),
+      checklist: linesToList(form.checklistText),
+      note: form.note || null,
+      sortOrder: Number(form.sortOrder) || 0,
+    };
 
-  function handleCategorySelect(category: ExperienceCategory | typeof allCategoryKey) {
-    setSelectedCategory(category);
-    const nextArticle = articles.find((article) => category === allCategoryKey || article.category === category);
-    if (nextArticle) setSelectedArticleId(nextArticle.id);
+    try {
+      const saved = editingArticle
+        ? await apiFetch<KnowledgeArticle>(`/knowledge-articles/${editingArticle.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          })
+        : await apiFetch<KnowledgeArticle>('/knowledge-articles', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+      setIsFormOpen(false);
+      setEditingArticle(null);
+      setSelectedArticleId(saved.id);
+      await loadArticles();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Không lưu được bài kinh nghiệm.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(article: KnowledgeArticle) {
+    if (!window.confirm(`Delete "${article.title}"?`)) return;
+    setSaving(true);
+    setError('');
+    try {
+      await apiFetch(`/knowledge-articles/${article.id}`, { method: 'DELETE' });
+      await loadArticles();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Không xoá được bài kinh nghiệm.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -258,7 +254,7 @@ export function KnowledgeBasePage() {
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <KnowledgeMetric label="Chủ đề" value={activeArticlesByCategory.length} />
+            <KnowledgeMetric label="Chủ đề" value={categoryOptions.length} />
             <KnowledgeMetric label="Bài viết" value={articles.length} />
             <KnowledgeMetric label="Bước xử lý" value={totalSteps} />
           </div>
@@ -277,53 +273,147 @@ export function KnowledgeBasePage() {
             />
           </label>
 
+          {canManage ? (
+            <button className="primary-button justify-center" onClick={openCreateForm} type="button">
+              <Plus size={16} />
+              Add Article
+            </button>
+          ) : null}
+
           <div className="grid gap-2">
             <CategoryButton
-              active={selectedCategory === allCategoryKey}
+              active={selectedCategory === 'ALL'}
               count={articles.length}
               icon={<BookOpenCheck size={18} />}
               label="Tất cả kinh nghiệm"
-              onClick={() => handleCategorySelect(allCategoryKey)}
+              onClick={() => setSelectedCategory('ALL')}
             />
-            {activeArticlesByCategory.map((category) => (
+            {categoryOptions.map((category) => (
               <CategoryButton
-                active={selectedCategory === category.id}
-                count={category.count}
-                icon={category.icon}
-                key={category.id}
-                label={category.label}
-                onClick={() => handleCategorySelect(category.id)}
+                active={selectedCategory === category}
+                count={categoryCounts[category] ?? 0}
+                icon={categoryMeta[category].icon}
+                key={category}
+                label={categoryMeta[category].label}
+                onClick={() => setSelectedCategory(category)}
               />
             ))}
           </div>
 
           <div className="rounded-2xl border border-dashed border-[#f5c7cb] bg-[#fffafa] p-4 text-sm text-[#666666]">
-            <strong className="block text-[#1f1f1f]">Gợi ý bước sau</strong>
-            Sau khi thống nhất mẫu, có thể thêm nút Add/Edit để kỹ sư tự đóng góp kinh nghiệm và admin duyệt trước khi hiển thị.
+            <strong className="block text-[#1f1f1f]">{canManage ? 'Quản trị nội dung' : 'Dành cho kỹ sư'}</strong>
+            {canManage ? 'Admin/manager có thể thêm, sửa, xoá và chuyển trạng thái bài.' : 'Kỹ sư xem các bài đã xuất bản để tra cứu khi đi công trình.'}
           </div>
         </aside>
 
         <div className="grid min-w-0 gap-5">
+          {error ? <div className="rounded-2xl border border-[#f5c7cb] bg-[#fff7f8] p-4 text-sm font-medium text-[#b5121b]">{error}</div> : null}
+
+          {loading ? (
+            <div className="rounded-2xl border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm font-semibold text-[#666666]">
+              <Loader2 className="spin-icon mx-auto mb-2" size={20} />
+              Đang tải sổ tay kinh nghiệm
+            </div>
+          ) : null}
+
+          {!loading && articles.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm text-[#666666]">
+              Chưa có bài kinh nghiệm phù hợp. {canManage ? 'Bấm Add Article để tạo bài đầu tiên.' : 'Vui lòng thử từ khóa khác.'}
+            </div>
+          ) : null}
+
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {filteredArticles.map((article) => (
+            {articles.map((article) => (
               <ArticleCard
                 active={article.id === selectedArticle?.id}
                 article={article}
+                canManage={canManage}
                 key={article.id}
-                onClick={() => setSelectedArticleId(article.id)}
+                onDelete={() => handleDelete(article)}
+                onEdit={() => openEditForm(article)}
+                onSelect={() => setSelectedArticleId(article.id)}
               />
             ))}
           </div>
 
-          {filteredArticles.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm text-[#666666]">
-              Không có kinh nghiệm phù hợp. Thử đổi từ khóa hoặc chọn lại nhóm chủ đề.
-            </div>
-          ) : null}
-
           {selectedArticle ? <ArticleDetail article={selectedArticle} /> : null}
         </div>
       </section>
+
+      {isFormOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm">
+          <form className="grid max-h-[92dvh] w-full max-w-4xl overflow-hidden rounded-[26px] border border-[#e8edf3] bg-white shadow-[0_30px_90px_rgba(20,32,51,0.26)]" onSubmit={handleSubmit}>
+            <div className="flex items-start justify-between gap-4 border-b border-[#edf0f4] p-5">
+              <div>
+                <h2 className="text-xl font-semibold text-[#1f1f1f]">{editingArticle ? 'Edit Article' : 'Add Article'}</h2>
+                <p className="mt-1 text-sm text-[#666666]">Mỗi dòng trong Tags, dấu hiệu, quy trình và checklist sẽ thành một mục riêng.</p>
+              </div>
+              <button className="secondary-button compact" onClick={() => setIsFormOpen(false)} type="button">
+                <X size={16} />
+                Cancel
+              </button>
+            </div>
+
+            <div className="grid max-h-[calc(92dvh-150px)] gap-4 overflow-y-auto p-5 md:grid-cols-2">
+              <Field label="Tiêu đề">
+                <input className="form-input" onChange={(event) => setForm({ ...form, title: event.target.value })} required value={form.title} />
+              </Field>
+              <Field label="Model / dòng máy">
+                <input className="form-input" onChange={(event) => setForm({ ...form, modelHint: event.target.value })} value={form.modelHint} />
+              </Field>
+              <Field label="Nhóm phụ trách">
+                <input className="form-input" onChange={(event) => setForm({ ...form, ownerTeam: event.target.value })} value={form.ownerTeam} />
+              </Field>
+              <Field label="Thứ tự">
+                <input className="form-input" onChange={(event) => setForm({ ...form, sortOrder: event.target.value })} type="number" value={form.sortOrder} />
+              </Field>
+              <Field label="Chủ đề">
+                <select className="form-input" onChange={(event) => setForm({ ...form, category: event.target.value as KnowledgeArticleCategory })} value={form.category}>
+                  {categoryOptions.map((category) => (
+                    <option key={category} value={category}>{categoryMeta[category].label}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Trạng thái">
+                <select className="form-input" onChange={(event) => setForm({ ...form, status: event.target.value as KnowledgeArticleStatus })} value={form.status}>
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>{statusLabel(status)}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field className="md:col-span-2" label="Tóm tắt">
+                <textarea className="form-input min-h-[76px]" onChange={(event) => setForm({ ...form, summary: event.target.value })} value={form.summary} />
+              </Field>
+              <Field label="Tags">
+                <textarea className="form-input min-h-[110px]" onChange={(event) => setForm({ ...form, tagsText: event.target.value })} value={form.tagsText} />
+              </Field>
+              <Field label="Dấu hiệu nhận biết">
+                <textarea className="form-input min-h-[110px]" onChange={(event) => setForm({ ...form, symptomsText: event.target.value })} value={form.symptomsText} />
+              </Field>
+              <Field label="Quy trình xử lý">
+                <textarea className="form-input min-h-[170px]" onChange={(event) => setForm({ ...form, stepsText: event.target.value })} required value={form.stepsText} />
+              </Field>
+              <Field label="Checklist cần mang">
+                <textarea className="form-input min-h-[170px]" onChange={(event) => setForm({ ...form, checklistText: event.target.value })} value={form.checklistText} />
+              </Field>
+              <Field className="md:col-span-2" label="Ghi chú">
+                <textarea className="form-input min-h-[90px]" onChange={(event) => setForm({ ...form, note: event.target.value })} value={form.note} />
+              </Field>
+              <Field className="md:col-span-2" label="Nội dung dài thêm">
+                <textarea className="form-input min-h-[120px]" onChange={(event) => setForm({ ...form, content: event.target.value })} value={form.content} />
+              </Field>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-[#edf0f4] p-5">
+              <button className="secondary-button" onClick={() => setIsFormOpen(false)} type="button">Cancel</button>
+              <button className="primary-button" disabled={saving} type="submit">
+                {saving ? <Loader2 className="spin-icon" size={16} /> : null}
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </PageFrame>
   );
 }
@@ -337,25 +427,11 @@ function KnowledgeMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function CategoryButton({
-  active,
-  count,
-  icon,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  count: number;
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
+function CategoryButton({ active, count, icon, label, onClick }: { active: boolean; count: number; icon: ReactNode; label: string; onClick: () => void }) {
   return (
     <button
       className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-3 text-left text-sm font-semibold transition active:translate-y-px ${
-        active
-          ? 'border-[#f5c7cb] bg-[#fff7f8] text-[#d71920] shadow-[0_10px_24px_rgba(215,25,32,0.10)]'
-          : 'border-[#eef1f5] bg-white text-[#444444] hover:border-[#f5c7cb] hover:text-[#d71920]'
+        active ? 'border-[#f5c7cb] bg-[#fff7f8] text-[#d71920] shadow-[0_10px_24px_rgba(215,25,32,0.10)]' : 'border-[#eef1f5] bg-white text-[#444444] hover:border-[#f5c7cb] hover:text-[#d71920]'
       }`}
       onClick={onClick}
       type="button"
@@ -369,45 +445,62 @@ function CategoryButton({
   );
 }
 
-function ArticleCard({ active, article, onClick }: { active: boolean; article: ExperienceArticle; onClick: () => void }) {
+function ArticleCard({
+  active,
+  article,
+  canManage,
+  onDelete,
+  onEdit,
+  onSelect,
+}: {
+  active: boolean;
+  article: KnowledgeArticle;
+  canManage: boolean;
+  onDelete: () => void;
+  onEdit: () => void;
+  onSelect: () => void;
+}) {
   const meta = categoryMeta[article.category];
   return (
-    <button
-      className={`grid min-h-[210px] content-between rounded-2xl border bg-white p-4 text-left shadow-[0_10px_28px_rgba(20,32,51,0.05)] transition hover:-translate-y-0.5 hover:border-[#f5c7cb] hover:shadow-[0_18px_42px_rgba(215,25,32,0.10)] active:translate-y-px ${
-        active ? 'border-[#d71920] ring-4 ring-[#fff0f1]' : 'border-[#e8edf3]'
-      }`}
-      onClick={onClick}
-      type="button"
-    >
-      <div>
+    <div className={`grid min-h-[230px] content-between rounded-2xl border bg-white p-4 shadow-[0_10px_28px_rgba(20,32,51,0.05)] transition hover:-translate-y-0.5 hover:border-[#f5c7cb] hover:shadow-[0_18px_42px_rgba(215,25,32,0.10)] ${active ? 'border-[#d71920] ring-4 ring-[#fff0f1]' : 'border-[#e8edf3]'}`}>
+      <button className="text-left" onClick={onSelect} type="button">
         <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.tone}`}>
           {meta.icon}
           {meta.shortLabel}
         </span>
         <h2 className="mt-3 line-clamp-2 text-lg font-semibold leading-snug text-[#1f1f1f]">{article.title}</h2>
         <p className="mt-2 line-clamp-3 text-sm leading-6 text-[#666666]">{article.summary}</p>
-      </div>
+      </button>
       <div className="mt-4 grid gap-3">
         <div className="flex flex-wrap gap-1.5">
-          {article.tags.slice(0, 3).map((tag) => (
-            <span className="rounded-full bg-[#f5f6f8] px-2 py-1 text-[11px] font-medium text-[#666666]" key={tag}>
-              {tag}
-            </span>
+          {safeList(article.tags).slice(0, 3).map((tag) => (
+            <span className="rounded-full bg-[#f5f6f8] px-2 py-1 text-[11px] font-medium text-[#666666]" key={tag}>{tag}</span>
           ))}
         </div>
         <div className="flex items-center justify-between gap-3 text-xs font-medium text-[#777777]">
-          <span className="truncate">{article.modelHint}</span>
+          <span className="truncate">{article.modelHint || article.ownerTeam || 'Tất cả model'}</span>
           <span className="inline-flex shrink-0 items-center gap-1">
             <Clock3 size={13} />
-            {article.readMinutes} phút
+            {Math.max(3, safeList(article.steps).length)} phút
           </span>
         </div>
+        {canManage ? (
+          <div className="flex items-center justify-between gap-2 border-t border-[#edf0f4] pt-3">
+            <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${article.status === 'PUBLISHED' ? 'bg-[#edf9f1] text-[#187044]' : article.status === 'DRAFT' ? 'bg-[#fff7e6] text-[#9a5b00]' : 'bg-[#f1f2f4] text-[#666666]'}`}>
+              {statusLabel(article.status)}
+            </span>
+            <div className="flex gap-1.5">
+              <button className="secondary-button compact" onClick={onEdit} type="button"><Pencil size={14} />Edit</button>
+              <button className="danger-button compact" onClick={onDelete} type="button"><Trash2 size={14} />Delete</button>
+            </div>
+          </div>
+        ) : null}
       </div>
-    </button>
+    </div>
   );
 }
 
-function ArticleDetail({ article }: { article: ExperienceArticle }) {
+function ArticleDetail({ article }: { article: KnowledgeArticle }) {
   const meta = categoryMeta[article.category];
   return (
     <article className="overflow-hidden rounded-[26px] border border-[#e8edf3] bg-white shadow-[0_18px_50px_rgba(20,32,51,0.08)]">
@@ -421,21 +514,19 @@ function ArticleDetail({ article }: { article: ExperienceArticle }) {
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[#666666]">{article.summary}</p>
         </div>
         <div className="grid content-start gap-2 rounded-2xl border border-[#e8edf3] bg-white p-4 text-sm">
-          <InfoLine label="Model" value={article.modelHint} />
-          <InfoLine label="Nhóm" value={article.owner} />
+          <InfoLine label="Model" value={article.modelHint || 'Tất cả model'} />
+          <InfoLine label="Nhóm" value={article.ownerTeam || '-'} />
           <InfoLine label="Cập nhật" value={formatDate(article.updatedAt)} />
         </div>
       </div>
 
       <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="grid gap-5">
-          {article.symptoms?.length ? (
+          {safeList(article.symptoms).length ? (
             <SectionBlock icon={<AlertTriangle size={18} />} title="Dấu hiệu nhận biết">
               <ul className="grid gap-2">
-                {article.symptoms.map((symptom) => (
-                  <li className="rounded-xl border border-[#f0d9dc] bg-[#fff8f8] px-3 py-2 text-sm text-[#555555]" key={symptom}>
-                    {symptom}
-                  </li>
+                {safeList(article.symptoms).map((symptom) => (
+                  <li className="rounded-xl border border-[#f0d9dc] bg-[#fff8f8] px-3 py-2 text-sm text-[#555555]" key={symptom}>{symptom}</li>
                 ))}
               </ul>
             </SectionBlock>
@@ -443,20 +534,26 @@ function ArticleDetail({ article }: { article: ExperienceArticle }) {
 
           <SectionBlock icon={<FileText size={18} />} title="Quy trình xử lý">
             <ol className="grid gap-3">
-              {article.steps.map((step, index) => (
-                <li className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-2xl border border-[#edf0f4] bg-white p-3" key={step}>
+              {safeList(article.steps).map((step, index) => (
+                <li className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-2xl border border-[#edf0f4] bg-white p-3" key={`${step}-${index}`}>
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#d71920] text-sm font-semibold text-white">{index + 1}</span>
                   <span className="self-center text-sm leading-6 text-[#444444]">{step}</span>
                 </li>
               ))}
             </ol>
           </SectionBlock>
+
+          {article.content ? (
+            <SectionBlock icon={<BookOpenCheck size={18} />} title="Nội dung thêm">
+              <p className="whitespace-pre-line text-sm leading-7 text-[#555555]">{article.content}</p>
+            </SectionBlock>
+          ) : null}
         </div>
 
         <aside className="grid content-start gap-4">
           <SectionBlock icon={<ClipboardCheck size={18} />} title="Checklist cần mang">
             <ul className="grid gap-2">
-              {article.checklist.map((item) => (
+              {safeList(article.checklist).map((item) => (
                 <li className="flex gap-2 rounded-xl bg-[#f7f8fa] px-3 py-2 text-sm text-[#555555]" key={item}>
                   <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#d71920]" />
                   <span>{item}</span>
@@ -465,13 +562,24 @@ function ArticleDetail({ article }: { article: ExperienceArticle }) {
             </ul>
           </SectionBlock>
 
-          <div className="rounded-2xl border border-[#f5c7cb] bg-[#fff7f8] p-4">
-            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#d71920]">Lưu ý</span>
-            <p className="mt-2 text-sm leading-6 text-[#555555]">{article.note}</p>
-          </div>
+          {article.note ? (
+            <div className="rounded-2xl border border-[#f5c7cb] bg-[#fff7f8] p-4">
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#d71920]">Lưu ý</span>
+              <p className="mt-2 text-sm leading-6 text-[#555555]">{article.note}</p>
+            </div>
+          ) : null}
         </aside>
       </div>
     </article>
+  );
+}
+
+function Field({ children, className = '', label }: { children: ReactNode; className?: string; label: string }) {
+  return (
+    <label className={`grid gap-1.5 text-sm font-semibold text-[#333333] ${className}`}>
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -494,6 +602,20 @@ function InfoLine({ label, value }: { label: string; value: string }) {
       <strong className="mt-0.5 block text-sm font-semibold text-[#1f1f1f]">{value}</strong>
     </div>
   );
+}
+
+function linesToList(value: string) {
+  return value.split('\n').map((item) => item.trim()).filter(Boolean);
+}
+
+function safeList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function statusLabel(status: KnowledgeArticleStatus) {
+  if (status === 'PUBLISHED') return 'Published';
+  if (status === 'DRAFT') return 'Draft';
+  return 'Archived';
 }
 
 function formatDate(value: string) {

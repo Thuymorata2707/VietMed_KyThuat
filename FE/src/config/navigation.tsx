@@ -62,20 +62,35 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: 'Vận hành kỹ thuật',
+    label: 'Công việc',
     items: [
       { path: '/my-tasks', label: 'Phân việc', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
       { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
+      { path: '/daily-work', label: 'Lịch công việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
+    ],
+  },
+  {
+    label: 'Vận hành kỹ thuật',
+    items: [
       { path: '/my-customers', label: 'Khách hàng phụ trách', icon: <Building2 size={18} />, roles: ['engineer'] },
-      { path: '/business-lines', label: 'Sản phẩm & Thiết bị', icon: <BriefcaseBusiness size={18} />, roles: ['admin', 'manager', 'engineer'] },
       { path: '/service-tickets', label: 'Sửa chữa / Bảo trì', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
       { path: '/installations', label: 'Lắp đặt', icon: <PackageCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
-      { path: '/daily-work', label: 'Lịch công việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
+    ],
+  },
+  {
+    label: 'Tri thức & Kho',
+    items: [
       { path: '/knowledge-base', label: 'Chia sẻ kinh nghiệm', icon: <BookOpenCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
+      { path: '/business-lines', label: 'Sản phẩm & Thiết bị', icon: <BriefcaseBusiness size={18} />, roles: ['admin', 'manager', 'engineer'] },
+      { path: '/inventory-movements', label: 'Kho máy', icon: <Boxes size={18} />, roles: ['admin', 'manager', 'engineer'] },
+    ],
+  },
+  {
+    label: 'Báo cáo',
+    items: [
       { path: '/technical-statistics', label: 'Thống kê kỹ thuật', icon: <BarChart3 size={18} />, roles: ['admin'] },
       { path: '/reports', label: 'Báo cáo', icon: <FileBarChart2 size={18} />, roles: ['admin', 'manager'] },
       { path: '/engineer-performance', label: 'Hiệu suất kỹ sư', icon: <BarChart3 size={18} />, roles: ['engineer'] },
-      { path: '/inventory-movements', label: 'Kho máy', icon: <Boxes size={18} />, roles: ['admin', 'manager', 'engineer'] },
     ],
   },
   {
