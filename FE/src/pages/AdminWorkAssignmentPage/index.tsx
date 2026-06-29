@@ -309,244 +309,238 @@ export function AdminWorkAssignmentPage() {
   };
   const currentFilterLabel = filterOptions.find((option) => option.value === filter)?.label ?? 'Công việc';
   const groupedItems = useMemo(() => groupWorkItems(items, filter), [filter, items]);
+  const engineerLoads = useMemo(() => buildEngineerLoads(engineers, [
+    ...repairs.map((item): WorkItem => ({
+      key: `repair:${item.id}`,
+      id: item.id,
+      kind: 'repair',
+      code: item.code,
+      title: item.title,
+      status: item.status,
+      date: item.reportedAt,
+      engineer: item.engineer,
+      createdBy: item.createdBy,
+      machine: item.machine,
+      customer: item.machine?.customer,
+      reviewStatus: item.reviewStatus,
+      reviewNote: item.reviewNote,
+    })),
+    ...maintenances.map((item): WorkItem => ({
+      key: `maintenance:${item.id}`,
+      id: item.id,
+      kind: 'maintenance',
+      code: item.code,
+      title: item.title,
+      status: item.status,
+      date: item.scheduledDate,
+      engineer: item.engineer,
+      machine: item.machine,
+      customer: item.machine?.customer,
+      reviewStatus: item.reviewStatus,
+      reviewNote: item.reviewNote,
+    })),
+    ...installations.map((item): WorkItem => ({
+      key: `installation:${item.id}`,
+      id: item.id,
+      kind: 'installation',
+      code: item.code,
+      title: `Lắp đặt ${item.machine?.machineCode ?? item.machine?.serialNumber ?? item.machine?.modelName ?? item.plannedMachineModel?.name ?? item.plannedModelName ?? item.code}`,
+      status: item.status,
+      date: item.installedAt,
+      engineer: item.installedBy,
+      machine: item.machine,
+      customer: item.customer ?? item.machine?.customer,
+      reviewStatus: item.reviewStatus,
+      reviewNote: item.reviewNote,
+    })),
+  ]), [engineers, installations, maintenances, repairs]);
+  const busiestEngineerCount = Math.max(...engineerLoads.map((engineer) => engineer.active), 1);
 
   return (
     <PageFrame>
-      <div className="grid gap-4 min-[821px]:flex min-[821px]:items-start min-[821px]:justify-between">
+      <section className="relative overflow-hidden rounded-[28px] border border-[#f5c7cb] bg-[#fff7f8] p-5 shadow-[0_24px_70px_rgba(215,25,32,0.10)] lg:p-6">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_7%_12%,rgba(215,25,32,0.14),transparent_30%),radial-gradient(circle_at_92%_18%,rgba(255,255,255,0.94),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,247,248,0.78))]" />
+        <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <PageTitle
-          eyebrow="Admin"
-          title="Điều phối công việc"
-          description="Giao kỹ sư, theo dõi việc đang mở và xác nhận báo cáo sau khi kỹ sư hoàn tất."
+            eyebrow="Điều phối kỹ thuật"
+            title="Bảng điều phối đội kỹ sư"
+            description="Giao người phụ trách, theo dõi việc đang mở và duyệt báo cáo kỹ thuật sau khi hoàn tất."
         />
-        <button
-          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-4 text-sm font-medium text-[#333333] shadow-sm hover:border-[#d71920] hover:text-[#d71920] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
-          disabled={loading}
-          onClick={loadData}
-          type="button"
-        >
-          {loading ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}
-          Làm mới
-        </button>
-      </div>
-
-      <div className="grid gap-3.5 min-[721px]:grid-cols-2 min-[1181px]:grid-cols-4">
-        <button className={summaryCardClass(filter === 'action')} onClick={() => setFilter('action')} type="button">
-          <span className="text-[13px] font-medium text-[#666666]">Cần admin xử lý</span>
-          <strong className="text-[30px] leading-none text-[#1f1f1f]">{actionCount}</strong>
-          <span className="text-xs leading-5 text-[#666666]">Chưa phân hoặc chờ xác nhận</span>
-        </button>
-        <button className={summaryCardClass(filter === 'unassigned')} onClick={() => setFilter('unassigned')} type="button">
-          <span className="text-[13px] font-medium text-[#666666]">Chưa phân kỹ sư</span>
-          <strong className="text-[30px] leading-none text-[#1f1f1f]">{unassignedCount}</strong>
-          <span className="text-xs leading-5 text-[#666666]">Cần chọn người phụ trách</span>
-        </button>
-        <button className={summaryCardClass(filter === 'review')} onClick={() => setFilter('review')} type="button">
-          <span className="text-[13px] font-medium text-[#666666]">Chờ xác nhận</span>
-          <strong className="text-[30px] leading-none text-[#1f1f1f]">{pendingReviewCount}</strong>
-          <span className="text-xs leading-5 text-[#666666]">Duyệt hoặc trả về bổ sung</span>
-        </button>
-        <button className={summaryCardClass(filter === 'active')} onClick={() => setFilter('active')} type="button">
-          <span className="text-[13px] font-medium text-[#666666]">Đang thực hiện</span>
-          <strong className="text-[30px] leading-none text-[#1f1f1f]">{assignedActiveCount}</strong>
-          <span className="text-xs leading-5 text-[#666666]">Đã mở, cần theo dõi tiến độ</span>
-        </button>
-      </div>
+          <button
+            className="secondary-button bg-white/90"
+            disabled={loading}
+            onClick={loadData}
+            type="button"
+          >
+            {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
+            Refresh
+          </button>
+        </div>
+        <div className="relative mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <button className={summaryCardClass(filter === 'action')} onClick={() => setFilter('action')} type="button">
+            <span>Cần xử lý</span>
+            <strong>{actionCount}</strong>
+            <small>Chưa phân hoặc chờ duyệt</small>
+          </button>
+          <button className={summaryCardClass(filter === 'unassigned')} onClick={() => setFilter('unassigned')} type="button">
+            <span>Chưa phân kỹ sư</span>
+            <strong>{unassignedCount}</strong>
+            <small>Cần chọn người phụ trách</small>
+          </button>
+          <button className={summaryCardClass(filter === 'review')} onClick={() => setFilter('review')} type="button">
+            <span>Chờ xác nhận</span>
+            <strong>{pendingReviewCount}</strong>
+            <small>Duyệt hoặc trả về bổ sung</small>
+          </button>
+          <button className={summaryCardClass(filter === 'active')} onClick={() => setFilter('active')} type="button">
+            <span>Đang thực hiện</span>
+            <strong>{assignedActiveCount}</strong>
+            <small>Theo dõi tiến độ</small>
+          </button>
+        </div>
+      </section>
 
       {error ? <Notice message={error} /> : null}
       {success ? <Notice message={success} /> : null}
 
-      <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white">
-        <div className="grid gap-3 border-b border-[#eeeeee] p-4">
-          <div className="grid gap-1">
-            <h2 className="text-lg font-semibold text-[#1f1f1f]">{currentFilterLabel}</h2>
-            <p className="text-sm leading-6 text-[#666666]">
-              {filterDescription(filter)}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex max-w-full gap-[3px] overflow-x-auto rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] p-[3px]" aria-label="Lọc công việc">
-              {filterOptions.map((option) => (
-                <button
-                  className={`inline-flex min-h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 text-sm font-medium ${
-                    filter === option.value
-                      ? 'bg-white text-[#d71920] shadow-[0_1px_4px_rgba(20,32,51,0.08)]'
-                      : 'bg-transparent text-[#333333] hover:text-[#d71920]'
-                  }`}
-                  key={option.value}
-                  onClick={() => setFilter(option.value)}
-                  type="button"
-                >
-                  {option.label}
-                  <span className={`rounded-md px-1.5 py-0.5 text-[11px] ${filter === option.value ? 'bg-[#fff1f3] text-[#b5121b]' : 'bg-white text-[#666666]'}`}>
-                    {filterCounts[option.value]}
-                  </span>
-                </button>
-              ))}
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="overflow-hidden rounded-[24px] border border-[#e8edf3] bg-white shadow-[0_18px_50px_rgba(20,32,51,0.07)]">
+          <div className="grid gap-4 border-b border-[#edf0f4] bg-[#fbfcfd] p-4">
+            <div className="grid gap-1">
+              <h2 className="text-lg font-semibold text-[#1f1f1f]">{currentFilterLabel}</h2>
+              <p className="text-sm leading-6 text-[#666666]">{filterDescription(filter)}</p>
             </div>
-            <span className="text-[13px] font-medium text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} công việc đang hiển thị`}</span>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-[#f5c7cb] bg-[#fff7f8] p-1" aria-label="Lọc công việc">
+                {filterOptions.map((option) => (
+                  <button
+                    className={`inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-semibold ${
+                      filter === option.value
+                        ? 'bg-white text-[#d71920] shadow-[0_8px_20px_rgba(215,25,32,0.10)]'
+                        : 'bg-transparent text-[#444444] hover:bg-white/70 hover:text-[#d71920]'
+                    }`}
+                    key={option.value}
+                    onClick={() => setFilter(option.value)}
+                    type="button"
+                  >
+                    {option.label}
+                    <span className={`rounded-md px-1.5 py-0.5 text-[11px] ${filter === option.value ? 'bg-[#fff1f3] text-[#b5121b]' : 'bg-white text-[#666666]'}`}>
+                      {filterCounts[option.value]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <span className="text-[13px] font-semibold text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} việc đang hiển thị`}</span>
+            </div>
+            <div className="grid gap-2 min-[861px]:grid-cols-[minmax(260px,1fr)_190px_220px]">
+              <label className="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-[#d9e0e8] bg-white px-3 text-[#666666] focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
+                <Search size={16} />
+                <input
+                  className="min-w-0 flex-1 border-0 text-[#1f1f1f] outline-none"
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Tìm mã phiếu, S/N, mã máy, khách hàng"
+                  value={query}
+                />
+              </label>
+              <select className="form-input h-11" onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
+                <option value="all">Tất cả loại việc</option>
+                <option value="installation">Lắp đặt</option>
+                <option value="repair">Sửa chữa</option>
+                <option value="maintenance">Bảo trì</option>
+              </select>
+              <select className="form-input h-11" onChange={(event) => setEngineerFilter(event.target.value)} value={engineerFilter}>
+                <option value="">Tất cả kỹ sư</option>
+                <option value="__unassigned">Chưa phân kỹ sư</option>
+                {engineers.map((engineer) => (
+                  <option key={engineer.id} value={engineer.id}>{engineer.fullName || engineer.email}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="grid gap-2 min-[861px]:grid-cols-[minmax(260px,1fr)_190px_220px]">
-            <label className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#666666] focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
-              <Search size={16} />
-              <input
-                className="min-w-0 flex-1 border-0 text-[#1f1f1f] outline-none"
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Tìm mã phiếu, S/N, mã máy, khách hàng"
-                value={query}
-              />
-            </label>
-            <select
-              className="h-10 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
-              onChange={(event) => setKindFilter(event.target.value as KindFilter)}
-              value={kindFilter}
-            >
-              <option value="all">Tất cả loại việc</option>
-              <option value="installation">Lắp đặt</option>
-              <option value="repair">Sửa chữa</option>
-              <option value="maintenance">Bảo trì</option>
-            </select>
-            <select
-              className="h-10 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
-              onChange={(event) => setEngineerFilter(event.target.value)}
-              value={engineerFilter}
-            >
-              <option value="">Tất cả kỹ sư</option>
-              <option value="__unassigned">Chưa phân kỹ sư</option>
-              {engineers.map((engineer) => (
-                <option key={engineer.id} value={engineer.id}>
-                  {engineer.fullName || engineer.email}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+          <div className="grid">
+            {loading ? (
+              <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-sm font-semibold text-[#666666]">
+                <Loader2 className="spin-icon" size={18} />
+                <span>Đang tải danh sách điều phối</span>
+              </div>
+            ) : null}
 
-        <div className="grid">
-          {loading ? (
-            <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-sm font-semibold text-[#666666]">
-              <Loader2 className="animate-spin" size={18} />
-              <span>Đang tải danh sách phân việc</span>
-            </div>
-          ) : null}
+            {!loading && items.length === 0 ? (
+              <div className="grid min-h-52 place-items-center gap-2 p-8 text-center text-[#666666]">
+                <UserCheck size={22} />
+                <strong className="text-[#1f1f1f]">Không có công việc phù hợp</strong>
+                <span className="text-sm">Thử đổi bộ lọc hoặc làm mới dữ liệu.</span>
+              </div>
+            ) : null}
 
-          {!loading && items.length === 0 ? (
-            <div className="grid min-h-52 place-items-center gap-2 p-8 text-center text-[#666666]">
-              <UserCheck size={22} />
-              <strong className="text-[#1f1f1f]">Không có công việc phù hợp</strong>
-              <span className="text-sm">Thử đổi bộ lọc hoặc làm mới dữ liệu.</span>
-            </div>
-          ) : null}
-
-          {!loading
-            ? groupedItems.map((group) => (
-              <section className="border-b border-[#eeeeee] last:border-b-0" key={group.key}>
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#fafafa] px-4 py-3">
+            {!loading ? groupedItems.map((group) => (
+              <section className="border-b border-[#edf0f4] last:border-b-0" key={group.key}>
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#fffafa] px-4 py-3">
                   <div>
                     <h3 className="text-sm font-semibold text-[#1f1f1f]">{group.title}</h3>
                     <p className="mt-0.5 text-xs leading-5 text-[#666666]">{group.description}</p>
                   </div>
-                  <span className="rounded-lg border border-[#eeeeee] bg-white px-2.5 py-1 text-xs font-semibold text-[#333333]">{group.items.length} việc</span>
+                  <span className="rounded-lg border border-[#f5c7cb] bg-white px-2.5 py-1 text-xs font-semibold text-[#d71920]">{group.items.length} việc</span>
                 </div>
                 {group.items.map((item) => (
-                <article
-                  className="grid items-start gap-3.5 border-b border-[#eeeeee] px-4 py-[15px] last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(220px,320px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(140px,190px)_minmax(260px,330px)]"
-                  key={item.key}
-                >
-                  <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
-                  <div className="grid min-w-0 gap-[7px]">
-                    <div className={metaClass}>
-                      <span>{kindLabel(item.kind)}</span>
-                      <span>{item.code}</span>
-                      {item.date ? <span>{formatDate(item.date)}</span> : null}
-                      {item.createdBy?.fullName ? <span>Người tạo: {item.createdBy.fullName}</span> : null}
-                    </div>
-                    <h2 className="[overflow-wrap:anywhere] text-[17px] font-medium text-[#1f1f1f]">{item.title}</h2>
-                    <div className={metaClass}>
-                      <span>{machineText(item)}</span>
-                      <span>{customerText(item)}</span>
-                    </div>
-                  </div>
-                  <div className="col-span-full grid min-w-0 justify-items-start gap-2 min-[821px]:col-start-2 min-[821px]:col-span-1 min-[1181px]:col-auto">
-                    {actionLabel(item) ? (
-                      <span className={badgeClass(actionTone(item))}>
-                        <span className={badgeDotClass(actionTone(item))} />
-                        {actionLabel(item)}
-                      </span>
-                    ) : null}
-                    <span className={badgeClass(statusTone(item.status))}>
-                      <span className={badgeDotClass(statusTone(item.status))} />
-                      {statusLabel(item.status)}
-                    </span>
-                    {item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? (
-                      <span className={badgeClass(reviewStatusTone(item.reviewStatus))}>
-                        <span className={badgeDotClass(reviewStatusTone(item.reviewStatus))} />
-                        {reviewStatusLabel(item.reviewStatus)}
-                      </span>
-                    ) : null}
-                    <span className="[overflow-wrap:anywhere] text-[13px] font-medium text-[#333333]">
-                      {item.engineer?.fullName || item.engineer?.email || 'Chưa có kỹ sư'}
-                    </span>
-                  </div>
-                  <div className="col-span-full grid gap-2.5 max-[560px]:grid-cols-1 min-[561px]:grid-cols-[minmax(0,1fr)_auto] min-[821px]:col-start-3 min-[821px]:col-span-1 min-[821px]:row-span-2 min-[821px]:row-start-1 min-[1181px]:col-auto min-[1181px]:row-auto">
-                    <select
-                      aria-label={`Chọn kỹ sư cho ${item.code}`}
-                      className="h-10 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
-                      onChange={(event) => setAssignmentByKey((current) => ({ ...current, [item.key]: event.target.value }))}
-                      value={assignmentByKey[item.key] ?? ''}
-                    >
-                      <option value="">Chọn kỹ sư</option>
-                      {engineers.map((engineer) => (
-                        <option key={engineer.id} value={engineer.id}>
-                          {engineer.fullName || engineer.email}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border-0 bg-[#d71920] px-4 text-sm font-medium text-white shadow-sm hover:bg-[#b5121b] disabled:cursor-wait disabled:opacity-70 min-[561px]:w-auto"
-                      disabled={!assignmentByKey[item.key] || assigningKey === item.key}
-                      onClick={() => assignWork(item)}
-                      type="button"
-                    >
-                      {assigningKey === item.key ? <Loader2 className="animate-spin" size={16} /> : <UserCheck size={16} />}
-                      Phân việc
-                    </button>
-                    {item.reviewStatus === 'PENDING' ? (
-                      <div className="col-span-full grid gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-2.5">
-                        <QualityReviewChecklist item={item} />
-                        <textarea
-                          className="min-h-16 rounded-lg border border-[#d6d6d6] bg-white px-3 py-2 text-sm text-[#1f1f1f] outline-none focus:border-[#d71920]"
-                          onChange={(event) => setReviewNoteByKey((current) => ({ ...current, [item.key]: event.target.value }))}
-                          placeholder="Ghi chú nếu trả kỹ sư bổ sung"
-                          value={reviewNoteByKey[item.key] ?? ''}
-                        />
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <button
-                            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#333333] hover:border-[#d71920] hover:text-[#d71920] disabled:cursor-wait disabled:opacity-70"
-                            disabled={reviewingKey === item.key}
-                            onClick={() => reviewWork(item, 'NEEDS_REVISION')}
-                            type="button"
-                          >
-                            Trả về sửa
-                          </button>
-                          <button
-                            className="inline-flex min-h-9 items-center justify-center rounded-lg border-0 bg-[#d71920] px-3 text-sm font-medium text-white hover:bg-[#b5121b] disabled:cursor-wait disabled:opacity-70"
-                            disabled={reviewingKey === item.key}
-                            onClick={() => reviewWork(item, 'APPROVED')}
-                            type="button"
-                          >
-                            {reviewingKey === item.key ? 'Saving' : 'Confirm'}
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </article>
+                  <WorkDispatchRow
+                    assigningKey={assigningKey}
+                    assignmentByKey={assignmentByKey}
+                    engineers={engineers}
+                    item={item}
+                    key={item.key}
+                    onAssign={assignWork}
+                    onReview={reviewWork}
+                    onReviewNoteChange={(value) => setReviewNoteByKey((current) => ({ ...current, [item.key]: value }))}
+                    onSelectEngineer={(value) => setAssignmentByKey((current) => ({ ...current, [item.key]: value }))}
+                    reviewNote={reviewNoteByKey[item.key] ?? ''}
+                    reviewingKey={reviewingKey}
+                  />
                 ))}
               </section>
-            ))
-            : null}
+            )) : null}
+          </div>
         </div>
+
+        <aside className="grid content-start gap-4">
+          <div className="rounded-[24px] border border-[#f5c7cb] bg-[#fff7f8] p-4 shadow-[0_18px_48px_rgba(215,25,32,0.08)]">
+            <h2 className="text-base font-semibold text-[#1f1f1f]">Tải việc theo kỹ sư</h2>
+            <p className="mt-1 text-sm leading-6 text-[#666666]">Dùng để chọn người phù hợp trước khi phân công.</p>
+            <div className="mt-4 grid gap-3">
+              {engineerLoads.map((engineer) => (
+                <button
+                  className={`grid gap-2 rounded-2xl border bg-white p-3 text-left transition hover:border-[#f5c7cb] hover:text-[#d71920] ${engineerFilter === engineer.id ? 'border-[#d71920] shadow-[0_10px_24px_rgba(215,25,32,0.10)]' : 'border-[#edf0f4]'}`}
+                  key={engineer.id}
+                  onClick={() => setEngineerFilter(engineer.id)}
+                  type="button"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <strong className="truncate text-sm text-[#1f1f1f]">{engineer.name}</strong>
+                    <span className="rounded-full bg-[#fff1f3] px-2 py-1 text-xs font-semibold text-[#b5121b]">{engineer.active} mở</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#f1f2f4]">
+                    <div className="h-full rounded-full bg-[#d71920]" style={{ width: `${Math.min(100, (engineer.active / busiestEngineerCount) * 100)}%` }} />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold text-[#666666]">
+                    <span>{engineer.review} chờ duyệt</span>
+                    <span>{engineer.total} tổng</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-[#e8edf3] bg-white p-4 shadow-[0_12px_34px_rgba(20,32,51,0.06)]">
+            <h2 className="text-base font-semibold text-[#1f1f1f]">Nghiệp vụ màn này</h2>
+            <div className="mt-3 grid gap-3 text-sm leading-6 text-[#555555]">
+              <p><strong>1.</strong> Phiếu mới vào trạng thái chưa phân.</p>
+              <p><strong>2.</strong> Admin chọn kỹ sư theo tải việc rồi bấm Assign.</p>
+              <p><strong>3.</strong> Kỹ sư xử lý trong Việc của tôi.</p>
+              <p><strong>4.</strong> Khi kỹ sư gửi kết quả, admin Confirm hoặc trả về sửa.</p>
+            </div>
+          </div>
+        </aside>
       </section>
     </PageFrame>
   );
@@ -554,12 +548,119 @@ export function AdminWorkAssignmentPage() {
 
 function summaryCardClass(active: boolean) {
   return [
-    'grid min-h-[126px] gap-[7px] rounded-lg border p-4 text-left transition hover:-translate-y-[1px] hover:border-[#d71920] hover:shadow-[0_10px_28px_rgba(20,32,51,0.08)]',
-    active ? 'border-[#d71920] bg-[#fff7f7] shadow-[0_10px_28px_rgba(215,25,32,0.08)]' : 'border-[#e5e5e5] bg-white',
+    'grid min-h-[118px] gap-1.5 rounded-2xl border bg-white/90 p-4 text-left transition hover:-translate-y-[1px] hover:border-[#d71920] hover:shadow-[0_14px_32px_rgba(215,25,32,0.10)] [&>small]:text-xs [&>small]:font-medium [&>small]:leading-5 [&>small]:text-[#666666] [&>span]:text-[13px] [&>span]:font-semibold [&>span]:text-[#666666] [&>strong]:text-[32px] [&>strong]:font-semibold [&>strong]:leading-none [&>strong]:text-[#1f1f1f]',
+    active ? 'border-[#d71920] shadow-[0_14px_32px_rgba(215,25,32,0.12)]' : 'border-white/80',
   ].join(' ');
 }
 
 const metaClass = 'flex flex-wrap items-center gap-[7px] text-[13px] text-[#666666] [&>span]:[overflow-wrap:anywhere]';
+
+function WorkDispatchRow({
+  assigningKey,
+  assignmentByKey,
+  engineers,
+  item,
+  onAssign,
+  onReview,
+  onReviewNoteChange,
+  onSelectEngineer,
+  reviewNote,
+  reviewingKey,
+}: {
+  assigningKey: string;
+  assignmentByKey: Record<string, string>;
+  engineers: ApiUser[];
+  item: WorkItem;
+  onAssign: (item: WorkItem) => void;
+  onReview: (item: WorkItem, status: Extract<WorkReviewStatus, 'APPROVED' | 'NEEDS_REVISION'>) => void;
+  onReviewNoteChange: (value: string) => void;
+  onSelectEngineer: (value: string) => void;
+  reviewNote: string;
+  reviewingKey: string;
+}) {
+  return (
+    <article className="grid items-start gap-3.5 border-b border-[#edf0f4] px-4 py-4 last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(240px,330px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(150px,210px)_minmax(260px,330px)]">
+      <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
+      <div className="grid min-w-0 gap-[7px]">
+        <div className={metaClass}>
+          <span>{kindLabel(item.kind)}</span>
+          <span>{item.code}</span>
+          {item.date ? <span>{formatDate(item.date)}</span> : null}
+          {item.createdBy?.fullName ? <span>Người tạo: {item.createdBy.fullName}</span> : null}
+        </div>
+        <h2 className="[overflow-wrap:anywhere] text-[17px] font-semibold text-[#1f1f1f]">{item.title}</h2>
+        <div className={metaClass}>
+          <span>{machineText(item)}</span>
+          <span>{customerText(item)}</span>
+        </div>
+      </div>
+      <div className="col-span-full grid min-w-0 justify-items-start gap-2 min-[821px]:col-start-2 min-[821px]:col-span-1 min-[1181px]:col-auto">
+        {actionLabel(item) ? (
+          <span className={badgeClass(actionTone(item))}>
+            <span className={badgeDotClass(actionTone(item))} />
+            {actionLabel(item)}
+          </span>
+        ) : null}
+        <span className={badgeClass(statusTone(item.status))}>
+          <span className={badgeDotClass(statusTone(item.status))} />
+          {statusLabel(item.status)}
+        </span>
+        {item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? (
+          <span className={badgeClass(reviewStatusTone(item.reviewStatus))}>
+            <span className={badgeDotClass(reviewStatusTone(item.reviewStatus))} />
+            {reviewStatusLabel(item.reviewStatus)}
+          </span>
+        ) : null}
+        <span className="[overflow-wrap:anywhere] text-[13px] font-semibold text-[#333333]">
+          {item.engineer?.fullName || item.engineer?.email || 'Chưa có kỹ sư'}
+        </span>
+      </div>
+      <div className="col-span-full grid gap-2.5 max-[560px]:grid-cols-1 min-[561px]:grid-cols-[minmax(0,1fr)_auto] min-[821px]:col-start-3 min-[821px]:col-span-1 min-[821px]:row-span-2 min-[821px]:row-start-1 min-[1181px]:col-auto min-[1181px]:row-auto">
+        <select
+          aria-label={`Chọn kỹ sư cho ${item.code}`}
+          className="form-input h-10"
+          onChange={(event) => onSelectEngineer(event.target.value)}
+          value={assignmentByKey[item.key] ?? ''}
+        >
+          <option value="">Chọn kỹ sư</option>
+          {engineers.map((engineer) => (
+            <option key={engineer.id} value={engineer.id}>
+              {engineer.fullName || engineer.email}
+            </option>
+          ))}
+        </select>
+        <button
+          className="primary-button w-full min-[561px]:w-auto"
+          disabled={!assignmentByKey[item.key] || assigningKey === item.key}
+          onClick={() => onAssign(item)}
+          type="button"
+        >
+          {assigningKey === item.key ? <Loader2 className="spin-icon" size={16} /> : <UserCheck size={16} />}
+          Assign
+        </button>
+        {item.reviewStatus === 'PENDING' ? (
+          <div className="col-span-full grid gap-2 rounded-2xl border border-[#f5c7cb] bg-[#fffafa] p-3">
+            <QualityReviewChecklist item={item} />
+            <textarea
+              className="form-input min-h-16"
+              onChange={(event) => onReviewNoteChange(event.target.value)}
+              placeholder="Ghi chú nếu trả kỹ sư bổ sung"
+              value={reviewNote}
+            />
+            <div className="flex flex-wrap justify-end gap-2">
+              <button className="secondary-button" disabled={reviewingKey === item.key} onClick={() => onReview(item, 'NEEDS_REVISION')} type="button">
+                Trả về sửa
+              </button>
+              <button className="primary-button" disabled={reviewingKey === item.key} onClick={() => onReview(item, 'APPROVED')} type="button">
+                {reviewingKey === item.key ? 'Saving' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </article>
+  );
+}
 
 function QualityReviewChecklist({ item }: { item: WorkItem }) {
   const scope = item.kind === 'installation' ? 'installation' : item.kind === 'maintenance' ? 'maintenance' : 'repair';
@@ -627,6 +728,21 @@ function groupWorkItems(items: WorkItem[], filter: WorkFilter) {
   if (filter === 'active') return groups.filter((group) => group.key === 'active' && group.items.length);
   if (filter === 'action') return groups.filter((group) => ['review', 'unassigned'].includes(group.key) && group.items.length);
   return groups.filter((group) => group.items.length);
+}
+
+function buildEngineerLoads(engineers: ApiUser[], items: WorkItem[]) {
+  return engineers
+    .map((engineer) => {
+      const relatedItems = items.filter((item) => item.engineer?.id === engineer.id);
+      return {
+        id: engineer.id,
+        name: engineer.fullName || engineer.email,
+        total: relatedItems.length,
+        active: relatedItems.filter((item) => !isClosed(item.status)).length,
+        review: relatedItems.filter((item) => item.reviewStatus === 'PENDING').length,
+      };
+    })
+    .sort((left, right) => right.active - left.active || right.review - left.review || left.name.localeCompare(right.name));
 }
 
 function actionRank(item: WorkItem) {

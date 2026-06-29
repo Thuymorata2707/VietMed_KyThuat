@@ -6,7 +6,6 @@ import {
   Building2,
   CalendarDays,
   Gauge,
-  History,
   MapPinned,
   PackageCheck,
   FileBarChart2,
@@ -49,8 +48,8 @@ export const navItems: NavItem[] = [
   { path: '/users', label: 'Nhân sự', icon: <Users size={18} />, roles: ['admin'] },
   { path: '/roles', label: 'Vai trò', icon: <ShieldCheck size={18} />, roles: ['admin'] },
   { path: '/regions', label: 'Khu vực', icon: <MapPinned size={18} />, roles: ['admin'] },
-  { path: '/audit-logs', label: 'Audit log', icon: <History size={18} />, roles: ['admin'] },
-  { path: '/my-tasks', label: 'Phân việc', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
+  { path: '/audit-logs', label: 'Audit log', icon: <ShieldCheck size={18} />, roles: ['admin'] },
+  { path: '/my-tasks', label: 'Điều phối', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
   { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
 ];
 
@@ -64,7 +63,7 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Công việc',
     items: [
-      { path: '/my-tasks', label: 'Phân việc', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
+      { path: '/my-tasks', label: 'Điều phối', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
       { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
       { path: '/daily-work', label: 'Lịch công việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
     ],
@@ -105,7 +104,6 @@ export const navGroups: NavGroup[] = [
     items: [
       { path: '/users', label: 'Nhân sự', icon: <Users size={18} />, roles: ['admin'] },
       { path: '/roles', label: 'Vai trò', icon: <ShieldCheck size={18} />, roles: ['admin'] },
-      { path: '/audit-logs', label: 'Audit log', icon: <History size={18} />, roles: ['admin'] },
     ],
   },
 ];

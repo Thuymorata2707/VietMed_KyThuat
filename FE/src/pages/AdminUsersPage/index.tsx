@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit3, ImageOff, Loader2, Power, PowerOff, RefreshCw, Save, Trash2, UserPlus } from 'lucide-react';
+import { ArrowLeft, Edit3, History, ImageOff, Loader2, Power, PowerOff, RefreshCw, Save, Trash2, UserPlus } from 'lucide-react';
 import { Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
@@ -351,10 +351,16 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
           title="Quản lý nhân sự"
           description="Tài khoản, quyền và trạng thái."
         />
-        <button className="secondary-button" disabled={loading} onClick={loadData} type="button">
-          {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-          {loading ? 'Loading' : 'Refresh'}
-        </button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Link className="secondary-button" to="/audit-logs">
+            <History size={17} />
+            Audit log
+          </Link>
+          <button className="secondary-button" disabled={loading} onClick={loadData} type="button">
+            {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
+            {loading ? 'Loading' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {error ? <Notice message={error} /> : null}
