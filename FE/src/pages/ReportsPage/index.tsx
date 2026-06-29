@@ -162,6 +162,9 @@ const reportTabs: Array<{ key: ReportView; label: string; icon: ReactNode }> = [
   { key: 'details', label: 'Chi tiết', icon: <CalendarDays size={16} /> },
 ];
 
+const reportFieldClass =
+  'h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition hover:border-[#c8d2df] focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]';
+
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeView = normalizeView(searchParams.get('view'));
@@ -325,7 +328,7 @@ export function ReportsPage() {
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
               Từ ngày
               <input
-                className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
+                className={reportFieldClass}
                 onChange={(event) => {
                   setDraftFrom(event.target.value);
                   updateReportFilter('from', event.target.value);
@@ -337,7 +340,7 @@ export function ReportsPage() {
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
               Đến ngày
               <input
-                className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
+                className={reportFieldClass}
                 onChange={(event) => {
                   setDraftTo(event.target.value);
                   updateReportFilter('to', event.target.value);
@@ -346,70 +349,70 @@ export function ReportsPage() {
                 value={draftTo}
               />
             </label>
-          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
-            Kỹ sư
-            <select
-              className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
-              onChange={(event) => {
-                setDraftEngineerId(event.target.value);
-                updateReportFilter('filterEngineerId', event.target.value);
-              }}
-              value={draftEngineerId}
-            >
-              <option value="">Tất cả</option>
-              {(optionsReport?.byEngineer ?? []).filter((item) => item.id !== 'unassigned').map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
-            Khách hàng
-            <select
-              className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
-              onChange={(event) => {
-                setDraftCustomerId(event.target.value);
-                updateReportFilter('filterCustomerId', event.target.value);
-              }}
-              value={draftCustomerId}
-            >
-              <option value="">Tất cả</option>
-              {(optionsReport?.byCustomer ?? []).filter((item) => item.id !== 'unknown-customer').map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
-            Model
-            <select
-              className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
-              onChange={(event) => {
-                setDraftModelKey(event.target.value);
-                updateReportFilter('filterModelKey', event.target.value);
-              }}
-              value={draftModelKey}
-            >
-              <option value="">Tất cả</option>
-              {(optionsReport?.byModel ?? []).filter((item) => item.id !== 'unknown-model').map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
-            Tỉnh
-            <select
-              className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
-              onChange={(event) => {
-                setDraftProvince(event.target.value);
-                updateReportFilter('filterProvince', event.target.value);
-              }}
-              value={draftProvince}
-            >
-              <option value="">Tất cả</option>
-              {(optionsReport?.byProvince ?? []).filter((item) => item.id !== 'unknown-province').map((item) => (
-                <option key={item.id} value={item.label}>{item.label}</option>
-              ))}
-            </select>
-          </label>
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
+              Kỹ sư
+              <select
+                className={reportFieldClass}
+                onChange={(event) => {
+                  setDraftEngineerId(event.target.value);
+                  updateReportFilter('filterEngineerId', event.target.value);
+                }}
+                value={draftEngineerId}
+              >
+                <option value="">Tất cả</option>
+                {(optionsReport?.byEngineer ?? []).filter((item) => item.id !== 'unassigned').map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
+              Khách hàng
+              <select
+                className={reportFieldClass}
+                onChange={(event) => {
+                  setDraftCustomerId(event.target.value);
+                  updateReportFilter('filterCustomerId', event.target.value);
+                }}
+                value={draftCustomerId}
+              >
+                <option value="">Tất cả</option>
+                {(optionsReport?.byCustomer ?? []).filter((item) => item.id !== 'unknown-customer').map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
+              Model
+              <select
+                className={reportFieldClass}
+                onChange={(event) => {
+                  setDraftModelKey(event.target.value);
+                  updateReportFilter('filterModelKey', event.target.value);
+                }}
+                value={draftModelKey}
+              >
+                <option value="">Tất cả</option>
+                {(optionsReport?.byModel ?? []).filter((item) => item.id !== 'unknown-model').map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
+              Tỉnh
+              <select
+                className={reportFieldClass}
+                onChange={(event) => {
+                  setDraftProvince(event.target.value);
+                  updateReportFilter('filterProvince', event.target.value);
+                }}
+                value={draftProvince}
+              >
+                <option value="">Tất cả</option>
+                {(optionsReport?.byProvince ?? []).filter((item) => item.id !== 'unknown-province').map((item) => (
+                  <option key={item.id} value={item.label}>{item.label}</option>
+                ))}
+              </select>
+            </label>
           </div>
         </section>
 

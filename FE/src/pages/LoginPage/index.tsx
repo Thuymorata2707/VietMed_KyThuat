@@ -48,7 +48,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
           <div className="grid max-w-[480px] content-center gap-7 self-center justify-self-center py-10 max-[980px]:w-full max-[980px]:max-w-[560px] max-[620px]:py-6">
             <div className="grid gap-3">
-              <span className="text-[12px] font-bold text-[#c91f2d]">VietMed Technical Service</span>
+              <span className="text-[12px] font-bold text-[#c91f2d]">VietMed Kỹ Thuật</span>
               <h1 className="max-w-[420px] text-[40px] font-bold leading-[1.06] text-[#18212f] max-sm:text-[32px]">
                 Đăng nhập hệ thống kỹ thuật
               </h1>
@@ -108,20 +108,20 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         <aside className="relative overflow-hidden bg-[#18212f] p-8 text-white max-[980px]:min-h-[420px] max-[620px]:p-5">
-          <div className="absolute inset-0 opacity-55 [background-image:linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:32px_32px]" />
-          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#c91f2d]/24 blur-3xl" />
-          <div className="absolute -bottom-28 left-10 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute inset-0 opacity-45 [background-image:linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:32px_32px]" />
+          <div className="absolute inset-x-0 top-0 h-px bg-white/18" />
+          <div className="absolute inset-y-0 left-0 w-px bg-white/12" />
 
           <div className="relative grid h-full content-center gap-8">
             <div className="max-w-[620px]">
               <span className="inline-flex rounded-lg border border-white/12 bg-white/8 px-3 py-2 text-[12px] font-semibold text-white/68">
-                VietMed Technical Workspace
+                Không gian vận hành kỹ thuật
               </span>
               <h2 className="mt-5 max-w-[560px] text-[44px] font-bold leading-[1.04] text-white max-[980px]:text-[36px] max-sm:text-[30px]">
                 Một nơi để theo dõi thiết bị và công việc kỹ thuật.
               </h2>
               <p className="mt-4 max-w-[520px] text-[15px] leading-7 text-white/66">
-                Đăng nhập để tiếp tục vào hồ sơ máy, phiếu dịch vụ và lịch bảo trì theo đúng phân quyền.
+                Truy cập hồ sơ máy, phiếu dịch vụ và lịch bảo trì theo đúng phân quyền.
               </p>
             </div>
 

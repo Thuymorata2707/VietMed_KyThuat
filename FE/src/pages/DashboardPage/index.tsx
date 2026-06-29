@@ -250,8 +250,8 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     <PageFrame>
       <section className="relative overflow-hidden rounded-[14px] border border-[#d9e1eb] bg-[#111827] p-5 text-white shadow-[0_28px_80px_rgba(17,24,39,0.18)]">
         <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:34px_34px]" />
-        <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#c91f2d]/24 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-56 w-96 rounded-full bg-white/8 blur-3xl" />
+        <div className="absolute inset-x-0 top-0 h-px bg-white/18" />
+        <div className="absolute inset-y-0 left-0 w-px bg-white/12" />
 
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
           <div className="grid content-between gap-10 rounded-[10px] border border-white/10 bg-white/[0.055] p-6 backdrop-blur-md max-sm:p-5">
@@ -637,52 +637,6 @@ function BoardPanel({ eyebrow, title, children }: { eyebrow: string; title: stri
   );
 }
 
-function LineWorkChart({ items, loading }: { items: Array<{ label: string; value: number; tone: Tone }>; loading: boolean }) {
-  const width = 620;
-  const height = 250;
-  const paddingX = 34;
-  const paddingTop = 22;
-  const paddingBottom = 50;
-  const maxValue = Math.max(1, ...items.map((item) => item.value));
-  const chartHeight = height - paddingTop - paddingBottom;
-  const points = items.map((item, index) => {
-    const x = paddingX + (index * (width - paddingX * 2)) / Math.max(1, items.length - 1);
-    const y = paddingTop + chartHeight - (item.value / maxValue) * chartHeight;
-
-    return { ...item, x, y };
-  });
-  const line = points.map((point) => `${point.x},${point.y}`).join(' ');
-
-  return (
-    <div className="rounded-[10px] border border-[#eeeeee] bg-[#ffffff] p-3">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold text-[#333333]">Đường tải việc theo trạng thái</span>
-        <span className="text-xs font-medium text-[#8a8a8a]">Tổng: {loading ? '-' : items.reduce((sum, item) => sum + item.value, 0)}</span>
-      </div>
-      <svg className="h-[250px] w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Sơ đồ tải việc sửa chữa và bảo trì">
-        <line stroke="#e5e5e5" strokeWidth="1" x1={paddingX} x2={width - paddingX} y1={height - paddingBottom} y2={height - paddingBottom} />
-        <line stroke="#e5e5e5" strokeWidth="1" x1={paddingX} x2={paddingX} y1={paddingTop} y2={height - paddingBottom} />
-        <polyline fill="none" points={line} stroke="#d71920" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-        {points.map((point) => {
-          const style = toneClass(point.tone);
-
-          return (
-            <g key={point.label}>
-              <circle cx={point.x} cy={point.y} fill="white" r="7" stroke={style.hex} strokeWidth="4" />
-              <text fill="#1f1f1f" fontSize="18" fontWeight="700" textAnchor="middle" x={point.x} y={Math.max(18, point.y - 14)}>
-                {loading ? '-' : point.value}
-              </text>
-              <text fill="#666666" fontSize="11" fontWeight="700" textAnchor="middle" x={point.x} y={height - 24}>
-                {shortLabel(point.label)}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
-
 function DonutMachineChart({
   items,
   activeRate,
@@ -878,14 +832,4 @@ function toneClass(tone: Tone) {
 
 function count(source: Record<string, number> | undefined, key: string) {
   return source?.[key] ?? 0;
-}
-
-function shortLabel(label: string) {
-  if (label.includes('chờ nhận')) return 'Chờ nhận';
-  if (label.includes('phân công')) return 'Phân công';
-  if (label.includes('Đang xử lý')) return 'Đang xử lý';
-  if (label.includes('linh kiện')) return 'Linh kiện';
-  if (label.includes('sắp tới')) return 'Sắp tới';
-  if (label.includes('quá hạn')) return 'Quá hạn';
-  return label;
 }
