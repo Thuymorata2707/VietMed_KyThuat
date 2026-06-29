@@ -28,6 +28,7 @@ const EngineerCustomersPage = lazy(() => import('../../pages/EngineerCustomersPa
 const EngineerTasksPage = lazy(() => import('../../pages/EngineerTasksPage').then((module) => ({ default: module.EngineerTasksPage })));
 const InstallationUpdatePage = lazy(() => import('../../pages/InstallationUpdatePage').then((module) => ({ default: module.InstallationUpdatePage })));
 const InventoryMovementsPage = lazy(() => import('../../pages/InventoryMovementsPage').then((module) => ({ default: module.InventoryMovementsPage })));
+const KnowledgeBasePage = lazy(() => import('../../pages/KnowledgeBasePage').then((module) => ({ default: module.KnowledgeBasePage })));
 const MaintenanceUpdatePage = lazy(() => import('../../pages/MaintenanceUpdatePage').then((module) => ({ default: module.MaintenanceUpdatePage })));
 const ProductAddPage = lazy(() => import('../../pages/ProductCatalogPage').then((module) => ({ default: module.ProductAddPage })));
 const ProductCatalogPage = lazy(() => import('../../pages/ProductCatalogPage').then((module) => ({ default: module.ProductCatalogPage })));
@@ -118,6 +119,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Máy phòng kỹ thuật'
     : location.pathname.startsWith('/customers/profile')
       ? 'Hồ sơ khách hàng'
+    : location.pathname.startsWith('/knowledge-base')
+      ? 'Chia sẻ kinh nghiệm'
     : location.pathname.startsWith('/technical-statistics')
       ? 'Thống kê kỹ thuật'
     : location.pathname.startsWith('/reports')
@@ -434,6 +437,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             }
           />
           <Route path="/customer-profiles" element={<Navigate replace to={`/customers/profile${location.search}`} />} />
+          <Route
+            path="/knowledge-base"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'manager', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <KnowledgeBasePage />
+              </RequireRole>
+            }
+          />
           <Route
             path="/users/new"
             element={

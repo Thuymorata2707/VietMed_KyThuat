@@ -328,7 +328,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
       </section>
 
       <section className="grid gap-4">
-        <div className="sticky top-0 z-10 grid gap-3 rounded-lg border border-[#d8e0ea] bg-white/95 p-3 shadow-[0_10px_30px_rgba(20,32,51,0.06)] backdrop-blur md:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
+        <div className="grid gap-3 rounded-2xl border border-[#f5c7cb] bg-white p-3 shadow-[0_10px_30px_rgba(215,25,32,0.06)] md:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
           <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
             <button
               className={industryTabClass(selectedIndustryId === allIndustriesKey)}
