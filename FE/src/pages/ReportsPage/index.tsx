@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowDownWideNarrow, Building2, CalendarDays, ChevronLeft, Download, Loader2, MapPinned, PackageCheck, Table2, UserRound, Users, Wrench } from 'lucide-react';
-import { FormEvent, ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api';
 import { PageFrame } from '../../components/PageFrame';
@@ -216,6 +216,16 @@ export function ReportsPage() {
     errorMessage(engineerReportQuery.error) ||
     errorMessage(modelReportQuery.error) ||
     (reportQuery.isError ? 'Không tải được báo cáo' : '');
+  const hasAdvancedFilters = Boolean(filterEngineerId || filterCustomerId || filterModelKey || filterProvince);
+
+  useEffect(() => {
+    setDraftFrom(from);
+    setDraftTo(to);
+    setDraftEngineerId(filterEngineerId);
+    setDraftCustomerId(filterCustomerId);
+    setDraftModelKey(filterModelKey);
+    setDraftProvince(filterProvince);
+  }, [filterCustomerId, filterEngineerId, filterModelKey, filterProvince, from, to]);
 
   function changeView(nextView: ReportView) {
     const next = new URLSearchParams(searchParams);
@@ -234,16 +244,15 @@ export function ReportsPage() {
     setSearchParams(next);
   }
 
-  function applyFilters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function updateReportFilter(key: 'from' | 'to' | 'filterEngineerId' | 'filterCustomerId' | 'filterModelKey' | 'filterProvince', value: string) {
     const next = new URLSearchParams(searchParams);
     next.set('view', activeView);
-    next.set('from', draftFrom);
-    next.set('to', draftTo);
-    setOrDelete(next, 'filterEngineerId', draftEngineerId);
-    setOrDelete(next, 'filterCustomerId', draftCustomerId);
-    setOrDelete(next, 'filterModelKey', draftModelKey);
-    setOrDelete(next, 'filterProvince', draftProvince);
+    next.set('from', key === 'from' ? value : from);
+    next.set('to', key === 'to' ? value : to);
+    setOrDelete(next, 'filterEngineerId', key === 'filterEngineerId' ? value : filterEngineerId);
+    setOrDelete(next, 'filterCustomerId', key === 'filterCustomerId' ? value : filterCustomerId);
+    setOrDelete(next, 'filterModelKey', key === 'filterModelKey' ? value : filterModelKey);
+    setOrDelete(next, 'filterProvince', key === 'filterProvince' ? value : filterProvince);
     next.delete('engineerId');
     next.delete('modelKey');
     setSearchParams(next);
@@ -298,60 +307,111 @@ export function ReportsPage() {
           </div>
         </div>
 
-        <form className="grid gap-3 rounded-[10px] border border-[#e9edf2] bg-[#f8fafc] p-3 lg:grid-cols-[repeat(6,minmax(0,1fr))_auto]" onSubmit={applyFilters}>
-            <label className="grid gap-1 text-xs font-semibold text-[#647084]">
+        <section className="grid gap-3 rounded-[12px] border border-[#dde3ea] bg-[#f8fafc] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e9edf2] pb-3">
+            <div>
+              <span className="text-xs font-semibold text-[#c91f2d]">Bộ lọc báo cáo</span>
+              <p className="mt-0.5 text-xs font-medium text-[#647084]">Chọn điều kiện là dữ liệu tự tải lại, không cần bấm áp dụng.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {hasAdvancedFilters ? <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-1 text-xs font-semibold text-[#9b5a17]">Đang lọc nâng cao</span> : null}
+              <button className="inline-flex h-9 items-center justify-center rounded-lg border border-[#dde3ea] bg-white px-3 text-xs font-semibold text-[#647084] hover:border-[#f1c4c9] hover:text-[#c91f2d]" onClick={resetFilters} type="button">
+                Xóa lọc
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
               Từ ngày
-              <input className="h-10 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f]" onChange={(event) => setDraftFrom(event.target.value)} type="date" value={draftFrom} />
+              <input
+                className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
+                onChange={(event) => {
+                  setDraftFrom(event.target.value);
+                  updateReportFilter('from', event.target.value);
+                }}
+                type="date"
+                value={draftFrom}
+              />
             </label>
-            <label className="grid gap-1 text-xs font-semibold text-[#647084]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
               Đến ngày
-              <input className="h-10 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f]" onChange={(event) => setDraftTo(event.target.value)} type="date" value={draftTo} />
+              <input
+                className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
+                onChange={(event) => {
+                  setDraftTo(event.target.value);
+                  updateReportFilter('to', event.target.value);
+                }}
+                type="date"
+                value={draftTo}
+              />
             </label>
-          <label className="grid gap-1 text-xs font-semibold text-[#647084]">
+          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
             Kỹ sư
-            <select className="h-10 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f]" onChange={(event) => setDraftEngineerId(event.target.value)} value={draftEngineerId}>
+            <select
+              className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
+              onChange={(event) => {
+                setDraftEngineerId(event.target.value);
+                updateReportFilter('filterEngineerId', event.target.value);
+              }}
+              value={draftEngineerId}
+            >
               <option value="">Tất cả</option>
               {(optionsReport?.byEngineer ?? []).filter((item) => item.id !== 'unassigned').map((item) => (
                 <option key={item.id} value={item.id}>{item.label}</option>
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-xs font-semibold text-[#647084]">
+          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
             Khách hàng
-            <select className="h-10 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f]" onChange={(event) => setDraftCustomerId(event.target.value)} value={draftCustomerId}>
+            <select
+              className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
+              onChange={(event) => {
+                setDraftCustomerId(event.target.value);
+                updateReportFilter('filterCustomerId', event.target.value);
+              }}
+              value={draftCustomerId}
+            >
               <option value="">Tất cả</option>
               {(optionsReport?.byCustomer ?? []).filter((item) => item.id !== 'unknown-customer').map((item) => (
                 <option key={item.id} value={item.id}>{item.label}</option>
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-xs font-semibold text-[#647084]">
+          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
             Model
-            <select className="h-10 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f]" onChange={(event) => setDraftModelKey(event.target.value)} value={draftModelKey}>
+            <select
+              className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
+              onChange={(event) => {
+                setDraftModelKey(event.target.value);
+                updateReportFilter('filterModelKey', event.target.value);
+              }}
+              value={draftModelKey}
+            >
               <option value="">Tất cả</option>
               {(optionsReport?.byModel ?? []).filter((item) => item.id !== 'unknown-model').map((item) => (
                 <option key={item.id} value={item.id}>{item.label}</option>
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-xs font-semibold text-[#647084]">
+          <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#647084]">
             Tỉnh
-            <select className="h-10 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f]" onChange={(event) => setDraftProvince(event.target.value)} value={draftProvince}>
+            <select
+              className="h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]"
+              onChange={(event) => {
+                setDraftProvince(event.target.value);
+                updateReportFilter('filterProvince', event.target.value);
+              }}
+              value={draftProvince}
+            >
               <option value="">Tất cả</option>
               {(optionsReport?.byProvince ?? []).filter((item) => item.id !== 'unknown-province').map((item) => (
                 <option key={item.id} value={item.label}>{item.label}</option>
               ))}
             </select>
           </label>
-          <div className="flex items-end gap-2">
-            <button className="inline-flex h-10 items-center justify-center rounded-lg bg-[#18212f] px-3.5 text-sm font-semibold text-white hover:bg-[#c91f2d]" type="submit">
-              Áp dụng
-            </button>
-            <button className="inline-flex h-10 items-center justify-center rounded-lg border border-[#dde3ea] bg-white px-3.5 text-sm font-semibold text-[#647084] hover:border-[#f1c4c9] hover:text-[#c91f2d]" onClick={resetFilters} type="button">
-              Xóa lọc
-            </button>
           </div>
-        </form>
+        </section>
 
         <div className="flex gap-2 overflow-x-auto border-b border-[#e9edf2] pb-3">
           {reportTabs.map((tab) => (
