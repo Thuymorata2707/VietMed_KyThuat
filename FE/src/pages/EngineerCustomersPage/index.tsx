@@ -8,27 +8,33 @@ import { CustomerDetailView, EmptyState, Metric } from './components';
 import type { CustomerDetail, CustomerSummary, EngineerCustomersPageProps, EngineerOption } from './types';
 import { buildOpenTasks, buildTimeline, countUnique } from './utils';
 
+const CUSTOMER_LIST_PAGE_SIZE = 50;
+
 export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPageProps) {
   const [selectedEngineerId, setSelectedEngineerId] = useState('');
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [visibleLimit, setVisibleLimit] = useState(CUSTOMER_LIST_PAGE_SIZE);
   const isAdminProfile = location.pathname.startsWith('/customers/profile');
   const requestedCustomerId = searchParams.get('customerId') || '';
 
   const customersQuery = useQuery({
-    queryKey: ['customers', 'profile-list', currentRole, selectedEngineerId, user.id],
+    queryKey: ['customers', 'profile-list', currentRole, selectedEngineerId, user.id, debouncedSearch, visibleLimit],
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: '100' });
+      const params = new URLSearchParams({ limit: String(visibleLimit) });
       if (currentRole === 'engineer') {
         params.set('primaryEngineerId', user.id);
       } else if (selectedEngineerId) {
         params.set('primaryEngineerId', selectedEngineerId);
       }
+      if (debouncedSearch.trim()) {
+        params.set('search', debouncedSearch.trim());
+      }
 
-      const result = await apiFetch<Paginated<CustomerSummary>>(`/customers?${params.toString()}`);
-      return result.data;
+      return apiFetch<Paginated<CustomerSummary>>(`/customers?${params.toString()}`);
     },
   });
 
@@ -47,7 +53,8 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
     queryFn: () => apiFetch<CustomerDetail>(`/customers/${selectedCustomerId}`),
   });
 
-  const customers = customersQuery.data ?? [];
+  const customers = customersQuery.data?.data ?? [];
+  const totalCustomers = customersQuery.data?.meta.total ?? customers.length;
   const engineers = engineersQuery.data ?? [];
   const detail = customerDetailQuery.data ?? null;
   const loading = customersQuery.isLoading;
@@ -55,29 +62,19 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
   const error = errorMessage(customersQuery.error) || errorMessage(engineersQuery.error) || errorMessage(customerDetailQuery.error);
 
   useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search), 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
     setSelectedCustomerId((current) => {
-      const nextId = requestedCustomerId || current;
-      return customers.some((customer) => customer.id === nextId) ? nextId : customers[0]?.id || '';
+      if (requestedCustomerId) return requestedCustomerId;
+      return customers.some((customer) => customer.id === current) ? current : customers[0]?.id || '';
     });
   }, [customers, requestedCustomerId]);
 
-  const visibleCustomers = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) return customers;
-
-    return customers.filter((customer) =>
-      [
-        customer.customerCode,
-        customer.name,
-        customer.hospitalName,
-        customer.province,
-        customer.phone,
-        customer.primaryEngineer?.fullName,
-      ]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(keyword)),
-    );
-  }, [customers, search]);
+  const renderedCustomers = customers;
+  const hiddenCustomerCount = Math.max(0, totalCustomers - renderedCustomers.length);
 
   const selectedCustomer = detail ?? customers.find((customer) => customer.id === selectedCustomerId) ?? null;
   const machines = detail?.machines ?? [];
@@ -92,6 +89,10 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
     ...(selectedCustomer?.directMaintenances ?? []),
   ]);
   const totalAccessories = machines.reduce((total, machine) => total + (machine.accessories?.length ?? 0), 0);
+
+  useEffect(() => {
+    setVisibleLimit(CUSTOMER_LIST_PAGE_SIZE);
+  }, [search, selectedEngineerId]);
 
   return (
     <section className="grid min-w-0 gap-5 overflow-x-hidden p-6 max-sm:p-4">
@@ -136,7 +137,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
         ) : null}
 
         <div className="grid gap-3 md:grid-cols-5">
-          <Metric icon={<Building2 size={18} />} label="Khách đang theo dõi" value={customers.length} />
+          <Metric icon={<Building2 size={18} />} label="Khách đang theo dõi" value={totalCustomers} />
           <Metric icon={<Stethoscope size={18} />} label="Máy tại khách chọn" value={machines.length} />
           <Metric icon={<Wrench size={18} />} label="Lượt sửa chữa" value={totalRepairs} />
           <Metric icon={<CalendarClock size={18} />} label="Lượt bảo trì" value={totalMaintenances} />
@@ -158,11 +159,16 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
             />
           </label>
 
-          <div className="grid min-w-0 gap-2">
+          <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[#666666]">
+            <span>{totalCustomers} khách phù hợp</span>
+            {hiddenCustomerCount ? <span>Đang hiển thị {renderedCustomers.length}</span> : null}
+          </div>
+
+          <div className="grid max-h-[calc(100dvh-360px)] min-h-[260px] min-w-0 gap-2 overflow-y-auto pr-1">
             {loading ? (
               <EmptyState title="Đang tải danh sách..." />
-            ) : visibleCustomers.length ? (
-              visibleCustomers.map((customer) => {
+            ) : renderedCustomers.length ? (
+              renderedCustomers.map((customer) => {
                 const isActive = customer.id === selectedCustomerId;
                 return (
                   <button
@@ -188,6 +194,16 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
               <EmptyState title="Chưa có khách hàng phù hợp" />
             )}
           </div>
+
+          {hiddenCustomerCount ? (
+            <button
+              className="h-10 rounded-lg border border-[#e5e5e5] bg-[#fafafa] text-sm font-semibold text-[#333333] transition hover:border-[#f5c7cb] hover:bg-white hover:text-[#d71920]"
+              onClick={() => setVisibleLimit((current) => current + CUSTOMER_LIST_PAGE_SIZE)}
+              type="button"
+            >
+              Xem thêm {Math.min(CUSTOMER_LIST_PAGE_SIZE, hiddenCustomerCount)} khách
+            </button>
+          ) : null}
         </aside>
 
         <main className="min-w-0">

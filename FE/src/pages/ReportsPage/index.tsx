@@ -105,6 +105,21 @@ type InstallationReport = {
   rows: InstallationReportRow[];
 };
 
+type FilterKey = 'engineer' | 'customer' | 'model' | 'province';
+
+type ReportFilterState = {
+  engineerId: string;
+  customerId: string;
+  modelKey: string;
+  province: string;
+};
+
+type ReportFilterOption = {
+  id: string;
+  label: string;
+  count: number;
+};
+
 type EngineerReport = {
   engineer: {
     id: string;
@@ -212,6 +227,26 @@ export function ReportsPage() {
   });
   const report = reportQuery.data;
   const optionsReport = optionsQuery.data ?? report;
+  const filterOptions = useMemo(
+    () =>
+      buildDependentFilterOptions(optionsReport?.rows ?? [], {
+        engineerId: draftEngineerId,
+        customerId: draftCustomerId,
+        modelKey: draftModelKey,
+        province: draftProvince,
+      }),
+    [draftCustomerId, draftEngineerId, draftModelKey, draftProvince, optionsReport?.rows],
+  );
+  const selectedFilterLabels = useMemo(
+    () =>
+      resolveSelectedFilterLabels(optionsReport?.rows ?? [], {
+        engineerId: filterEngineerId,
+        customerId: filterCustomerId,
+        modelKey: filterModelKey,
+        province: filterProvince,
+      }),
+    [filterCustomerId, filterEngineerId, filterModelKey, filterProvince, optionsReport?.rows],
+  );
   const detailLoading = engineerReportQuery.isFetching || modelReportQuery.isFetching;
   const loading = reportQuery.isLoading || reportQuery.isFetching || detailLoading;
   const error =
@@ -293,9 +328,9 @@ export function ReportsPage() {
       <div className="grid gap-5 rounded-[14px] border border-[#d9e1eb] bg-white p-5 shadow-[0_18px_46px_rgba(28,39,56,0.07)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
-            description="Tổng hợp số lượng máy lắp đặt theo kỹ sư, khách hàng, model và địa bàn trong một kỳ báo cáo."
-            eyebrow="Báo cáo vận hành"
-            title="Báo cáo lắp đặt"
+            description="Tổng hợp lắp đặt, máy, khách hàng, model và địa bàn. Các bộ lọc liên kết với nhau để chỉ hiện dữ liệu còn liên quan."
+            eyebrow="Báo cáo kỹ thuật"
+            title="Báo cáo vận hành kỹ thuật"
           />
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -360,8 +395,8 @@ export function ReportsPage() {
                 value={draftEngineerId}
               >
                 <option value="">Tất cả</option>
-                {(optionsReport?.byEngineer ?? []).filter((item) => item.id !== 'unassigned').map((item) => (
-                  <option key={item.id} value={item.id}>{item.label}</option>
+                {filterOptions.engineers.map((item) => (
+                  <option key={item.id} value={item.id}>{optionLabel(item)}</option>
                 ))}
               </select>
             </label>
@@ -376,8 +411,8 @@ export function ReportsPage() {
                 value={draftCustomerId}
               >
                 <option value="">Tất cả</option>
-                {(optionsReport?.byCustomer ?? []).filter((item) => item.id !== 'unknown-customer').map((item) => (
-                  <option key={item.id} value={item.id}>{item.label}</option>
+                {filterOptions.customers.map((item) => (
+                  <option key={item.id} value={item.id}>{optionLabel(item)}</option>
                 ))}
               </select>
             </label>
@@ -392,8 +427,8 @@ export function ReportsPage() {
                 value={draftModelKey}
               >
                 <option value="">Tất cả</option>
-                {(optionsReport?.byModel ?? []).filter((item) => item.id !== 'unknown-model').map((item) => (
-                  <option key={item.id} value={item.id}>{item.label}</option>
+                {filterOptions.models.map((item) => (
+                  <option key={item.id} value={item.id}>{optionLabel(item)}</option>
                 ))}
               </select>
             </label>
@@ -408,8 +443,8 @@ export function ReportsPage() {
                 value={draftProvince}
               >
                 <option value="">Tất cả</option>
-                {(optionsReport?.byProvince ?? []).filter((item) => item.id !== 'unknown-province').map((item) => (
-                  <option key={item.id} value={item.label}>{item.label}</option>
+                {filterOptions.provinces.map((item) => (
+                  <option key={item.id} value={item.id}>{optionLabel(item)}</option>
                 ))}
               </select>
             </label>
@@ -438,6 +473,8 @@ export function ReportsPage() {
           <div className="rounded-lg border border-[#f1c4c9] bg-[#fff3f4] px-4 py-3 text-sm font-medium text-[#a81524]">{error}</div>
         ) : null}
 
+        {report ? <ReportScopeInsight labels={selectedFilterLabels} report={report} /> : null}
+
         {loading && !report ? (
           <div className="grid min-h-[360px] place-items-center rounded-[10px] border border-[#e9edf2] bg-[#f8fafc] text-[#647084]">
             <span className="inline-flex items-center gap-2 text-sm font-semibold">
@@ -454,6 +491,64 @@ export function ReportsPage() {
         ) : null}
       </div>
     </PageFrame>
+  );
+}
+
+function ReportScopeInsight({ labels, report }: { labels: Record<FilterKey, string>; report: InstallationReport }) {
+  const activeFilters = [
+    labels.engineer ? `Kỹ sư: ${labels.engineer}` : '',
+    labels.customer ? `Khách hàng: ${labels.customer}` : '',
+    labels.model ? `Model: ${labels.model}` : '',
+    labels.province ? `Tỉnh: ${labels.province}` : '',
+  ].filter(Boolean);
+
+  if (!activeFilters.length) return null;
+
+  const topModels = report.byModel.filter((item) => item.id !== 'unknown-model').slice(0, 4);
+  const topCustomers = report.byCustomer.filter((item) => item.id !== 'unknown-customer').slice(0, 4);
+  const focusTitle = labels.customer
+    ? 'Khách hàng đang chọn'
+    : labels.engineer
+      ? 'Kỹ sư đang chọn'
+      : labels.model
+        ? 'Model đang chọn'
+        : 'Phạm vi đang chọn';
+
+  return (
+    <section className="grid gap-3 rounded-[12px] border border-[#f1c4c9] bg-[#fffafa] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <span className="text-xs font-semibold text-[#c91f2d]">{focusTitle}</span>
+          <h2 className="mt-1 text-lg font-semibold text-[#18212f]">{activeFilters.join(' | ')}</h2>
+          <p className="mt-1 text-sm text-[#647084]">
+            Đang có {report.summary.totalInstallations} phiếu, {report.summary.totalMachines} máy, {report.summary.totalCustomers} khách hàng, {report.byModel.length} model và {report.summary.totalProvinces} tỉnh trong phạm vi này.
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <InsightList title={labels.customer ? 'Model khách hàng đang dùng' : 'Model liên quan'} rows={topModels} />
+        <InsightList title={labels.engineer ? 'Khách hàng kỹ sư đang care' : 'Khách hàng liên quan'} rows={topCustomers} />
+      </div>
+    </section>
+  );
+}
+
+function InsightList({ rows, title }: { rows: InstallationReportGroup[]; title: string }) {
+  return (
+    <div className="rounded-[10px] border border-[#f3d5d8] bg-white p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <strong className="text-sm text-[#18212f]">{title}</strong>
+        <span className="text-xs font-semibold text-[#647084]">{rows.length} mục nổi bật</span>
+      </div>
+      <div className="grid gap-2">
+        {rows.length ? rows.map((row) => (
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-[#f8fafc] px-3 py-2 text-sm" key={row.id}>
+            <span className="min-w-0 truncate font-semibold text-[#303a4b]">{row.label}</span>
+            <span className="shrink-0 rounded-md bg-white px-2 py-1 text-xs font-bold text-[#a81524]">{row.count} phiếu</span>
+          </div>
+        )) : <span className="rounded-lg bg-[#f8fafc] px-3 py-3 text-sm font-medium text-[#647084]">Chưa có dữ liệu phù hợp.</span>}
+      </div>
+    </div>
   );
 }
 
@@ -972,6 +1067,83 @@ function formatDate(value?: string | null) {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : '';
+}
+
+function buildDependentFilterOptions(rows: InstallationReportRow[], filters: ReportFilterState) {
+  return {
+    engineers: buildOptions(rows, 'engineer', filters),
+    customers: buildOptions(rows, 'customer', filters),
+    models: buildOptions(rows, 'model', filters),
+    provinces: buildOptions(rows, 'province', filters),
+  };
+}
+
+function buildOptions(rows: InstallationReportRow[], target: FilterKey, filters: ReportFilterState): ReportFilterOption[] {
+  const groups = new Map<string, ReportFilterOption>();
+
+  for (const row of rows) {
+    if (!matchesFilter(row, filters, target)) continue;
+    const option = optionFromRow(row, target);
+    if (!option || isUnknownOption(option.id)) continue;
+
+    const current = groups.get(option.id) ?? { ...option, count: 0 };
+    current.count += 1;
+    groups.set(option.id, current);
+  }
+
+  return [...groups.values()].sort((first, second) => first.label.localeCompare(second.label, 'vi'));
+}
+
+function matchesFilter(row: InstallationReportRow, filters: ReportFilterState, ignore?: FilterKey) {
+  if (ignore !== 'engineer' && filters.engineerId && row.engineerId !== filters.engineerId) return false;
+  if (ignore !== 'customer' && filters.customerId && row.customerId !== filters.customerId) return false;
+  if (ignore !== 'model' && filters.modelKey && modelKeyForRow(row) !== filters.modelKey) return false;
+  if (ignore !== 'province' && filters.province && row.province !== filters.province) return false;
+  return true;
+}
+
+function optionFromRow(row: InstallationReportRow, target: FilterKey): ReportFilterOption | null {
+  if (target === 'engineer') {
+    return { id: row.engineerId || 'unassigned', label: row.engineer || 'Chưa phân công', count: 0 };
+  }
+
+  if (target === 'customer') {
+    return { id: row.customerId || 'unknown-customer', label: row.customer || 'Chưa có khách hàng', count: 0 };
+  }
+
+  if (target === 'model') {
+    return { id: modelKeyForRow(row), label: row.model || 'Chưa có model', count: 0 };
+  }
+
+  return { id: row.province || 'unknown-province', label: row.province || 'Chưa có tỉnh', count: 0 };
+}
+
+function modelKeyForRow(row: InstallationReportRow) {
+  return row.machineModelId || row.model || 'unknown-model';
+}
+
+function isUnknownOption(id: string) {
+  return id === 'unassigned' || id === 'unknown-customer' || id === 'unknown-model' || id === 'unknown-province';
+}
+
+function optionLabel(option: ReportFilterOption) {
+  return `${option.label} (${option.count})`;
+}
+
+function resolveSelectedFilterLabels(rows: InstallationReportRow[], filters: ReportFilterState): Record<FilterKey, string> {
+  const allOptions = {
+    engineer: buildOptions(rows, 'engineer', { engineerId: '', customerId: '', modelKey: '', province: '' }),
+    customer: buildOptions(rows, 'customer', { engineerId: '', customerId: '', modelKey: '', province: '' }),
+    model: buildOptions(rows, 'model', { engineerId: '', customerId: '', modelKey: '', province: '' }),
+    province: buildOptions(rows, 'province', { engineerId: '', customerId: '', modelKey: '', province: '' }),
+  };
+
+  return {
+    engineer: allOptions.engineer.find((item) => item.id === filters.engineerId)?.label || '',
+    customer: allOptions.customer.find((item) => item.id === filters.customerId)?.label || '',
+    model: allOptions.model.find((item) => item.id === filters.modelKey)?.label || '',
+    province: allOptions.province.find((item) => item.id === filters.province)?.label || '',
+  };
 }
 
 function workHref(row: WorkReportRow) {

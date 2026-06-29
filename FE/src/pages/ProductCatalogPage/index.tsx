@@ -1,6 +1,6 @@
 import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Save, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import type { FocusEvent, FormEvent, ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
@@ -28,6 +28,8 @@ type BusinessLine = {
   name: string;
   imageUrl?: string | null;
   productCategory?: string | null;
+  countryOfOrigin?: string | null;
+  note?: string | null;
   productIndustry?: ProductIndustry | null;
 };
 
@@ -39,6 +41,8 @@ type MachineModel = {
   manufacturer?: string | null;
   productLine?: string | null;
   productCategory?: string | null;
+  description?: string | null;
+  note?: string | null;
   businessLine?: BusinessLine | null;
   components?: MachineComponent[];
 };
@@ -534,6 +538,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
   const [searchParams] = useSearchParams();
   const [models, setModels] = useState<MachineModel[]>([]);
   const [form, setForm] = useState<ProductForm>(emptyProductForm(searchParams.get('modelId') ?? ''));
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -543,6 +548,11 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
   const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
   const canAddProduct = role === 'admin' || role === 'engineer';
   const selectedModel = models.find((model) => model.id === form.machineModelId) ?? null;
+  const productOptions = useMemo(() => buildProductOptions(models), [models]);
+  const modelOptions = useMemo(
+    () => models.filter((model) => !selectedProductId || model.businessLine?.id === selectedProductId),
+    [models, selectedProductId],
+  );
   const supportsProbes = isUltrasoundMachineModel(selectedModel);
   const supportsEndoscopyChecklist = isEndoscopyMachineModel(selectedModel);
 
@@ -564,9 +574,10 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
       const nextModel = nextModels.find((model) => model.id === nextModelId) ?? nextModels[0];
 
       setModels(nextModels);
+      setSelectedProductId(nextModel?.businessLine?.id || '');
       setForm((current) => ({
         ...current,
-        machineModelId: nextModelId,
+        machineModelId: nextModel?.id || '',
         accessoriesText: nextModel ? buildTemplateAccessoriesText(nextModel) : '',
       }));
     } catch (err) {
@@ -581,12 +592,25 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
       if (field !== 'machineModelId') return { ...current, [field]: value };
 
       const nextModel = models.find((model) => model.id === value);
+      if (nextModel?.businessLine?.id) {
+        setSelectedProductId(nextModel.businessLine.id);
+      }
       return {
         ...current,
         machineModelId: value,
         accessoriesText: nextModel ? buildTemplateAccessoriesText(nextModel) : '',
       };
     });
+  }
+
+  function selectProduct(productId: string) {
+    const nextModel = models.find((model) => model.businessLine?.id === productId) ?? null;
+    setSelectedProductId(productId);
+    setForm((current) => ({
+      ...current,
+      machineModelId: nextModel?.id || '',
+      accessoriesText: nextModel ? buildTemplateAccessoriesText(nextModel) : '',
+    }));
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -655,36 +679,54 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
         <section className="grid min-w-0 gap-4">
           <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
             <div className="mb-4">
-              <h2 className="text-lg font-medium text-[#1f1f1f]">Products Description</h2>
+              <h2 className="text-lg font-medium text-[#1f1f1f]">Thông tin sản phẩm</h2>
             </div>
             <div className="grid min-w-0 gap-4 md:grid-cols-2">
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333] md:col-span-2">
-                Model sản phẩm
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
+                Sản phẩm
                 <select
                   className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
                   disabled={loading}
-                  onChange={(event) => updateField('machineModelId', event.target.value)}
+                  onChange={(event) => selectProduct(event.target.value)}
                   required
-                  value={form.machineModelId}
+                  value={selectedProductId}
                 >
-                  {models.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {modelOptionLabel(model)}
+                  <option value="">Chọn sản phẩm</option>
+                  {productOptions.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
-                Category
-                <input
-                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none"
-                  readOnly
-                  value={selectedModel?.businessLine?.productIndustry?.name ?? ''}
+                Model
+                <ModelSearchSelect
+                  disabled={loading}
+                  models={modelOptions}
+                  onChange={(value) => updateField('machineModelId', value)}
+                  value={form.machineModelId}
                 />
               </label>
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
-                Brand
+                Hãng sản xuất
                 <input className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none" readOnly value={selectedModel?.manufacturer ?? ''} />
+              </label>
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
+                Xuất xứ
+                <input
+                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none"
+                  readOnly
+                  value={selectedModel?.businessLine?.countryOfOrigin ?? ''}
+                />
+              </label>
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333] md:col-span-2">
+                Ghi chú sản phẩm / quy cách
+                <textarea
+                  className="min-h-24 min-w-0 rounded-lg border border-[#d6d6d6] bg-[#fafafa] px-3 py-2 text-[#1f1f1f] outline-none"
+                  readOnly
+                  value={selectedModel ? productNoteText(selectedModel) : ''}
+                />
               </label>
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 Serial Number
@@ -822,6 +864,112 @@ function ModelRow({
         )}
       </td>
     </tr>
+  );
+}
+
+function ModelSearchSelect({
+  disabled,
+  models,
+  onChange,
+  value,
+}: {
+  disabled: boolean;
+  models: MachineModel[];
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  const selectedModel = models.find((model) => model.id === value) ?? null;
+  const selectedLabel = selectedModel ? modelOptionLabel(selectedModel) : '';
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(selectedLabel);
+
+  useEffect(() => {
+    if (!open) {
+      setSearch(selectedLabel);
+    }
+  }, [open, selectedLabel]);
+
+  const filteredModels = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    if (!keyword || keyword === selectedLabel.toLowerCase()) return models;
+
+    return models.filter((model) =>
+      [model.code, model.name, model.displayName, model.manufacturer, model.productLine, model.businessLine?.name, model.businessLine?.productIndustry?.name]
+        .filter(Boolean)
+        .some((item) => String(item).toLowerCase().includes(keyword)),
+    );
+  }, [models, search, selectedLabel]);
+
+  function closeIfFocusLeaves(event: FocusEvent<HTMLDivElement>) {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
+    setOpen(false);
+  }
+
+  return (
+    <div className="relative" onBlur={closeIfFocusLeaves}>
+      <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] transition focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
+        <Search className="shrink-0 text-[#8a8a8a]" size={16} />
+        <input
+          className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium outline-none placeholder:text-[#8a8a8a]"
+          disabled={disabled}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="Tìm mã model, tên model hoặc hãng"
+          value={open ? search : selectedLabel}
+        />
+        {selectedModel ? (
+          <button
+            className="shrink-0 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 py-1 text-xs font-semibold text-[#666666] hover:border-[#f5c7cb] hover:text-[#d71920]"
+            disabled={disabled}
+            onClick={() => {
+              onChange('');
+              setSearch('');
+              setOpen(true);
+            }}
+            type="button"
+          >
+            Đổi
+          </button>
+        ) : null}
+      </div>
+      {!value ? <input className="pointer-events-none absolute h-px w-px opacity-0" required value="" onChange={() => null} /> : null}
+
+      {open ? (
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_18px_42px_rgba(23,32,42,0.16)]">
+          <div className="max-h-72 overflow-y-auto p-1">
+            {filteredModels.map((model) => {
+              const active = model.id === value;
+              return (
+                <button
+                  className={`grid w-full gap-1 rounded-md px-3 py-2 text-left text-sm transition ${
+                    active ? 'bg-[#fff5f5] text-[#d71920]' : 'text-[#1f1f1f] hover:bg-[#fbfdff]'
+                  }`}
+                  key={model.id}
+                  onClick={() => {
+                    onChange(model.id);
+                    setSearch(modelOptionLabel(model));
+                    setOpen(false);
+                  }}
+                  type="button"
+                >
+                  <strong>{modelShortLabel(model)}</strong>
+                  <span className="text-xs text-[#666666]">{modelDetailLabel(model)}</span>
+                </button>
+              );
+            })}
+            {!filteredModels.length ? (
+              <div className="rounded-md px-3 py-4 text-center text-sm font-medium text-[#666666]">
+                Không có model phù hợp.
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -1282,8 +1430,32 @@ function modelDetailLabel(model: MachineModel) {
 }
 
 function modelOptionLabel(model: MachineModel) {
-  const industry = model.businessLine?.productIndustry?.name;
-  return [modelShortLabel(model), model.name, model.manufacturer, industry].filter(Boolean).join(' - ');
+  return modelShortLabel(model);
+}
+
+function buildProductOptions(models: MachineModel[]) {
+  const products = new Map<string, { id: string; name: string }>();
+
+  for (const model of models) {
+    const product = model.businessLine;
+    if (!product?.id) continue;
+    products.set(product.id, {
+      id: product.id,
+      name: product.name,
+    });
+  }
+
+  return [...products.values()].sort((first, second) => first.name.localeCompare(second.name, 'vi'));
+}
+
+function productNoteText(model: MachineModel) {
+  return [
+    model.note,
+    model.description,
+    model.businessLine?.note ? `Ghi chú dòng sản phẩm: ${model.businessLine.note}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 function emptyProductForm(machineModelId: string): ProductForm {

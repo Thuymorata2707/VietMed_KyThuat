@@ -99,14 +99,7 @@ export class ReportsService {
               },
             }
           : {},
-        machineModelId
-          ? {
-              OR: [
-                { plannedMachineModelId: machineModelId },
-                { machine: { machineModelId } },
-              ],
-            }
-          : {},
+        machineModelId ? await this.buildInstallationModelFilter(machineModelId) : {},
       ],
     };
 
@@ -535,6 +528,42 @@ export class ReportsService {
     }
 
     return { start, end };
+  }
+
+  private async buildInstallationModelFilter(modelKey: string): Promise<Prisma.MachineInstallationWhereInput> {
+    const decodedModelKey = decodeURIComponent(modelKey);
+    const model = await this.prisma.machineModel.findFirst({
+      where: {
+        OR: [
+          { id: decodedModelKey },
+          { name: decodedModelKey },
+          { displayName: decodedModelKey },
+          { code: decodedModelKey },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        displayName: true,
+        code: true,
+      },
+    });
+    const modelNames = [model?.name, model?.displayName, model?.code, decodedModelKey]
+      .filter(Boolean)
+      .map((value) => String(value));
+    const resolvedId = model?.id || decodedModelKey;
+
+    return {
+      OR: [
+        { plannedMachineModelId: resolvedId },
+        { plannedModelName: { in: modelNames } },
+        { machine: { machineModelId: resolvedId } },
+        { machine: { modelName: { in: modelNames } } },
+        { machine: { machineModel: { name: { in: modelNames } } } },
+        { machine: { machineModel: { displayName: { in: modelNames } } } },
+        { machine: { machineModel: { code: { in: modelNames } } } },
+      ],
+    };
   }
 
   private parseDate(value: string, field: string) {
