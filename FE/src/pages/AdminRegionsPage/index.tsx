@@ -175,7 +175,7 @@ export function AdminRegionsPage() {
         />
         <button className="secondary-button" disabled={loading} onClick={loadRegions} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-          {loading ? 'Đang tải' : 'Tải lại'}
+          {loading ? 'Loading' : 'Refresh'}
         </button>
       </div>
 
@@ -187,7 +187,7 @@ export function AdminRegionsPage() {
           <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm tên hoặc mã khu vực" value={query} />
           <button className="primary-button compact" onClick={openCreateModal} type="button">
             <Plus size={17} />
-            Tạo khu vực
+            Add Region
           </button>
         </div>
 
@@ -255,9 +255,9 @@ export function AdminRegionsPage() {
               <div className="flex items-center gap-2 max-sm:justify-between">
                 <button className="secondary-button compact" disabled={loadingCustomers} onClick={() => void selectRegion(selectedRegion)} type="button">
                   {loadingCustomers ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
-                  Tải khách
+                  Refresh
                 </button>
-                <button className="icon-button" onClick={closeRegionDetail} title="Đóng" type="button">
+                <button className="icon-button" onClick={closeRegionDetail} title="Close" type="button">
                   <X size={16} />
                 </button>
               </div>
@@ -375,10 +375,10 @@ export function AdminRegionsPage() {
           <section aria-modal="true" className="crud-modal" role="dialog">
             <div className="form-panel-heading">
               <div>
-                <span>Tạo mới</span>
+                <span>Add</span>
                 <h2>Khu vực phụ trách</h2>
               </div>
-              <button className="icon-button" onClick={closeModal} title="Đóng" type="button">
+              <button className="icon-button" onClick={closeModal} title="Close" type="button">
                 <X size={16} />
               </button>
             </div>
@@ -404,10 +404,10 @@ export function AdminRegionsPage() {
               </label>
               <div className="modal-actions">
                 <button className="secondary-button" onClick={closeModal} type="button">
-                  Hủy
+                  Cancel
                 </button>
                 <button className="primary-button" disabled={saving} type="submit">
-                  {saving ? 'Đang lưu' : 'Tạo khu vực'}
+                  {saving ? 'Saving' : 'Save'}
                 </button>
               </div>
             </form>

@@ -391,36 +391,67 @@ export class UsersService {
   private buildFindAllWhere(query?: ListUsersQueryDto): Prisma.UserWhereInput {
     const search = query?.search?.trim();
     const roleName = query?.roleName?.trim();
+    const conditions: Prisma.UserWhereInput[] = [];
+
+    if (roleName) {
+      conditions.push(
+        this.isEngineerRoleName(roleName)
+          ? {
+              OR: [
+                {
+                  role: {
+                    name: {
+                      equals: roleName,
+                    },
+                  },
+                },
+                {
+                  engineerProfile: {
+                    isNot: null,
+                  },
+                },
+              ],
+            }
+          : {
+              role: {
+                name: {
+                  equals: roleName,
+                },
+              },
+            },
+      );
+    }
+
+    if (search) {
+      conditions.push({
+        OR: [
+          { email: { contains: search } },
+          { fullName: { contains: search } },
+          { phone: { contains: search } },
+          {
+            region: {
+              name: { contains: search },
+            },
+          },
+          {
+            engineerProfile: {
+              employeeCode: { contains: search },
+            },
+          },
+        ],
+      });
+    }
 
     return {
       status: query?.status,
       regionId: query?.regionId,
-      role: roleName
-        ? {
-            name: {
-              equals: roleName,
-              
-            },
-          }
-        : undefined,
-      OR: search
-        ? [
-            { email: { contains: search,  } },
-            { fullName: { contains: search,  } },
-            { phone: { contains: search,  } },
-            {
-              region: {
-                name: { contains: search,  },
-              },
-            },
-            {
-              engineerProfile: {
-                employeeCode: { contains: search,  },
-              },
-            },
-          ]
-        : undefined,
+      AND: conditions.length ? conditions : undefined,
     };
+  }
+
+  private isEngineerRoleName(roleName: string) {
+    const normalized = roleName.toLowerCase().trim();
+    return normalized === 'engineer' || normalized === 'kỹ sư' || normalized === 'ky su';
   }
 
   private withoutPassword<

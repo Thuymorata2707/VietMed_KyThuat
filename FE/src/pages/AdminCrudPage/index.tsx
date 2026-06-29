@@ -239,7 +239,7 @@ export function AdminCrudPage({
           {headerControl}
           <button className="secondary-button" disabled={loading} onClick={loadPage} type="button">
             {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-            {loading ? 'Đang tải' : 'Tải lại'}
+            {loading ? 'Loading' : 'Refresh'}
           </button>
         </div>
       </div>
@@ -283,17 +283,17 @@ export function AdminCrudPage({
             serviceCreateHref(config.endpoint) ? (
               <Link className="primary-button compact" to={serviceCreateHref(config.endpoint)!}>
                 <Plus size={17} />
-                Tạo phiếu
+                Add Ticket
               </Link>
             ) : adminCrudFormCreateHref(config.endpoint) ? (
               <Link className="primary-button compact" to={adminCrudFormCreateHref(config.endpoint)!}>
                 <Plus size={17} />
-                Tạo mới
+                Add
               </Link>
             ) : (
               <button className="primary-button compact" onClick={startCreate} type="button">
                 <Plus size={17} />
-                Tạo mới
+                Add
               </button>
             )
           ) : null}
@@ -352,7 +352,7 @@ export function AdminCrudPage({
                               <Link
                                 className="icon-button"
                                 onClick={(event) => event.stopPropagation()}
-                                title="Sửa"
+                                title="Edit"
                                 to={adminCrudFormEditHref(config.endpoint, row)!}
                               >
                                 <Edit3 size={16} />
@@ -361,7 +361,7 @@ export function AdminCrudPage({
                               <button
                                 className="icon-button"
                                 onClick={(event) => handleActionClick(event, () => startEdit(row))}
-                                title="Sửa"
+                                title="Edit"
                                 type="button"
                               >
                                 <Edit3 size={16} />
@@ -372,7 +372,7 @@ export function AdminCrudPage({
                             <button
                               className="icon-button danger"
                               onClick={(event) => handleActionClick(event, () => setDeletingRow(row))}
-                              title="Xóa"
+                              title="Delete"
                               type="button"
                             >
                               <Trash2 size={16} />
@@ -458,7 +458,7 @@ export function AdminCrudPage({
                 <span>Chi tiết</span>
                 <h2>{formatValue(readPath(selectedRow, config.columns[0]?.key || 'id'))}</h2>
               </div>
-              <button className="icon-button" onClick={() => setSelectedRow(null)} title="Đóng" type="button">
+              <button className="icon-button" onClick={() => setSelectedRow(null)} title="Close" type="button">
                 <X size={16} />
               </button>
             </div>
@@ -477,23 +477,23 @@ export function AdminCrudPage({
                 adminCrudFormEditHref(config.endpoint, selectedRow) ? (
                   <Link className="primary-button" to={adminCrudFormEditHref(config.endpoint, selectedRow)!}>
                     <Edit3 size={17} />
-                    Sửa thông tin
+                    Edit
                   </Link>
                 ) : (
                   <button className="primary-button" onClick={() => startEdit(selectedRow)} type="button">
                     <Edit3 size={17} />
-                    Sửa thông tin
+                    Edit
                   </button>
                 )
               ) : null}
               {config.canDelete !== false ? (
                 <button className="danger-button" onClick={() => setDeletingRow(selectedRow)} type="button">
                   <Trash2 size={17} />
-                  Xóa
+                  Delete
                 </button>
               ) : null}
               <button className="secondary-button" onClick={() => setSelectedRow(null)} type="button">
-                Đóng
+                Close
               </button>
             </div>
           </aside>
@@ -505,10 +505,10 @@ export function AdminCrudPage({
           <section aria-modal="true" className="crud-modal expanded-crud-modal" role="dialog">
             <div className="form-panel-heading">
               <div>
-                <span>{editingRow ? 'Cập nhật' : 'Tạo mới'}</span>
+                <span>{editingRow ? 'Edit' : 'Add'}</span>
                 <h2>{editingRow ? String(readPath(editingRow, config.columns[0]?.key || 'id')) : config.title}</h2>
               </div>
-              <button className="icon-button" onClick={closeModal} title="Đóng" type="button">
+              <button className="icon-button" onClick={closeModal} title="Close" type="button">
                 <X size={16} />
               </button>
             </div>
@@ -530,10 +530,10 @@ export function AdminCrudPage({
 
               <div className="modal-actions">
                 <button className="secondary-button" onClick={closeModal} type="button">
-                  Hủy
+                  Cancel
                 </button>
                 <button className="primary-button" disabled={saving} type="submit">
-                  {saving ? 'Đang lưu' : editingRow ? 'Lưu thay đổi' : 'Tạo mới'}
+                  {saving ? 'Saving' : 'Save'}
                 </button>
               </div>
             </form>
@@ -545,16 +545,16 @@ export function AdminCrudPage({
         <div className="crud-modal-backdrop" role="presentation">
           <section aria-modal="true" className="confirm-modal" role="dialog">
             <div>
-              <span className="confirm-eyebrow">Xác nhận xóa</span>
+              <span className="confirm-eyebrow">Delete</span>
               <h2>{formatValue(readPath(deletingRow, config.columns[0]?.key || 'id'))}</h2>
-              <p>Thao tác này sẽ xóa {config.entityLabel} khỏi hệ thống nếu backend cho phép.</p>
+              <p>Delete this {config.entityLabel} if backend allows.</p>
             </div>
             <div className="modal-actions">
               <button className="secondary-button" onClick={() => setDeletingRow(null)} type="button">
-                Hủy
+                Cancel
               </button>
               <button className="danger-button" onClick={removeRow} type="button">
-                Xóa
+                Delete
               </button>
             </div>
           </section>
@@ -657,12 +657,12 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle
           eyebrow="Quản trị"
-          title={isEditing ? `Chỉnh sửa ${config.entityLabel}` : `Tạo mới ${config.entityLabel}`}
+          title={isEditing ? `Edit ${config.entityLabel}` : `Add ${config.entityLabel}`}
           description={config.description}
         />
         <button className="secondary-button" onClick={() => navigate(listPath)} type="button">
           <ArrowLeft size={17} />
-          Quay lại danh sách
+          Back
         </button>
       </div>
 
@@ -672,7 +672,7 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
       <section className={isCustomerForm ? 'crud-form-page customer-form-page' : 'crud-form-page'}>
         <div className="form-panel-heading">
           <div>
-            <span>{isEditing ? 'Cập nhật' : 'Tạo mới'}</span>
+            <span>{isEditing ? 'Edit' : 'Add'}</span>
             <h2>{isEditing ? String(readPath(row ?? {}, config.columns[0]?.key || 'id') || config.title) : config.title}</h2>
           </div>
         </div>
@@ -710,11 +710,11 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
 
             <div className="modal-actions">
               <button className="secondary-button" onClick={() => navigate(listPath)} type="button">
-                Hủy
+                Cancel
               </button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-                {saving ? 'Đang lưu' : isEditing ? 'Lưu thay đổi' : 'Tạo mới'}
+                {saving ? 'Saving' : 'Save'}
               </button>
             </div>
           </form>
@@ -1021,7 +1021,7 @@ function CustomerTableRow({
             </Link>
             {canUpdate ? (
               editHref ? (
-                <Link className="icon-button" onClick={(event) => event.stopPropagation()} title="Sửa" to={editHref}>
+                <Link className="icon-button" onClick={(event) => event.stopPropagation()} title="Edit" to={editHref}>
                   <Edit3 size={16} />
                 </Link>
               ) : (
@@ -1031,7 +1031,7 @@ function CustomerTableRow({
                     event.stopPropagation();
                     onEdit();
                   }}
-                  title="Sửa"
+                  title="Edit"
                   type="button"
                 >
                   <Edit3 size={16} />
@@ -1045,7 +1045,7 @@ function CustomerTableRow({
                   event.stopPropagation();
                   onDelete();
                 }}
-                title="Xóa"
+                title="Delete"
                 type="button"
               >
                 <Trash2 size={16} />

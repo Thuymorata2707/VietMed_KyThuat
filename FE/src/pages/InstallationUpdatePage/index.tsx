@@ -185,7 +185,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
-          Quay lại danh sách
+          Back
         </button>
       </div>
 
@@ -325,7 +325,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-medium text-[#1f1f1f]">Danh mục thiết bị lắp đặt</h2>
                 <button className="secondary-button" onClick={addDeviceItem} type="button">
-                  Thêm thiết bị
+                  Add device
                 </button>
               </div>
               <div className="grid gap-3">
@@ -359,7 +359,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                     </div>
                     <div className="mt-3 flex justify-end">
                       <button className="secondary-button" onClick={() => removeDeviceItem(index)} type="button">
-                        Xóa dòng
+                        Delete row
                       </button>
                     </div>
                   </div>
@@ -439,11 +439,11 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
 
             <div className="flex flex-wrap justify-end gap-2">
               <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
-                Hủy
+                Cancel
               </button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-                Lưu cập nhật
+                {saving ? 'Saving' : 'Save'}
               </button>
             </div>
           </aside>

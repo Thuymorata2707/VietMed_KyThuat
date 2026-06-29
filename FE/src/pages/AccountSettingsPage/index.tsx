@@ -268,7 +268,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
           <span className="text-[#666666]">Thông tin sẽ được cập nhật ngay trên tài khoản hiện tại.</span>
           <button className="primary-button" disabled={saving} type="submit">
             {saving ? <Loader2 className="spin-icon" size={18} /> : <Save size={18} />}
-            {saving ? 'Đang lưu' : 'Lưu thay đổi'}
+            {saving ? 'Saving' : 'Save'}
           </button>
         </div>
       </form>

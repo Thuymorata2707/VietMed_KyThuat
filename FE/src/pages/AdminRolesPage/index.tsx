@@ -88,7 +88,7 @@ export function AdminRolesPage() {
         />
         <button className="secondary-button" disabled={loading} onClick={loadRoles} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-          {loading ? 'Đang tải' : 'Tải lại'}
+          {loading ? 'Loading' : 'Refresh'}
         </button>
       </div>
 
@@ -100,7 +100,7 @@ export function AdminRolesPage() {
           <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm vai trò" value={query} />
           <button className="primary-button compact" onClick={openCreateModal} type="button">
             <Plus size={17} />
-            Tạo vai trò
+            Add Role
           </button>
         </div>
 
@@ -156,10 +156,10 @@ export function AdminRolesPage() {
           <section aria-modal="true" className="crud-modal" role="dialog">
             <div className="form-panel-heading">
               <div>
-                <span>Tạo mới</span>
+                <span>Add</span>
                 <h2>Vai trò hệ thống</h2>
               </div>
-              <button className="icon-button" onClick={closeModal} title="Đóng" type="button">
+              <button className="icon-button" onClick={closeModal} title="Close" type="button">
                 <X size={16} />
               </button>
             </div>
@@ -171,10 +171,10 @@ export function AdminRolesPage() {
               </label>
               <div className="modal-actions">
                 <button className="secondary-button" onClick={closeModal} type="button">
-                  Hủy
+                  Cancel
                 </button>
                 <button className="primary-button" disabled={saving} type="submit">
-                  {saving ? 'Đang lưu' : 'Tạo vai trò'}
+                  {saving ? 'Saving' : 'Save'}
                 </button>
               </div>
             </form>

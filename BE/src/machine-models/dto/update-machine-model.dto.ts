@@ -27,6 +27,10 @@ export class UpdateMachineModelDto {
   manufacturer?: string | null;
 
   @IsOptional()
+  @IsString()
+  countryOfOrigin?: string | null;
+
+  @IsOptional()
   @IsEnum(MachineProductCategory)
   productCategory?: MachineProductCategory;
 

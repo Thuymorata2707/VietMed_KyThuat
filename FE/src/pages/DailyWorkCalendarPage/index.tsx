@@ -466,10 +466,10 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
             </div>
 
             <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
-              <button className="secondary-button" onClick={() => setSelectedDayDate('')} type="button">Đóng</button>
+              <button className="secondary-button" onClick={() => setSelectedDayDate('')} type="button">Close</button>
               <button className="primary-button" disabled={!selectedEngineerId} onClick={() => openCreate(dateFromInput(selectedDayDate))} type="button">
                 <Plus size={16} />
-                Thêm việc cho kỹ sư
+                Add task
               </button>
             </div>
           </section>
@@ -481,7 +481,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
           <section aria-modal="true" className="grid w-full max-w-[720px] gap-[18px] rounded-[14px] border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(20,32,51,0.2)]" role="dialog">
             <div className="flex items-start justify-between">
               <div>
-                <span className="block text-xs font-medium text-[#d71920]">{editingNote ? 'Sửa ghi chú' : isAdmin ? 'Thêm việc cho kỹ sư' : 'Thêm ghi chú'}</span>
+                <span className="block text-xs font-medium text-[#d71920]">{editingNote ? 'Edit note' : isAdmin ? 'Add task' : 'Add note'}</span>
                 <h2 className="mt-1 text-[#1f1f1f]">{formatDateTitle(form.workDate)}</h2>
                 {isAdmin ? <p className="mt-1 text-sm text-[#666666]">{selectedEngineer?.fullName || selectedEngineer?.email}</p> : null}
               </div>
@@ -543,13 +543,13 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                 {editingNote && canEditExisting ? (
                   <button className="danger-button" disabled={saving} onClick={removeNote} type="button">
                     <Trash2 size={16} />
-                    Xóa
+                    Delete
                   </button>
                 ) : null}
-                <button className="secondary-button" onClick={() => setIsModalOpen(false)} type="button">Hủy</button>
+                <button className="secondary-button" onClick={() => setIsModalOpen(false)} type="button">Cancel</button>
                 <button className="primary-button" disabled={saving} type="submit">
                   {saving ? <Loader2 className="spin-icon" size={16} /> : null}
-                  {saving ? 'Đang lưu' : 'Lưu ghi chú'}
+                  {saving ? 'Saving' : 'Save'}
                 </button>
               </div>
             </form>

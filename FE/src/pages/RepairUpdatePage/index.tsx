@@ -208,7 +208,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
-          Quay lại danh sách
+          Back
         </button>
       </div>
 
@@ -382,7 +382,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                             {attachment.originalName} - {formatFileSize(attachment.size)}
                           </small>
                         </div>
-                        <button className="icon-button" onClick={() => downloadAttachment(attachment)} title="Tải xuống" type="button">
+                        <button className="icon-button" onClick={() => downloadAttachment(attachment)} title="Download" type="button">
                           <Download size={16} />
                         </button>
                       </article>
@@ -420,18 +420,18 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 </label>
                 <button className="primary-button" disabled={uploadingAttachment || !attachmentFile} type="submit">
                   {uploadingAttachment ? <Loader2 className="spin-icon" size={17} /> : null}
-                  {uploadingAttachment ? 'Đang tải lên' : 'Tải lên phiếu'}
+                  {uploadingAttachment ? 'Uploading' : 'Upload'}
                 </button>
               </form>
             </section>
 
             <div className="flex flex-wrap justify-end gap-2">
               <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
-                Hủy
+                Cancel
               </button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-                Lưu cập nhật
+                {saving ? 'Saving' : 'Save'}
               </button>
             </div>
           </aside>
@@ -542,7 +542,7 @@ function StandardRepairChecklist({
         ))}
       </div>
       <button className="secondary-button mt-4 w-full justify-center" onClick={onApplyPartsTemplate} type="button">
-        Thêm mẫu ghi linh kiện
+        Add template
       </button>
     </section>
   );

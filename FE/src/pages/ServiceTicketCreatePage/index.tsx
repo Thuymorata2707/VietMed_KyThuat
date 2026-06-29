@@ -443,7 +443,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         />
         <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
           <ArrowLeft size={17} />
-          Quay lại danh sách
+          Back
         </button>
       </div>
 
@@ -639,11 +639,11 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
           <div className="flex flex-wrap justify-end gap-2">
             <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
-              Hủy
+              Cancel
             </button>
             <button className="primary-button" disabled={saving || loading} type="submit">
               {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-              Tạo phiếu
+              {saving ? 'Saving' : 'Save'}
             </button>
           </div>
         </aside>

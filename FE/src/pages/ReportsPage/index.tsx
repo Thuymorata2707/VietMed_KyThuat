@@ -354,7 +354,7 @@ export function ReportsPage() {
             <div className="flex items-center gap-2">
               {hasAdvancedFilters ? <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-1 text-xs font-semibold text-[#9b5a17]">Đang lọc nâng cao</span> : null}
               <button className="inline-flex h-9 items-center justify-center rounded-lg border border-[#dde3ea] bg-white px-3 text-xs font-semibold text-[#647084] hover:border-[#f1c4c9] hover:text-[#c91f2d]" onClick={resetFilters} type="button">
-                Xóa lọc
+                Clear
               </button>
             </div>
           </div>
@@ -781,7 +781,7 @@ function DrilldownHeader({
       </div>
       <button className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-semibold text-[#303a4b] hover:border-[#f1c4c9] hover:text-[#c91f2d]" onClick={onBack} type="button">
         <ChevronLeft size={16} />
-        Quay lại báo cáo
+        Back
       </button>
     </div>
   );

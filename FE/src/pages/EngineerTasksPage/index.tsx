@@ -1086,7 +1086,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 />
                 <button className="task-secondary" onClick={() => setIsQuickMachineOpen((value) => !value)} type="button">
                   <Plus size={16} />
-                  Thêm thiết bị
+                  Add machine
                 </button>
               </div>
             )}
@@ -1157,7 +1157,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 />
                 <button className="task-secondary quick-customer-toggle" onClick={() => setIsQuickCustomerOpen((value) => !value)} type="button">
                   <Plus size={16} />
-                  Thêm KH
+                  Add customer
                 </button>
                 <div className="quick-machine-accessories">
                   {accessoryMode ? (
@@ -1207,7 +1207,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 />
                 <button className="task-secondary quick-customer-toggle" onClick={() => setIsQuickCustomerOpen((value) => !value)} type="button">
                   <Plus size={16} />
-                  Thêm khách hàng
+                  Add customer
                 </button>
               </div>
             ) : (
@@ -1232,7 +1232,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 />
                 <button className="task-secondary quick-customer-toggle" onClick={() => setIsQuickCustomerOpen((value) => !value)} type="button">
                   <Plus size={16} />
-                  Thêm khách hàng
+                  Add customer
                 </button>
               </div>
             )}
@@ -1240,7 +1240,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             {isQuickCustomerOpen ? (
               <div className="quick-customer-form">
                 <div className="quick-customer-heading">
-                  <strong>Thêm khách hàng nhanh</strong>
+                  <strong>Add customer</strong>
                   <span>Dùng khi admin chưa kịp tạo hồ sơ. Khách hàng sẽ thuộc khu vực của bạn.</span>
                 </div>
                 <label>
@@ -1447,7 +1447,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               {saving ? 'Đang gửi' : 'Gửi phiếu về admin'}
             </button>
             <button className="task-secondary create-cancel" onClick={backToAssignedWork} type="button">
-              Quay lại công việc
+              Back
             </button>
           </form>
         </section>
@@ -1942,10 +1942,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 />
                 <div className="task-drawer-actions">
                   <button className="task-secondary" onClick={() => setSelectedTask(null)} type="button">
-                    Hủy
+                    Cancel
                   </button>
                   <button className="task-primary" disabled={saving} type="submit">
-                    {saving ? 'Đang lưu' : 'Lưu cập nhật'}
+                    {saving ? 'Saving' : 'Save'}
                   </button>
                 </div>
               </form>
@@ -1978,10 +1978,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               )}
               <div className="task-drawer-actions">
                 <button className="task-secondary" onClick={() => setSelectedTask(null)} type="button">
-                  Hủy
+                  Cancel
                 </button>
                 <button className="task-primary" disabled={saving} type="submit">
-                  {saving ? 'Đang lưu' : 'Lưu cập nhật'}
+                  {saving ? 'Saving' : 'Save'}
                 </button>
               </div>
             </form>

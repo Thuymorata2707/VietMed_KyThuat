@@ -575,12 +575,12 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
             eyebrow="Hồ sơ máy"
-            title={isMachineEditRoute ? 'Sửa thông tin máy' : 'Thông tin máy'}
+            title={isMachineEditRoute ? 'Edit máy' : 'Thông tin máy'}
             description={recordMachine ? [recordMachine.machineCode, recordMachine.serialNumber, recordMachine.modelName].filter(Boolean).join(' - ') : 'Đang tải hồ sơ máy.'}
           />
           <Link className="secondary-button" to="/technical-machines">
             <ArrowLeft size={17} />
-            Quay lại danh sách
+            Back
           </Link>
         </div>
 
@@ -633,9 +633,9 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           title="Danh sách máy quản lý"
           description="Chọn ngành hàng, xem số S/N của máy và thông tin khách hàng đã lắp. Máy chưa lắp sẽ để trống thông tin khách hàng."
         />
-        <button className="secondary-button" onClick={() => navigate('/')} type="button">
-          <ArrowLeft size={17} />
-          Quay lại Dashboard
+          <button className="secondary-button" onClick={() => navigate('/')} type="button">
+            <ArrowLeft size={17} />
+          Back
         </button>
       </div>
 
@@ -903,7 +903,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 </div>
                 <button className="secondary-button" onClick={addAccessoryForm} type="button">
                   <Plus size={16} />
-                  Thêm phụ kiện
+                  Add accessory
                 </button>
               </div>
 
@@ -928,7 +928,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                   <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-3" key={accessory.clientId}>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-medium text-[#333333]">Phụ kiện {index + 1}</span>
-                      <button className="icon-button" onClick={() => removeAccessoryForm(accessory.clientId)} title="Xóa phụ kiện" type="button">
+                      <button className="icon-button" onClick={() => removeAccessoryForm(accessory.clientId)} title="Delete accessory" type="button">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -970,15 +970,15 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                     </div>
                   </div>
                 ))}
-                {editForm.accessories.length === 0 ? <EmptyState text="Máy này chưa có phụ kiện. Bấm Thêm phụ kiện để khai báo." /> : null}
+                {editForm.accessories.length === 0 ? <EmptyState text="Máy này chưa có phụ kiện. Bấm Add accessory để khai báo." /> : null}
               </div>
             </section>
 
             <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
-              <button className="secondary-button" disabled={saving} onClick={() => setEditingMachine(null)} type="button">Hủy</button>
+              <button className="secondary-button" disabled={saving} onClick={() => setEditingMachine(null)} type="button">Cancel</button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-                Lưu và xác minh
+                {saving ? 'Saving' : 'Save'}
               </button>
             </div>
           </form>
@@ -1039,7 +1039,7 @@ function MachineDetailPanel({
             {canEdit ? (
               <button className="secondary-button" onClick={() => onEdit(machine)} type="button">
                 <Edit3 size={16} />
-                Sửa thông tin
+                Edit
               </button>
             ) : null}
           </div>
@@ -1282,7 +1282,7 @@ function MachineListActionPanel({ canEdit, machine }: { canEdit: boolean; machin
             {canEdit ? (
               <Link className="secondary-button" to={`/technical-machines/${machine.id}/edit`}>
                 <Edit3 size={16} />
-                Sửa thông tin
+                Edit
               </Link>
             ) : null}
           </div>
@@ -1419,12 +1419,12 @@ function MachineTableRow({ canEdit, machine }: { canEdit: boolean; machine: Dash
         <div className="flex justify-end gap-2">
           <Link className="secondary-button compact" to={`/technical-machines/${machine.id}`}>
             <Eye size={16} />
-            Xem
+            View
           </Link>
           {canEdit ? (
             <Link className="primary-button compact" to={`/technical-machines/${machine.id}/edit`}>
               <Edit3 size={16} />
-              Sửa
+              Edit
             </Link>
           ) : null}
         </div>
@@ -1737,7 +1737,7 @@ function MachineEditForm({
           </div>
           <button className="secondary-button" onClick={onAddAccessory} type="button">
             <Plus size={16} />
-            Thêm phụ kiện
+            Add accessory
           </button>
         </div>
 
@@ -1762,7 +1762,7 @@ function MachineEditForm({
             <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4" key={accessory.clientId}>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-[#333333]">Phụ kiện {index + 1}</span>
-                <button className="icon-button" onClick={() => onRemoveAccessory(accessory.clientId)} title="Xóa phụ kiện" type="button">
+                <button className="icon-button" onClick={() => onRemoveAccessory(accessory.clientId)} title="Delete accessory" type="button">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -1804,15 +1804,15 @@ function MachineEditForm({
               </div>
             </div>
           ))}
-          {editForm.accessories.length === 0 ? <EmptyState text="Máy này chưa có phụ kiện. Bấm Thêm phụ kiện để khai báo." /> : null}
+          {editForm.accessories.length === 0 ? <EmptyState text="Máy này chưa có phụ kiện. Bấm Add accessory để khai báo." /> : null}
         </div>
       </section>
 
       <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
-        <button className="secondary-button" disabled={saving} onClick={onCancel} type="button">Hủy</button>
+        <button className="secondary-button" disabled={saving} onClick={onCancel} type="button">Cancel</button>
         <button className="primary-button" disabled={saving} type="submit">
           {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-          Lưu và xác minh
+          {saving ? 'Saving' : 'Save'}
         </button>
       </div>
     </form>
@@ -1837,7 +1837,7 @@ function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
     <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="text-sm font-semibold text-[#333333]">Thêm nhanh đầu dò siêu âm</span>
+          <span className="text-sm font-semibold text-[#333333]">Add probe</span>
           <p className="mt-1 text-xs leading-5 text-[#666666]">Chọn model đầu dò từ danh sách chuẩn, sau đó nhập S/N thực tế ở dòng bên dưới.</p>
         </div>
         <select
@@ -1881,7 +1881,7 @@ function EndoscopyAccessoryChecklist({
     <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4">
       <div>
         <span className="text-sm font-semibold text-[#333333]">Checklist phụ kiện nội soi tiêu hóa</span>
-        <p className="mt-1 text-xs leading-5 text-[#666666]">Tích các vật tư có theo máy. Nếu checklist chưa có, dùng nút Thêm phụ kiện để nhập thủ công.</p>
+        <p className="mt-1 text-xs leading-5 text-[#666666]">Tích vật tư có theo máy. Nếu checklist chưa có, dùng Add accessory.</p>
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {endoscopyAccessoryOptions.map((option) => (

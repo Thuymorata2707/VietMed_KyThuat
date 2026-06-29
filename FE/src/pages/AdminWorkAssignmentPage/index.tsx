@@ -535,7 +535,7 @@ export function AdminWorkAssignmentPage() {
                             onClick={() => reviewWork(item, 'APPROVED')}
                             type="button"
                           >
-                            {reviewingKey === item.key ? 'Đang lưu' : 'Xác nhận'}
+                            {reviewingKey === item.key ? 'Saving' : 'Confirm'}
                           </button>
                         </div>
                       </div>

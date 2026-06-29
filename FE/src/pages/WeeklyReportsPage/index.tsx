@@ -368,7 +368,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               <>
                 <button className="secondary-button" disabled={saving || !canEdit} onClick={saveReport} type="button">
                   {saving ? <Loader2 className="spin-icon" size={16} /> : <Save size={16} />}
-                  Lưu nháp
+                  {saving ? 'Saving' : 'Save Draft'}
                 </button>
                 <button className="primary-button" disabled={saving || !canSubmit} onClick={submitReport} type="button">
                   <Send size={16} />
@@ -526,7 +526,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
                     </td>
                     <td className="border-b border-[#eeeeee] p-2">
                       {!isAdmin ? (
-                        <button className="icon-button" disabled={!canEdit} onClick={() => removeRow(index)} title="Xóa dòng" type="button">
+                        <button className="icon-button" disabled={!canEdit} onClick={() => removeRow(index)} title="Delete row" type="button">
                           <Trash2 size={15} />
                         </button>
                       ) : null}
@@ -543,7 +543,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
         <div className="flex min-w-0 flex-wrap justify-between gap-3">
           <button className="secondary-button" disabled={!canEdit} onClick={addRow} type="button">
             <Plus size={16} />
-            Thêm dòng
+            Add row
           </button>
           <label className="grid min-w-[min(520px,100%)] gap-2 text-sm font-medium text-[#333333]">
             Ghi chú chung

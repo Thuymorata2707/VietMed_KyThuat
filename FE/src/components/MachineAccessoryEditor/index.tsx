@@ -55,7 +55,7 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
         </span>
         <button className="secondary-button compact" onClick={addItem} type="button">
           <Plus size={16} />
-          {isEndoscopy ? 'Thêm phụ kiện khác' : 'Thêm đầu dò'}
+          {isEndoscopy ? 'Add accessory' : 'Add probe'}
         </button>
       </div>
 
@@ -98,7 +98,7 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
               {isEndoscopy ? 'S/N hoặc số lượng/ghi chú' : 'S/N đầu dò'}
               <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
             </label>
-            <button className="icon-button danger self-end" onClick={() => removeItem(index)} title={isEndoscopy ? 'Xóa phụ kiện' : 'Xóa đầu dò'} type="button">
+            <button className="icon-button danger self-end" onClick={() => removeItem(index)} title={isEndoscopy ? 'Delete accessory' : 'Delete probe'} type="button">
               <Trash2 size={16} />
             </button>
           </div>

@@ -208,7 +208,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
-          Quay lại danh sách
+          Back
         </button>
       </div>
 
@@ -374,7 +374,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                             {attachment.originalName} - {formatFileSize(attachment.size)}
                           </small>
                         </div>
-                        <button className="icon-button" onClick={() => downloadAttachment(attachment)} title="Tải xuống" type="button">
+                        <button className="icon-button" onClick={() => downloadAttachment(attachment)} title="Download" type="button">
                           <Download size={16} />
                         </button>
                       </article>
@@ -412,18 +412,18 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 </label>
                 <button className="primary-button" disabled={uploadingAttachment || !attachmentFile} type="submit">
                   {uploadingAttachment ? <Loader2 className="spin-icon" size={17} /> : null}
-                  {uploadingAttachment ? 'Đang tải lên' : 'Tải lên phiếu'}
+                  {uploadingAttachment ? 'Uploading' : 'Upload'}
                 </button>
               </form>
             </section>
 
             <div className="flex flex-wrap justify-end gap-2">
               <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
-                Hủy
+                Cancel
               </button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-                Lưu cập nhật
+                {saving ? 'Saving' : 'Save'}
               </button>
             </div>
           </aside>
@@ -523,7 +523,7 @@ function StandardChecklistPanel({ items, onApply, title }: { items: string[]; on
           <p className="mt-1 text-xs leading-5 text-[#666666]">Dùng để chuẩn hóa thao tác bảo trì, kỹ sư có thể bổ sung thêm dòng riêng nếu cần.</p>
         </div>
         <button className="secondary-button compact" onClick={onApply} type="button">
-          Thêm vào checklist
+          Add to checklist
         </button>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">

@@ -183,7 +183,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
           {returnTo ? (
             <Link className="secondary-button" to={returnTo}>
               <ArrowLeft size={16} />
-              Quay lại
+              Back
             </Link>
           ) : null}
           <button className="secondary-button" disabled={loading} onClick={() => void loadStatistics()} type="button">

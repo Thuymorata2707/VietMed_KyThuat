@@ -352,7 +352,7 @@
         "updatedAt": "2026-06-11 09:15:28.355",
         "status": "ACTIVE",
         "productCategory": "OTHER",
-        "countryOfOrigin": null,
+        "countryOfOrigin": "Japan",
         "website": null,
         "contactPerson": null,
         "contactPhone": null,
@@ -373,7 +373,7 @@
         "updatedAt": "2026-06-11 09:16:05.332",
         "status": "ACTIVE",
         "productCategory": "ENDOSCOPY",
-        "countryOfOrigin": null,
+        "countryOfOrigin": "China",
         "website": null,
         "contactPerson": null,
         "contactPhone": null,
@@ -394,7 +394,7 @@
         "updatedAt": "2026-06-11 09:16:33.081",
         "status": "ACTIVE",
         "productCategory": "HEMATOLOGY",
-        "countryOfOrigin": null,
+        "countryOfOrigin": "China",
         "website": null,
         "contactPerson": null,
         "contactPhone": null,
@@ -415,7 +415,7 @@
         "updatedAt": "2026-06-11 09:16:43.409",
         "status": "ACTIVE",
         "productCategory": "BIOCHEMISTRY",
-        "countryOfOrigin": null,
+        "countryOfOrigin": "China",
         "website": null,
         "contactPerson": null,
         "contactPhone": null,
@@ -436,7 +436,7 @@
         "updatedAt": "2026-06-11 09:17:51.931",
         "status": "ACTIVE",
         "productCategory": "X_RAY",
-        "countryOfOrigin": null,
+        "countryOfOrigin": "Korea",
         "website": null,
         "contactPerson": null,
         "contactPhone": null,
@@ -478,7 +478,7 @@
         "updatedAt": "2026-06-10 03:27:08.436",
         "status": "ACTIVE",
         "productCategory": "IMMUNOLOGY",
-        "countryOfOrigin": null,
+        "countryOfOrigin": "China",
         "website": null,
         "contactPerson": null,
         "contactPhone": null,
@@ -499,7 +499,7 @@
         "updatedAt": "2026-06-11 08:07:37.254",
         "status": "ACTIVE",
         "productCategory": "ULTRASOUND",
-        "countryOfOrigin": null,
+        "countryOfOrigin": "Korea",
         "website": null,
         "contactPerson": null,
         "contactPhone": null,
@@ -523,9 +523,10 @@
         "productCategory": "ULTRASOUND",
         "productLine": "Máy siêu âm",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.809",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Korea"
       },
       {
         "id": "cmq2m9jde000bi5tgdd95irsv",
@@ -540,7 +541,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 17:17:59.762",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Korea"
       },
       {
         "id": "cmpz8m257000hm1zb59qujxdz",
@@ -553,9 +555,10 @@
         "productCategory": "ULTRASOUND",
         "productLine": "Máy siêu âm xách tay",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.811",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Korea"
       },
       {
         "id": "cmpz8m255000fm1zbni1jx6r0",
@@ -568,9 +571,10 @@
         "productCategory": "ULTRASOUND",
         "productLine": "Máy siêu âm xách tay",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.81",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Korea"
       },
       {
         "id": "cmpz8m252000bm1zbf5bbf2q3",
@@ -583,9 +587,10 @@
         "productCategory": "ULTRASOUND",
         "productLine": "Máy siêu âm",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.807",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Korea"
       },
       {
         "id": "cmpz8m2510009m1zbxxn2thj6",
@@ -598,9 +603,10 @@
         "productCategory": "ULTRASOUND",
         "productLine": "Máy siêu âm",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.806",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Korea"
       },
       {
         "id": "cmpz8m24u0007m1zbw970jf1x",
@@ -613,9 +619,10 @@
         "productCategory": "ULTRASOUND",
         "productLine": "Máy siêu âm",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.798",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Korea"
       },
       {
         "id": "cmq2m9jcn0001i5tgodejwmw4",
@@ -630,7 +637,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 17:17:59.735",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m258000jm1zb6q1eoh85",
@@ -643,9 +651,10 @@
         "productCategory": "ULTRASOUND",
         "productLine": "Máy siêu âm xách tay",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.812",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Korea"
       },
       {
         "id": "cmq2m9jdc0009i5tgckey1c3t",
@@ -654,13 +663,14 @@
         "displayName": "DP - 50",
         "status": "ACTIVE",
         "businessLineId": "cmq2jklrt001oi5qylql90dd0",
-        "manufacturer": "UNKNOWN",
+        "manufacturer": "Mindray",
         "productCategory": "ULTRASOUND",
         "productLine": "DP",
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 17:17:59.76",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2m9jd50003i5tgw3jkp4rl",
@@ -669,13 +679,14 @@
         "displayName": "DP-10",
         "status": "ACTIVE",
         "businessLineId": "cmq2jklrt001oi5qylql90dd0",
-        "manufacturer": "UNKNOWN",
+        "manufacturer": "Mindray",
         "productCategory": "ULTRASOUND",
         "productLine": "DP",
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 17:17:59.753",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2m9jda0007i5tgc3xy4ty6",
@@ -684,13 +695,14 @@
         "displayName": "DC-7",
         "status": "ACTIVE",
         "businessLineId": "cmq2jklrt001oi5qylql90dd0",
-        "manufacturer": "UNKNOWN",
+        "manufacturer": "Mindray",
         "productCategory": "ULTRASOUND",
         "productLine": "DC",
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 17:17:59.758",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2m9jd80005i5tggs5d9tqm",
@@ -699,13 +711,14 @@
         "displayName": "DC-3",
         "status": "ACTIVE",
         "businessLineId": "cmq2jklrt001oi5qylql90dd0",
-        "manufacturer": "UNKNOWN",
+        "manufacturer": "Mindray",
         "productCategory": "ULTRASOUND",
         "productLine": "DC",
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 17:17:59.756",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2m9jdi000fi5tglqpguj2x",
@@ -720,7 +733,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 17:17:59.766",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25k0019m1zbusnynod8",
@@ -733,9 +747,10 @@
         "productCategory": "HEMATOLOGY",
         "productLine": "Huyết học",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.825",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25j0017m1zbr0aspe5o",
@@ -748,9 +763,10 @@
         "productCategory": "HEMATOLOGY",
         "productLine": "Huyết học",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.824",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25f000xm1zbk5j3dkmy",
@@ -763,9 +779,10 @@
         "productCategory": "HEMATOLOGY",
         "productLine": "Huyết học",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.82",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2jklti002vi5qye4qz5hrc",
@@ -780,7 +797,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.267",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25g000zm1zbeytctiyf",
@@ -793,9 +811,10 @@
         "productCategory": "HEMATOLOGY",
         "productLine": "Huyết học",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.821",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25i0015m1zb33o3v4nk",
@@ -808,9 +827,10 @@
         "productCategory": "HEMATOLOGY",
         "productLine": "Huyết học",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.823",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2jklsj0025i5qyrv3s8kwh",
@@ -825,7 +845,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.267",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25i0013m1zb5c8q6pji",
@@ -838,9 +859,10 @@
         "productCategory": "HEMATOLOGY",
         "productLine": "Huyết học",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.822",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25h0011m1zb2gi1tbsz",
@@ -853,9 +875,10 @@
         "productCategory": "HEMATOLOGY",
         "productLine": "Huyết học",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.822",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25f000vm1zbwzcif253",
@@ -868,9 +891,10 @@
         "productCategory": "BIOCHEMISTRY",
         "productLine": "Sinh hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.819",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2jklt3002hi5qyb7te3g4a",
@@ -885,7 +909,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.268",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25d000tm1zbjjkloxlv",
@@ -898,9 +923,10 @@
         "productCategory": "BIOCHEMISTRY",
         "productLine": "Sinh hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.817",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25b000rm1zbg5xy4tl2",
@@ -913,9 +939,10 @@
         "productCategory": "BIOCHEMISTRY",
         "productLine": "Sinh hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.816",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25b000pm1zbykusze85",
@@ -928,9 +955,10 @@
         "productCategory": "BIOCHEMISTRY",
         "productLine": "Sinh hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.815",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2jkltd002ni5qydiy52x5c",
@@ -945,7 +973,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.267",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25a000nm1zb0wsxyed9",
@@ -958,9 +987,10 @@
         "productCategory": "BIOCHEMISTRY",
         "productLine": "Sinh hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.814",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2m9jdg000di5tgmhljrqxt",
@@ -975,7 +1005,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 17:17:59.764",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m259000lm1zbgjzda7db",
@@ -988,9 +1019,10 @@
         "productCategory": "BIOCHEMISTRY",
         "productLine": "Sinh hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.813",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2jkltd002pi5qyuqvieuwd",
@@ -1005,7 +1037,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.267",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m25t001tm1zb4gu3mgfp",
@@ -1018,9 +1051,10 @@
         "productCategory": "IMMUNOLOGY",
         "productLine": "Miễn dịch Fujirebio",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.834",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmq2jklt3002gi5qyrshr30hm",
@@ -1035,7 +1069,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.267",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmq2jklsj002bi5qythm8gdv8",
@@ -1050,7 +1085,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.267",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m25s001rm1zbm20yn7my",
@@ -1063,9 +1099,10 @@
         "productCategory": "IMMUNOLOGY",
         "productLine": "Miễn dịch Fujirebio",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.833",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmq2m9jdj000hi5tg5zecywyj",
@@ -1080,7 +1117,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 17:17:59.767",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25n001hm1zbm1fzkrdp",
@@ -1093,9 +1131,10 @@
         "productCategory": "IMMUNOLOGY",
         "productLine": "Miễn dịch",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.827",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmq2jkltg002ti5qy8gcr1ect",
@@ -1110,7 +1149,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.268",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25m001fm1zb5o2foj6y",
@@ -1123,9 +1163,10 @@
         "productCategory": "IMMUNOLOGY",
         "productLine": "Miễn dịch",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.827",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25m001dm1zbdpkfodhl",
@@ -1138,9 +1179,10 @@
         "productCategory": "IMMUNOLOGY",
         "productLine": "Miễn dịch",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.826",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25l001bm1zb2qaiwmn9",
@@ -1153,9 +1195,10 @@
         "productCategory": "IMMUNOLOGY",
         "productLine": "Miễn dịch",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.825",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m26a0031m1zblhml4mhi",
@@ -1168,9 +1211,10 @@
         "productCategory": "ENDOSCOPY",
         "productLine": "Nội soi tiêu hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.851",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m269002zm1zbc6a2e76y",
@@ -1183,9 +1227,10 @@
         "productCategory": "ENDOSCOPY",
         "productLine": "Nội soi tiêu hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.85",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m268002xm1zbd6pke9mk",
@@ -1198,9 +1243,10 @@
         "productCategory": "ENDOSCOPY",
         "productLine": "Nội soi tiêu hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.849",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m267002vm1zbuf7e6vm8",
@@ -1213,9 +1259,10 @@
         "productCategory": "ENDOSCOPY",
         "productLine": "Nội soi tiêu hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.848",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m267002tm1zb540agx45",
@@ -1228,9 +1275,10 @@
         "productCategory": "ENDOSCOPY",
         "productLine": "Nội soi tiêu hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.847",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m266002rm1zbv758nh0e",
@@ -1243,9 +1291,10 @@
         "productCategory": "ENDOSCOPY",
         "productLine": "Nội soi tiêu hoá",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.846",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25r001pm1zbnb1mjzae",
@@ -1258,9 +1307,10 @@
         "productCategory": "LAB_TESTING",
         "productLine": "Nước tiểu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.832",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25r001nm1zbutz5hhsq",
@@ -1273,9 +1323,10 @@
         "productCategory": "LAB_TESTING",
         "productLine": "Nước tiểu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.831",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m25o001lm1zb4ig2jwt4",
@@ -1288,9 +1339,10 @@
         "productCategory": "LAB_TESTING",
         "productLine": "Nước tiểu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.829",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m26b0033m1zb6mt7jsd1",
@@ -1303,9 +1355,10 @@
         "productCategory": "LAB_TESTING",
         "productLine": "Tách chiết tế bào",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.851",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Korea"
       },
       {
         "id": "cmpz8m26c0035m1zbqma7bu25",
@@ -1318,9 +1371,10 @@
         "productCategory": "LAB_TESTING",
         "productLine": "Tách chiết tế bào",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.852",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Korea"
       },
       {
         "id": "cmpz8m25o001jm1zbin85bpw3",
@@ -1333,9 +1387,10 @@
         "productCategory": "LAB_TESTING",
         "productLine": "Nước tiểu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.828",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "China"
       },
       {
         "id": "cmpz8m260002dm1zb7quwh4uh",
@@ -1348,9 +1403,10 @@
         "productCategory": "OTHER",
         "productLine": "Phục hồi chức năng",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.841",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m265002pm1zbe50z3txp",
@@ -1363,9 +1419,10 @@
         "productCategory": "OTHER",
         "productLine": "Phục hồi chức năng",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.846",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m264002nm1zbvnxi5mq2",
@@ -1378,9 +1435,10 @@
         "productCategory": "OTHER",
         "productLine": "Phục hồi chức năng",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.845",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m264002lm1zb86qhc06f",
@@ -1393,9 +1451,10 @@
         "productCategory": "OTHER",
         "productLine": "Phục hồi chức năng",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.844",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m263002jm1zbwxp3yv09",
@@ -1408,9 +1467,10 @@
         "productCategory": "OTHER",
         "productLine": "Phục hồi chức năng",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.843",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m25x0023m1zb9jmnojzi",
@@ -1423,9 +1483,10 @@
         "productCategory": "OTHER",
         "productLine": "Vật lý trị liệu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.838",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m261002fm1zbxl1ujuxn",
@@ -1438,9 +1499,10 @@
         "productCategory": "OTHER",
         "productLine": "Phục hồi chức năng",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.841",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m25x0021m1zb8j8pzq1b",
@@ -1453,9 +1515,10 @@
         "productCategory": "OTHER",
         "productLine": "Vật lý trị liệu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.837",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m25u001vm1zbys7yquce",
@@ -1468,9 +1531,10 @@
         "productCategory": "OTHER",
         "productLine": "Vật lý trị liệu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.835",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m262002hm1zbdlem3ceq",
@@ -1483,9 +1547,10 @@
         "productCategory": "OTHER",
         "productLine": "Phục hồi chức năng",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.842",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m260002bm1zb1vlzxi23",
@@ -1498,9 +1563,10 @@
         "productCategory": "OTHER",
         "productLine": "Vật lý trị liệu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.84",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmq2jklt7002ji5qy1ako7w0d",
@@ -1515,7 +1581,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.268",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m25y0025m1zbi8wj315y",
@@ -1528,9 +1595,10 @@
         "productCategory": "OTHER",
         "productLine": "Vật lý trị liệu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.838",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m25w001zm1zb7ziwq5id",
@@ -1543,9 +1611,10 @@
         "productCategory": "OTHER",
         "productLine": "Vật lý trị liệu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.836",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m25v001xm1zbi3pjdelb",
@@ -1558,9 +1627,10 @@
         "productCategory": "OTHER",
         "productLine": "Vật lý trị liệu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.835",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m25z0029m1zb68f4fege",
@@ -1573,9 +1643,10 @@
         "productCategory": "OTHER",
         "productLine": "Vật lý trị liệu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.839",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmq2jklt9002li5qyyma6j6i5",
@@ -1590,7 +1661,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.268",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmq2jklti002xi5qy1ll5lrz8",
@@ -1605,7 +1677,8 @@
         "description": null,
         "note": null,
         "createdAt": "2026-06-06 16:02:37.268",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       },
       {
         "id": "cmpz8m25y0027m1zbvfexhe9e",
@@ -1618,9 +1691,10 @@
         "productCategory": "OTHER",
         "productLine": "Vật lý trị liệu",
         "description": null,
-        "note": "Import nhanh từ VietMed.vn. Nguồn: https://vietmed.vn/collections/all",
+        "note": null,
         "createdAt": "2026-06-04 08:32:30.839",
-        "updatedAt": "2026-06-07 11:22:53.193"
+        "updatedAt": "2026-06-07 11:22:53.193",
+        "countryOfOrigin": "Japan"
       }
     ],
     "MachineComponent": [],

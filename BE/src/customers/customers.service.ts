@@ -459,11 +459,20 @@ export class CustomersService {
       where: {
         id: userId.trim(),
         status: 'ACTIVE',
-        role: {
-          name: {
-            equals: 'engineer',
+        OR: [
+          {
+            role: {
+              name: {
+                equals: 'engineer',
+              },
+            },
           },
-        },
+          {
+            engineerProfile: {
+              isNot: null,
+            },
+          },
+        ],
       },
     });
 

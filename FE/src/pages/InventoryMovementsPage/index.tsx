@@ -260,7 +260,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
         </div>
         <button className="secondary-button" disabled={loading} onClick={loadData} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <History size={17} />}
-          Tải lại
+          {loading ? 'Loading' : 'Refresh'}
         </button>
       </div>
 
@@ -320,11 +320,11 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
 
             <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
               <button className="secondary-button" disabled={saving} onClick={() => setActiveMove(null)} type="button">
-                Hủy
+                Cancel
               </button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={17} /> : <ClipboardCheck size={17} />}
-                Ghi nhận
+                {saving ? 'Saving' : 'Save'}
               </button>
             </div>
           </form>

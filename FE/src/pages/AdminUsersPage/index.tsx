@@ -8,6 +8,7 @@ import { PageTitle } from '../../components/PageTitle';
 import { initials } from '../../utils/format';
 
 type UserStatus = 'ACTIVE' | 'INACTIVE';
+type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING';
 
 type Role = {
   id: string;
@@ -30,6 +31,7 @@ type AdminUser = {
   region?: Region | null;
   engineerProfile?: {
     employeeCode?: string | null;
+    expertiseGroup?: ExpertiseGroup | null;
     dateOfBirth?: string | null;
     position?: string | null;
     department?: string | null;
@@ -56,6 +58,8 @@ type UserFormState = {
   certificateNo: string;
   photoUrl: string;
   profileNote: string;
+  expertiseGroup: '' | ExpertiseGroup;
+  isTechnicalStaff: boolean;
   roleId: string;
   regionId: string;
   status: UserStatus;
@@ -75,12 +79,18 @@ const emptyForm: UserFormState = {
   certificateNo: '',
   photoUrl: '',
   profileNote: '',
+  expertiseGroup: '',
+  isTechnicalStaff: false,
   roleId: '',
   regionId: '',
   status: 'ACTIVE',
 };
 
 const pageSizeOptions = [10, 20, 50, 100];
+const expertiseGroupOptions: Array<{ label: string; value: ExpertiseGroup }> = [
+  { label: 'Chẩn đoán hình ảnh', value: 'IMAGING' },
+  { label: 'Xét nghiệm', value: 'LAB_TESTING' },
+];
 
 export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
   const navigate = useNavigate();
@@ -130,7 +140,8 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
   }, [query, users]);
 
   const selectedRole = roles.find((role) => role.id === form.roleId);
-  const shouldShowEngineerProfile = isEngineerRole(selectedRole?.name) || Boolean(editingUser?.engineerProfile);
+  const roleIsEngineer = isEngineerRole(selectedRole?.name);
+  const shouldShowEngineerProfile = roleIsEngineer || form.isTechnicalStaff || Boolean(editingUser?.engineerProfile);
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
   const visibleUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
 
@@ -235,7 +246,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
 
   async function saveEngineerProfileIfNeeded(userId: string) {
     const role = roles.find((item) => item.id === form.roleId);
-    if (!isEngineerRole(role?.name)) return;
+    if (!isEngineerRole(role?.name) && !form.isTechnicalStaff) return;
 
     await apiFetch(`/engineer-profiles/${userId}`, {
       method: 'PUT',
@@ -282,12 +293,12 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
             eyebrow="Admin"
-            title={formMode === 'edit' ? 'Chỉnh sửa nhân sự' : 'Tạo mới nhân sự'}
-            description="Tạo tài khoản, phân quyền, gán khu vực phụ trách và cập nhật hồ sơ kỹ sư."
+            title={formMode === 'edit' ? 'Edit nhân sự' : 'Add nhân sự'}
+            description="Tài khoản, quyền và hồ sơ kỹ sư."
           />
           <button className="secondary-button" onClick={closeForm} type="button">
             <ArrowLeft size={17} />
-            Quay lại danh sách
+            Back
           </button>
         </div>
 
@@ -297,7 +308,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
         <section className="crud-form-page">
           <div className="form-panel-heading">
             <div>
-              <span>{editingUser ? 'Cập nhật' : 'Tạo mới'}</span>
+              <span>{editingUser ? 'Edit' : 'Add'}</span>
               <h2>{editingUser ? editingUser.fullName : 'Tài khoản nhân sự'}</h2>
             </div>
           </div>
@@ -331,11 +342,11 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
         <PageTitle
           eyebrow="Admin"
           title="Quản lý nhân sự"
-          description="Tạo tài khoản, phân quyền, gán khu vực phụ trách và kiểm soát trạng thái người dùng."
+          description="Tài khoản, quyền và trạng thái."
         />
         <button className="secondary-button" disabled={loading} onClick={loadData} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-          {loading ? 'Đang tải' : 'Tải lại'}
+          {loading ? 'Loading' : 'Refresh'}
         </button>
       </div>
 
@@ -351,7 +362,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
             />
             <Link className="primary-button compact" to="/users/new">
               <UserPlus size={17} />
-              Tạo mới
+              Add
             </Link>
           </div>
 
@@ -391,7 +402,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
                     </td>
                     <td className="sticky right-0 z-[1] border-b border-[#eeeeee] bg-white px-3.5 py-[13px]">
                       <div className="flex justify-end gap-1.5">
-                        <Link className="icon-button" to={`/users/${user.id}/edit`} title="Sửa">
+                        <Link className="icon-button" to={`/users/${user.id}/edit`} title="Edit">
                           <Edit3 size={16} />
                         </Link>
                         {user.status === 'ACTIVE' ? (
@@ -416,7 +427,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
                         <button
                           className="icon-button danger"
                           onClick={() => setDeletingUser(user)}
-                          title="Xóa nhân sự"
+                          title="Delete"
                           type="button"
                         >
                           <Trash2 size={16} />
@@ -491,19 +502,16 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
         <div className="crud-modal-backdrop" role="presentation">
           <section aria-modal="true" className="confirm-modal" role="dialog">
             <div>
-              <span className="confirm-eyebrow">Xác nhận xóa nhân sự</span>
+              <span className="confirm-eyebrow">Delete</span>
               <h2>{deletingUser.fullName || deletingUser.email}</h2>
-              <p>
-                Tài khoản sẽ bị xóa khỏi hệ thống. Các phiếu và máy đã liên kết sẽ được giữ lại nhưng bỏ tham chiếu
-                tới nhân sự này nếu backend cho phép.
-              </p>
+              <p>Delete this account if backend allows.</p>
             </div>
             <div className="modal-actions">
               <button className="secondary-button" onClick={() => setDeletingUser(null)} type="button">
-                Hủy
+                Cancel
               </button>
               <button className="danger-button" disabled={saving} onClick={removeUser} type="button">
-                {saving ? 'Đang xóa' : 'Xóa nhân sự'}
+                {saving ? 'Deleting' : 'Delete'}
               </button>
             </div>
           </section>
@@ -526,6 +534,8 @@ function buildPayload(form: UserFormState, isEditing: boolean) {
       | 'certificateNo'
       | 'photoUrl'
       | 'profileNote'
+      | 'expertiseGroup'
+      | 'isTechnicalStaff'
     >
   > = {
     email: form.email.trim(),
@@ -564,6 +574,9 @@ function UserForm({
   saving: boolean;
   shouldShowEngineerProfile: boolean;
 }) {
+  const selectedRole = roles.find((role) => role.id === form.roleId);
+  const roleIsEngineer = isEngineerRole(selectedRole?.name);
+
   return (
     <form className="user-form-page-grid" onSubmit={onSubmit}>
       <div className="form-grid">
@@ -607,13 +620,44 @@ function UserForm({
 
         <label>
           Vai trò
-          <select onChange={(event) => onChange((current) => ({ ...current, roleId: event.target.value }))} required value={form.roleId}>
+          <select
+            onChange={(event) =>
+              onChange((current) => {
+                const nextRole = roles.find((role) => role.id === event.target.value);
+                return {
+                  ...current,
+                  roleId: event.target.value,
+                  isTechnicalStaff: isEngineerRole(nextRole?.name) ? true : current.isTechnicalStaff,
+                };
+              })
+            }
+            required
+            value={form.roleId}
+          >
             {roles.map((role) => (
               <option key={role.id} value={role.id}>
                 {role.name}
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="wide-field rounded-xl border border-[#e5e5e5] bg-[#f8fafc] px-4 py-3">
+          <span className="flex items-start gap-3 text-sm font-semibold text-[#1f2937]">
+            <input
+              checked={roleIsEngineer || form.isTechnicalStaff}
+              className="mt-1 h-4 w-4"
+              disabled={roleIsEngineer}
+              onChange={(event) => onChange((current) => ({ ...current, isTechnicalStaff: event.target.checked }))}
+              type="checkbox"
+            />
+            <span>
+              Kiêm kỹ sư kỹ thuật
+              <span className="mt-1 block text-xs font-normal leading-5 text-[#667085]">
+                Dùng cho trường hợp nhân sự vẫn giữ quyền admin nhưng vẫn xuất hiện trong danh sách kỹ sư để quản lý khách hàng, máy và báo cáo.
+              </span>
+            </span>
+          </span>
         </label>
 
         <label>
@@ -643,6 +687,18 @@ function UserForm({
             </div>
 
             <div className="form-grid compact-grid">
+              <label>
+                Nhóm chuyên môn
+                <select onChange={(event) => onChange((current) => ({ ...current, expertiseGroup: event.target.value as UserFormState['expertiseGroup'] }))} value={form.expertiseGroup}>
+                  <option value="">Chưa chọn</option>
+                  {expertiseGroupOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <label>
                 Mã nhân viên
                 <input onChange={(event) => onChange((current) => ({ ...current, employeeCode: event.target.value }))} value={form.employeeCode} />
@@ -708,18 +764,18 @@ function UserForm({
 
       <div className="modal-actions">
         <button className="secondary-button" onClick={onCancel} type="button">
-          Hủy
+          Cancel
         </button>
         <button className="primary-button" disabled={saving} type="submit">
           {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-          {saving ? 'Đang lưu' : editingUser ? 'Lưu thay đổi' : 'Tạo tài khoản'}
+          {saving ? 'Saving' : 'Save'}
         </button>
       </div>
     </form>
   );
 }
 
-function buildEmptyForm(roles: Role[], regions: Region[]) {
+function buildEmptyForm(roles: Role[], regions: Region[]): UserFormState {
   return {
     ...emptyForm,
     roleId: roles[0]?.id || '',
@@ -727,7 +783,7 @@ function buildEmptyForm(roles: Role[], regions: Region[]) {
   };
 }
 
-function formFromUser(user: AdminUser, roles: Role[], regions: Region[]) {
+function formFromUser(user: AdminUser, roles: Role[], regions: Region[]): UserFormState {
   const profile = user.engineerProfile;
 
   return {
@@ -744,6 +800,8 @@ function formFromUser(user: AdminUser, roles: Role[], regions: Region[]) {
     certificateNo: profile?.certificateNo || '',
     photoUrl: profile?.photoUrl || '',
     profileNote: profile?.note || '',
+    expertiseGroup: profile?.expertiseGroup ?? '',
+    isTechnicalStaff: Boolean(profile) || isEngineerRole(user.role?.name),
     roleId: user.role?.id ?? roles[0]?.id ?? '',
     regionId: user.region?.id ?? regions[0]?.id ?? '',
     status: user.status,
@@ -767,6 +825,7 @@ function buildEngineerProfilePayload(form: UserFormState) {
       .filter(Boolean),
     certificateNo: form.certificateNo.trim() || null,
     photoUrl: form.photoUrl.trim() || null,
+    expertiseGroup: form.expertiseGroup || null,
     note: form.profileNote.trim() || null,
   };
 }

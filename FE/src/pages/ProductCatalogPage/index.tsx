@@ -39,6 +39,7 @@ type MachineModel = {
   name: string;
   displayName?: string | null;
   manufacturer?: string | null;
+  countryOfOrigin?: string | null;
   productLine?: string | null;
   productCategory?: string | null;
   description?: string | null;
@@ -215,6 +216,10 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
       inStock: visibleIndustryStock.inStock,
     };
   }, [visibleIndustryStock, visibleModels]);
+  const overviewIndustries = useMemo(
+    () => buildIndustryOverviewItems(visibleIndustries, visibleModels, stockByIndustry),
+    [stockByIndustry, visibleIndustries, visibleModels],
+  );
 
   async function loadData() {
     setLoading(true);
@@ -278,44 +283,48 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Sản phẩm & Thiết bị"
           title="Danh sách sản phẩm"
-          description="Model sản phẩm mặc định được hiển thị theo ngành hàng. Add sản phẩm dùng để nhập serial máy thực tế vào kho."
+          description="Model theo ngành hàng, tồn kho và serial máy."
         />
         <div className="flex flex-wrap justify-end gap-2">
           {canAddProduct ? (
             <Link className="primary-button" to="/business-lines/add-product">
               <Plus size={17} />
-              Add sản phẩm
+              Add Product
             </Link>
           ) : null}
           <button className="secondary-button" disabled={loading} onClick={() => void loadData()} type="button">
             {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-            Tải lại
+            {loading ? 'Loading' : 'Refresh'}
           </button>
         </div>
       </div>
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="grid overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_18px_44px_rgba(47,95,152,0.10)] xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="grid content-between gap-6 bg-[#f7fafc] p-5 md:p-6">
-          <div>
-            <span className="inline-flex min-h-8 items-center rounded-lg border border-[#d8e0ea] bg-white px-2.5 text-xs font-semibold text-[#d71920]">
-              Catalog overview
-            </span>
-            <h2 className="mt-4 max-w-2xl text-[clamp(24px,3vw,38px)] font-semibold leading-tight text-[#1f1f1f]">
-              Danh mục sản phẩm theo ngành hàng
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#666666]">
-              Theo dõi model cố định, số máy thực tế và tình trạng còn kho trong cùng một màn.
-            </p>
+      <section className="relative overflow-hidden rounded-[28px] border border-[#eadfd7] bg-[#fff9f1] shadow-[0_24px_70px_rgba(94,55,23,0.12)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_12%,rgba(215,25,32,0.12),transparent_28%),radial-gradient(circle_at_92%_20%,rgba(222,145,53,0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.92),rgba(255,246,232,0.76))]" />
+        <div className="relative grid gap-5 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="grid content-between gap-6">
+            <div>
+              <span className="inline-flex min-h-8 items-center rounded-full border border-[#f1c6b9] bg-white/80 px-3 text-xs font-semibold tracking-[0.08em] text-[#a9291f] shadow-[0_8px_22px_rgba(94,55,23,0.08)]">
+                Catalog overview
+              </span>
+              <h2 className="mt-4 max-w-3xl text-[clamp(26px,3.2vw,42px)] font-semibold leading-[1.04] tracking-[-0.035em] text-[#1f1f1f]">
+                Danh mục sản phẩm theo ngành hàng, nhìn nhanh được kho và model.
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6b5d52]">
+                Mỗi ngành hàng gom model, số máy thực tế và tồn kho vào cùng một khung để chọn lọc nhanh hơn khi nhập serial hoặc theo dõi danh mục.
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <IndustryStockCard icon={<Boxes size={18} />} label="Tổng máy" value={catalogTotals.machines} subLabel={`${catalogTotals.inStock} còn kho`} />
+              <IndustryStockCard icon={<Layers3 size={18} />} label="Model" value={catalogTotals.models} subLabel={`${catalogTotals.businessLines} dòng`} />
+              <IndustryStockCard icon={<BarChart3 size={18} />} label="Đang xem" value={visibleModels.length} subLabel="model sau lọc" />
+            </div>
+            <IndustryOverviewRail items={overviewIndustries} />
           </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            <IndustryStockCard icon={<Boxes size={18} />} label="Tổng máy" value={catalogTotals.machines} subLabel={`${catalogTotals.inStock} còn kho`} />
-            <IndustryStockCard icon={<Layers3 size={18} />} label="Model" value={catalogTotals.models} subLabel={`${catalogTotals.businessLines} dòng`} />
-            <IndustryStockCard icon={<BarChart3 size={18} />} label="Đang xem" value={visibleModels.length} subLabel="model sau lọc" />
-          </div>
+          <IndustryMachineChart industries={visibleIndustries} stockByIndustry={stockByIndustry} />
         </div>
-        <IndustryMachineChart industries={visibleIndustries} stockByIndustry={stockByIndustry} />
       </section>
 
       <section className="grid gap-4">
@@ -493,12 +502,12 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
           {detail && canAddProduct ? (
             <Link className="primary-button" to={`/business-lines/add-product?modelId=${detail.id}`}>
               <PackagePlus size={17} />
-              Add sản phẩm
+              Add Product
             </Link>
           ) : null}
           <button className="secondary-button" onClick={() => navigate(backToCatalogHref)} type="button">
             <ArrowLeft size={17} />
-            Quay lại danh sách
+            Back
           </button>
         </div>
       </div>
@@ -663,12 +672,12 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle
           eyebrow="Sản phẩm & Thiết bị"
-          title="Add sản phẩm"
-          description="Chọn model mặc định có sẵn, nhập serial máy thực tế và phụ kiện đi kèm để đưa vào kho."
+          title="Add Product"
+          description="Chọn model, nhập serial và phụ kiện."
         />
         <button className="secondary-button" onClick={() => navigate('/business-lines')} type="button">
           <ArrowLeft size={17} />
-          Quay lại danh sách
+          Back
         </button>
       </div>
 
@@ -717,7 +726,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                 <input
                   className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none"
                   readOnly
-                  value={selectedModel?.businessLine?.countryOfOrigin ?? ''}
+                  value={selectedModel ? modelOrigin(selectedModel) : ''}
                 />
               </label>
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333] md:col-span-2">
@@ -784,7 +793,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
         <aside className="grid min-w-0 gap-4 self-start">
           <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-            <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Products Images</h2>
+            <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Product Image</h2>
             <div className="grid min-h-48 place-items-center rounded-lg border border-dashed border-[#d6d6d6] bg-[#fafafa] p-4 text-center text-sm text-[#666666]">
               <ModelImage large model={selectedModel ?? undefined} />
               <span className="mt-3 block">{selectedModel?.businessLine?.name ?? 'Chọn model để xem hình nhóm sản phẩm'}</span>
@@ -792,7 +801,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
           </div>
 
           <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-            <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Pricing & Availability</h2>
+            <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Stock</h2>
             <div className="grid gap-3 text-sm text-[#333333]">
               <div className="flex items-center justify-between gap-3">
                 <span>Availability Status</span>
@@ -807,11 +816,11 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
           <div className="flex flex-wrap justify-end gap-2">
             <button className="secondary-button" onClick={() => navigate('/business-lines')} type="button">
-              Draft
+              Cancel
             </button>
             <button className="primary-button" disabled={saving || loading || !canAddProduct} type="submit">
               {saving ? <Loader2 className="spin-icon" size={17} /> : <PackagePlus size={17} />}
-              Publish Product
+              {saving ? 'Saving' : 'Save Product'}
             </button>
           </div>
         </aside>
@@ -857,7 +866,7 @@ function ModelRow({
         {canAddProduct ? (
           <Link className="primary-button compact" to={`/business-lines/add-product?modelId=${model.id}`}>
             <PackagePlus size={16} />
-            Add sản phẩm
+            Add Product
           </Link>
         ) : (
           <span className="text-[13px] text-[#666666]">Chỉ xem</span>
@@ -1044,7 +1053,7 @@ function ModelCard({
       <div className="grid gap-1 text-sm">
         <span className="text-[12px] font-medium text-[#666666]">Hãng / loại</span>
         <strong className="truncate text-[#333333]">{model.manufacturer || 'Chưa có hãng'}</strong>
-        <span className="truncate text-xs text-[#666666]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</span>
+        <span className="truncate text-xs text-[#666666]">{[modelOrigin(model), productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)].filter(Boolean).join(' - ')}</span>
       </div>
 
       <div className="grid gap-2">
@@ -1059,12 +1068,12 @@ function ModelCard({
 
       <div className="flex flex-wrap justify-end gap-2">
         <Link className="secondary-button compact" to={`/business-lines/models/${model.id}${catalogSearch}`}>
-          Xem
+          View
         </Link>
         {canAddProduct ? (
           <Link className="primary-button compact" to={`/business-lines/add-product?modelId=${model.id}`}>
             <PackagePlus size={16} />
-            Add
+            Add Product
           </Link>
         ) : null}
       </div>
@@ -1138,7 +1147,7 @@ function ModelDetailBlock({
               </label>
               <button className="primary-button compact mt-3" disabled={savingImage} onClick={onSaveImage} type="button">
                 {savingImage ? <Loader2 className="spin-icon" size={16} /> : <Save size={16} />}
-                Lưu ảnh
+                {savingImage ? 'Saving' : 'Save'}
               </button>
             </div>
           ) : null}
@@ -1266,10 +1275,10 @@ function IndustryMachineChart({
   const maxTotal = Math.max(1, ...items.map((item) => item.stock.total));
 
   return (
-    <section className="grid gap-4 border-l border-[#d8e0ea] bg-white p-5 md:p-6">
+    <section className="grid gap-4 rounded-[22px] border border-white/70 bg-white/78 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_18px_38px_rgba(94,55,23,0.08)] backdrop-blur md:p-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <span className="text-[12px] font-medium text-[#666666]">Biểu đồ ngành hàng</span>
+          <span className="text-[12px] font-medium text-[#8a5d46]">Biểu đồ ngành hàng</span>
           <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Số lượng máy theo ngành</h2>
         </div>
         <BarChart3 className="text-[#d71920]" size={20} />
@@ -1283,8 +1292,8 @@ function IndustryMachineChart({
                 <span className="font-medium text-[#333333]">{item.name}</span>
                 <span className="font-semibold tabular-nums text-[#1f1f1f]">{item.stock.total}</span>
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-[#eeeeee]">
-                <div className="h-full rounded-full bg-[#d71920] transition-[width] duration-300" style={{ width: `${width}%` }} />
+              <div className="h-2.5 overflow-hidden rounded-full bg-[#f0e2d5]">
+                <div className="h-full rounded-full bg-gradient-to-r from-[#d71920] to-[#e8883a] transition-[width] duration-300" style={{ width: `${width}%` }} />
               </div>
               <span className="text-xs text-[#666666]">{item.stock.inStock} máy còn kho</span>
             </div>
@@ -1298,15 +1307,34 @@ function IndustryMachineChart({
 
 function IndustryStockCard({ icon, label, subLabel, value }: { icon: ReactNode; label: string; subLabel: string; value: number }) {
   return (
-    <div className="grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <div className="grid gap-3 rounded-[18px] border border-white/70 bg-white/82 p-4 font-sans shadow-[0_18px_34px_rgba(94,55,23,0.09)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(94,55,23,0.13)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold text-[#666666]">{label}</span>
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#eef6ff] text-[#d71920]">{icon}</span>
+        <span className="text-sm font-semibold text-[#6b5d52]">{label}</span>
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff0e4] text-[#d71920]">{icon}</span>
       </div>
       <div className="grid gap-1">
         <strong className="text-3xl font-semibold leading-none text-[#1f1f1f]">{value}</strong>
-        <span className="text-xs font-medium text-[#666666]">{subLabel}</span>
+        <span className="text-xs font-medium text-[#7d6f64]">{subLabel}</span>
       </div>
+    </div>
+  );
+}
+
+function IndustryOverviewRail({ items }: { items: Array<{ id: string; name: string; modelCount: number; stock: ModelStock }> }) {
+  if (!items.length) {
+    return <p className="rounded-2xl bg-white/70 p-4 text-sm text-[#6b5d52]">Chưa có ngành hàng để tổng hợp.</p>;
+  }
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2 min-[1180px]:grid-cols-4">
+      {items.slice(0, 4).map((item) => (
+        <div className="rounded-2xl border border-white/70 bg-white/62 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]" key={item.id}>
+          <span className="block truncate text-sm font-semibold text-[#1f1f1f]">{item.name}</span>
+          <span className="mt-1 block text-xs text-[#7d6f64]">
+            {item.modelCount} model · {item.stock.total} máy · {item.stock.inStock} còn kho
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1421,16 +1449,42 @@ function groupModelsByIndustry(models: MachineModel[]): ModelIndustryGroupItem[]
   return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
 }
 
+function buildIndustryOverviewItems(
+  industries: ProductIndustry[],
+  models: MachineModel[],
+  stockByIndustry: Record<string, ModelStock>,
+) {
+  const modelCountByIndustry = models.reduce<Record<string, number>>((count, model) => {
+    const industryId = model.businessLine?.productIndustry?.id;
+    if (!industryId) return count;
+    count[industryId] = (count[industryId] ?? 0) + 1;
+    return count;
+  }, {});
+
+  return industries
+    .map((industry) => ({
+      id: industry.id,
+      name: industry.name,
+      modelCount: modelCountByIndustry[industry.id] ?? 0,
+      stock: stockByIndustry[industry.id] ?? { inStock: 0, total: 0 },
+    }))
+    .sort((first, second) => second.stock.total - first.stock.total || second.modelCount - first.modelCount);
+}
+
 function modelShortLabel(model: MachineModel) {
   return model.code || model.displayName || model.name;
 }
 
 function modelDetailLabel(model: MachineModel) {
-  return [model.name, model.productLine, model.businessLine?.name].filter(Boolean).join(' - ') || 'Chưa có mô tả model';
+  return [model.name, model.productLine, modelOrigin(model), model.businessLine?.name].filter(Boolean).join(' - ') || 'Chưa có mô tả model';
 }
 
 function modelOptionLabel(model: MachineModel) {
   return modelShortLabel(model);
+}
+
+function modelOrigin(model: MachineModel) {
+  return model.countryOfOrigin || model.businessLine?.countryOfOrigin || '';
 }
 
 function buildProductOptions(models: MachineModel[]) {
@@ -1449,13 +1503,7 @@ function buildProductOptions(models: MachineModel[]) {
 }
 
 function productNoteText(model: MachineModel) {
-  return [
-    model.note,
-    model.description,
-    model.businessLine?.note ? `Ghi chú dòng sản phẩm: ${model.businessLine.note}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  return [model.note, model.businessLine?.note].filter(Boolean).join('\n');
 }
 
 function emptyProductForm(machineModelId: string): ProductForm {

@@ -102,12 +102,12 @@ export function InstallationHandoverForm({
               />
             </label>
             <button className="task-secondary device-remove-button" onClick={() => removeDeviceItem(index)} type="button">
-              Xóa dòng
+              Delete row
             </button>
           </div>
         ))}
         <button className="task-secondary device-add-button" onClick={addDeviceItem} type="button">
-          Thêm thiết bị
+          Add device
         </button>
       </div>
 

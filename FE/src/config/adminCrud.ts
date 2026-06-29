@@ -279,6 +279,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'displayName', label: 'Tên hiển thị' },
       { name: 'status', label: 'Trạng thái', type: 'select', options: activeInactiveStatuses },
       { name: 'manufacturer', label: 'Hãng sản xuất', required: true },
+      { name: 'countryOfOrigin', label: 'Xuất xứ', placeholder: 'VD: Korea, China, Japan' },
       { name: 'productCategory', label: 'Loại thiết bị', type: 'select', options: productCategories },
       { name: 'productLine', label: 'Dòng sản phẩm' },
       { name: 'description', label: 'Mô tả', type: 'textarea' },

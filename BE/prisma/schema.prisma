@@ -511,6 +511,7 @@ model MachineModel {
   businessLine   BusinessLine @relation(fields: [businessLineId], references: [id])
 
   manufacturer    String?
+  countryOfOrigin String?
   productCategory MachineProductCategory @default(OTHER)
   productLine     String?
   description     String?

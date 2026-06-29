@@ -40,6 +40,8 @@ export class MachineModelsService {
           status: dto.status ?? BusinessLineStatus.ACTIVE,
           manufacturer:
             dto.manufacturer?.trim() || businessLine.manufacturer || null,
+          countryOfOrigin:
+            dto.countryOfOrigin?.trim() || businessLine.countryOfOrigin || null,
           productCategory: dto.productCategory ?? businessLine.productCategory,
           productLine: dto.productLine?.trim() || null,
           description: dto.description?.trim() || null,
@@ -199,6 +201,10 @@ export class MachineModelsService {
             dto.manufacturer === undefined
               ? undefined
               : dto.manufacturer?.trim() || businessLine.manufacturer || null,
+          countryOfOrigin:
+            dto.countryOfOrigin === undefined
+              ? undefined
+              : dto.countryOfOrigin?.trim() || businessLine.countryOfOrigin || null,
           productCategory: dto.productCategory,
           productLine:
             dto.productLine === undefined
@@ -226,6 +232,7 @@ export class MachineModelsService {
             'displayName',
             'status',
             'manufacturer',
+            'countryOfOrigin',
             'productCategory',
             'productLine',
             'description',

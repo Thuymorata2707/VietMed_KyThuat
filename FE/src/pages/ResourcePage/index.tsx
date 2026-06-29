@@ -97,7 +97,7 @@ export function ResourcePage({
                 {getEditHref ? (
                   <td className="border-b border-[#eeeeee] px-4 py-3.5 text-right">
                     {editHref ? (
-                      <Link className="icon-button" title="Sửa" to={editHref}>
+                      <Link className="icon-button" title="Edit" to={editHref}>
                         <Edit3 size={16} />
                       </Link>
                     ) : null}

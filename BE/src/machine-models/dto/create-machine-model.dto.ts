@@ -74,6 +74,10 @@ export class CreateMachineModelDto {
   manufacturer?: string;
 
   @IsOptional()
+  @IsString()
+  countryOfOrigin?: string;
+
+  @IsOptional()
   @IsEnum(MachineProductCategory)
   productCategory?: MachineProductCategory;
 
