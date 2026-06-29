@@ -1,10 +1,12 @@
 import { ArrowLeft, Edit3, History, ImageOff, Loader2, Power, PowerOff, RefreshCw, Save, Trash2, UserPlus } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { queryKeys } from '../../lib/queryKeys';
 import { initials } from '../../utils/format';
 
 type UserStatus = 'ACTIVE' | 'INACTIVE';
@@ -42,6 +44,12 @@ type AdminUser = {
     note?: string | null;
   } | null;
   createdAt: string;
+};
+
+type AdminUsersBootstrap = {
+  users: AdminUser[];
+  roles: Role[];
+  regions: Region[];
 };
 
 type UserFormState = {
@@ -95,25 +103,117 @@ const expertiseGroupOptions: Array<{ label: string; value: ExpertiseGroup }> = [
 export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
   const navigate = useNavigate();
   const { userId = '' } = useParams();
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [regions, setRegions] = useState<Region[]>([]);
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<UserFormState>(emptyForm);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   const isFormPage = Boolean(formMode);
 
+  const usersQuery = useQuery({
+    queryKey: queryKeys.adminUsers.bootstrap,
+    queryFn: async (): Promise<AdminUsersBootstrap> => {
+      const [usersResult, rolesResult, regionsResult] = await Promise.all([
+        apiFetch<Paginated<AdminUser> | AdminUser[]>('/users?limit=100'),
+        apiFetch<Role[]>('/roles'),
+        apiFetch<Region[]>('/regions'),
+      ]);
+
+      return {
+        users: unpack(usersResult),
+        roles: rolesResult,
+        regions: regionsResult,
+      };
+    },
+  });
+
+  const users = usersQuery.data?.users ?? [];
+  const roles = usersQuery.data?.roles ?? [];
+  const regions = usersQuery.data?.regions ?? [];
+
   useEffect(() => {
-    void loadData();
-  }, [formMode, userId]);
+    if (!usersQuery.data) return;
+
+    if (formMode === 'edit') {
+      const nextEditingUser = users.find((item) => item.id === userId) ?? null;
+      setEditingUser(nextEditingUser);
+      if (nextEditingUser) {
+        setForm(formFromUser(nextEditingUser, roles, regions));
+        setFormError('');
+      } else {
+        setFormError('Không tìm thấy nhân sự cần chỉnh sửa.');
+      }
+    } else if (formMode === 'create') {
+      setEditingUser(null);
+      setForm(buildEmptyForm(roles, regions));
+      setFormError('');
+    } else {
+      setForm((current) => ({
+        ...current,
+        roleId: current.roleId || roles[0]?.id || '',
+        regionId: current.regionId || regions[0]?.id || '',
+      }));
+    }
+  }, [formMode, regions, roles, userId, users, usersQuery.data]);
+
+  const saveUserMutation = useMutation({
+    mutationFn: async ({ currentEditingUser, currentForm }: { currentEditingUser: AdminUser | null; currentForm: UserFormState }) => {
+      const payload = buildPayload(currentForm, Boolean(currentEditingUser));
+      const savedUser = currentEditingUser
+        ? await apiFetch<AdminUser>(`/users/${currentEditingUser.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          })
+        : await apiFetch<AdminUser>('/users', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+
+      await syncEngineerProfile(savedUser.id, currentEditingUser, currentForm);
+      return { isEditing: Boolean(currentEditingUser) };
+    },
+    onSuccess: async ({ isEditing }) => {
+      setSuccess(isEditing ? 'Đã cập nhật tài khoản.' : 'Đã tạo tài khoản mới.');
+      await queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.bootstrap });
+      if (isFormPage) {
+        navigate('/users');
+      } else {
+        closeForm();
+      }
+    },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: async ({ status, user }: { user: AdminUser; status: UserStatus }) => {
+      await apiFetch<AdminUser>(`/users/${user.id}/${status === 'ACTIVE' ? 'activate' : 'deactivate'}`, {
+        method: 'PATCH',
+      });
+      return status;
+    },
+    onSuccess: async (status) => {
+      setSuccess(status === 'ACTIVE' ? 'Đã kích hoạt tài khoản.' : 'Đã vô hiệu hóa tài khoản.');
+      await queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.bootstrap });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userIdToDelete: string) => apiFetch(`/users/${userIdToDelete}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      setSuccess('Đã xóa nhân sự.');
+      setDeletingUser(null);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.bootstrap });
+    },
+  });
+
+  const loading = usersQuery.isLoading || usersQuery.isFetching;
+  const saving = saveUserMutation.isPending || deleteUserMutation.isPending;
+  const mutationError = saveUserMutation.error ?? statusMutation.error ?? deleteUserMutation.error;
+  const error = formError || (usersQuery.error instanceof Error ? usersQuery.error.message : '') || (mutationError instanceof Error ? mutationError.message : '');
 
   const filteredUsers = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -149,47 +249,6 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
     setPage((current) => Math.min(current, totalPages));
   }, [totalPages]);
 
-  async function loadData() {
-    setLoading(true);
-    setError('');
-
-    try {
-      const [usersResult, rolesResult, regionsResult] = await Promise.all([
-        apiFetch<Paginated<AdminUser> | AdminUser[]>('/users?limit=100'),
-        apiFetch<Role[]>('/roles'),
-        apiFetch<Region[]>('/regions'),
-      ]);
-
-      const nextUsers = unpack(usersResult);
-      setUsers(nextUsers);
-      setRoles(rolesResult);
-      setRegions(regionsResult);
-
-      if (formMode === 'edit') {
-        const nextEditingUser = nextUsers.find((item) => item.id === userId) ?? null;
-        setEditingUser(nextEditingUser);
-        if (nextEditingUser) {
-          setForm(formFromUser(nextEditingUser, rolesResult, regionsResult));
-        } else {
-          setError('Không tìm thấy nhân sự cần chỉnh sửa.');
-        }
-      } else if (formMode === 'create') {
-        setEditingUser(null);
-        setForm(buildEmptyForm(rolesResult, regionsResult));
-      } else {
-        setForm((current) => ({
-          ...current,
-          roleId: current.roleId || rolesResult[0]?.id || '',
-          regionId: current.regionId || regionsResult[0]?.id || '',
-        }));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được dữ liệu nhân sự');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   function handleSearchChange(value: string) {
     setQuery(value);
     setPage(1);
@@ -208,89 +267,53 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      const payload = buildPayload(form, Boolean(editingUser));
-
-      if (editingUser) {
-        const savedUser = await apiFetch<AdminUser>(`/users/${editingUser.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload),
-        });
-        await syncEngineerProfile(savedUser.id);
-        setSuccess('Đã cập nhật tài khoản.');
-      } else {
-        const savedUser = await apiFetch<AdminUser>('/users', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-        await syncEngineerProfile(savedUser.id);
-        setSuccess('Đã tạo tài khoản mới.');
-      }
-
-      if (isFormPage) {
-        navigate('/users');
-      } else {
-        await loadData();
-        closeForm();
-      }
+      await saveUserMutation.mutateAsync({ currentEditingUser: editingUser, currentForm: form });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không lưu được tài khoản');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không lưu được tài khoản');
     }
   }
 
-  async function syncEngineerProfile(userId: string) {
-    const role = roles.find((item) => item.id === form.roleId);
-    const shouldKeepEngineerProfile = isEngineerRole(role?.name) || form.isTechnicalStaff;
+  async function syncEngineerProfile(userIdToSync: string, currentEditingUser: AdminUser | null, currentForm: UserFormState) {
+    const role = roles.find((item) => item.id === currentForm.roleId);
+    const shouldKeepEngineerProfile = isEngineerRole(role?.name) || currentForm.isTechnicalStaff;
 
     if (!shouldKeepEngineerProfile) {
-      if (editingUser?.engineerProfile) {
-        await apiFetch(`/engineer-profiles/${userId}`, { method: 'DELETE' });
+      if (currentEditingUser?.engineerProfile) {
+        await apiFetch(`/engineer-profiles/${userIdToSync}`, { method: 'DELETE' });
       }
       return;
     }
 
-    await apiFetch(`/engineer-profiles/${userId}`, {
+    await apiFetch(`/engineer-profiles/${userIdToSync}`, {
       method: 'PUT',
-      body: JSON.stringify(buildEngineerProfilePayload(form)),
+      body: JSON.stringify(buildEngineerProfilePayload(currentForm)),
     });
   }
 
   async function setUserStatus(user: AdminUser, status: UserStatus) {
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      await apiFetch<AdminUser>(`/users/${user.id}/${status === 'ACTIVE' ? 'activate' : 'deactivate'}`, {
-        method: 'PATCH',
-      });
-      setSuccess(status === 'ACTIVE' ? 'Đã kích hoạt tài khoản.' : 'Đã vô hiệu hóa tài khoản.');
-      await loadData();
+      await statusMutation.mutateAsync({ status, user });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không đổi được trạng thái tài khoản');
+      setFormError(err instanceof Error ? err.message : 'Không đổi được trạng thái tài khoản');
     }
   }
 
   async function removeUser() {
     if (!deletingUser) return;
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      await apiFetch(`/users/${deletingUser.id}`, { method: 'DELETE' });
-      setSuccess('Đã xóa nhân sự.');
-      setDeletingUser(null);
-      await loadData();
+      await deleteUserMutation.mutateAsync(deletingUser.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không xóa được nhân sự');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không xóa được nhân sự');
     }
   }
 
@@ -356,7 +379,16 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
             <History size={17} />
             Audit log
           </Link>
-          <button className="secondary-button" disabled={loading} onClick={loadData} type="button">
+          <button
+            className="secondary-button"
+            disabled={loading}
+            onClick={() => {
+              setFormError('');
+              setSuccess('');
+              void usersQuery.refetch();
+            }}
+            type="button"
+          >
             {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
             {loading ? 'Loading' : 'Refresh'}
           </button>

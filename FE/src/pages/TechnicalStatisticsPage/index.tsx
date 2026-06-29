@@ -1,4 +1,5 @@
 import { ArrowLeft, BarChart3, ClipboardCheck, FileText, Loader2, RefreshCw, SlidersHorizontal, Users } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -7,6 +8,7 @@ import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { queryKeys } from '../../lib/queryKeys';
 
 type EngineerOption = {
   id: string;
@@ -118,13 +120,24 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
   const [engineerId, setEngineerId] = useState(() => (isAdmin ? searchParams.get('engineerId') || '' : user.id));
   const [productIndustryId, setProductIndustryId] = useState(() => searchParams.get('productIndustryId') || '');
   const [workType, setWorkType] = useState(() => normalizeWorkType(searchParams.get('workType')));
-  const [data, setData] = useState<TechnicalStatistics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    void loadStatistics();
-  }, [currentRole, engineerId, from, productIndustryId, to, user.id, workType]);
+  const requestParams = useMemo(() => {
+    const params = new URLSearchParams({ from, to });
+    const effectiveEngineerId = isAdmin ? engineerId : user.id;
+    if (effectiveEngineerId) params.set('engineerId', effectiveEngineerId);
+    if (productIndustryId) params.set('productIndustryId', productIndustryId);
+    if (workType) params.set('workType', workType);
+    return params.toString();
+  }, [engineerId, from, isAdmin, productIndustryId, to, user.id, workType]);
+
+  const statisticsQuery = useQuery({
+    queryKey: queryKeys.technicalStatistics.overview(requestParams),
+    queryFn: () => apiFetch<TechnicalStatistics>(`/dashboard/technical-statistics?${requestParams}`),
+  });
+
+  const data = statisticsQuery.data ?? null;
+  const loading = statisticsQuery.isLoading || statisticsQuery.isFetching;
+  const error = statisticsQuery.error instanceof Error ? statisticsQuery.error.message : '';
 
   const selectedEngineer = useMemo(
     () => (isAdmin ? data?.filters.engineers.find((engineer) => engineer.id === engineerId) : null),
@@ -148,24 +161,6 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
     }
   }, [isIndustryLocked, productIndustryId]);
 
-  async function loadStatistics() {
-    setLoading(true);
-    setError('');
-
-    try {
-      const params = new URLSearchParams({ from, to });
-      const effectiveEngineerId = isAdmin ? engineerId : user.id;
-      if (effectiveEngineerId) params.set('engineerId', effectiveEngineerId);
-      if (!isIndustryLocked && productIndustryId) params.set('productIndustryId', productIndustryId);
-      if (workType) params.set('workType', workType);
-      setData(await apiFetch<TechnicalStatistics>(`/dashboard/technical-statistics?${params.toString()}`));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được thống kê kỹ thuật.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const maxEngineerTotal = useMemo(() => Math.max(...(data?.byEngineer ?? []).map((item) => item.total), 1), [data]);
   const maxIndustryTotal = useMemo(() => Math.max(...(data?.byIndustry ?? []).map((item) => item.total), 1), [data]);
   const maxTrendTotal = useMemo(() => Math.max(...(data?.trend ?? []).map((item) => item.total), 1), [data]);
@@ -186,7 +181,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
               Back
             </Link>
           ) : null}
-          <button className="secondary-button" disabled={loading} onClick={() => void loadStatistics()} type="button">
+          <button className="secondary-button" disabled={loading} onClick={() => void statisticsQuery.refetch()} type="button">
             {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
             Làm mới
           </button>

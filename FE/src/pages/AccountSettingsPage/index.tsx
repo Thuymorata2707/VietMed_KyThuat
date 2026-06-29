@@ -68,9 +68,10 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
 
   return (
     <PageFrame>
-      <section className="flex items-stretch justify-between gap-[18px] overflow-hidden rounded-[18px] bg-[linear-gradient(135deg,#1f1f1f_0%,#202939_48%,#b5121b_115%)] p-6 text-white shadow-[0_12px_30px_rgba(20,32,51,0.06)] max-[760px]:grid">
-        <div className="flex min-w-0 items-center gap-[18px] max-[760px]:grid max-[760px]:items-start">
-          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-white/30 bg-white/15 text-[28px] font-medium text-white">
+      <section className="relative flex items-stretch justify-between gap-[18px] overflow-hidden rounded-[30px] border border-[#f5c7cb] bg-[#fff7f8] p-6 text-[#1f1f1f] shadow-[0_24px_70px_rgba(215,25,32,0.10)] max-[760px]:grid">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_9%_18%,rgba(215,25,32,0.15),transparent_30%),radial-gradient(circle_at_92%_16%,rgba(255,255,255,0.96),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,247,248,0.78))]" />
+        <div className="relative flex min-w-0 items-center gap-[18px] max-[760px]:grid max-[760px]:items-start">
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border border-white bg-white text-[28px] font-semibold text-[#d71920] shadow-[0_18px_42px_rgba(215,25,32,0.14)]">
             {form.photoUrl && !photoFailed ? (
               <img alt="" className="h-full w-full object-cover" onError={() => setPhotoFailed(true)} src={form.photoUrl} />
             ) : form.photoUrl && photoFailed ? (
@@ -80,16 +81,16 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
             )}
           </div>
           <div>
-            <span className="mb-2 block text-xs font-medium text-[#ffd9d5]">Account settings</span>
-            <h1 className="mb-2.5 text-[clamp(28px,4vw,44px)] font-medium leading-none">{form.fullName || user.email}</h1>
-            <p className="max-w-[640px] text-white/80">Cập nhật thông tin cá nhân, hồ sơ kỹ sư và chuyên môn hiển thị trong hệ thống VietMed.</p>
+            <span className="mb-2 inline-flex rounded-full border border-[#f5c7cb] bg-white px-3 py-1 text-xs font-semibold text-[#d71920]">Account settings</span>
+            <h1 className="mb-2.5 text-[clamp(28px,4vw,46px)] font-semibold leading-none tracking-[-0.03em] text-[#171717]">{form.fullName || user.email}</h1>
+            <p className="max-w-[640px] text-[15px] leading-7 text-[#555555]">Cập nhật thông tin cá nhân, hồ sơ kỹ sư và chuyên môn hiển thị trong hệ thống VietMed.</p>
           </div>
         </div>
 
-        <div className="grid min-w-60 self-center rounded-2xl border border-white/20 bg-white/10 p-4">
-          <span className="text-white/75">{roleLabel(role)}</span>
-          <strong className="text-lg">{user.region?.name || 'Chưa gán khu vực'}</strong>
-          <small className="text-white/75">{user.email}</small>
+        <div className="relative grid min-w-60 self-center rounded-2xl border border-white bg-white/82 p-4 shadow-[0_14px_34px_rgba(215,25,32,0.10)]">
+          <span className="text-sm font-semibold text-[#777777]">{roleLabel(role)}</span>
+          <strong className="text-lg text-[#1f1f1f]">{user.region?.name || 'Chưa gán khu vực'}</strong>
+          <small className="text-[#666666]">{user.email}</small>
         </div>
       </section>
 

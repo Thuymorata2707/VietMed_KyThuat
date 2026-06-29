@@ -1,4 +1,5 @@
 import { BarChart3, ClipboardCheck, Loader2, Plus, RefreshCw, Search, Stethoscope, Wrench } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -7,6 +8,7 @@ import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { queryKeys } from '../../lib/queryKeys';
 import { displayLabel } from '../../utils/displayLabels';
 
 type ServiceTicketKind = 'repairs' | 'maintenance';
@@ -192,51 +194,50 @@ function OperationsBoard({
   user: ApiUser;
 }) {
   const role = getRoleName(user);
-  const [items, setItems] = useState<BoardItem[]>([]);
-  const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [productIndustryId, setProductIndustryId] = useState('');
   const [engineerId, setEngineerId] = useState('');
   const [queue, setQueue] = useState<QueueKey>('action');
   const [groupBy, setGroupBy] = useState<GroupByKey>('date');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedQuery(query.trim()), 280);
     return () => window.clearTimeout(timeout);
   }, [query]);
 
-  useEffect(() => {
-    void loadBoard();
+  const boardParams = useMemo(() => {
+    const params = new URLSearchParams({ limit: '100' });
+    if (debouncedQuery) params.set('search', debouncedQuery);
+    if (productIndustryId) params.set('productIndustryId', productIndustryId);
+    if (engineerId) params.set(kind === 'installations' ? 'installedById' : 'engineerId', engineerId);
+    return params.toString();
   }, [debouncedQuery, engineerId, kind, productIndustryId]);
 
-  useEffect(() => {
-    apiFetch<Paginated<EngineerOption> | EngineerOption[]>('/users?limit=100&roleName=engineer&status=ACTIVE')
-      .then((result) => setEngineers(Array.isArray(result) ? result : result.data ?? []))
-      .catch(() => setEngineers([]));
-  }, []);
-
-  async function loadBoard() {
-    setLoading(true);
-    setError('');
-
-    try {
-      const params = new URLSearchParams({ limit: '100' });
-      if (debouncedQuery) params.set('search', debouncedQuery);
-      if (productIndustryId) params.set('productIndustryId', productIndustryId);
-      if (engineerId) params.set(kind === 'installations' ? 'installedById' : 'engineerId', engineerId);
+  const boardQuery = useQuery({
+    queryKey: queryKeys.serviceTickets.board(kind, boardParams),
+    queryFn: async () => {
       const endpoint = kind === 'installations' ? '/installations' : kind === 'maintenance' ? '/maintenance' : '/repairs';
-      const result = await apiFetch<Paginated<ServiceRow | InstallationRow> | Array<ServiceRow | InstallationRow>>(`${endpoint}?${params.toString()}`);
+      const result = await apiFetch<Paginated<ServiceRow | InstallationRow> | Array<ServiceRow | InstallationRow>>(`${endpoint}?${boardParams}`);
       const rows = Array.isArray(result) ? result : result.data ?? [];
-      setItems(rows.map((row) => normalizeBoardItem(row, kind)));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được danh sách phiếu.');
-    } finally {
-      setLoading(false);
-    }
-  }
+      return rows.map((row) => normalizeBoardItem(row, kind));
+    },
+  });
+
+  const engineersQuery = useQuery({
+    queryKey: queryKeys.serviceTickets.engineers,
+    queryFn: async () => {
+      const result = await apiFetch<Paginated<EngineerOption> | EngineerOption[]>('/users?limit=100&roleName=engineer&status=ACTIVE');
+      return Array.isArray(result) ? result : result.data ?? [];
+    },
+  });
+
+  const items = boardQuery.data ?? [];
+  const engineers = engineersQuery.data ?? [];
+  const loading = boardQuery.isLoading || boardQuery.isFetching;
+  const error =
+    (boardQuery.error instanceof Error ? boardQuery.error.message : '') ||
+    (engineersQuery.error instanceof Error ? engineersQuery.error.message : '');
 
   const counts = useMemo(() => buildQueueCounts(items), [items]);
   const visibleItems = useMemo(() => filterByQueue(items, queue), [items, queue]);
@@ -258,7 +259,7 @@ function OperationsBoard({
               Xem báo cáo
             </Link>
           ) : null}
-          <button className="secondary-button" disabled={loading} onClick={() => void loadBoard()} type="button">
+          <button className="secondary-button" disabled={loading} onClick={() => void boardQuery.refetch()} type="button">
             {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
             Làm mới
           </button>
@@ -402,13 +403,14 @@ function ticketCardClass(item: BoardItem) {
 }
 
 function ProductIndustryFilter({ onChange, value }: { onChange: (value: string) => void; value: string }) {
-  const [industries, setIndustries] = useState<ProductIndustry[]>([]);
-
-  useEffect(() => {
-    apiFetch<Paginated<ProductIndustry> | ProductIndustry[]>('/product-industries?limit=100')
-      .then((result) => setIndustries(Array.isArray(result) ? result : result.data ?? []))
-      .catch(() => setIndustries([]));
-  }, []);
+  const industriesQuery = useQuery({
+    queryKey: queryKeys.serviceTickets.industries,
+    queryFn: async () => {
+      const result = await apiFetch<Paginated<ProductIndustry> | ProductIndustry[]>('/product-industries?limit=100');
+      return Array.isArray(result) ? result : result.data ?? [];
+    },
+  });
+  const industries = industriesQuery.data ?? [];
 
   return (
     <label className="operation-filter-field">

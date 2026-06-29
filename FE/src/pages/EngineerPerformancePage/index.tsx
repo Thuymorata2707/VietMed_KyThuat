@@ -1,4 +1,5 @@
 import { BarChart3, CalendarDays, Download, FileText, Loader2, RefreshCw, Users } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
@@ -6,6 +7,7 @@ import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { queryKeys } from '../../lib/queryKeys';
 
 type EngineerPerformancePageProps = {
   currentRole: RoleName;
@@ -93,24 +95,44 @@ const defaultTo = toDateInput(today);
 export function EngineerPerformancePage({ currentRole, user }: EngineerPerformancePageProps) {
   const isAdmin = currentRole === 'admin';
   const [searchParams, setSearchParams] = useSearchParams();
-  const [engineers, setEngineers] = useState<ApiUser[]>([]);
   const [engineerId, setEngineerId] = useState(() => searchParams.get('engineerId') || searchParams.get('userId') || (isAdmin ? '' : user.id));
   const [from, setFrom] = useState(() => searchParams.get('from') || defaultFrom);
   const [to, setTo] = useState(() => searchParams.get('to') || defaultTo);
   const [weekStart, setWeekStart] = useState(() => searchParams.get('weekStart') || toDateInput(startOfWeek(new Date(`${searchParams.get('from') || defaultFrom}T00:00:00`))));
-  const [summary, setSummary] = useState<EngineerWorkSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+
+  const engineersQuery = useQuery({
+    enabled: isAdmin,
+    queryKey: queryKeys.engineerPerformance.engineers,
+    queryFn: async () => {
+      const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&status=ACTIVE');
+      return result.data.filter((item) => item.role?.name === 'engineer' || item.engineerProfile);
+    },
+  });
+
+  const engineers = engineersQuery.data ?? [];
 
   useEffect(() => {
     if (!isAdmin) return;
-    void loadEngineers();
-  }, [isAdmin]);
+    setEngineerId((current) => current || engineers[0]?.id || '');
+  }, [engineers, isAdmin]);
 
-  useEffect(() => {
-    if (isAdmin && !engineerId) return;
-    void loadSummary();
-  }, [engineerId, from, to, isAdmin]);
+  const summaryParams = useMemo(() => {
+    const params = new URLSearchParams({ from, to });
+    if (isAdmin && engineerId) params.set('userId', engineerId);
+    return params.toString();
+  }, [engineerId, from, isAdmin, to]);
+
+  const summaryQuery = useQuery({
+    enabled: !isAdmin || Boolean(engineerId),
+    queryKey: queryKeys.engineerPerformance.summary(summaryParams),
+    queryFn: () => apiFetch<EngineerWorkSummary>(`/weekly-reports/summary?${summaryParams}`),
+  });
+
+  const summary = summaryQuery.data ?? null;
+  const loading = summaryQuery.isLoading || summaryQuery.isFetching || engineersQuery.isFetching;
+  const error =
+    (engineersQuery.error instanceof Error ? engineersQuery.error.message : '') ||
+    (summaryQuery.error instanceof Error ? summaryQuery.error.message : '');
 
   useEffect(() => {
     if (isAdmin && !engineerId) return;
@@ -147,36 +169,6 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
         .slice(0, 8),
     [summary],
   );
-
-  async function loadEngineers() {
-    try {
-      const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&status=ACTIVE');
-      const engineerUsers = result.data.filter((item) => item.role?.name === 'engineer' || item.engineerProfile);
-      setEngineers(engineerUsers);
-      setEngineerId((current) => current || engineerUsers[0]?.id || '');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được danh sách kỹ sư.');
-    }
-  }
-
-  async function loadSummary() {
-    if (isAdmin && !engineerId) return;
-    setLoading(true);
-    setError('');
-
-    const query = new URLSearchParams({ from, to });
-    if (isAdmin && engineerId) query.set('userId', engineerId);
-
-    try {
-      const result = await apiFetch<EngineerWorkSummary>(`/weekly-reports/summary?${query.toString()}`);
-      setSummary(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được dashboard hiệu suất.');
-      setSummary(null);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function syncUrl() {
     const next = new URLSearchParams({ from, to, weekStart });
@@ -254,7 +246,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             />
           </label>
           <div className="flex flex-wrap items-end justify-start gap-2 self-end lg:justify-end">
-            <button className="secondary-button" disabled={loading} onClick={loadSummary} type="button">
+            <button className="secondary-button" disabled={loading} onClick={() => void summaryQuery.refetch()} type="button">
               {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
               Cập nhật
             </button>

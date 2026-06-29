@@ -1,10 +1,12 @@
 import { ClipboardCheck, Loader2, PackageCheck, RefreshCw, Search, UserCheck, Wrench } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { checklistForCategory } from '../../config/medicalDeviceChecklists';
+import { queryKeys } from '../../lib/queryKeys';
 
 type WorkKind = 'repair' | 'maintenance' | 'installation';
 type WorkFilter = 'action' | 'unassigned' | 'review' | 'active' | 'all';
@@ -86,6 +88,13 @@ type WorkItem = {
   reviewNote?: string | null;
 };
 
+type WorkAssignmentsData = {
+  engineers: ApiUser[];
+  repairs: RepairAssignment[];
+  maintenances: MaintenanceAssignment[];
+  installations: InstallationAssignment[];
+};
+
 const filterOptions: Array<{ value: WorkFilter; label: string }> = [
   { value: 'action', label: 'Cần xử lý' },
   { value: 'unassigned', label: 'Chưa phân' },
@@ -95,29 +104,22 @@ const filterOptions: Array<{ value: WorkFilter; label: string }> = [
 ];
 
 export function AdminWorkAssignmentPage() {
-  const [engineers, setEngineers] = useState<ApiUser[]>([]);
-  const [repairs, setRepairs] = useState<RepairAssignment[]>([]);
-  const [maintenances, setMaintenances] = useState<MaintenanceAssignment[]>([]);
-  const [installations, setInstallations] = useState<InstallationAssignment[]>([]);
+  const queryClient = useQueryClient();
   const [assignmentByKey, setAssignmentByKey] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<WorkFilter>('action');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [engineerFilter, setEngineerFilter] = useState('');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [loading, setLoading] = useState(true);
   const [assigningKey, setAssigningKey] = useState('');
   const [reviewingKey, setReviewingKey] = useState('');
   const [reviewNoteByKey, setReviewNoteByKey] = useState<Record<string, string>>({});
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
 
-  async function loadData() {
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
+  const workAssignmentsQuery = useQuery({
+    queryKey: queryKeys.workAssignments.dashboard(debouncedQuery),
+    queryFn: async (): Promise<WorkAssignmentsData> => {
       const [userResult, repairResult, maintenanceResult, installationResult] = await Promise.all([
         apiFetch<Paginated<ApiUser> | ApiUser[]>('/users?limit=100&roleName=engineer'),
         apiFetch<Paginated<RepairAssignment> | RepairAssignment[]>(withQueryParams('/repairs?limit=100', { search: debouncedQuery })),
@@ -129,26 +131,77 @@ export function AdminWorkAssignmentPage() {
       const nextMaintenances = unpack(maintenanceResult);
       const nextInstallations = unpack(installationResult);
 
-      setEngineers(
-        unpack(userResult).filter((user) => {
+      return {
+        engineers: unpack(userResult).filter((user) => {
           const roleName = (user.role?.name ?? user.roleName ?? '').toLowerCase();
           return roleName === 'engineer' && user.status !== 'INACTIVE';
         }),
-      );
-      setRepairs(nextRepairs);
-      setMaintenances(nextMaintenances);
-      setInstallations(nextInstallations);
-      setAssignmentByKey(buildAssignmentMap(nextRepairs, nextMaintenances, nextInstallations));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được dữ liệu phân việc.');
-    } finally {
-      setLoading(false);
-    }
-  }
+        repairs: nextRepairs,
+        maintenances: nextMaintenances,
+        installations: nextInstallations,
+      };
+    },
+  });
+
+  const engineers = workAssignmentsQuery.data?.engineers ?? [];
+  const repairs = workAssignmentsQuery.data?.repairs ?? [];
+  const maintenances = workAssignmentsQuery.data?.maintenances ?? [];
+  const installations = workAssignmentsQuery.data?.installations ?? [];
+  const loading = workAssignmentsQuery.isLoading || workAssignmentsQuery.isFetching;
+  const error = formError || (workAssignmentsQuery.error instanceof Error ? workAssignmentsQuery.error.message : '');
 
   useEffect(() => {
-    loadData();
-  }, [debouncedQuery]);
+    setAssignmentByKey(buildAssignmentMap(repairs, maintenances, installations));
+  }, [installations, maintenances, repairs]);
+
+  const assignMutation = useMutation({
+    mutationFn: async ({ engineerId, item }: { engineerId: string; item: WorkItem }) => {
+      const endpoint =
+        item.kind === 'repair'
+          ? `/repairs/${item.id}/assign`
+          : item.kind === 'maintenance'
+            ? `/maintenance/${item.id}/assign`
+            : `/installations/${item.id}`;
+
+      await apiFetch(endpoint, {
+        method: 'PATCH',
+        body: JSON.stringify(
+          item.kind === 'installation' ? { installedById: engineerId } : { engineerId },
+        ),
+      });
+
+      return item;
+    },
+    onSuccess: async (item) => {
+      setSuccess(`Đã phân ${kindLabel(item.kind).toLowerCase()} ${item.code} cho kỹ sư.`);
+      await queryClient.invalidateQueries({ queryKey: ['work-assignments', 'dashboard'] });
+    },
+    onSettled: () => setAssigningKey(''),
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: async ({ item, reviewNote, status }: { item: WorkItem; reviewNote: string; status: Extract<WorkReviewStatus, 'APPROVED' | 'NEEDS_REVISION'> }) => {
+      const endpoint =
+        item.kind === 'repair'
+          ? `/repairs/${item.id}/review`
+          : item.kind === 'maintenance'
+            ? `/maintenance/${item.id}/review`
+            : `/installations/${item.id}/review`;
+
+      await apiFetch(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({ status, reviewNote: reviewNote || null }),
+      });
+
+      return { item, status };
+    },
+    onSuccess: async ({ item, status }) => {
+      setSuccess(status === 'APPROVED' ? `Đã xác nhận ${item.code}.` : `Đã trả ${item.code} về kỹ sư bổ sung.`);
+      setReviewNoteByKey((current) => ({ ...current, [item.key]: '' }));
+      await queryClient.invalidateQueries({ queryKey: ['work-assignments', 'dashboard'] });
+    },
+    onSettled: () => setReviewingKey(''),
+  });
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -225,65 +278,36 @@ export function AdminWorkAssignmentPage() {
   async function assignWork(item: WorkItem) {
     const engineerId = assignmentByKey[item.key];
     if (!engineerId) {
-      setError('Vui lòng chọn kỹ sư trước khi phân việc.');
+      setFormError('Vui lòng chọn kỹ sư trước khi phân việc.');
       return;
     }
 
-    const endpoint =
-      item.kind === 'repair'
-        ? `/repairs/${item.id}/assign`
-        : item.kind === 'maintenance'
-          ? `/maintenance/${item.id}/assign`
-          : `/installations/${item.id}`;
     setAssigningKey(item.key);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      await apiFetch(endpoint, {
-        method: 'PATCH',
-        body: JSON.stringify(
-          item.kind === 'installation' ? { installedById: engineerId } : { engineerId },
-        ),
-      });
-      setSuccess(`Đã phân ${kindLabel(item.kind).toLowerCase()} ${item.code} cho kỹ sư.`);
-      await loadData();
+      await assignMutation.mutateAsync({ engineerId, item });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không phân việc được.');
-    } finally {
-      setAssigningKey('');
+      setFormError(err instanceof Error ? err.message : 'Không phân việc được.');
     }
   }
 
   async function reviewWork(item: WorkItem, status: Extract<WorkReviewStatus, 'APPROVED' | 'NEEDS_REVISION'>) {
     const reviewNote = (reviewNoteByKey[item.key] || '').trim();
     if (status === 'NEEDS_REVISION' && !reviewNote) {
-      setError('Vui lòng nhập nội dung cần kỹ sư bổ sung.');
+      setFormError('Vui lòng nhập nội dung cần kỹ sư bổ sung.');
       return;
     }
 
-    const endpoint =
-      item.kind === 'repair'
-        ? `/repairs/${item.id}/review`
-        : item.kind === 'maintenance'
-          ? `/maintenance/${item.id}/review`
-          : `/installations/${item.id}/review`;
     setReviewingKey(item.key);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      await apiFetch(endpoint, {
-        method: 'POST',
-        body: JSON.stringify({ status, reviewNote: reviewNote || null }),
-      });
-      setSuccess(status === 'APPROVED' ? `Đã xác nhận ${item.code}.` : `Đã trả ${item.code} về kỹ sư bổ sung.`);
-      setReviewNoteByKey((current) => ({ ...current, [item.key]: '' }));
-      await loadData();
+      await reviewMutation.mutateAsync({ item, reviewNote, status });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không cập nhật kiểm duyệt được.');
-    } finally {
-      setReviewingKey('');
+      setFormError(err instanceof Error ? err.message : 'Không cập nhật kiểm duyệt được.');
     }
   }
 
@@ -369,7 +393,11 @@ export function AdminWorkAssignmentPage() {
           <button
             className="secondary-button bg-white/90"
             disabled={loading}
-            onClick={loadData}
+            onClick={() => {
+              setFormError('');
+              setSuccess('');
+              void workAssignmentsQuery.refetch();
+            }}
             type="button"
           >
             {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}

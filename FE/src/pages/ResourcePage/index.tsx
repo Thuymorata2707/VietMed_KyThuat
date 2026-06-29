@@ -1,11 +1,13 @@
 import { Edit3, Search } from 'lucide-react';
-import { ReactNode, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { ReactNode, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { ResourceConfig } from '../../config/resources';
+import { queryKeys } from '../../lib/queryKeys';
 import { TableRow, filterRows, formatValue, readPath } from '../../utils/format';
 
 export function ResourcePage({
@@ -20,38 +22,40 @@ export function ResourcePage({
   getEditHref?: (row: TableRow) => string | null;
 }) {
   const [query, setQuery] = useState('');
-  const [rows, setRows] = useState<TableRow[]>([]);
-  const [meta, setMeta] = useState<Paginated<TableRow>['meta'] | null>(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
+  const resourceParams = useMemo(() => {
     const search = new URLSearchParams({ ...extraQueryParams, page: '1', limit: '10' });
     if (config.searchEnabled !== false && query.trim()) search.set('search', query.trim());
+    return search.toString();
+  }, [config.searchEnabled, extraQueryParams, query]);
 
-    setLoading(true);
-    apiFetch<Paginated<TableRow> | TableRow[]>(`${config.endpoint}?${search.toString()}`)
-      .then((result) => {
-        if (Array.isArray(result)) {
-          const filteredRows = filterRows(result, query);
-          setRows(filteredRows);
-          setMeta({
+  const resourceQuery = useQuery({
+    queryKey: queryKeys.resources.list(config.endpoint, resourceParams),
+    queryFn: async () => {
+      const result = await apiFetch<Paginated<TableRow> | TableRow[]>(`${config.endpoint}?${resourceParams}`);
+      if (Array.isArray(result)) {
+        const filteredRows = filterRows(result, query);
+        return {
+          rows: filteredRows,
+          meta: {
             page: 1,
             limit: result.length,
             total: filteredRows.length,
             totalPages: 1,
-          });
-          setError('');
-          return;
-        }
+          },
+        };
+      }
 
-        setRows(result.data ?? []);
-        setMeta(result.meta ?? null);
-        setError('');
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Không tải được dữ liệu'))
-      .finally(() => setLoading(false));
-  }, [config.endpoint, config.searchEnabled, JSON.stringify(extraQueryParams ?? {}), query]);
+      return {
+        rows: result.data ?? [],
+        meta: result.meta ?? null,
+      };
+    },
+  });
+
+  const rows = resourceQuery.data?.rows ?? [];
+  const meta = resourceQuery.data?.meta ?? null;
+  const loading = resourceQuery.isLoading || resourceQuery.isFetching;
+  const error = resourceQuery.error instanceof Error ? resourceQuery.error.message : '';
 
   return (
     <PageFrame>

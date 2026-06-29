@@ -1,9 +1,11 @@
 import { Loader2, Plus, RefreshCw, ShieldCheck, X } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { FormEvent, useMemo, useState } from 'react';
 import { apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { queryKeys } from '../../lib/queryKeys';
 
 type Role = {
   id: string;
@@ -13,18 +15,34 @@ type Role = {
 };
 
 export function AdminRolesPage() {
-  const [roles, setRoles] = useState<Role[]>([]);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
   const [name, setName] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    loadRoles();
-  }, []);
+  const rolesQuery = useQuery({
+    queryKey: queryKeys.roles.list,
+    queryFn: () => apiFetch<Role[]>('/roles'),
+  });
+
+  const createRoleMutation = useMutation({
+    mutationFn: () => apiFetch<Role>('/roles', {
+      method: 'POST',
+      body: JSON.stringify({ name: name.trim() }),
+    }),
+    onSuccess: async () => {
+      setSuccess('Đã tạo vai trò mới.');
+      closeModal();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.roles.list });
+    },
+  });
+
+  const roles = rolesQuery.data ?? [];
+  const loading = rolesQuery.isLoading || rolesQuery.isFetching;
+  const saving = createRoleMutation.isPending;
+  const error = formError || (rolesQuery.error instanceof Error ? rolesQuery.error.message : '') || (createRoleMutation.error instanceof Error ? createRoleMutation.error.message : '');
 
   const filteredRoles = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -32,22 +50,9 @@ export function AdminRolesPage() {
     return roles.filter((role) => role.name.toLowerCase().includes(keyword));
   }, [query, roles]);
 
-  async function loadRoles() {
-    setLoading(true);
-    setError('');
-
-    try {
-      setRoles(await apiFetch<Role[]>('/roles'));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được vai trò');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   function openCreateModal() {
     setName('');
-    setError('');
+    setFormError('');
     setSuccess('');
     setIsModalOpen(true);
   }
@@ -59,22 +64,13 @@ export function AdminRolesPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      await apiFetch<Role>('/roles', {
-        method: 'POST',
-        body: JSON.stringify({ name: name.trim() }),
-      });
-      setSuccess('Đã tạo vai trò mới.');
-      closeModal();
-      await loadRoles();
+      await createRoleMutation.mutateAsync();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tạo được vai trò');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không tạo được vai trò');
     }
   }
 
@@ -86,7 +82,7 @@ export function AdminRolesPage() {
           title="Vai trò"
           description="Quản lý danh sách role dùng cho phân quyền backend và điều hướng giao diện."
         />
-        <button className="secondary-button" disabled={loading} onClick={loadRoles} type="button">
+        <button className="secondary-button" disabled={loading} onClick={() => void rolesQuery.refetch()} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
           {loading ? 'Loading' : 'Refresh'}
         </button>

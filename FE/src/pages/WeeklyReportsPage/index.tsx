@@ -1,4 +1,5 @@
 import { CalendarCheck, ChevronLeft, ChevronRight, Download, Loader2, Plus, Save, Send, Sparkles, Trash2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
@@ -6,6 +7,7 @@ import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { queryKeys } from '../../lib/queryKeys';
 
 type WeeklyReportsPageProps = {
   currentRole: RoleName;
@@ -74,32 +76,65 @@ const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
 
 export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps) {
   const isAdmin = currentRole === 'admin';
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialWeekStart = searchParams.get('weekStart') || toDateInput(startOfWeek(new Date()));
   const initialEngineerId = searchParams.get('engineerId') || searchParams.get('userId') || '';
   const [weekStart, setWeekStart] = useState(() => initialWeekStart);
   const [selectedEngineerId, setSelectedEngineerId] = useState(isAdmin ? initialEngineerId : user.id);
-  const [engineers, setEngineers] = useState<ApiUser[]>([]);
   const [report, setReport] = useState<WeeklyReport | null>(null);
   const [rows, setRows] = useState<WeeklyReportRow[]>(() => defaultRows(weekStart));
-  const [dailyWorkRows, setDailyWorkRows] = useState<DailyWorkRowsResponse | null>(null);
   const [note, setNote] = useState('');
   const [reviewNoteDraft, setReviewNoteDraft] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [loadingDailyWorkRows, setLoadingDailyWorkRows] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const engineersQuery = useQuery({
+    enabled: isAdmin,
+    queryKey: queryKeys.weeklyReports.engineers,
+    queryFn: async () => {
+      const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&roleName=engineer&status=ACTIVE');
+      return result.data;
+    },
+  });
+
+  const engineers = engineersQuery.data ?? [];
 
   useEffect(() => {
     if (!isAdmin) return;
-    void loadEngineers();
-  }, [isAdmin]);
+    setSelectedEngineerId((current) => current || engineers[0]?.id || '');
+  }, [engineers, isAdmin]);
+
+  const reportParams = useMemo(() => {
+    const params = new URLSearchParams({ weekStart });
+    if (isAdmin && selectedEngineerId) params.set('userId', selectedEngineerId);
+    return params.toString();
+  }, [isAdmin, selectedEngineerId, weekStart]);
+
+  const reportQuery = useQuery({
+    enabled: !isAdmin || Boolean(selectedEngineerId),
+    queryKey: queryKeys.weeklyReports.report(reportParams),
+    queryFn: () => apiFetch<WeeklyReport | null | undefined>(`/weekly-reports?${reportParams}`),
+  });
+
+  const dailyWorkRowsQuery = useQuery({
+    enabled: !isAdmin || Boolean(selectedEngineerId),
+    queryKey: queryKeys.weeklyReports.dailyRows(reportParams),
+    queryFn: () => apiFetch<DailyWorkRowsResponse>(`/weekly-reports/daily-work-rows?${reportParams}`),
+  });
 
   useEffect(() => {
-    void loadReport();
-    void loadDailyWorkRows();
-  }, [weekStart, selectedEngineerId, isAdmin]);
+    if (!reportQuery.isSuccess) return;
+    const nextReport = reportQuery.data ?? null;
+    setReport(nextReport);
+    setNote(nextReport?.note ?? '');
+    setReviewNoteDraft(nextReport?.reviewNote ?? '');
+    setRows(buildWeekRows(weekStart, nextReport?.rows ?? []));
+  }, [reportQuery.data, reportQuery.isSuccess, weekStart]);
+
+  const dailyWorkRows = dailyWorkRowsQuery.data ?? null;
+  const loading = reportQuery.isLoading || reportQuery.isFetching || engineersQuery.isFetching;
+  const loadingDailyWorkRows = dailyWorkRowsQuery.isLoading || dailyWorkRowsQuery.isFetching;
 
   useEffect(() => {
     if (isAdmin && !selectedEngineerId) return;
@@ -113,63 +148,64 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const canEdit = !isAdmin && (reportStatus === 'DRAFT' || reportStatus === 'NEEDS_REVISION');
   const canReview = isAdmin && report?.status === 'SUBMITTED';
 
-  async function loadEngineers() {
-    try {
-      const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&roleName=engineer&status=ACTIVE');
-      setEngineers(result.data);
-      setSelectedEngineerId((current) => current || result.data[0]?.id || '');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được danh sách kỹ sư.');
-    }
-  }
+  const saveReportMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        weekStart,
+        userId: isAdmin ? selectedEngineerId : undefined,
+        note: note.trim() || null,
+        rows: rows.map((row, index) => ({ ...row, sortOrder: index })),
+      };
+      return report?.id
+        ? apiFetch<WeeklyReport>(`/weekly-reports/${report.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          })
+        : apiFetch<WeeklyReport>('/weekly-reports', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+    },
+    onSuccess: async (saved) => {
+      setReport(saved);
+      setRows(buildWeekRows(weekStart, saved.rows));
+      setNote(saved.note ?? '');
+      setSuccess('Đã lưu nháp báo cáo tuần.');
+      await queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'report'] });
+    },
+  });
 
-  async function loadReport() {
-    if (isAdmin && !selectedEngineerId) {
-      setLoading(false);
-      return;
-    }
+  const submitReportMutation = useMutation({
+    mutationFn: (reportId: string) => apiFetch<WeeklyReport>(`/weekly-reports/${reportId}/submit`, { method: 'POST' }),
+    onSuccess: async (submitted) => {
+      setReport(submitted);
+      setSuccess('Đã gửi báo cáo tuần cho admin.');
+      await queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'report'] });
+    },
+  });
 
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    const query = new URLSearchParams({ weekStart });
-    if (isAdmin && selectedEngineerId) query.set('userId', selectedEngineerId);
+  const reviewReportMutation = useMutation({
+    mutationFn: ({ reportId, reviewNote, status }: { reportId: string; reviewNote: string; status: Extract<WeeklyReportStatus, 'APPROVED' | 'NEEDS_REVISION'> }) =>
+      apiFetch<WeeklyReport>(`/weekly-reports/${reportId}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ status, reviewNote: reviewNote || null }),
+      }),
+    onSuccess: async (reviewed) => {
+      setReport(reviewed);
+      setReviewNoteDraft(reviewed.reviewNote ?? '');
+      setSuccess(reviewed.status === 'APPROVED' ? 'Đã duyệt báo cáo tuần.' : 'Đã gửi yêu cầu sửa báo cáo.');
+      await queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'report'] });
+    },
+  });
 
-    try {
-      const result = await apiFetch<WeeklyReport | null | undefined>(`/weekly-reports?${query.toString()}`);
-      setReport(result ?? null);
-      setNote(result?.note ?? '');
-      setReviewNoteDraft(result?.reviewNote ?? '');
-      setRows(buildWeekRows(weekStart, result?.rows ?? []));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được báo cáo tuần.');
-      setReport(null);
-      setRows(defaultRows(weekStart));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadDailyWorkRows() {
-    if (isAdmin && !selectedEngineerId) {
-      setDailyWorkRows(null);
-      setLoadingDailyWorkRows(false);
-      return;
-    }
-
-    setLoadingDailyWorkRows(true);
-    const query = new URLSearchParams({ weekStart });
-    if (isAdmin && selectedEngineerId) query.set('userId', selectedEngineerId);
-
-    try {
-      const result = await apiFetch<DailyWorkRowsResponse>(`/weekly-reports/daily-work-rows?${query.toString()}`);
-      setDailyWorkRows(result);
-    } catch {
-      setDailyWorkRows(null);
-    } finally {
-      setLoadingDailyWorkRows(false);
-    }
-  }
+  const saving = saveReportMutation.isPending || submitReportMutation.isPending || reviewReportMutation.isPending;
+  const mutationError = saveReportMutation.error ?? submitReportMutation.error ?? reviewReportMutation.error;
+  const error =
+    formError ||
+    (engineersQuery.error instanceof Error ? engineersQuery.error.message : '') ||
+    (reportQuery.error instanceof Error ? reportQuery.error.message : '') ||
+    (dailyWorkRowsQuery.error instanceof Error ? dailyWorkRowsQuery.error.message : '') ||
+    (mutationError instanceof Error ? mutationError.message : '');
 
   function updateRow(index: number, patch: Partial<WeeklyReportRow>) {
     setRows((current) => current.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
@@ -202,52 +238,25 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   }
 
   async function saveReport() {
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      const payload = {
-        weekStart,
-        userId: isAdmin ? selectedEngineerId : undefined,
-        note: note.trim() || null,
-        rows: rows.map((row, index) => ({ ...row, sortOrder: index })),
-      };
-      const saved = report?.id
-        ? await apiFetch<WeeklyReport>(`/weekly-reports/${report.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify(payload),
-          })
-        : await apiFetch<WeeklyReport>('/weekly-reports', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-          });
-
-      setReport(saved);
-      setRows(buildWeekRows(weekStart, saved.rows));
-      setNote(saved.note ?? '');
-      setSuccess('Đã lưu nháp báo cáo tuần.');
+      await saveReportMutation.mutateAsync();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không lưu được báo cáo tuần.');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không lưu được báo cáo tuần.');
     }
   }
 
   async function submitReport() {
     if (!report?.id) return;
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      const submitted = await apiFetch<WeeklyReport>(`/weekly-reports/${report.id}/submit`, { method: 'POST' });
-      setReport(submitted);
-      setSuccess('Đã gửi báo cáo tuần cho admin.');
+      await submitReportMutation.mutateAsync(report.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không gửi được báo cáo tuần.');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không gửi được báo cáo tuần.');
     }
   }
 
@@ -256,26 +265,17 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     const reviewNote = reviewNoteDraft.trim();
 
     if (status === 'NEEDS_REVISION' && !reviewNote) {
-      setError('Vui lòng nhập nội dung cần sửa.');
+      setFormError('Vui lòng nhập nội dung cần sửa.');
       return;
     }
 
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      const reviewed = await apiFetch<WeeklyReport>(`/weekly-reports/${report.id}/review`, {
-        method: 'POST',
-        body: JSON.stringify({ status, reviewNote: reviewNote || null }),
-      });
-      setReport(reviewed);
-      setReviewNoteDraft(reviewed.reviewNote ?? '');
-      setSuccess(status === 'APPROVED' ? 'Đã duyệt báo cáo tuần.' : 'Đã gửi yêu cầu sửa báo cáo.');
+      await reviewReportMutation.mutateAsync({ reportId: report.id, reviewNote, status });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không cập nhật được báo cáo tuần.');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không cập nhật được báo cáo tuần.');
     }
   }
 

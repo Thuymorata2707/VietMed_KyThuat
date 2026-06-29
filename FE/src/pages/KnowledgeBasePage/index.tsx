@@ -1,8 +1,10 @@
 import { AlertTriangle, BookOpenCheck, Boxes, ClipboardCheck, Clock3, FileText, Loader2, PackageCheck, Pencil, Plus, Search, ShieldCheck, Trash2, Wrench, X } from 'lucide-react';
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { FormEvent, ReactNode, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { PageFrame } from '../../components/PageFrame';
+import { queryKeys } from '../../lib/queryKeys';
 
 type KnowledgeArticleCategory = 'COMMON_FAULT' | 'PACKING' | 'REPAIR' | 'INSTALLATION' | 'MAINTENANCE' | 'SAFETY' | 'OTHER';
 type KnowledgeArticleStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -43,6 +45,22 @@ type ArticleForm = {
   checklistText: string;
   note: string;
   sortOrder: string;
+};
+
+type ArticlePayload = {
+  title: string;
+  summary: string | null;
+  content: string | null;
+  modelHint: string | null;
+  ownerTeam: string | null;
+  category: KnowledgeArticleCategory;
+  status: KnowledgeArticleStatus;
+  tags: string[];
+  symptoms: string[];
+  steps: string[];
+  checklist: string[];
+  note: string | null;
+  sortOrder: number;
 };
 
 const categoryMeta: Record<KnowledgeArticleCategory, { label: string; shortLabel: string; icon: ReactNode; tone: string }> = {
@@ -113,23 +131,80 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
   const role = getRoleName(user);
   const canApprove = role === 'admin';
   const canContribute = role === 'admin' || role === 'manager' || role === 'engineer';
-  const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
+  const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('ALL');
   const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [selectedArticleId, setSelectedArticleId] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [editingArticle, setEditingArticle] = useState<KnowledgeArticle | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<ArticleForm>(emptyForm);
 
+  const articleParams = useMemo(() => {
+    const params = new URLSearchParams({ limit: '100' });
+    const trimmedQuery = deferredQuery.trim();
+    if (trimmedQuery) params.set('search', trimmedQuery);
+    if (selectedCategory !== 'ALL') params.set('category', selectedCategory);
+    return params.toString();
+  }, [deferredQuery, selectedCategory]);
+
+  const articlesQuery = useQuery({
+    queryKey: queryKeys.knowledge.articles(articleParams),
+    queryFn: async () => {
+      const result = await apiFetch<Paginated<KnowledgeArticle>>(`/knowledge-articles?${articleParams}`);
+      return result.data;
+    },
+  });
+
+  const articles = articlesQuery.data ?? [];
+  const loading = articlesQuery.isLoading || articlesQuery.isFetching;
+
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      void loadArticles();
-    }, 160);
-    return () => window.clearTimeout(timeout);
-  }, [query, selectedCategory, canApprove]);
+    setSelectedArticleId((current) => (articles.some((article) => article.id === current) ? current : articles[0]?.id ?? ''));
+  }, [articles]);
+
+  const saveArticleMutation = useMutation({
+    mutationFn: async ({ articleId, payload }: { articleId?: string; payload: ArticlePayload }) => {
+      return articleId
+        ? apiFetch<KnowledgeArticle>(`/knowledge-articles/${articleId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          })
+        : apiFetch<KnowledgeArticle>('/knowledge-articles', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+    },
+    onSuccess: async (saved) => {
+      setIsFormOpen(false);
+      setEditingArticle(null);
+      setSelectedArticleId(saved.id);
+      await queryClient.invalidateQueries({ queryKey: ['knowledge', 'articles'] });
+    },
+  });
+
+  const deleteArticleMutation = useMutation({
+    mutationFn: (articleId: string) => apiFetch(`/knowledge-articles/${articleId}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['knowledge', 'articles'] });
+    },
+  });
+
+  const publishArticleMutation = useMutation({
+    mutationFn: (articleId: string) => apiFetch<KnowledgeArticle>(`/knowledge-articles/${articleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'PUBLISHED' }),
+    }),
+    onSuccess: async (saved) => {
+      setSelectedArticleId(saved.id);
+      await queryClient.invalidateQueries({ queryKey: ['knowledge', 'articles'] });
+    },
+  });
+
+  const saving = saveArticleMutation.isPending || deleteArticleMutation.isPending || publishArticleMutation.isPending;
+  const mutationError = saveArticleMutation.error ?? deleteArticleMutation.error ?? publishArticleMutation.error;
+  const error = formError || (articlesQuery.error instanceof Error ? articlesQuery.error.message : '') || (mutationError instanceof Error ? mutationError.message : '');
 
   const categoryCounts = useMemo(() => {
     return categoryOptions.reduce<Record<KnowledgeArticleCategory, number>>((acc, category) => {
@@ -141,30 +216,15 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
   const selectedArticle = articles.find((article) => article.id === selectedArticleId) ?? articles[0];
   const totalSteps = articles.reduce((total, article) => total + safeList(article.steps).length, 0);
 
-  async function loadArticles() {
-    setLoading(true);
-    setError('');
-    try {
-      const params = new URLSearchParams({ limit: '100' });
-      if (query.trim()) params.set('search', query.trim());
-      if (selectedCategory !== 'ALL') params.set('category', selectedCategory);
-      const result = await apiFetch<Paginated<KnowledgeArticle>>(`/knowledge-articles?${params.toString()}`);
-      setArticles(result.data);
-      setSelectedArticleId((current) => (result.data.some((article) => article.id === current) ? current : result.data[0]?.id ?? ''));
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Không tải được sổ tay kinh nghiệm.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   function openCreateForm() {
+    setFormError('');
     setEditingArticle(null);
     setForm(emptyForm);
     setIsFormOpen(true);
   }
 
   function openEditForm(article: KnowledgeArticle) {
+    setFormError('');
     setEditingArticle(article);
     setForm({
       title: article.title,
@@ -186,9 +246,8 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
-    setError('');
-    const payload = {
+    setFormError('');
+    const payload: ArticlePayload = {
       title: form.title,
       summary: form.summary || null,
       content: form.content || null,
@@ -205,54 +264,28 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
     };
 
     try {
-      const saved = editingArticle
-        ? await apiFetch<KnowledgeArticle>(`/knowledge-articles/${editingArticle.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify(payload),
-          })
-        : await apiFetch<KnowledgeArticle>('/knowledge-articles', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-          });
-      setIsFormOpen(false);
-      setEditingArticle(null);
-      setSelectedArticleId(saved.id);
-      await loadArticles();
+      await saveArticleMutation.mutateAsync({ articleId: editingArticle?.id, payload });
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Không lưu được bài kinh nghiệm.');
-    } finally {
-      setSaving(false);
+      setFormError(saveError instanceof Error ? saveError.message : 'Không lưu được bài kinh nghiệm.');
     }
   }
 
   async function handleDelete(article: KnowledgeArticle) {
     if (!window.confirm(`Delete "${article.title}"?`)) return;
-    setSaving(true);
-    setError('');
+    setFormError('');
     try {
-      await apiFetch(`/knowledge-articles/${article.id}`, { method: 'DELETE' });
-      await loadArticles();
+      await deleteArticleMutation.mutateAsync(article.id);
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'Không xoá được bài kinh nghiệm.');
-    } finally {
-      setSaving(false);
+      setFormError(deleteError instanceof Error ? deleteError.message : 'Không xoá được bài kinh nghiệm.');
     }
   }
 
   async function handlePublish(article: KnowledgeArticle) {
-    setSaving(true);
-    setError('');
+    setFormError('');
     try {
-      const saved = await apiFetch<KnowledgeArticle>(`/knowledge-articles/${article.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: 'PUBLISHED' }),
-      });
-      setSelectedArticleId(saved.id);
-      await loadArticles();
+      await publishArticleMutation.mutateAsync(article.id);
     } catch (publishError) {
-      setError(publishError instanceof Error ? publishError.message : 'Không duyệt được bài kinh nghiệm.');
-    } finally {
-      setSaving(false);
+      setFormError(publishError instanceof Error ? publishError.message : 'Không duyệt được bài kinh nghiệm.');
     }
   }
 

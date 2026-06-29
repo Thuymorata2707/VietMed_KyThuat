@@ -1,9 +1,11 @@
 import { Building2, Loader2, MapPinned, PackageSearch, Plus, RefreshCw, X } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { FormEvent, useMemo, useState } from 'react';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { queryKeys } from '../../lib/queryKeys';
 
 type Region = {
   id: string;
@@ -48,23 +50,63 @@ const emptyForm = {
 };
 
 export function AdminRegionsPage() {
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [customers, setCustomers] = useState<CustomerSummary[]>([]);
+  const queryClient = useQueryClient();
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerDetail | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [query, setQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadingCustomers, setLoadingCustomers] = useState(false);
-  const [loadingCustomerDetail, setLoadingCustomerDetail] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    loadRegions();
-  }, []);
+  const regionsQuery = useQuery({
+    queryKey: queryKeys.regions.list,
+    queryFn: () => apiFetch<Region[]>('/regions'),
+  });
+
+  const customersQuery = useQuery({
+    enabled: Boolean(selectedRegion?.id),
+    queryKey: queryKeys.regions.customers(selectedRegion?.id ?? ''),
+    queryFn: async () => {
+      const result = await apiFetch<Paginated<CustomerSummary>>(`/customers?regionId=${selectedRegion?.id ?? ''}&limit=100`);
+      return result.data;
+    },
+  });
+
+  const customerDetailQuery = useQuery({
+    enabled: Boolean(selectedCustomerId),
+    queryKey: queryKeys.regions.customerDetail(selectedCustomerId),
+    queryFn: () => apiFetch<CustomerDetail>(`/customers/${selectedCustomerId}`),
+  });
+
+  const createRegionMutation = useMutation({
+    mutationFn: () => apiFetch<Region>('/regions', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: form.name.trim(),
+        code: form.code.trim().toUpperCase(),
+      }),
+    }),
+    onSuccess: async () => {
+      setSuccess('Đã tạo khu vực mới.');
+      closeModal();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.regions.list });
+    },
+  });
+
+  const regions = regionsQuery.data ?? [];
+  const customers = customersQuery.data ?? [];
+  const selectedCustomer = customerDetailQuery.data ?? null;
+  const loading = regionsQuery.isLoading || regionsQuery.isFetching;
+  const loadingCustomers = customersQuery.isLoading || customersQuery.isFetching;
+  const loadingCustomerDetail = customerDetailQuery.isLoading || customerDetailQuery.isFetching;
+  const saving = createRegionMutation.isPending;
+  const error =
+    formError ||
+    (regionsQuery.error instanceof Error ? regionsQuery.error.message : '') ||
+    (customersQuery.error instanceof Error ? customersQuery.error.message : '') ||
+    (customerDetailQuery.error instanceof Error ? customerDetailQuery.error.message : '') ||
+    (createRegionMutation.error instanceof Error ? createRegionMutation.error.message : '');
 
   const filteredRegions = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -74,58 +116,20 @@ export function AdminRegionsPage() {
     );
   }, [query, regions]);
 
-  async function loadRegions() {
-    setLoading(true);
-    setError('');
-
-    try {
-      const nextRegions = await apiFetch<Region[]>('/regions');
-      setRegions(nextRegions);
-      setSelectedRegion((current) => {
-        if (!current) return current;
-        return nextRegions.find((region) => region.id === current.id) ?? null;
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được khu vực');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function selectRegion(region: Region) {
+  function selectRegion(region: Region) {
     setSelectedRegion(region);
-    setSelectedCustomer(null);
-    setLoadingCustomers(true);
-    setError('');
-
-    try {
-      const result = await apiFetch<Paginated<CustomerSummary>>(`/customers?regionId=${region.id}&limit=100`);
-      setCustomers(result.data);
-    } catch (err) {
-      setCustomers([]);
-      setError(err instanceof Error ? err.message : 'Không tải được khách hàng của khu vực');
-    } finally {
-      setLoadingCustomers(false);
-    }
+    setSelectedCustomerId('');
+    setFormError('');
   }
 
-  async function selectCustomer(customer: CustomerSummary) {
-    setLoadingCustomerDetail(true);
-    setError('');
-
-    try {
-      setSelectedCustomer(await apiFetch<CustomerDetail>(`/customers/${customer.id}`));
-    } catch (err) {
-      setSelectedCustomer(null);
-      setError(err instanceof Error ? err.message : 'Không tải được máy của khách hàng');
-    } finally {
-      setLoadingCustomerDetail(false);
-    }
+  function selectCustomer(customer: CustomerSummary) {
+    setSelectedCustomerId(customer.id);
+    setFormError('');
   }
 
   function openCreateModal() {
     setForm(emptyForm);
-    setError('');
+    setFormError('');
     setSuccess('');
     setIsModalOpen(true);
   }
@@ -137,31 +141,18 @@ export function AdminRegionsPage() {
 
   function closeRegionDetail() {
     setSelectedRegion(null);
-    setSelectedCustomer(null);
-    setCustomers([]);
+    setSelectedCustomerId('');
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      await apiFetch<Region>('/regions', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: form.name.trim(),
-          code: form.code.trim().toUpperCase(),
-        }),
-      });
-      setSuccess('Đã tạo khu vực mới.');
-      closeModal();
-      await loadRegions();
+      await createRegionMutation.mutateAsync();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tạo được khu vực');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không tạo được khu vực');
     }
   }
 
@@ -173,7 +164,7 @@ export function AdminRegionsPage() {
           title="Khu vực"
           description="Quản lý vùng phụ trách dùng cho scope dữ liệu của manager và kỹ sư."
         />
-        <button className="secondary-button" disabled={loading} onClick={loadRegions} type="button">
+        <button className="secondary-button" disabled={loading} onClick={() => void regionsQuery.refetch()} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
           {loading ? 'Loading' : 'Refresh'}
         </button>
@@ -206,7 +197,7 @@ export function AdminRegionsPage() {
                 <tr
                   className={`cursor-pointer hover:bg-[#f8fbfd] ${selectedRegion?.id === region.id ? 'bg-[#f8fbfd] shadow-[inset_3px_0_0_#d71920]' : ''}`}
                   key={region.id}
-                  onClick={() => void selectRegion(region)}
+                  onClick={() => selectRegion(region)}
                 >
                   <td className="border-b border-[#eeeeee] px-3.5 py-[13px]">
                     <div className="flex items-center gap-2 text-[#1f1f1f]">
@@ -253,7 +244,7 @@ export function AdminRegionsPage() {
                 <h2>{selectedRegion.name}</h2>
               </div>
               <div className="flex items-center gap-2 max-sm:justify-between">
-                <button className="secondary-button compact" disabled={loadingCustomers} onClick={() => void selectRegion(selectedRegion)} type="button">
+                <button className="secondary-button compact" disabled={loadingCustomers} onClick={() => void customersQuery.refetch()} type="button">
                   {loadingCustomers ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
                   Refresh
                 </button>
@@ -283,7 +274,7 @@ export function AdminRegionsPage() {
                   <button
                     className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-lg border border-[#eeeeee] bg-white p-3 text-left text-[#1f1f1f] hover:border-[#f5c7cb] hover:shadow-[inset_3px_0_0_#d71920] ${selectedCustomer?.id === customer.id ? 'border-[#f5c7cb] shadow-[inset_3px_0_0_#d71920]' : ''}`}
                     key={customer.id}
-                    onClick={() => void selectCustomer(customer)}
+                    onClick={() => selectCustomer(customer)}
                     type="button"
                   >
                     <Building2 size={18} />

@@ -1,4 +1,5 @@
 import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Save, Search } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, FocusEvent, FormEvent, ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -10,6 +11,7 @@ import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
+import { queryKeys } from '../../lib/queryKeys';
 import { formatMachineAccessoriesText, parseMachineAccessoriesInput, serializeMachineAccessories } from '../../utils/machineAccessories';
 
 type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING' | 'PHYSIOTHERAPY' | 'ICU';
@@ -130,25 +132,45 @@ type ProductForm = {
   accessoriesText: string;
 };
 
+type ProductCatalogOverview = {
+  industries: ProductIndustry[];
+  models: MachineModel[];
+  stockByModel: Record<string, ModelStock>;
+};
+
 const allIndustriesKey = 'all';
 
 export function ProductCatalogPage({ user }: { user: ApiUser }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [industries, setIndustries] = useState<ProductIndustry[]>([]);
-  const [models, setModels] = useState<MachineModel[]>([]);
-  const [stockByModel, setStockByModel] = useState<Record<string, ModelStock>>({});
   const [selectedIndustryId, setSelectedIndustryId] = useState(searchParams.get('industry') || allIndustriesKey);
   const [query, setQuery] = useState(searchParams.get('q') || '');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   const role = getRoleName(user);
   const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
   const canAddProduct = role === 'admin' || role === 'engineer';
 
-  useEffect(() => {
-    void loadData();
-  }, []);
+  const catalogQuery = useQuery({
+    queryKey: queryKeys.productCatalog.overview,
+    queryFn: async (): Promise<ProductCatalogOverview> => {
+      const [industryResult, nextModels, machines] = await Promise.all([
+        apiFetch<Paginated<ProductIndustry>>('/product-industries?limit=100'),
+        apiFetchAllPages<MachineModel>('/machine-models'),
+        apiFetchAllPages<CatalogMachine>('/machines'),
+      ]);
+
+      return {
+        industries: industryResult.data ?? [],
+        models: nextModels,
+        stockByModel: buildStockByModel(nextModels, machines),
+      };
+    },
+  });
+
+  const industries = catalogQuery.data?.industries ?? [];
+  const models = catalogQuery.data?.models ?? [];
+  const stockByModel = catalogQuery.data?.stockByModel ?? {};
+  const loading = catalogQuery.isLoading || catalogQuery.isFetching;
+  const error = catalogQuery.error instanceof Error ? catalogQuery.error.message : '';
 
   const visibleIndustries = useMemo(() => {
     if (role !== 'engineer' || !userExpertise) return industries;
@@ -221,50 +243,6 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     [stockByIndustry, visibleIndustries, visibleModels],
   );
 
-  async function loadData() {
-    setLoading(true);
-    setError('');
-
-    try {
-      const [industryResult, nextModels] = await Promise.all([
-        apiFetch<Paginated<ProductIndustry>>('/product-industries?limit=100'),
-        apiFetchAllPages<MachineModel>('/machine-models'),
-      ]);
-      const nextIndustries = industryResult.data ?? [];
-
-      setIndustries(nextIndustries);
-      setModels(nextModels);
-      await loadMachineStock(nextModels);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được danh sách sản phẩm.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadMachineStock(nextModels: MachineModel[]) {
-    const allowedModelIds = new Set(nextModels.map((model) => model.id));
-    const machines = await fetchAllCatalogMachines();
-    const nextStock = nextModels.reduce<Record<string, ModelStock>>((stock, model) => {
-      stock[model.id] = { inStock: 0, total: 0 };
-      return stock;
-    }, {});
-
-    machines.forEach((machine) => {
-      if (!machine.machineModelId || !allowedModelIds.has(machine.machineModelId)) return;
-      const current = nextStock[machine.machineModelId] ?? { inStock: 0, total: 0 };
-      current.total += 1;
-      if (machine.inventoryStatus === 'IN_STOCK') current.inStock += 1;
-      nextStock[machine.machineModelId] = current;
-    });
-
-    setStockByModel(nextStock);
-  }
-
-  async function fetchAllCatalogMachines() {
-    return apiFetchAllPages<CatalogMachine>('/machines');
-  }
-
   function updateCatalogState(nextIndustryId: string, nextQuery: string) {
     setSelectedIndustryId(nextIndustryId);
     setQuery(nextQuery);
@@ -292,7 +270,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
               Add Product
             </Link>
           ) : null}
-          <button className="secondary-button" disabled={loading} onClick={() => void loadData()} type="button">
+          <button className="secondary-button" disabled={loading} onClick={() => void catalogQuery.refetch()} type="button">
             {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
             {loading ? 'Loading' : 'Refresh'}
           </button>
@@ -393,14 +371,10 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
   const navigate = useNavigate();
   const { modelId = '' } = useParams();
   const [searchParams] = useSearchParams();
-  const [detail, setDetail] = useState<MachineModelDetail | null>(null);
+  const queryClient = useQueryClient();
   const [selectedMachineId, setSelectedMachineId] = useState('');
-  const [selectedMachineDetail, setSelectedMachineDetail] = useState<MachineDetail | null>(null);
   const [imageUrlDraft, setImageUrlDraft] = useState('');
-  const [loadingModelDetail, setLoadingModelDetail] = useState(true);
-  const [loadingMachineDetail, setLoadingMachineDetail] = useState(false);
-  const [savingModelImage, setSavingModelImage] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
 
   const role = getRoleName(user);
@@ -409,84 +383,78 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
   const canEditModelImage = role === 'admin';
   const backToCatalogHref = `/business-lines${buildCatalogSearch(searchParams.get('industry') || allIndustriesKey, searchParams.get('q') || '')}`;
 
-  useEffect(() => {
-    void loadModelDetail();
-  }, [modelId]);
-
-  async function loadModelDetail() {
-    if (!modelId) return;
-
-    setLoadingModelDetail(true);
-    setError('');
-    setSuccess('');
-    setSelectedMachineId('');
-    setSelectedMachineDetail(null);
-
-    try {
+  const modelDetailQuery = useQuery({
+    enabled: Boolean(modelId),
+    queryKey: queryKeys.productCatalog.modelDetail(modelId),
+    queryFn: async () => {
       const result = await apiFetch<MachineModelDetail>(`/machine-models/${modelId}`);
       if (role === 'engineer' && userExpertise && result.businessLine?.productIndustry?.expertiseGroup !== userExpertise) {
-        setDetail(null);
-        setError('Bạn không có quyền xem model của ngành hàng này.');
-        return;
+        throw new Error('Bạn không có quyền xem model của ngành hàng này.');
       }
+      return result;
+    },
+  });
 
-      setDetail(result);
-      setImageUrlDraft(result.businessLine?.imageUrl ?? '');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được chi tiết model.');
-    } finally {
-      setLoadingModelDetail(false);
+  const detail = modelDetailQuery.data ?? null;
+
+  useEffect(() => {
+    setSelectedMachineId('');
+  }, [modelId]);
+
+  useEffect(() => {
+    if (detail) {
+      setImageUrlDraft(detail.businessLine?.imageUrl ?? '');
     }
-  }
+  }, [detail]);
 
-  async function selectMachine(machineId: string) {
-    setSelectedMachineId(machineId);
-    setLoadingMachineDetail(true);
-    setError('');
-    setSuccess('');
+  const machineDetailQuery = useQuery({
+    enabled: Boolean(selectedMachineId),
+    queryKey: queryKeys.productCatalog.machineDetail(selectedMachineId),
+    queryFn: () => apiFetch<MachineDetail>(`/machines/${selectedMachineId}`),
+  });
 
-    try {
-      const machine = await apiFetch<MachineDetail>(`/machines/${machineId}`);
-      setSelectedMachineDetail(machine);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được chi tiết máy.');
-    } finally {
-      setLoadingMachineDetail(false);
-    }
-  }
+  const saveModelImageMutation = useMutation({
+    mutationFn: async ({ businessLineId, imageUrl }: { businessLineId: string; imageUrl: string }) => {
+      return apiFetch<BusinessLine>(`/business-lines/${businessLineId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ imageUrl: imageUrl.trim() || null }),
+      });
+    },
+    onSuccess: async (updatedBusinessLine) => {
+      setImageUrlDraft(updatedBusinessLine.imageUrl ?? '');
+      setSuccess('Đã cập nhật ảnh model.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.productCatalog.overview }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.productCatalog.modelDetail(modelId) }),
+      ]);
+    },
+  });
+
+  const loadingModelDetail = modelDetailQuery.isLoading || modelDetailQuery.isFetching;
+  const loadingMachineDetail = machineDetailQuery.isLoading || machineDetailQuery.isFetching;
+  const savingModelImage = saveModelImageMutation.isPending;
+  const selectedMachineDetail = machineDetailQuery.data ?? null;
+  const error =
+    formError ||
+    (modelDetailQuery.error instanceof Error ? modelDetailQuery.error.message : '') ||
+    (machineDetailQuery.error instanceof Error ? machineDetailQuery.error.message : '') ||
+    (saveModelImageMutation.error instanceof Error ? saveModelImageMutation.error.message : '');
 
   async function saveModelImage() {
     const businessLineId = detail?.businessLine?.id;
 
     if (!businessLineId) {
-      setError('Model này chưa gắn nhóm sản phẩm để cập nhật ảnh.');
+      setFormError('Model này chưa gắn nhóm sản phẩm để cập nhật ảnh.');
       return;
     }
 
-    setSavingModelImage(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      const updatedBusinessLine = await apiFetch<BusinessLine>(`/business-lines/${businessLineId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ imageUrl: imageUrlDraft.trim() || null }),
-      });
-
-      setDetail((current) =>
-        current
-          ? {
-              ...current,
-              businessLine: current.businessLine ? { ...current.businessLine, imageUrl: updatedBusinessLine.imageUrl ?? null } : current.businessLine,
-            }
-          : current,
-      );
-      setImageUrlDraft(updatedBusinessLine.imageUrl ?? '');
-      setSuccess('Đã cập nhật ảnh model.');
+      await saveModelImageMutation.mutateAsync({ businessLineId, imageUrl: imageUrlDraft });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không cập nhật được ảnh model.');
-    } finally {
-      setSavingModelImage(false);
+      setFormError(err instanceof Error ? err.message : 'Không cập nhật được ảnh model.');
     }
   }
 
@@ -533,7 +501,11 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
           model={detail}
           onImageUrlChange={setImageUrlDraft}
           onSaveImage={() => void saveModelImage()}
-          onSelectMachine={selectMachine}
+          onSelectMachine={(machineId) => {
+            setFormError('');
+            setSuccess('');
+            setSelectedMachineId(machineId);
+          }}
           savingImage={savingModelImage}
           selectedMachineId={selectedMachineId}
         />
@@ -545,17 +517,26 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
 export function ProductAddPage({ user }: { user: ApiUser }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [models, setModels] = useState<MachineModel[]>([]);
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<ProductForm>(emptyProductForm(searchParams.get('modelId') ?? ''));
   const [selectedProductId, setSelectedProductId] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
 
   const role = getRoleName(user);
   const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
   const canAddProduct = role === 'admin' || role === 'engineer';
+  const modelsQuery = useQuery({
+    queryKey: queryKeys.productCatalog.addProductModels,
+    queryFn: async () => {
+      const allModels = await apiFetchAllPages<MachineModel>('/machine-models');
+      return allModels.filter(
+        (model) => role !== 'engineer' || !userExpertise || model.businessLine?.productIndustry?.expertiseGroup === userExpertise,
+      );
+    },
+  });
+
+  const models = modelsQuery.data ?? [];
   const selectedModel = models.find((model) => model.id === form.machineModelId) ?? null;
   const productOptions = useMemo(() => buildProductOptions(models), [models]);
   const modelOptions = useMemo(
@@ -566,35 +547,60 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
   const supportsEndoscopyChecklist = isEndoscopyMachineModel(selectedModel);
 
   useEffect(() => {
-    void loadModels();
-  }, []);
+    if (!modelsQuery.data) return;
+    const requestedModelId = searchParams.get('modelId') ?? '';
+    const nextModelId = requestedModelId || models[0]?.id || '';
+    const nextModel = models.find((model) => model.id === nextModelId) ?? models[0];
 
-  async function loadModels() {
-    setLoading(true);
-    setError('');
-
-    try {
-      const allModels = await apiFetchAllPages<MachineModel>('/machine-models');
-      const nextModels = allModels.filter(
-        (model) => role !== 'engineer' || !userExpertise || model.businessLine?.productIndustry?.expertiseGroup === userExpertise,
-      );
-      const requestedModelId = searchParams.get('modelId') ?? '';
-      const nextModelId = requestedModelId || nextModels[0]?.id || '';
-      const nextModel = nextModels.find((model) => model.id === nextModelId) ?? nextModels[0];
-
-      setModels(nextModels);
-      setSelectedProductId(nextModel?.businessLine?.id || '');
-      setForm((current) => ({
+    setSelectedProductId(nextModel?.businessLine?.id || '');
+    setForm((current) => {
+      if (current.machineModelId && models.some((model) => model.id === current.machineModelId)) return current;
+      return {
         ...current,
         machineModelId: nextModel?.id || '',
         accessoriesText: nextModel ? buildTemplateAccessoriesText(nextModel) : '',
+      };
+    });
+  }, [models, modelsQuery.data, searchParams]);
+
+  const createMachineMutation = useMutation({
+    mutationFn: async ({ currentForm, model }: { currentForm: ProductForm; model: MachineModel }) => {
+      await apiFetch('/machines', {
+        method: 'POST',
+        body: JSON.stringify(
+          compactPayload({
+            machineModelId: model.id,
+            serialNumber: currentForm.serialNumber.trim(),
+            machineCode: currentForm.machineCode.trim(),
+            warehouseImportDate: currentForm.warehouseImportDate,
+            inventoryStatus: 'IN_STOCK',
+            status: 'ACTIVE',
+            accessories: parseTemplateAccessoryLines(currentForm.accessoriesText, model),
+          }),
+        ),
+      });
+      return model;
+    },
+    onSuccess: async (model) => {
+      setSuccess('Đã thêm sản phẩm vào kho.');
+      setForm((current) => ({
+        ...current,
+        machineCode: '',
+        serialNumber: '',
+        warehouseImportDate: new Date().toISOString().slice(0, 10),
+        accessoriesText: buildTemplateAccessoriesText(model),
       }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được model sản phẩm.');
-    } finally {
-      setLoading(false);
-    }
-  }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.productCatalog.overview }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.productCatalog.modelDetail(model.id) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.productCatalog.addProductModels }),
+      ]);
+    },
+  });
+
+  const loading = modelsQuery.isLoading || modelsQuery.isFetching;
+  const saving = createMachineMutation.isPending;
+  const error = formError || (modelsQuery.error instanceof Error ? modelsQuery.error.message : '') || (createMachineMutation.error instanceof Error ? createMachineMutation.error.message : '');
 
   function updateField(field: keyof ProductForm, value: string) {
     setForm((current) => {
@@ -626,44 +632,22 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
     event.preventDefault();
 
     if (!canAddProduct) {
-      setError('Bạn không có quyền thêm sản phẩm.');
+      setFormError('Bạn không có quyền thêm sản phẩm.');
       return;
     }
 
     if (!selectedModel) {
-      setError('Vui lòng chọn model sản phẩm.');
+      setFormError('Vui lòng chọn model sản phẩm.');
       return;
     }
 
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      await apiFetch('/machines', {
-        method: 'POST',
-        body: JSON.stringify(
-          compactPayload({
-            machineModelId: selectedModel.id,
-            serialNumber: form.serialNumber.trim(),
-            machineCode: form.machineCode.trim(),
-            warehouseImportDate: form.warehouseImportDate,
-            inventoryStatus: 'IN_STOCK',
-            status: 'ACTIVE',
-            accessories: parseTemplateAccessoryLines(form.accessoriesText, selectedModel),
-          }),
-        ),
-      });
-
-      setSuccess('Đã thêm sản phẩm vào kho.');
-      setForm({
-        ...emptyProductForm(selectedModel.id),
-        accessoriesText: buildTemplateAccessoriesText(selectedModel),
-      });
+      await createMachineMutation.mutateAsync({ currentForm: form, model: selectedModel });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thêm được sản phẩm.');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không thêm được sản phẩm.');
     }
   }
 
@@ -1521,6 +1505,24 @@ function modelDetailLabel(model: MachineModel) {
 
 function modelOptionLabel(model: MachineModel) {
   return modelShortLabel(model);
+}
+
+function buildStockByModel(models: MachineModel[], machines: CatalogMachine[]) {
+  const allowedModelIds = new Set(models.map((model) => model.id));
+  const stockByModel = models.reduce<Record<string, ModelStock>>((stock, model) => {
+    stock[model.id] = { inStock: 0, total: 0 };
+    return stock;
+  }, {});
+
+  machines.forEach((machine) => {
+    if (!machine.machineModelId || !allowedModelIds.has(machine.machineModelId)) return;
+    const current = stockByModel[machine.machineModelId] ?? { inStock: 0, total: 0 };
+    current.total += 1;
+    if (machine.inventoryStatus === 'IN_STOCK') current.inStock += 1;
+    stockByModel[machine.machineModelId] = current;
+  });
+
+  return stockByModel;
 }
 
 function modelOrigin(model: MachineModel) {

@@ -248,19 +248,17 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
   return (
     <PageFrame>
-      <section className="relative overflow-hidden rounded-[14px] border border-[#d9e1eb] bg-[#111827] p-5 text-white shadow-[0_28px_80px_rgba(17,24,39,0.18)]">
-        <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:34px_34px]" />
-        <div className="absolute inset-x-0 top-0 h-px bg-white/18" />
-        <div className="absolute inset-y-0 left-0 w-px bg-white/12" />
-
+      <section className="relative overflow-hidden rounded-[30px] border border-[#f5c7cb] bg-[#fff7f8] p-5 text-[#1f1f1f] shadow-[0_24px_70px_rgba(215,25,32,0.11)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_12%,rgba(215,25,32,0.15),transparent_30%),radial-gradient(circle_at_86%_6%,rgba(255,255,255,0.96),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,248,0.78))]" />
+        <div className="pointer-events-none absolute -right-16 bottom-[-120px] h-72 w-72 rounded-full border border-[#f5c7cb] bg-white/45" />
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-          <div className="grid content-between gap-10 rounded-[10px] border border-white/10 bg-white/[0.055] p-6 backdrop-blur-md max-sm:p-5">
+          <div className="grid content-between gap-10 rounded-[24px] border border-white/80 bg-white/70 p-6 shadow-[0_18px_44px_rgba(215,25,32,0.08)] backdrop-blur-md max-sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="inline-flex rounded-lg border border-white/12 bg-white/8 px-3 py-2 text-[12px] font-semibold text-white/68">
+              <span className="inline-flex rounded-full border border-[#f5c7cb] bg-[#fff7f8] px-3 py-2 text-[12px] font-semibold text-[#d71920]">
                 {isAdmin ? 'Admin console' : 'Trung tâm kỹ sư'}
               </span>
               <button
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/14 bg-white/10 px-3.5 text-[14px] font-semibold text-white/86 transition hover:-translate-y-px hover:bg-white/14 disabled:hover:translate-y-0"
+                className="secondary-button border-[#f5c7cb] bg-white/90 text-[#333333]"
                 disabled={loading}
                 onClick={() => void dashboardQuery.refetch()}
                 type="button"
@@ -271,7 +269,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             </div>
 
             <div className="max-w-[780px]">
-              <h1 className="max-w-[720px] text-[clamp(34px,5vw,62px)] font-bold leading-[0.98] tracking-normal text-white">
+              <h1 className="max-w-[720px] text-[clamp(34px,5vw,62px)] font-bold leading-[0.98] tracking-[-0.03em] text-[#171717]">
                 {loading
                   ? 'Đang tổng hợp số liệu kỹ thuật'
                   : totalOpenWork > 0
@@ -282,7 +280,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
                     ? 'Vận hành kỹ thuật đang ổn định'
                     : 'Không có việc gấp cần xử lý'}
               </h1>
-              <p className="mt-5 max-w-[620px] text-[15px] leading-7 text-white/66">
+              <p className="mt-5 max-w-[620px] text-[15px] leading-7 text-[#555555]">
                 {loading
                   ? 'Hệ thống đang gom dữ liệu máy, ticket và lịch bảo trì để tạo bức tranh vận hành mới nhất.'
                   : totalOpenWork > 0
@@ -298,7 +296,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             </div>
           </div>
 
-          <div className="grid gap-3 rounded-[10px] border border-white/10 bg-[#f8fafc] p-4 text-[#18212f] shadow-[0_20px_54px_rgba(0,0,0,0.16)]">
+          <div className="grid gap-3 rounded-[24px] border border-[#f5c7cb] bg-white/88 p-4 text-[#18212f] shadow-[0_18px_44px_rgba(215,25,32,0.10)]">
             <div className="flex items-start justify-between gap-3 border-b border-[#e9edf2] pb-3">
               <div>
                 <span className="text-[12px] font-semibold text-[#647084]">Ưu tiên lúc này</span>
@@ -531,19 +529,19 @@ function PulseTile({
   const style = toneClass(tone);
   const content = (
     <>
-      <span className="block text-[12px] font-semibold text-white/56">{label}</span>
-      <strong className="mt-2 block text-[30px] leading-none text-white">{loading ? '-' : value}</strong>
-      <span className="mt-2 block min-h-8 text-[12px] leading-4 text-white/56">{loading ? 'Đang tải dữ liệu' : detail}</span>
+      <span className="block text-[12px] font-semibold text-[#777777]">{label}</span>
+      <strong className="mt-2 block text-[30px] leading-none text-[#1f1f1f]">{loading ? '-' : value}</strong>
+      <span className="mt-2 block min-h-8 text-[12px] leading-4 text-[#666666]">{loading ? 'Đang tải dữ liệu' : detail}</span>
       <span className={`mt-3 block h-1.5 rounded-full ${style.bar}`} />
     </>
   );
 
   if (!href) {
-    return <div className="rounded-lg border border-white/10 bg-white/[0.08] p-3.5 backdrop-blur-md">{content}</div>;
+    return <div className="rounded-2xl border border-[#f5c7cb] bg-white/82 p-3.5 shadow-[0_10px_24px_rgba(215,25,32,0.08)] backdrop-blur-md">{content}</div>;
   }
 
   return (
-    <Link className="rounded-lg border border-white/10 bg-white/[0.08] p-3.5 backdrop-blur-md transition hover:-translate-y-px hover:border-white/30 hover:bg-white/[0.12]" rel="noreferrer" target="_blank" to={href}>
+    <Link className="rounded-2xl border border-[#f5c7cb] bg-white/82 p-3.5 shadow-[0_10px_24px_rgba(215,25,32,0.08)] backdrop-blur-md transition hover:-translate-y-px hover:border-[#d71920] hover:bg-white" rel="noreferrer" target="_blank" to={href}>
       {content}
     </Link>
   );

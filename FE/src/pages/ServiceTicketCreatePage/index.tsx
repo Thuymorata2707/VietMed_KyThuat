@@ -1,4 +1,5 @@
 import { ArrowLeft, ChevronDown, ChevronUp, Loader2, Plus, Save } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
@@ -9,6 +10,7 @@ import { PageTitle } from '../../components/PageTitle';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
+import { queryKeys } from '../../lib/queryKeys';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 
 type TicketKind = 'repair' | 'maintenance' | 'installation';
@@ -110,10 +112,18 @@ type QuickMachineForm = {
   serialNumber: string;
 };
 
+type CreateTicketOptions = {
+  customers: CustomerOption[];
+  engineers: EngineerOption[];
+  machineModels: MachineModelOption[];
+  regions: Region[];
+};
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: TicketKind; user: ApiUser }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialKind = fixedKind ?? normalizeKind(searchParams.get('kind'));
   const initialMachineId = searchParams.get('machineId') ?? '';
@@ -123,22 +133,59 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const role = getRoleName(user);
   const [kind, setKind] = useState<TicketKind>(initialKind);
   const [form, setForm] = useState<TicketForm>(() => emptyTicketForm(user, initialKind));
-  const [customers, setCustomers] = useState<CustomerOption[]>([]);
-  const [machines, setMachines] = useState<MachineOption[]>([]);
-  const [engineers, setEngineers] = useState<EngineerOption[]>([]);
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
   const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm(user));
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(() => emptyQuickMachineForm());
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
   const [showQuickMachine, setShowQuickMachine] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [creatingCustomer, setCreatingCustomer] = useState(false);
-  const [creatingMachine, setCreatingMachine] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const scope = fixedKind === 'installation' || initialKind === 'installation' ? 'installation' : 'service';
+
+  const optionsQuery = useQuery({
+    queryKey: queryKeys.serviceTickets.createOptions,
+    queryFn: async (): Promise<CreateTicketOptions> => {
+      const [customersResult, modelsResult] = await Promise.all([
+        apiFetch<Paginated<CustomerOption>>('/customers?limit=100'),
+        apiFetchAllPages<MachineModelOption>('/machine-models'),
+      ]);
+
+      if (role === 'engineer') {
+        return {
+          customers: customersResult.data,
+          engineers: [{ id: user.id, email: user.email, fullName: user.fullName }],
+          machineModels: modelsResult,
+          regions: user.region?.id ? [{ id: user.region.id, name: user.region.name }] : [],
+        };
+      }
+
+      const [engineersResult, regionsResult] = await Promise.all([
+        apiFetch<Paginated<EngineerOption>>('/users?limit=100&roleName=engineer'),
+        apiFetch<Paginated<Region> | Region[]>('/regions?limit=100'),
+      ]);
+
+      return {
+        customers: customersResult.data,
+        engineers: engineersResult.data,
+        machineModels: modelsResult,
+        regions: unpackList(regionsResult),
+      };
+    },
+  });
+
+  const machinesQuery = useQuery({
+    queryKey: queryKeys.serviceTickets.machines(kind),
+    queryFn: async () => {
+      const inventoryStatus = kind === 'installation' ? 'IN_STOCK' : 'INSTALLED';
+      const result = await apiFetch<Paginated<MachineOption>>(`/machines?limit=100&inventoryStatus=${inventoryStatus}`);
+      return result.data.filter((machine) => canEngineerUseMachine(user, machine));
+    },
+  });
+
+  const customers = optionsQuery.data?.customers ?? [];
+  const engineers = optionsQuery.data?.engineers ?? [];
+  const regions = optionsQuery.data?.regions ?? [];
+  const machineModels = optionsQuery.data?.machineModels ?? [];
+  const machines = machinesQuery.data ?? [];
 
   const visibleMachines = useMemo(
     () =>
@@ -159,10 +206,134 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       ? 'probe'
       : null;
   const backHref = returnTo || (scope === 'installation' ? '/installations' : '/service-tickets');
+  const createCustomerMutation = useMutation({
+    mutationFn: async () => {
+      const name = quickCustomerForm.name.trim();
+      const regionId = quickCustomerForm.regionId.trim();
+
+      if (!name || !regionId) {
+        throw new Error('Vui lòng nhập tên khách hàng và chọn khu vực.');
+      }
+
+      return apiFetch<CustomerOption>('/customers', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          phone: quickCustomerForm.phone.trim() || undefined,
+          contactPerson: quickCustomerForm.contactPerson.trim() || undefined,
+          contactPhone: quickCustomerForm.phone.trim() || undefined,
+          province: quickCustomerForm.province.trim() || undefined,
+          address: quickCustomerForm.address.trim() || undefined,
+          regionId,
+          status: 'ACTIVE',
+        }),
+      });
+    },
+    onSuccess: async (customer) => {
+      queryClient.setQueryData<CreateTicketOptions>(queryKeys.serviceTickets.createOptions, (current) =>
+        current
+          ? {
+              ...current,
+              customers: [customer, ...current.customers.filter((item) => item.id !== customer.id)],
+            }
+          : current,
+      );
+      setForm((current) => ({ ...current, customerId: customer.id }));
+      setQuickMachineForm((current) => ({ ...current, customerId: customer.id }));
+      setQuickCustomerForm(emptyQuickCustomerForm(user));
+      setShowQuickCustomer(false);
+      setSuccess('Đã tạo khách hàng và chọn vào phiếu.');
+      await queryClient.invalidateQueries({ queryKey: ['resources', '/customers'] });
+    },
+  });
+
+  const createMachineMutation = useMutation({
+    mutationFn: async () => {
+      const serialNumber = quickMachineForm.serialNumber.trim();
+      const modelName = quickMachineForm.modelName.trim() || selectedModel?.name || selectedModel?.code || '';
+
+      if (!serialNumber || !modelName) {
+        throw new Error('Vui lòng nhập Serial và chọn model hoặc nhập tên model tạm.');
+      }
+
+      return apiFetch<MachineOption>('/machines', {
+        method: 'POST',
+        body: JSON.stringify({
+          serialNumber,
+          machineModelId: selectedModel?.id,
+          modelName: selectedModel ? undefined : modelName,
+          name: quickMachineForm.name.trim() || selectedModel?.displayName || modelName,
+          customerId: quickMachineForm.customerId || form.customerId || undefined,
+          inventoryStatus: kind === 'installation' ? 'IN_STOCK' : 'INSTALLED',
+          status: 'ACTIVE',
+          dataStatus: 'PENDING_REVIEW',
+          createdSource: role === 'admin' ? 'ADMIN' : 'ENGINEER',
+          primaryEngineerId: role === 'engineer' ? user.id : undefined,
+          accessories: parseMachineAccessoriesInput(quickMachineForm.accessoriesText),
+        }),
+      });
+    },
+    onSuccess: async (machine) => {
+      queryClient.setQueryData<MachineOption[]>(queryKeys.serviceTickets.machines(kind), (current) =>
+        current ? [machine, ...current.filter((item) => item.id !== machine.id)] : [machine],
+      );
+      setForm((current) => ({
+        ...current,
+        machineId: machine.id,
+        customerId: current.customerId || quickMachineForm.customerId || machine.customer?.id || '',
+        deviceName: current.deviceName || machine.name || quickMachineForm.modelName,
+        modelName: current.modelName || machine.modelName || quickMachineForm.modelName,
+        serialNumber: current.serialNumber || machine.serialNumber || quickMachineForm.serialNumber,
+      }));
+      setQuickMachineForm(emptyQuickMachineForm());
+      setShowQuickMachine(false);
+      setSuccess('Đã tạo thiết bị và chọn vào phiếu.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['service-tickets', 'machines'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.productCatalog.overview }),
+      ]);
+    },
+  });
+
+  const createTicketMutation = useMutation({
+    mutationFn: () => createTicket(kind, form, visibleMachineModels),
+    onSuccess: async () => {
+      setSuccess(role === 'engineer' ? 'Đã tạo phiếu. Admin sẽ kiểm tra thông tin máy nếu cần.' : 'Đã tạo phiếu.');
+      setForm(emptyTicketForm(user, kind));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['service-tickets', 'board'] }),
+        queryClient.invalidateQueries({ queryKey: ['work-assignments', 'dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard', 'overview'] }),
+      ]);
+      window.setTimeout(() => navigate(backHref), 450);
+    },
+  });
+  const loading = optionsQuery.isLoading || optionsQuery.isFetching || machinesQuery.isLoading || machinesQuery.isFetching;
+  const saving = createTicketMutation.isPending;
+  const creatingCustomer = createCustomerMutation.isPending;
+  const creatingMachine = createMachineMutation.isPending;
+  const mutationError = createCustomerMutation.error ?? createMachineMutation.error ?? createTicketMutation.error;
+  const error =
+    formError ||
+    (optionsQuery.error instanceof Error ? optionsQuery.error.message : '') ||
+    (machinesQuery.error instanceof Error ? machinesQuery.error.message : '') ||
+    (mutationError instanceof Error ? mutationError.message : '');
 
   useEffect(() => {
-    loadOptions();
-  }, []);
+    if (!optionsQuery.data) return;
+    const initialCustomer = optionsQuery.data.customers.find((customer) => customer.id === initialCustomerId);
+    if (initialCustomer && !form.customerId) {
+      applyCustomer(initialCustomer);
+    }
+  }, [form.customerId, initialCustomerId, optionsQuery.data]);
+
+  useEffect(() => {
+    if (!machinesQuery.data) return;
+    const initialMachine = machinesQuery.data.find((machine) => machine.id === initialMachineId);
+    if (initialMachine && !form.machineId) {
+      applyMachine(initialMachine);
+    }
+  }, [form.machineId, initialMachineId, machinesQuery.data]);
 
   useEffect(() => {
     if (!fixedKind) {
@@ -175,58 +346,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       machineId: '',
       warrantyStatus: initialWarrantyStatus || current.warrantyStatus,
     }));
-    loadMachines(kind).catch((err) => {
-      setError(err instanceof Error ? err.message : 'Không tải được danh sách thiết bị.');
-    });
   }, [fixedKind, initialCustomerId, initialMachineId, initialWarrantyStatus, kind, returnTo]);
-
-  async function loadOptions() {
-    setLoading(true);
-    setError('');
-
-    try {
-      const [customersResult, modelsResult] = await Promise.all([
-        apiFetch<Paginated<CustomerOption>>('/customers?limit=100'),
-        apiFetchAllPages<MachineModelOption>('/machine-models'),
-      ]);
-
-      setCustomers(customersResult.data);
-      setMachineModels(modelsResult);
-      const initialCustomer = customersResult.data.find((customer) => customer.id === initialCustomerId);
-      if (initialCustomer) {
-        applyCustomer(initialCustomer);
-      }
-
-      if (role === 'engineer') {
-        setEngineers([{ id: user.id, email: user.email, fullName: user.fullName }]);
-        setRegions(user.region?.id ? [{ id: user.region.id, name: user.region.name }] : []);
-      } else {
-        const [engineersResult, regionsResult] = await Promise.all([
-          apiFetch<Paginated<EngineerOption>>('/users?limit=100&roleName=engineer'),
-          apiFetch<Paginated<Region> | Region[]>('/regions?limit=100'),
-        ]);
-        setEngineers(engineersResult.data);
-        setRegions(unpackList(regionsResult));
-      }
-
-      await loadMachines(kind);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được dữ liệu tạo phiếu.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadMachines(nextKind: TicketKind) {
-    const inventoryStatus = nextKind === 'installation' ? 'IN_STOCK' : 'INSTALLED';
-    const result = await apiFetch<Paginated<MachineOption>>(`/machines?limit=100&inventoryStatus=${inventoryStatus}`);
-    const availableMachines = result.data.filter((machine) => canEngineerUseMachine(user, machine));
-    setMachines(availableMachines);
-    const initialMachine = availableMachines.find((machine) => machine.id === initialMachineId);
-    if (initialMachine) {
-      applyMachine(initialMachine);
-    }
-  }
 
   function updateForm(patch: Partial<TicketForm>) {
     setForm((current) => ({ ...current, ...patch }));
@@ -264,172 +384,36 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   }
 
   async function createCustomer() {
-    const name = quickCustomerForm.name.trim();
-    const regionId = quickCustomerForm.regionId.trim();
-
-    if (!name || !regionId) {
-      setError('Vui lòng nhập tên khách hàng và chọn khu vực.');
-      return;
-    }
-
-    setCreatingCustomer(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      const customer = await apiFetch<CustomerOption>('/customers', {
-        method: 'POST',
-        body: JSON.stringify({
-          name,
-          phone: quickCustomerForm.phone.trim() || undefined,
-          contactPerson: quickCustomerForm.contactPerson.trim() || undefined,
-          contactPhone: quickCustomerForm.phone.trim() || undefined,
-          province: quickCustomerForm.province.trim() || undefined,
-          address: quickCustomerForm.address.trim() || undefined,
-          regionId,
-          status: 'ACTIVE',
-        }),
-      });
-
-      setCustomers((current) => [customer, ...current.filter((item) => item.id !== customer.id)]);
-      setForm((current) => ({ ...current, customerId: customer.id }));
-      setQuickMachineForm((current) => ({ ...current, customerId: customer.id }));
-      setQuickCustomerForm(emptyQuickCustomerForm(user));
-      setShowQuickCustomer(false);
-      setSuccess('Đã tạo khách hàng và chọn vào phiếu.');
+      await createCustomerMutation.mutateAsync();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tạo được khách hàng.');
-    } finally {
-      setCreatingCustomer(false);
+      setFormError(err instanceof Error ? err.message : 'Không tạo được khách hàng.');
     }
   }
 
   async function createMachine() {
-    const serialNumber = quickMachineForm.serialNumber.trim();
-    const modelName = quickMachineForm.modelName.trim() || selectedModel?.name || selectedModel?.code || '';
-
-    if (!serialNumber || !modelName) {
-      setError('Vui lòng nhập Serial và chọn model hoặc nhập tên model tạm.');
-      return;
-    }
-
-    setCreatingMachine(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      const machine = await apiFetch<MachineOption>('/machines', {
-        method: 'POST',
-        body: JSON.stringify({
-          serialNumber,
-          machineModelId: selectedModel?.id,
-          modelName: selectedModel ? undefined : modelName,
-          name: quickMachineForm.name.trim() || selectedModel?.displayName || modelName,
-          customerId: quickMachineForm.customerId || form.customerId || undefined,
-          inventoryStatus: kind === 'installation' ? 'IN_STOCK' : 'INSTALLED',
-          status: 'ACTIVE',
-          dataStatus: 'PENDING_REVIEW',
-          createdSource: role === 'admin' ? 'ADMIN' : 'ENGINEER',
-          primaryEngineerId: role === 'engineer' ? user.id : undefined,
-          accessories: parseMachineAccessoriesInput(quickMachineForm.accessoriesText),
-        }),
-      });
-
-      setMachines((current) => [machine, ...current.filter((item) => item.id !== machine.id)]);
-      setForm((current) => ({
-        ...current,
-        machineId: machine.id,
-        customerId: current.customerId || quickMachineForm.customerId || machine.customer?.id || '',
-        deviceName: current.deviceName || machine.name || modelName,
-        modelName: current.modelName || machine.modelName || modelName,
-        serialNumber: current.serialNumber || serialNumber,
-      }));
-      setQuickMachineForm(emptyQuickMachineForm());
-      setShowQuickMachine(false);
-      setSuccess('Đã tạo thiết bị và chọn vào phiếu.');
+      await createMachineMutation.mutateAsync();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tạo được thiết bị.');
-    } finally {
-      setCreatingMachine(false);
+      setFormError(err instanceof Error ? err.message : 'Không tạo được thiết bị.');
     }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      if (kind === 'repair') {
-        await apiFetch('/repairs', {
-          method: 'POST',
-          body: JSON.stringify({
-            title: form.title.trim(),
-            description: form.description.trim() || undefined,
-            machineId: form.machineId || undefined,
-            customerId: form.customerId || undefined,
-            engineerId: form.engineerId || undefined,
-            priority: form.priority,
-            reportedAt: form.reportedAt || undefined,
-            usingDepartment: form.usingDepartment.trim() || undefined,
-            representative: form.representative.trim() || undefined,
-            address: form.address.trim() || undefined,
-            contactPhone: form.contactPhone.trim() || undefined,
-            deviceName: form.deviceName.trim() || undefined,
-            modelName: form.modelName.trim() || undefined,
-            serialNumber: form.serialNumber.trim() || undefined,
-            warrantyStatus: form.warrantyStatus,
-            conditionAssessment: form.conditionAssessment.trim() || undefined,
-            repairMethod: form.repairMethod.trim() || undefined,
-          }),
-        });
-      } else if (kind === 'maintenance') {
-        await apiFetch('/maintenance', {
-          method: 'POST',
-          body: JSON.stringify({
-            title: form.title.trim(),
-            description: form.description.trim() || undefined,
-            type: form.maintenanceType,
-            machineId: form.machineId || undefined,
-            customerId: form.customerId || undefined,
-            engineerId: form.engineerId || undefined,
-            scheduledDate: form.scheduledDate,
-            nextDueDate: form.nextDueDate || undefined,
-            checklist: splitLines(form.checklist),
-            usingDepartment: form.usingDepartment.trim() || undefined,
-            representative: form.representative.trim() || undefined,
-            address: form.address.trim() || undefined,
-            contactPhone: form.contactPhone.trim() || undefined,
-            deviceName: form.deviceName.trim() || undefined,
-            modelName: form.modelName.trim() || undefined,
-            serialNumber: form.serialNumber.trim() || undefined,
-          }),
-        });
-      } else {
-        await apiFetch('/installations', {
-          method: 'POST',
-          body: JSON.stringify({
-            machineId: form.machineId || undefined,
-            machineModelId: form.machineModelId || undefined,
-            plannedModelName: visibleMachineModels.find((model) => model.id === form.machineModelId)?.name || form.modelName.trim() || undefined,
-            customerId: form.customerId,
-            installedById: form.engineerId,
-            installedAt: form.scheduledDate,
-            warrantyStartDate: form.warrantyStartDate || form.scheduledDate,
-            warrantyEndDate: form.warrantyEndDate,
-            note: form.description.trim() || undefined,
-          }),
-        });
-      }
-
-      setSuccess(role === 'engineer' ? 'Đã tạo phiếu. Admin sẽ kiểm tra thông tin máy nếu cần.' : 'Đã tạo phiếu.');
-      setForm(emptyTicketForm(user, kind));
-      window.setTimeout(() => navigate(backHref), 450);
+      await createTicketMutation.mutateAsync();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tạo được phiếu.');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không tạo được phiếu.');
     }
   }
 
@@ -1023,6 +1007,72 @@ function emptyQuickMachineForm(): QuickMachineForm {
     name: '',
     serialNumber: '',
   };
+}
+
+async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineModels: MachineModelOption[]) {
+  if (kind === 'repair') {
+    return apiFetch('/repairs', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: form.title.trim(),
+        description: form.description.trim() || undefined,
+        machineId: form.machineId || undefined,
+        customerId: form.customerId || undefined,
+        engineerId: form.engineerId || undefined,
+        priority: form.priority,
+        reportedAt: form.reportedAt || undefined,
+        usingDepartment: form.usingDepartment.trim() || undefined,
+        representative: form.representative.trim() || undefined,
+        address: form.address.trim() || undefined,
+        contactPhone: form.contactPhone.trim() || undefined,
+        deviceName: form.deviceName.trim() || undefined,
+        modelName: form.modelName.trim() || undefined,
+        serialNumber: form.serialNumber.trim() || undefined,
+        warrantyStatus: form.warrantyStatus,
+        conditionAssessment: form.conditionAssessment.trim() || undefined,
+        repairMethod: form.repairMethod.trim() || undefined,
+      }),
+    });
+  }
+
+  if (kind === 'maintenance') {
+    return apiFetch('/maintenance', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: form.title.trim(),
+        description: form.description.trim() || undefined,
+        type: form.maintenanceType,
+        machineId: form.machineId || undefined,
+        customerId: form.customerId || undefined,
+        engineerId: form.engineerId || undefined,
+        scheduledDate: form.scheduledDate,
+        nextDueDate: form.nextDueDate || undefined,
+        checklist: splitLines(form.checklist),
+        usingDepartment: form.usingDepartment.trim() || undefined,
+        representative: form.representative.trim() || undefined,
+        address: form.address.trim() || undefined,
+        contactPhone: form.contactPhone.trim() || undefined,
+        deviceName: form.deviceName.trim() || undefined,
+        modelName: form.modelName.trim() || undefined,
+        serialNumber: form.serialNumber.trim() || undefined,
+      }),
+    });
+  }
+
+  return apiFetch('/installations', {
+    method: 'POST',
+    body: JSON.stringify({
+      machineId: form.machineId || undefined,
+      machineModelId: form.machineModelId || undefined,
+      plannedModelName: visibleMachineModels.find((model) => model.id === form.machineModelId)?.name || form.modelName.trim() || undefined,
+      customerId: form.customerId,
+      installedById: form.engineerId,
+      installedAt: form.scheduledDate,
+      warrantyStartDate: form.warrantyStartDate || form.scheduledDate,
+      warrantyEndDate: form.warrantyEndDate,
+      note: form.description.trim() || undefined,
+    }),
+  });
 }
 
 function splitLines(value: string) {

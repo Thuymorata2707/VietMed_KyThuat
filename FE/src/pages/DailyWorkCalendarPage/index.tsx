@@ -1,9 +1,11 @@
 import { BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
+import { queryKeys } from '../../lib/queryKeys';
 
 type DailyWorkCalendarPageProps = {
   currentRole: RoleName;
@@ -36,6 +38,17 @@ type NoteForm = {
   endTime: string;
   color: string;
   type: DailyWorkType;
+};
+
+type DailyWorkPayload = {
+  title: string;
+  note: string | null;
+  workDate: string;
+  startTime: string | null;
+  endTime: string | null;
+  color: string;
+  type: DailyWorkType;
+  userId?: string;
 };
 
 const colorOptions = [
@@ -90,30 +103,100 @@ const workTypeOptions: Array<{ value: DailyWorkType; label: string }> = [
 const weekdayLabels = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPageProps) {
+  const queryClient = useQueryClient();
   const [viewDate, setViewDate] = useState(() => startOfMonth(new Date()));
-  const [notes, setNotes] = useState<DailyWorkNote[]>([]);
-  const [engineers, setEngineers] = useState<ApiUser[]>([]);
   const [selectedEngineerId, setSelectedEngineerId] = useState(currentRole === 'admin' ? '' : user.id);
   const [selectedDayDate, setSelectedDayDate] = useState('');
   const [editingNote, setEditingNote] = useState<DailyWorkNote | null>(null);
   const [form, setForm] = useState<NoteForm>(() => emptyForm(toDateInput(new Date())));
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const isAdmin = currentRole === 'admin';
   const canEditExisting = !isAdmin;
   const canCreate = !isAdmin || Boolean(selectedEngineerId);
 
-  useEffect(() => {
-    if (!isAdmin) return;
-    loadEngineers();
-  }, [isAdmin]);
+  const engineersQuery = useQuery({
+    enabled: isAdmin,
+    queryKey: queryKeys.dailyWork.engineers,
+    queryFn: async () => {
+      const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&roleName=engineer&status=ACTIVE');
+      return result.data;
+    },
+  });
+
+  const engineers = engineersQuery.data ?? [];
 
   useEffect(() => {
-    loadNotes();
-  }, [viewDate, selectedEngineerId, isAdmin]);
+    if (!isAdmin) return;
+    setSelectedEngineerId((current) => current || engineers[0]?.id || '');
+  }, [engineers, isAdmin]);
+
+  const notesParams = useMemo(() => {
+    const from = toDateInput(startOfMonth(viewDate));
+    const to = toDateInput(endOfMonth(viewDate));
+    const params = new URLSearchParams({ from, to });
+    if (isAdmin && selectedEngineerId) params.set('userId', selectedEngineerId);
+    return params.toString();
+  }, [isAdmin, selectedEngineerId, viewDate]);
+
+  const notesQuery = useQuery({
+    enabled: !isAdmin || Boolean(selectedEngineerId),
+    queryKey: queryKeys.dailyWork.notes(notesParams),
+    queryFn: () => apiFetch<DailyWorkNote[]>(`/daily-work-notes?${notesParams}`),
+  });
+
+  const notes = notesQuery.data ?? [];
+  const loading = notesQuery.isLoading || notesQuery.isFetching || engineersQuery.isFetching;
+
+  const saveNoteMutation = useMutation({
+    mutationFn: async ({ noteId, payload }: { noteId?: string; payload: DailyWorkPayload }) => {
+      return noteId
+        ? apiFetch(`/daily-work-notes/${noteId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+          })
+        : apiFetch('/daily-work-notes', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+    },
+    onSuccess: async (_result, variables) => {
+      setSuccess(variables.noteId ? 'Đã cập nhật ghi chú công việc.' : isAdmin ? 'Đã thêm việc cho kỹ sư.' : 'Đã thêm ghi chú công việc.');
+      setIsModalOpen(false);
+      setSelectedDayDate('');
+      await invalidateDailyWorkData(queryClient);
+    },
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: (noteId: string) => apiFetch(`/daily-work-notes/${noteId}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      setSuccess('Đã xóa ghi chú công việc.');
+      setIsModalOpen(false);
+      await invalidateDailyWorkData(queryClient);
+    },
+  });
+
+  const reviewNoteMutation = useMutation({
+    mutationFn: ({ note, status }: { note: DailyWorkNote; status: Extract<DailyWorkStatus, 'APPROVED' | 'REJECTED'> }) =>
+      apiFetch(`/daily-work-notes/${note.id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ status }),
+      }).then(() => status),
+    onSuccess: async (status) => {
+      setSuccess(status === 'APPROVED' ? 'Đã duyệt lịch công việc.' : 'Đã từ chối lịch công việc.');
+      await invalidateDailyWorkData(queryClient);
+    },
+  });
+
+  const saving = saveNoteMutation.isPending || deleteNoteMutation.isPending || reviewNoteMutation.isPending;
+  const mutationError = saveNoteMutation.error ?? deleteNoteMutation.error ?? reviewNoteMutation.error;
+  const error =
+    formError ||
+    (engineersQuery.error instanceof Error ? engineersQuery.error.message : '') ||
+    (notesQuery.error instanceof Error ? notesQuery.error.message : '') ||
+    (mutationError instanceof Error ? mutationError.message : '');
 
   const calendarDays = useMemo(() => buildCalendarDays(viewDate), [viewDate]);
   const notesByDate = useMemo(() => {
@@ -124,47 +207,13 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     }, {});
   }, [notes]);
 
-  async function loadEngineers() {
-    try {
-      const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&roleName=engineer&status=ACTIVE');
-      setEngineers(result.data);
-      setSelectedEngineerId((current) => current || result.data[0]?.id || '');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được danh sách kỹ sư.');
-    }
-  }
-
-  async function loadNotes() {
-    if (isAdmin && !selectedEngineerId) {
-      setNotes([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    const from = toDateInput(startOfMonth(viewDate));
-    const to = toDateInput(endOfMonth(viewDate));
-    const query = new URLSearchParams({ from, to });
-    if (isAdmin && selectedEngineerId) query.set('userId', selectedEngineerId);
-
-    try {
-      const result = await apiFetch<DailyWorkNote[]>(`/daily-work-notes?${query.toString()}`);
-      setNotes(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được lịch công việc.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   function openCreate(date: Date) {
     if (!canCreate) return;
     setEditingNote(null);
     setForm(emptyForm(toDateInput(date)));
     setIsModalOpen(true);
     setSelectedDayDate('');
-    setError('');
+    setFormError('');
     setSuccess('');
   }
 
@@ -195,14 +244,14 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     });
     setIsModalOpen(true);
     setSelectedDayDate('');
-    setError('');
+    setFormError('');
     setSuccess('');
   }
 
   function openDay(date: Date) {
     if (isAdmin) {
       setSelectedDayDate(toDateInput(date));
-      setError('');
+      setFormError('');
       setSuccess('');
       return;
     }
@@ -212,12 +261,11 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      const payload = {
+      const payload: DailyWorkPayload = {
         title: form.title.trim(),
         note: form.note.trim() || null,
         workDate: form.workDate,
@@ -228,63 +276,31 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
         userId: isAdmin ? selectedEngineerId : undefined,
       };
 
-      if (editingNote) {
-        await apiFetch(`/daily-work-notes/${editingNote.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload),
-        });
-        setSuccess('Đã cập nhật ghi chú công việc.');
-      } else {
-        await apiFetch('/daily-work-notes', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
-        setSuccess(isAdmin ? 'Đã thêm việc cho kỹ sư.' : 'Đã thêm ghi chú công việc.');
-      }
-
-      setIsModalOpen(false);
-      setSelectedDayDate('');
-      await loadNotes();
+      await saveNoteMutation.mutateAsync({ noteId: editingNote?.id, payload });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không lưu được ghi chú.');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không lưu được ghi chú.');
     }
   }
 
   async function removeNote() {
     if (!editingNote) return;
-    setSaving(true);
-    setError('');
+    setFormError('');
 
     try {
-      await apiFetch(`/daily-work-notes/${editingNote.id}`, { method: 'DELETE' });
-      setSuccess('Đã xóa ghi chú công việc.');
-      setIsModalOpen(false);
-      await loadNotes();
+      await deleteNoteMutation.mutateAsync(editingNote.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không xóa được ghi chú.');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không xóa được ghi chú.');
     }
   }
 
   async function reviewNote(note: DailyWorkNote, status: Extract<DailyWorkStatus, 'APPROVED' | 'REJECTED'>) {
-    setSaving(true);
-    setError('');
+    setFormError('');
     setSuccess('');
 
     try {
-      await apiFetch(`/daily-work-notes/${note.id}/review`, {
-        method: 'POST',
-        body: JSON.stringify({ status }),
-      });
-      setSuccess(status === 'APPROVED' ? 'Đã duyệt lịch công việc.' : 'Đã từ chối lịch công việc.');
-      await loadNotes();
+      await reviewNoteMutation.mutateAsync({ note, status });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không cập nhật được trạng thái lịch.');
-    } finally {
-      setSaving(false);
+      setFormError(err instanceof Error ? err.message : 'Không cập nhật được trạng thái lịch.');
     }
   }
 
@@ -598,6 +614,13 @@ function endOfMonth(date: Date) {
 
 function addMonths(date: Date, count: number) {
   return new Date(date.getFullYear(), date.getMonth() + count, 1);
+}
+
+async function invalidateDailyWorkData(queryClient: QueryClient) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['daily-work', 'notes'] }),
+    queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'daily-rows'] }),
+  ]);
 }
 
 function toDateInput(value: Date | string) {
