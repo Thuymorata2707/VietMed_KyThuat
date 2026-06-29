@@ -141,7 +141,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
 
   const selectedRole = roles.find((role) => role.id === form.roleId);
   const roleIsEngineer = isEngineerRole(selectedRole?.name);
-  const shouldShowEngineerProfile = roleIsEngineer || form.isTechnicalStaff || Boolean(editingUser?.engineerProfile);
+  const shouldShowEngineerProfile = roleIsEngineer || form.isTechnicalStaff;
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
   const visibleUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
 
@@ -220,14 +220,14 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
           method: 'PATCH',
           body: JSON.stringify(payload),
         });
-        await saveEngineerProfileIfNeeded(savedUser.id);
+        await syncEngineerProfile(savedUser.id);
         setSuccess('Đã cập nhật tài khoản.');
       } else {
         const savedUser = await apiFetch<AdminUser>('/users', {
           method: 'POST',
           body: JSON.stringify(payload),
         });
-        await saveEngineerProfileIfNeeded(savedUser.id);
+        await syncEngineerProfile(savedUser.id);
         setSuccess('Đã tạo tài khoản mới.');
       }
 
@@ -244,9 +244,16 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
     }
   }
 
-  async function saveEngineerProfileIfNeeded(userId: string) {
+  async function syncEngineerProfile(userId: string) {
     const role = roles.find((item) => item.id === form.roleId);
-    if (!isEngineerRole(role?.name) && !form.isTechnicalStaff) return;
+    const shouldKeepEngineerProfile = isEngineerRole(role?.name) || form.isTechnicalStaff;
+
+    if (!shouldKeepEngineerProfile) {
+      if (editingUser?.engineerProfile) {
+        await apiFetch(`/engineer-profiles/${userId}`, { method: 'DELETE' });
+      }
+      return;
+    }
 
     await apiFetch(`/engineer-profiles/${userId}`, {
       method: 'PUT',
@@ -642,11 +649,10 @@ function UserForm({
           </select>
         </label>
 
-        <label className="wide-field rounded-xl border border-[#e5e5e5] bg-[#f8fafc] px-4 py-3">
-          <span className="flex items-start gap-3 text-sm font-semibold text-[#1f2937]">
+        <label className="wide-field engineer-toggle-card">
+          <span className="engineer-toggle-card__control">
             <input
               checked={roleIsEngineer || form.isTechnicalStaff}
-              className="mt-1 h-4 w-4"
               disabled={roleIsEngineer}
               onChange={(event) => onChange((current) => ({ ...current, isTechnicalStaff: event.target.checked }))}
               type="checkbox"
@@ -738,8 +744,8 @@ function UserForm({
                   value={form.photoUrl}
                 />
                 {form.photoUrl ? (
-                  <span className="mt-0.5 block overflow-hidden rounded-lg border border-[#e5e5e5] bg-[#f4f7fb]">
-                    <img alt="" className="aspect-video w-full object-cover" src={form.photoUrl} />
+                  <span className="engineer-photo-preview">
+                    <img alt="" src={form.photoUrl} />
                   </span>
                 ) : null}
               </label>

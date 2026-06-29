@@ -99,6 +99,19 @@ export class EngineerProfilesService {
     return this.withComputedFields(profile);
   }
 
+  async remove(userId: string) {
+    const existingProfile = await this.prisma.engineerProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!existingProfile) {
+      return { deleted: false };
+    }
+
+    await this.prisma.engineerProfile.delete({ where: { userId } });
+    return { deleted: true };
+  }
+
   private async ensureEngineerUser(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

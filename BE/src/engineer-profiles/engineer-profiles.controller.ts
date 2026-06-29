@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Put, UseGuards } from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -29,5 +29,11 @@ export class EngineerProfilesController {
     @Body() dto: UpsertEngineerProfileDto,
   ) {
     return this.engineerProfilesService.upsert(userId, dto);
+  }
+
+  @Roles('admin')
+  @Delete(':userId')
+  remove(@Param('userId') userId: string) {
+    return this.engineerProfilesService.remove(userId);
   }
 }

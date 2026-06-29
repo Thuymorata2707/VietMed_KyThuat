@@ -100,7 +100,7 @@ const emptyForm: ArticleForm = {
   modelHint: '',
   ownerTeam: '',
   category: 'COMMON_FAULT',
-  status: 'PUBLISHED',
+  status: 'DRAFT',
   tagsText: '',
   symptomsText: '',
   stepsText: '',
@@ -111,7 +111,8 @@ const emptyForm: ArticleForm = {
 
 export function KnowledgeBasePage({ user }: { user: ApiUser }) {
   const role = getRoleName(user);
-  const canManage = role === 'admin' || role === 'manager';
+  const canApprove = role === 'admin';
+  const canContribute = role === 'admin' || role === 'manager' || role === 'engineer';
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('ALL');
   const [query, setQuery] = useState('');
@@ -128,7 +129,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
       void loadArticles();
     }, 160);
     return () => window.clearTimeout(timeout);
-  }, [query, selectedCategory, canManage]);
+  }, [query, selectedCategory, canApprove]);
 
   const categoryCounts = useMemo(() => {
     return categoryOptions.reduce<Record<KnowledgeArticleCategory, number>>((acc, category) => {
@@ -194,7 +195,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
       modelHint: form.modelHint || null,
       ownerTeam: form.ownerTeam || null,
       category: form.category,
-      status: form.status,
+      status: canApprove ? form.status : 'DRAFT',
       tags: linesToList(form.tagsText),
       symptoms: linesToList(form.symptomsText),
       steps: linesToList(form.stepsText),
@@ -238,6 +239,23 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
     }
   }
 
+  async function handlePublish(article: KnowledgeArticle) {
+    setSaving(true);
+    setError('');
+    try {
+      const saved = await apiFetch<KnowledgeArticle>(`/knowledge-articles/${article.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'PUBLISHED' }),
+      });
+      setSelectedArticleId(saved.id);
+      await loadArticles();
+    } catch (publishError) {
+      setError(publishError instanceof Error ? publishError.message : 'Không duyệt được bài kinh nghiệm.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <PageFrame>
       <section className="relative overflow-hidden rounded-[30px] border border-[#f5c7cb] bg-[#fff7f8] p-6 shadow-[0_24px_70px_rgba(215,25,32,0.10)] lg:p-8">
@@ -273,7 +291,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
             />
           </label>
 
-          {canManage ? (
+          {canContribute ? (
             <button className="primary-button justify-center" onClick={openCreateForm} type="button">
               <Plus size={16} />
               Add Article
@@ -301,8 +319,8 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
           </div>
 
           <div className="rounded-2xl border border-dashed border-[#f5c7cb] bg-[#fffafa] p-4 text-sm text-[#666666]">
-            <strong className="block text-[#1f1f1f]">{canManage ? 'Quản trị nội dung' : 'Dành cho kỹ sư'}</strong>
-            {canManage ? 'Admin/manager có thể thêm, sửa, xoá và chuyển trạng thái bài.' : 'Kỹ sư xem các bài đã xuất bản để tra cứu khi đi công trình.'}
+            <strong className="block text-[#1f1f1f]">{canApprove ? 'Admin duyệt nội dung' : 'Đóng góp kinh nghiệm'}</strong>
+            {canApprove ? 'Admin có thể duyệt Published hoặc đưa bài về Draft/Archived.' : 'Kỹ sư thêm/sửa bài của mình, admin duyệt thì bài mới hiển thị cho mọi người.'}
           </div>
         </aside>
 
@@ -318,7 +336,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
 
           {!loading && articles.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm text-[#666666]">
-              Chưa có bài kinh nghiệm phù hợp. {canManage ? 'Bấm Add Article để tạo bài đầu tiên.' : 'Vui lòng thử từ khóa khác.'}
+              Chưa có bài kinh nghiệm phù hợp. {canContribute ? 'Bấm Add Article để tạo bài đầu tiên.' : 'Vui lòng thử từ khóa khác.'}
             </div>
           ) : null}
 
@@ -327,10 +345,12 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
               <ArticleCard
                 active={article.id === selectedArticle?.id}
                 article={article}
-                canManage={canManage}
+                canApprove={canApprove}
+                currentUserId={user.id}
                 key={article.id}
                 onDelete={() => handleDelete(article)}
                 onEdit={() => openEditForm(article)}
+                onPublish={() => handlePublish(article)}
                 onSelect={() => setSelectedArticleId(article.id)}
               />
             ))}
@@ -374,13 +394,19 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
                   ))}
                 </select>
               </Field>
-              <Field label="Trạng thái">
-                <select className="form-input" onChange={(event) => setForm({ ...form, status: event.target.value as KnowledgeArticleStatus })} value={form.status}>
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>{statusLabel(status)}</option>
-                  ))}
-                </select>
-              </Field>
+              {canApprove ? (
+                <Field label="Trạng thái">
+                  <select className="form-input" onChange={(event) => setForm({ ...form, status: event.target.value as KnowledgeArticleStatus })} value={form.status}>
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>{statusLabel(status)}</option>
+                    ))}
+                  </select>
+                </Field>
+              ) : (
+                <div className="rounded-2xl border border-[#f4ddb5] bg-[#fff9ed] p-4 text-sm text-[#805000]">
+                  Bài của bạn sẽ ở trạng thái <strong>Chờ duyệt</strong>. Admin duyệt Published thì mọi kỹ sư mới nhìn thấy.
+                </div>
+              )}
               <Field className="md:col-span-2" label="Tóm tắt">
                 <textarea className="form-input min-h-[76px]" onChange={(event) => setForm({ ...form, summary: event.target.value })} value={form.summary} />
               </Field>
@@ -448,19 +474,24 @@ function CategoryButton({ active, count, icon, label, onClick }: { active: boole
 function ArticleCard({
   active,
   article,
-  canManage,
+  canApprove,
+  currentUserId,
   onDelete,
   onEdit,
+  onPublish,
   onSelect,
 }: {
   active: boolean;
   article: KnowledgeArticle;
-  canManage: boolean;
+  canApprove: boolean;
+  currentUserId: string;
   onDelete: () => void;
   onEdit: () => void;
+  onPublish: () => void;
   onSelect: () => void;
 }) {
   const meta = categoryMeta[article.category];
+  const canEditArticle = canApprove || article.createdBy?.id === currentUserId;
   return (
     <div className={`grid min-h-[230px] content-between rounded-2xl border bg-white p-4 shadow-[0_10px_28px_rgba(20,32,51,0.05)] transition hover:-translate-y-0.5 hover:border-[#f5c7cb] hover:shadow-[0_18px_42px_rgba(215,25,32,0.10)] ${active ? 'border-[#d71920] ring-4 ring-[#fff0f1]' : 'border-[#e8edf3]'}`}>
       <button className="text-left" onClick={onSelect} type="button">
@@ -484,12 +515,13 @@ function ArticleCard({
             {Math.max(3, safeList(article.steps).length)} phút
           </span>
         </div>
-        {canManage ? (
+        {canEditArticle ? (
           <div className="flex items-center justify-between gap-2 border-t border-[#edf0f4] pt-3">
             <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${article.status === 'PUBLISHED' ? 'bg-[#edf9f1] text-[#187044]' : article.status === 'DRAFT' ? 'bg-[#fff7e6] text-[#9a5b00]' : 'bg-[#f1f2f4] text-[#666666]'}`}>
               {statusLabel(article.status)}
             </span>
             <div className="flex gap-1.5">
+              {canApprove && article.status === 'DRAFT' ? <button className="primary-button compact" onClick={onPublish} type="button">Publish</button> : null}
               <button className="secondary-button compact" onClick={onEdit} type="button"><Pencil size={14} />Edit</button>
               <button className="danger-button compact" onClick={onDelete} type="button"><Trash2 size={14} />Delete</button>
             </div>
@@ -614,7 +646,7 @@ function safeList(value: unknown): string[] {
 
 function statusLabel(status: KnowledgeArticleStatus) {
   if (status === 'PUBLISHED') return 'Published';
-  if (status === 'DRAFT') return 'Draft';
+  if (status === 'DRAFT') return 'Chờ duyệt';
   return 'Archived';
 }
 

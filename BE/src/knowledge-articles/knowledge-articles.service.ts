@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { KnowledgeArticleCategory, KnowledgeArticleStatus, Prisma } from '@prisma/client';
-import { isAdmin, isManager } from '../auth/access-scope';
+import { isAdmin } from '../auth/access-scope';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
@@ -16,18 +16,30 @@ export class KnowledgeArticlesService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const search = query.search?.trim();
-    const canManage = this.canManage(user);
+    const canApprove = this.canApprove(user);
     const where: Prisma.KnowledgeArticleWhereInput = {
-      category: query.category,
-      status: canManage ? query.status : KnowledgeArticleStatus.PUBLISHED,
-      OR: search
-        ? [
-            { title: { contains: search } },
-            { summary: { contains: search } },
-            { modelHint: { contains: search } },
-            { ownerTeam: { contains: search } },
-          ]
-        : undefined,
+      AND: [
+        canApprove
+          ? {}
+          : {
+              OR: [
+                { status: KnowledgeArticleStatus.PUBLISHED },
+                { createdById: user.id },
+              ],
+            },
+        query.category ? { category: query.category } : {},
+        query.status ? { status: query.status } : {},
+        search
+          ? {
+              OR: [
+                { title: { contains: search } },
+                { summary: { contains: search } },
+                { modelHint: { contains: search } },
+                { ownerTeam: { contains: search } },
+              ],
+            }
+          : {},
+      ],
     };
 
     const [data, total] = await this.prisma.$transaction([
@@ -50,14 +62,14 @@ export class KnowledgeArticlesService {
       include: this.defaultInclude(),
     });
     if (!article) throw new NotFoundException('Knowledge article not found');
-    if (!this.canManage(user) && article.status !== KnowledgeArticleStatus.PUBLISHED) {
+    if (!this.canApprove(user) && article.status !== KnowledgeArticleStatus.PUBLISHED && article.createdById !== user.id) {
       throw new NotFoundException('Knowledge article not found');
     }
     return article;
   }
 
   async create(dto: CreateKnowledgeArticleDto, user: RequestUser) {
-    this.assertCanManage(user);
+    const canApprove = this.canApprove(user);
     return this.prisma.knowledgeArticle.create({
       data: {
         title: this.cleanRequired(dto.title, 'title'),
@@ -66,7 +78,7 @@ export class KnowledgeArticlesService {
         modelHint: this.cleanOptional(dto.modelHint),
         ownerTeam: this.cleanOptional(dto.ownerTeam),
         category: dto.category ?? KnowledgeArticleCategory.OTHER,
-        status: dto.status ?? KnowledgeArticleStatus.PUBLISHED,
+        status: canApprove ? dto.status ?? KnowledgeArticleStatus.PUBLISHED : KnowledgeArticleStatus.DRAFT,
         tags: this.cleanStringArray(dto.tags),
         symptoms: this.cleanStringArray(dto.symptoms),
         steps: this.cleanStringArray(dto.steps),
@@ -81,10 +93,10 @@ export class KnowledgeArticlesService {
   }
 
   async update(id: string, dto: UpdateKnowledgeArticleDto, user: RequestUser) {
-    this.assertCanManage(user);
-    await this.findOne(id, user);
+    const current = await this.findEditableArticle(id, user);
+    const canApprove = this.canApprove(user);
     return this.prisma.knowledgeArticle.update({
-      where: { id },
+      where: { id: current.id },
       data: {
         title: dto.title === undefined ? undefined : this.cleanRequired(dto.title, 'title'),
         summary: dto.summary === undefined ? undefined : this.cleanOptional(dto.summary),
@@ -92,7 +104,7 @@ export class KnowledgeArticlesService {
         modelHint: dto.modelHint === undefined ? undefined : this.cleanOptional(dto.modelHint),
         ownerTeam: dto.ownerTeam === undefined ? undefined : this.cleanOptional(dto.ownerTeam),
         category: dto.category,
-        status: dto.status,
+        status: canApprove ? dto.status : KnowledgeArticleStatus.DRAFT,
         tags: dto.tags === undefined ? undefined : this.cleanStringArray(dto.tags),
         symptoms: dto.symptoms === undefined ? undefined : this.cleanStringArray(dto.symptoms),
         steps: dto.steps === undefined ? undefined : this.cleanStringArray(dto.steps),
@@ -106,20 +118,27 @@ export class KnowledgeArticlesService {
   }
 
   async remove(id: string, user: RequestUser) {
-    this.assertCanManage(user);
-    await this.findOne(id, user);
-    await this.prisma.knowledgeArticle.delete({ where: { id } });
+    const current = await this.findEditableArticle(id, user);
+    await this.prisma.knowledgeArticle.delete({ where: { id: current.id } });
     return { deleted: true };
   }
 
-  private canManage(user: RequestUser) {
-    return isAdmin(user) || isManager(user);
+  private canApprove(user: RequestUser) {
+    return isAdmin(user);
   }
 
-  private assertCanManage(user: RequestUser) {
-    if (!this.canManage(user)) {
-      throw new ForbiddenException('You do not have permission for this action');
+  private async findEditableArticle(id: string, user: RequestUser) {
+    const article = await this.prisma.knowledgeArticle.findUnique({ where: { id } });
+
+    if (!article) {
+      throw new NotFoundException('Knowledge article not found');
     }
+
+    if (!this.canApprove(user) && article.createdById !== user.id) {
+      throw new ForbiddenException('You can only edit your own knowledge articles');
+    }
+
+    return article;
   }
 
   private cleanRequired(value: string, field: string) {
