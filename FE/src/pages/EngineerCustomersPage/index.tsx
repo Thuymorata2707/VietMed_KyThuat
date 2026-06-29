@@ -147,8 +147,8 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
       {error ? <div className="rounded-lg border border-[#ffd5d8] bg-[#fff5f5] px-4 py-3 text-sm font-medium text-[#b51219]">{error}</div> : null}
 
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-        <aside className="grid min-w-0 content-start gap-3 rounded-xl border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+        <aside className="grid min-w-0 content-start gap-3 rounded-xl border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)] lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:grid-rows-[auto_auto_minmax(0,1fr)_auto] lg:overflow-hidden">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8a8a]" size={16} />
             <input
@@ -164,7 +164,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
             {hiddenCustomerCount ? <span>Đang hiển thị {renderedCustomers.length}</span> : null}
           </div>
 
-          <div className="grid max-h-[calc(100dvh-360px)] min-h-[260px] min-w-0 gap-2 overflow-y-auto pr-1">
+          <div className="grid min-h-[260px] min-w-0 content-start gap-2 overflow-y-auto pr-1 lg:min-h-0">
             {loading ? (
               <EmptyState title="Đang tải danh sách..." />
             ) : renderedCustomers.length ? (

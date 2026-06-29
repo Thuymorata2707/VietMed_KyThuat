@@ -1,6 +1,6 @@
 import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Save, Search } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import type { FocusEvent, FormEvent, ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, FocusEvent, FormEvent, ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
@@ -301,18 +301,18 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="relative overflow-hidden rounded-[28px] border border-[#eadfd7] bg-[#fff9f1] shadow-[0_24px_70px_rgba(94,55,23,0.12)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_12%,rgba(215,25,32,0.12),transparent_28%),radial-gradient(circle_at_92%_20%,rgba(222,145,53,0.18),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.92),rgba(255,246,232,0.76))]" />
+      <section className="relative overflow-hidden rounded-[28px] border border-[#f5c7cb] bg-[#fff7f8] shadow-[0_24px_70px_rgba(215,25,32,0.10)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_12%,rgba(215,25,32,0.13),transparent_28%),radial-gradient(circle_at_92%_20%,rgba(245,199,203,0.52),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.94),rgba(255,246,247,0.82))]" />
         <div className="relative grid gap-5 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid content-between gap-6">
             <div>
-              <span className="inline-flex min-h-8 items-center rounded-full border border-[#f1c6b9] bg-white/80 px-3 text-xs font-semibold tracking-[0.08em] text-[#a9291f] shadow-[0_8px_22px_rgba(94,55,23,0.08)]">
+              <span className="inline-flex min-h-8 items-center rounded-full border border-[#f5c7cb] bg-white/82 px-3 text-xs font-semibold tracking-[0.08em] text-[#b5121b] shadow-[0_8px_22px_rgba(215,25,32,0.08)]">
                 Catalog overview
               </span>
               <h2 className="mt-4 max-w-3xl text-[clamp(26px,3.2vw,42px)] font-semibold leading-[1.04] tracking-[-0.035em] text-[#1f1f1f]">
                 Danh mục sản phẩm theo ngành hàng, nhìn nhanh được kho và model.
               </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6b5d52]">
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#66565a]">
                 Mỗi ngành hàng gom model, số máy thực tế và tồn kho vào cùng một khung để chọn lọc nhanh hơn khi nhập serial hoặc theo dõi danh mục.
               </p>
             </div>
@@ -891,6 +891,8 @@ function ModelSearchSelect({
   const selectedLabel = selectedModel ? modelOptionLabel(selectedModel) : '';
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(selectedLabel);
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({});
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -909,14 +911,47 @@ function ModelSearchSelect({
     );
   }, [models, search, selectedLabel]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    updateDropdownPosition();
+    const handleLayoutChange = () => updateDropdownPosition();
+    window.addEventListener('resize', handleLayoutChange);
+    window.addEventListener('scroll', handleLayoutChange, true);
+
+    return () => {
+      window.removeEventListener('resize', handleLayoutChange);
+      window.removeEventListener('scroll', handleLayoutChange, true);
+    };
+  }, [open, filteredModels.length]);
+
   function closeIfFocusLeaves(event: FocusEvent<HTMLDivElement>) {
     const nextTarget = event.relatedTarget;
     if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
     setOpen(false);
   }
 
+  function updateDropdownPosition() {
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const gap = 6;
+    const viewportPadding = 12;
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const openAbove = spaceBelow < 240 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(180, Math.min(288, openAbove ? spaceAbove - gap : spaceBelow - gap));
+
+    setDropdownStyle({
+      left: rect.left,
+      top: openAbove ? rect.top - gap - maxHeight : rect.bottom + gap,
+      width: rect.width,
+      maxHeight,
+    });
+  }
+
   return (
-    <div className="relative" onBlur={closeIfFocusLeaves}>
+    <div className="relative" onBlur={closeIfFocusLeaves} ref={wrapperRef}>
       <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] transition focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
         <Search className="shrink-0 text-[#8a8a8a]" size={16} />
         <input
@@ -925,8 +960,12 @@ function ModelSearchSelect({
           onChange={(event) => {
             setSearch(event.target.value);
             setOpen(true);
+            window.requestAnimationFrame(updateDropdownPosition);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            window.requestAnimationFrame(updateDropdownPosition);
+          }}
           placeholder="Tìm mã model, tên model hoặc hãng"
           value={open ? search : selectedLabel}
         />
@@ -938,6 +977,7 @@ function ModelSearchSelect({
               onChange('');
               setSearch('');
               setOpen(true);
+              window.requestAnimationFrame(updateDropdownPosition);
             }}
             type="button"
           >
@@ -948,8 +988,8 @@ function ModelSearchSelect({
       {!value ? <input className="pointer-events-none absolute h-px w-px opacity-0" required value="" onChange={() => null} /> : null}
 
       {open ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_18px_42px_rgba(23,32,42,0.16)]">
-          <div className="max-h-72 overflow-y-auto p-1">
+        <div className="fixed z-[80] overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_18px_42px_rgba(23,32,42,0.16)]" style={dropdownStyle}>
+          <div className="overflow-y-auto p-1" style={{ maxHeight: dropdownStyle.maxHeight }}>
             {filteredModels.map((model) => {
               const active = model.id === value;
               return (
@@ -1275,10 +1315,10 @@ function IndustryMachineChart({
   const maxTotal = Math.max(1, ...items.map((item) => item.stock.total));
 
   return (
-    <section className="grid gap-4 rounded-[22px] border border-white/70 bg-white/78 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_18px_38px_rgba(94,55,23,0.08)] backdrop-blur md:p-6">
+    <section className="grid gap-4 rounded-[22px] border border-white/80 bg-white/82 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_38px_rgba(215,25,32,0.08)] backdrop-blur md:p-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <span className="text-[12px] font-medium text-[#8a5d46]">Biểu đồ ngành hàng</span>
+          <span className="text-[12px] font-medium text-[#9f3340]">Biểu đồ ngành hàng</span>
           <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Số lượng máy theo ngành</h2>
         </div>
         <BarChart3 className="text-[#d71920]" size={20} />
@@ -1292,8 +1332,8 @@ function IndustryMachineChart({
                 <span className="font-medium text-[#333333]">{item.name}</span>
                 <span className="font-semibold tabular-nums text-[#1f1f1f]">{item.stock.total}</span>
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-[#f0e2d5]">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#d71920] to-[#e8883a] transition-[width] duration-300" style={{ width: `${width}%` }} />
+              <div className="h-2.5 overflow-hidden rounded-full bg-[#f8dfe2]">
+                <div className="h-full rounded-full bg-gradient-to-r from-[#d71920] to-[#f05b63] transition-[width] duration-300" style={{ width: `${width}%` }} />
               </div>
               <span className="text-xs text-[#666666]">{item.stock.inStock} máy còn kho</span>
             </div>
@@ -1307,14 +1347,14 @@ function IndustryMachineChart({
 
 function IndustryStockCard({ icon, label, subLabel, value }: { icon: ReactNode; label: string; subLabel: string; value: number }) {
   return (
-    <div className="grid gap-3 rounded-[18px] border border-white/70 bg-white/82 p-4 font-sans shadow-[0_18px_34px_rgba(94,55,23,0.09)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(94,55,23,0.13)]">
+    <div className="grid gap-3 rounded-[18px] border border-white/80 bg-white/86 p-4 font-sans shadow-[0_18px_34px_rgba(215,25,32,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(215,25,32,0.12)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold text-[#6b5d52]">{label}</span>
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff0e4] text-[#d71920]">{icon}</span>
+        <span className="text-sm font-semibold text-[#66565a]">{label}</span>
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff0f2] text-[#d71920]">{icon}</span>
       </div>
       <div className="grid gap-1">
         <strong className="text-3xl font-semibold leading-none text-[#1f1f1f]">{value}</strong>
-        <span className="text-xs font-medium text-[#7d6f64]">{subLabel}</span>
+        <span className="text-xs font-medium text-[#7d666b]">{subLabel}</span>
       </div>
     </div>
   );
@@ -1322,15 +1362,15 @@ function IndustryStockCard({ icon, label, subLabel, value }: { icon: ReactNode; 
 
 function IndustryOverviewRail({ items }: { items: Array<{ id: string; name: string; modelCount: number; stock: ModelStock }> }) {
   if (!items.length) {
-    return <p className="rounded-2xl bg-white/70 p-4 text-sm text-[#6b5d52]">Chưa có ngành hàng để tổng hợp.</p>;
+    return <p className="rounded-2xl bg-white/70 p-4 text-sm text-[#66565a]">Chưa có ngành hàng để tổng hợp.</p>;
   }
 
   return (
     <div className="grid gap-2 sm:grid-cols-2 min-[1180px]:grid-cols-4">
       {items.slice(0, 4).map((item) => (
-        <div className="rounded-2xl border border-white/70 bg-white/62 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]" key={item.id}>
+        <div className="rounded-2xl border border-white/80 bg-white/66 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]" key={item.id}>
           <span className="block truncate text-sm font-semibold text-[#1f1f1f]">{item.name}</span>
-          <span className="mt-1 block text-xs text-[#7d6f64]">
+          <span className="mt-1 block text-xs text-[#7d666b]">
             {item.modelCount} model · {item.stock.total} máy · {item.stock.inStock} còn kho
           </span>
         </div>
