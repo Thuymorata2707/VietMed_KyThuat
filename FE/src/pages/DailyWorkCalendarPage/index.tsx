@@ -309,17 +309,18 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
   return (
     <PageFrame>
-      <section className="flex min-w-0 items-end justify-between gap-[18px] rounded-[18px] bg-[linear-gradient(135deg,#1f1f1f_0%,#202939_56%,#b5121b_120%)] p-6 text-white max-[1180px]:grid max-[1180px]:items-stretch">
-        <div className="min-w-0">
-          <span className="mb-2 inline-flex items-center gap-2 text-xs font-medium text-[#ffd9d5]"><CalendarDays size={15} /> Lịch kỹ sư</span>
-          <h1 className="mb-2.5 text-[clamp(30px,4vw,46px)] font-medium leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Lịch làm việc của tôi'}</h1>
-          <p className="text-white/80">{isAdmin ? 'Xem lịch công tác, nghỉ phép và việc trong ngày của kỹ sư.' : 'Đăng ký lịch đi công tác, nghỉ phép và ghi chú việc trong ngày.'}</p>
+      <section className="relative flex min-w-0 items-end justify-between gap-[18px] overflow-hidden rounded-[28px] border border-[#f0d7d9] bg-[#fffafa] p-6 text-[#1f1f1f] shadow-[0_22px_60px_rgba(120,20,28,0.08)] max-[1180px]:grid max-[1180px]:items-stretch">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(215,25,32,0.12),transparent_30%),radial-gradient(circle_at_86%_8%,rgba(255,214,220,0.55),transparent_28%),linear-gradient(135deg,#fffafa,#ffffff_55%,#f8fbfd)]" />
+        <div className="relative z-10 min-w-0">
+          <span className="relative mb-2 inline-flex items-center gap-2 rounded-xl border border-[#f0d7d9] bg-white/75 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#d71920]"><CalendarDays size={15} /> Lịch kỹ sư</span>
+          <h1 className="relative mb-2.5 text-[clamp(30px,4vw,46px)] font-extrabold leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Lịch làm việc của tôi'}</h1>
+          <p className="relative max-w-3xl text-sm font-semibold leading-6 text-[#666666]">{isAdmin ? 'Xem lịch công tác, nghỉ phép và việc trong ngày của kỹ sư.' : 'Đăng ký lịch đi công tác, nghỉ phép và ghi chú việc trong ngày.'}</p>
         </div>
         {isAdmin ? (
-          <label className="grid min-w-0 gap-2 font-medium text-white/80 min-[1180px]:min-w-[min(360px,100%)]">
+          <label className="relative z-10 grid min-w-0 gap-2 text-sm font-bold text-[#333333] min-[1180px]:min-w-[min(360px,100%)]">
             Chọn kỹ sư
             <select
-              className="min-h-11 rounded-[10px] border border-white/35 bg-white/95 px-3 text-[#1f1f1f]"
+              className="min-h-12 rounded-2xl border border-[#ded8d8] bg-white/95 px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)]"
               onChange={(event) => {
                 setSelectedEngineerId(event.target.value);
                 setSelectedDayDate('');

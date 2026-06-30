@@ -36,8 +36,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center overflow-hidden bg-[#fff7f7] px-6 py-7 max-sm:px-4 max-sm:py-4">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_18%,rgba(215,25,32,0.16),transparent_34%),radial-gradient(circle_at_88%_14%,rgba(255,214,220,0.75),transparent_30%),linear-gradient(135deg,#fff7f7,#f8fbfd_58%,#fff1f3)]" />
+    <main className="grid min-h-screen place-items-center overflow-hidden bg-[#fffafa] px-6 py-7 max-sm:px-4 max-sm:py-4">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_18%,rgba(215,25,32,0.08),transparent_34%),radial-gradient(circle_at_88%_14%,rgba(255,228,232,0.62),transparent_31%),linear-gradient(135deg,#fffafa,#f8fbfd_58%,#fff7f7)]" />
       <section className="relative grid min-h-[calc(100vh-56px)] w-full max-w-[1360px] grid-cols-[minmax(390px,0.9fr)_minmax(0,1.1fr)] overflow-hidden rounded-[28px] border border-[#f0d7d9] bg-white/90 shadow-[0_30px_90px_rgba(120,20,28,0.13)] backdrop-blur-xl max-[980px]:min-h-[calc(100vh-32px)] max-[980px]:grid-cols-1">
         <div className="relative grid content-between gap-8 bg-white/92 px-12 py-10 max-[980px]:px-8 max-[620px]:px-5 max-[620px]:py-6">
           <div className="flex items-center justify-between gap-4">
@@ -108,21 +108,21 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           <span className="text-[12px] font-semibold text-[#8a8a8a]">VietMed Ky Thuat · Internal workspace</span>
         </div>
 
-        <aside className="relative overflow-hidden bg-[#d71920] p-8 text-white max-[980px]:min-h-[420px] max-[620px]:p-5">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(255,255,255,0.30),transparent_28%),radial-gradient(circle_at_82%_80%,rgba(75,0,10,0.24),transparent_34%),linear-gradient(135deg,#d71920,#9f111b)]" />
-          <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:34px_34px]" />
-          <div className="absolute inset-x-0 top-0 h-px bg-white/22" />
-          <div className="absolute inset-y-0 left-0 w-px bg-white/16" />
+        <aside className="relative overflow-hidden bg-[#fff7f7] p-8 text-[#1f1f1f] max-[980px]:min-h-[420px] max-[620px]:p-5">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(215,25,32,0.14),transparent_28%),radial-gradient(circle_at_82%_78%,rgba(255,205,213,0.50),transparent_36%),linear-gradient(135deg,#fffafa,#fff7f7_48%,#f8fbfd)]" />
+          <div className="absolute inset-0 opacity-55 [background-image:linear-gradient(rgba(215,25,32,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(215,25,32,0.045)_1px,transparent_1px)] [background-size:34px_34px]" />
+          <div className="absolute inset-x-0 top-0 h-px bg-[#f0d7d9]" />
+          <div className="absolute inset-y-0 left-0 w-px bg-[#f0d7d9]" />
 
           <div className="relative grid h-full content-center gap-8">
             <div className="max-w-[620px]">
-              <span className="inline-flex rounded-xl border border-white/18 bg-white/12 px-3 py-2 text-[12px] font-bold text-white/78 backdrop-blur">
+              <span className="inline-flex rounded-xl border border-[#f0d7d9] bg-white/75 px-3 py-2 text-[12px] font-bold text-[#b5121b] backdrop-blur">
                 Không gian vận hành kỹ thuật
               </span>
-              <h2 className="mt-5 max-w-[560px] text-[46px] font-extrabold leading-[1.03] text-white max-[980px]:text-[36px] max-sm:text-[30px]">
+              <h2 className="mt-5 max-w-[560px] text-[46px] font-extrabold leading-[1.03] text-[#1f1f1f] max-[980px]:text-[36px] max-sm:text-[30px]">
                 Một nơi để theo dõi thiết bị và công việc kỹ thuật.
               </h2>
-              <p className="mt-4 max-w-[520px] text-[15px] font-medium leading-7 text-white/72">
+              <p className="mt-4 max-w-[520px] text-[15px] font-semibold leading-7 text-[#666666]">
                 Truy cập hồ sơ máy, phiếu dịch vụ và lịch bảo trì theo đúng phân quyền.
               </p>
             </div>
@@ -141,8 +141,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
 function LoginFeature({ icon, label }: { icon: ReactNode; label: string }) {
   return (
-    <div className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-white/16 bg-white/[0.12] px-4 text-white/88 shadow-[0_14px_34px_rgba(72,0,10,0.12)] backdrop-blur-md">
-      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/14 text-white">
+    <div className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-[#f0d7d9] bg-white/78 px-4 text-[#333333] shadow-[0_14px_34px_rgba(120,20,28,0.08)] backdrop-blur-md">
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#fff1f3] text-[#d71920]">
         {icon}
       </span>
       <span className="text-[13px] font-bold">{label}</span>
