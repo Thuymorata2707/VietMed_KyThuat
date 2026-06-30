@@ -100,6 +100,9 @@ export class InstallationsService {
             installedAt,
             accessories: this.normalizeAccessories(dto.accessories),
             note: dto.note?.trim() || null,
+            warrantyStartDate,
+            warrantyEndDate,
+            warrantyNote: dto.warrantyNote?.trim() || null,
             handoverInstallerName: this.cleanOptionalString(
               dto.handoverInstallerName,
             ),
@@ -250,9 +253,15 @@ export class InstallationsService {
       'handoverDepartureDate',
     );
     const nextWarrantyStartDate =
-      warrantyStartDate ?? installation.warrantyCard?.startDate ?? null;
+      warrantyStartDate ??
+      installation.warrantyStartDate ??
+      installation.warrantyCard?.startDate ??
+      null;
     const nextWarrantyEndDate =
-      warrantyEndDate ?? installation.warrantyCard?.endDate ?? null;
+      warrantyEndDate ??
+      installation.warrantyEndDate ??
+      installation.warrantyCard?.endDate ??
+      null;
 
     if (
       nextWarrantyStartDate &&
@@ -295,9 +304,15 @@ export class InstallationsService {
         completedMachineId = actualMachine.id;
         const nextInstalledAt = installedAt ?? installation.installedAt;
         const approvedWarrantyStartDate =
-          warrantyStartDate ?? installation.warrantyCard?.startDate ?? nextInstalledAt;
+          warrantyStartDate ??
+          installation.warrantyStartDate ??
+          installation.warrantyCard?.startDate ??
+          nextInstalledAt;
         const approvedWarrantyEndDate =
-          warrantyEndDate ?? installation.warrantyCard?.endDate ?? nextInstalledAt;
+          warrantyEndDate ??
+          installation.warrantyEndDate ??
+          installation.warrantyCard?.endDate ??
+          nextInstalledAt;
 
         validateInventoryMovement(
           InventoryMovementType.INSTALL,
@@ -404,6 +419,18 @@ export class InstallationsService {
               : this.normalizeAccessories(dto.accessories),
           note:
             dto.note === undefined ? undefined : dto.note?.trim() || null,
+          warrantyStartDate:
+            dto.warrantyStartDate === undefined
+              ? undefined
+              : warrantyStartDate ?? null,
+          warrantyEndDate:
+            dto.warrantyEndDate === undefined
+              ? undefined
+              : warrantyEndDate ?? null,
+          warrantyNote:
+            dto.warrantyNote === undefined
+              ? undefined
+              : dto.warrantyNote?.trim() || null,
           handoverInstallerName:
             dto.handoverInstallerName === undefined
               ? undefined
@@ -623,9 +650,13 @@ export class InstallationsService {
         }
         const nextInstalledAt = installedAt ?? installation.installedAt;
         const warrantyStartDate =
-          installation.warrantyCard?.startDate ?? nextInstalledAt;
+          installation.warrantyStartDate ??
+          installation.warrantyCard?.startDate ??
+          nextInstalledAt;
         const warrantyEndDate =
-          installation.warrantyCard?.endDate ?? nextInstalledAt;
+          installation.warrantyEndDate ??
+          installation.warrantyCard?.endDate ??
+          nextInstalledAt;
 
         validateInventoryMovement(
           InventoryMovementType.INSTALL,
@@ -672,6 +703,36 @@ export class InstallationsService {
             createdById: actor?.id || null,
           },
         });
+
+        if (warrantyEndDate) {
+          const warrantyUpdate = await tx.warrantyCard.updateMany({
+            where: { installationId: id },
+            data: {
+              machineId: installation.machine.id,
+              customerId: installation.customerId,
+              startDate: warrantyStartDate,
+              endDate: warrantyEndDate,
+              note: installation.warrantyNote,
+            },
+          });
+
+          if (warrantyUpdate.count === 0) {
+            await tx.warrantyCard.create({
+              data: {
+                code: await this.generateWarrantyCode(tx),
+                installationId: id,
+                machineId: installation.machine.id,
+                customerId: installation.customerId,
+                issuedAt: new Date(),
+                startDate: warrantyStartDate,
+                endDate: warrantyEndDate,
+                note: installation.warrantyNote,
+                issuedById: actor?.id || null,
+                issuedByEmail: actor?.email || null,
+              },
+            });
+          }
+        }
       }
 
       if (
@@ -777,12 +838,17 @@ export class InstallationsService {
             id,
             {
               status: InstallationStatus.INSTALLED,
-              warrantyEndDate: installation.warrantyCard?.endDate
+              warrantyEndDate: installation.warrantyEndDate
+                ? installation.warrantyEndDate.toISOString()
+                : installation.warrantyCard?.endDate
                 ? installation.warrantyCard.endDate.toISOString()
                 : undefined,
-              warrantyStartDate: installation.warrantyCard?.startDate
+              warrantyStartDate: installation.warrantyStartDate
+                ? installation.warrantyStartDate.toISOString()
+                : installation.warrantyCard?.startDate
                 ? installation.warrantyCard.startDate.toISOString()
                 : undefined,
+              warrantyNote: installation.warrantyNote ?? undefined,
               reviewNote,
             } as UpdateInstallationDto,
             actor,

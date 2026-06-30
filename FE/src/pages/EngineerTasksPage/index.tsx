@@ -1615,55 +1615,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ) : null}
 
             {businessTab !== 'calendar' ? filteredTasks.map((task) => (
-              <article className="grid min-w-0 gap-3.5 border-b border-[#eeeeee] p-4 last:border-b-0 min-[860px]:grid-cols-[minmax(0,1fr)_auto] min-[860px]:items-center" key={`${task.kind}-${task.id}`}>
-                <div className="grid min-w-0 gap-3 min-[560px]:grid-cols-[40px_minmax(0,1fr)]">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#f5c7cb] bg-[#fff5f5] text-[#d71920]">{taskIcon(task.kind)}</div>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#666666]">
-                      <span>{taskKindLabel(task.kind)}</span>
-                      <span>{task.code}</span>
-                      <span className={`font-medium ${taskActionTextClass(task)}`}>{taskActionLabel(task)}</span>
-                      {task.kind === 'repair' && task.createdBy?.fullName ? <span>Người tạo: {task.createdBy.fullName}</span> : null}
-                      {isOverdueTask(task) ? <span className="font-medium text-[#b5121b]">Quá hạn</span> : null}
-                      {needsMachineProfile(task) ? <span className="font-medium text-[#9b5a17]">Cần tạo hồ sơ máy</span> : null}
-                    </div>
-                    <h2 className="mt-1 text-[17px] font-medium text-[#1f1f1f] [overflow-wrap:anywhere]">{taskTitle(task)}</h2>
-                    <p className="mt-1.5 line-clamp-2 leading-6 text-[#666666]">{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
-                    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-[13px] text-[#666666]">
-                      <span className="min-w-0 [overflow-wrap:anywhere]">{task.machine?.machineCode || task.machine?.serialNumber || taskSerialText(task) || 'Chưa có mã máy'}</span>
-                      <span className="min-w-0 [overflow-wrap:anywhere]">{task.machine?.modelName || taskModelText(task) || 'Chưa có model'}</span>
-                      <span className="min-w-0 [overflow-wrap:anywhere]">{taskCustomer(task) || 'Chưa có khách hàng'}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid min-w-0 justify-items-start gap-2 min-[860px]:min-w-[150px] min-[860px]:justify-items-end">
-                  <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
-                  {task.reviewStatus && task.reviewStatus !== 'NOT_REQUIRED' ? (
-                    <span className={`task-badge ${reviewStatusTone(task.reviewStatus)}`}>
-                      {reviewStatusLabel(task.reviewStatus)}
-                    </span>
-                  ) : null}
-                  <span className={`task-badge ${secondaryTone(task)}`}>{secondaryLabel(task)}</span>
-                  <span className="text-[13px] text-[#666666]">{taskDate(task)}</span>
-                  {task.kind === 'installation' ? (
-                    <Link className="task-action" to={`/installations/${task.id}/update?returnTo=/my-tasks`}>
-                      Cập nhật
-                    </Link>
-                  ) : task.kind === 'repair' ? (
-                    <Link className="task-action" to={`/repairs/${task.id}/update?returnTo=/my-tasks`}>
-                      Cập nhật
-                    </Link>
-                  ) : task.kind === 'maintenance' ? (
-                    <Link className="task-action" to={`/maintenance/${task.id}/update?returnTo=/my-tasks`}>
-                      Cập nhật
-                    </Link>
-                  ) : (
-                    <button className="task-action" onClick={() => openTask(task)} type="button">
-                      Cập nhật
-                    </button>
-                  )}
-                </div>
-              </article>
+              <EngineerTaskRow key={`${task.kind}-${task.id}`} onOpen={openTask} task={task} />
             )) : null}
           </div>
         </section>
@@ -2074,6 +2026,62 @@ function canEngineerSeeMachine(user: ApiUser, machine: TaskMachine) {
   return !machineGroup || machineGroup === expertiseGroup;
 }
 
+function EngineerTaskRow({ onOpen, task }: { onOpen: (task: EngineerTask) => void; task: EngineerTask }) {
+  const actionHref = taskUpdateHref(task);
+  const attention = taskAttention(task);
+  const machine = task.machine?.machineCode || task.machine?.serialNumber || taskSerialText(task) || 'Chưa có mã máy';
+  const model = task.machine?.modelName || taskModelText(task) || 'Chưa có model';
+  const customer = taskCustomer(task) || 'Chưa có khách hàng';
+
+  return (
+    <article className={`engineer-task-row ${attention.tone}`}>
+      <div className="engineer-task-row__head">
+        <div className="engineer-task-row__icon">{taskIcon(task.kind)}</div>
+        <div className="engineer-task-row__title">
+          <div className="engineer-task-row__meta">
+            <span>{taskKindLabel(task.kind)}</span>
+            <span>{task.code}</span>
+            <span>{taskDate(task)}</span>
+          </div>
+          <h2>{taskTitle(task)}</h2>
+        </div>
+      </div>
+
+      <div className="engineer-task-row__body">
+        <p>{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
+        <div className="engineer-task-row__facts">
+          <span>{machine}</span>
+          <span>{model}</span>
+          <span>{customer}</span>
+        </div>
+      </div>
+
+      <div className="engineer-task-row__status">
+        <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
+        {task.reviewStatus && task.reviewStatus !== 'NOT_REQUIRED' ? (
+          <span className={`task-badge ${reviewStatusTone(task.reviewStatus)}`}>{reviewStatusLabel(task.reviewStatus)}</span>
+        ) : null}
+        <span className={`task-badge ${secondaryTone(task)}`}>{secondaryLabel(task)}</span>
+      </div>
+
+      <div className="engineer-task-row__action">
+        <span className={`engineer-next-step ${attention.tone}`}>{attention.label}</span>
+        {actionHref ? (
+          <Link className="task-action" to={actionHref}>
+            Nhập kết quả
+            <ArrowRight size={15} />
+          </Link>
+        ) : (
+          <button className="task-action" onClick={() => onOpen(task)} type="button">
+            Nhập kết quả
+            <ArrowRight size={15} />
+          </button>
+        )}
+      </div>
+    </article>
+  );
+}
+
 function AsyncEntityPicker<Row extends { id: string }>({
   className,
   disabled,
@@ -2352,8 +2360,8 @@ function matchesBusinessTab(task: EngineerTask, tab: BusinessTab) {
 
 function buildInstallationEditForm(task: InstallationTask): CreateTicketForm {
   const installedAt = task.installedAt ? task.installedAt.slice(0, 10) : '';
-  const warrantyStartDate = task.warrantyCard?.startDate ? task.warrantyCard.startDate.slice(0, 10) : installedAt;
-  const warrantyEndDate = task.warrantyCard?.endDate ? task.warrantyCard.endDate.slice(0, 10) : '';
+  const warrantyStartDate = (task.warrantyStartDate || task.warrantyCard?.startDate)?.slice(0, 10) || installedAt;
+  const warrantyEndDate = (task.warrantyEndDate || task.warrantyCard?.endDate)?.slice(0, 10) || '';
   const installedDeviceItems = task.installedDeviceItems?.length
     ? task.installedDeviceItems.map((item) => ({
         itemName: item.itemName || '',
@@ -2369,7 +2377,7 @@ function buildInstallationEditForm(task: InstallationTask): CreateTicketForm {
     ...emptyCreateTicketForm('installation'),
     workDate: warrantyStartDate,
     warrantyEndDate,
-    description: task.warrantyCard?.note || '',
+    description: task.warrantyNote || task.warrantyCard?.note || '',
     handoverInstallerName: task.handoverInstallerName || '',
     handoverInstallerPosition: task.handoverInstallerPosition || '',
     handoverVehicle: task.handoverVehicle || '',
@@ -2475,6 +2483,23 @@ function PriorityTaskRow({ task }: { task: EngineerTask }) {
       </div>
     </Link>
   );
+}
+
+function taskAttention(task: EngineerTask): { label: string; tone: 'danger' | 'good' | 'neutral' | 'warn' } {
+  if (task.reviewStatus === 'NEEDS_REVISION') return { label: 'Bổ sung theo phản hồi admin', tone: 'danger' };
+  if (needsMachineProfile(task)) return { label: 'Tạo hoặc bổ sung hồ sơ máy', tone: 'warn' };
+  if (isOverdueTask(task)) return { label: 'Quá hạn, xử lý trước', tone: 'danger' };
+  if (isTodayTask(task)) return { label: 'Việc hôm nay', tone: 'warn' };
+  if (task.reviewStatus === 'PENDING') return { label: 'Đã gửi, chờ admin duyệt', tone: 'good' };
+  if (['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status)) return { label: 'Đã hoàn tất', tone: 'neutral' };
+  return { label: 'Cập nhật kết quả hiện trường', tone: 'neutral' };
+}
+
+function taskUpdateHref(task: EngineerTask) {
+  if (task.kind === 'installation') return `/installations/${task.id}/update?returnTo=/my-tasks`;
+  if (task.kind === 'repair') return `/repairs/${task.id}/update?returnTo=/my-tasks`;
+  if (task.kind === 'maintenance') return `/maintenance/${task.id}/update?returnTo=/my-tasks`;
+  return '';
 }
 
 function taskPriorityScore(task: EngineerTask) {

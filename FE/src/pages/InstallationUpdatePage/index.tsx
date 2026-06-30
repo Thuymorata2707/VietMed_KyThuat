@@ -472,7 +472,7 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 
 function buildForm(task: InstallationTask): CreateTicketForm {
   const installedAt = dateInputValue(task.installedAt);
-  const warrantyStartDate = dateInputValue(task.warrantyCard?.startDate) || installedAt;
+  const warrantyStartDate = dateInputValue(task.warrantyStartDate || task.warrantyCard?.startDate) || installedAt;
   const installedDeviceItems = task.installedDeviceItems?.length
     ? task.installedDeviceItems.map((item) => ({
         itemName: item.itemName || '',
@@ -487,8 +487,8 @@ function buildForm(task: InstallationTask): CreateTicketForm {
   return {
     ...emptyCreateTicketForm('installation'),
     workDate: warrantyStartDate,
-    warrantyEndDate: dateInputValue(task.warrantyCard?.endDate),
-    description: task.warrantyCard?.note || '',
+    warrantyEndDate: dateInputValue(task.warrantyEndDate || task.warrantyCard?.endDate),
+    description: task.warrantyNote || task.warrantyCard?.note || '',
     handoverInstallerName: task.handoverInstallerName || '',
     handoverInstallerPosition: task.handoverInstallerPosition || '',
     handoverVehicle: task.handoverVehicle || '',

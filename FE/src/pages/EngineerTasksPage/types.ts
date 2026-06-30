@@ -120,6 +120,9 @@ export type InstallationTask = WorkReviewFields & {
   } | null;
   accessories?: string[];
   note?: string | null;
+  warrantyStartDate?: string | null;
+  warrantyEndDate?: string | null;
+  warrantyNote?: string | null;
   handoverInstallerName?: string | null;
   handoverInstallerPosition?: string | null;
   handoverVehicle?: string | null;

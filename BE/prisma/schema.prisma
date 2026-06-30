@@ -730,6 +730,10 @@ model MachineInstallation {
   accessories Json     @default("[]")
   note        String?
 
+  warrantyStartDate DateTime?
+  warrantyEndDate   DateTime?
+  warrantyNote      String?
+
   handoverInstallerName     String?
   handoverInstallerPosition String?
   handoverVehicle           String?
