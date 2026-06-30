@@ -54,6 +54,7 @@ import {
   statusTone,
   taskCustomer,
   taskDate,
+  taskDateValue,
   taskDescription,
   taskIcon,
   taskKindLabel,
@@ -270,8 +271,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         .join(' ')
         .toLowerCase()
         .includes(normalizedQuery);
-    });
+    }).sort(compareTasks);
   }, [businessTab, filter, kindFilter, query, tasks]);
+
+  const groupedFilteredTasks = useMemo(() => groupTasksByDate(filteredTasks), [filteredTasks]);
 
   const businessTabCounts = useMemo(
     () => ({
@@ -1614,8 +1617,21 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               </div>
             ) : null}
 
-            {businessTab !== 'calendar' ? filteredTasks.map((task) => (
-              <EngineerTaskRow key={`${task.kind}-${task.id}`} onOpen={openTask} task={task} />
+            {businessTab !== 'calendar' ? groupedFilteredTasks.map((group) => (
+              <section className="engineer-day-group" key={group.key}>
+                <div className="engineer-day-group__head">
+                  <div>
+                    <span>Ngày hẹn</span>
+                    <strong>{group.label}</strong>
+                  </div>
+                  <em>{group.items.length} phiếu</em>
+                </div>
+                <div className="grid">
+                  {group.items.map((task) => (
+                    <EngineerTaskRow key={`${task.kind}-${task.id}`} onOpen={openTask} task={task} />
+                  ))}
+                </div>
+              </section>
             )) : null}
           </div>
         </section>
@@ -2024,6 +2040,37 @@ function canEngineerSeeMachine(user: ApiUser, machine: TaskMachine) {
   if (!expertiseGroup) return true;
   const machineGroup = machine.businessLine?.productIndustry?.expertiseGroup ?? machine.businessLine?.expertiseGroup;
   return !machineGroup || machineGroup === expertiseGroup;
+}
+
+function groupTasksByDate(tasks: EngineerTask[]) {
+  const groups = new Map<string, EngineerTask[]>();
+
+  tasks.forEach((task) => {
+    const key = taskDateGroupKey(task);
+    groups.set(key, [...(groups.get(key) ?? []), task]);
+  });
+
+  return Array.from(groups.entries())
+    .sort(([left], [right]) => compareTaskGroupKeys(left, right))
+    .map(([key, items]) => ({
+      key,
+      label: key === '__missing__' ? 'Chưa có ngày hẹn' : formatDate(key),
+      items: items.sort(compareTasks),
+    }));
+}
+
+function taskDateGroupKey(task: EngineerTask) {
+  const value = taskDateValue(task);
+  if (!value) return '__missing__';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '__missing__';
+  return date.toISOString().slice(0, 10);
+}
+
+function compareTaskGroupKeys(left: string, right: string) {
+  if (left === '__missing__') return 1;
+  if (right === '__missing__') return -1;
+  return right.localeCompare(left);
 }
 
 function EngineerTaskRow({ onOpen, task }: { onOpen: (task: EngineerTask) => void; task: EngineerTask }) {

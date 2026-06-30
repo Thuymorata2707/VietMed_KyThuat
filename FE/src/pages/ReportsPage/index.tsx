@@ -178,7 +178,7 @@ const reportTabs: Array<{ key: ReportView; label: string; icon: ReactNode }> = [
 ];
 
 const reportFieldClass =
-  'h-10 min-w-0 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-medium text-[#18212f] outline-none transition hover:border-[#c8d2df] focus:border-[#c91f2d] focus:shadow-[0_0_0_3px_rgba(201,31,45,0.10)]';
+  'h-11 min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-3.5 text-sm font-semibold text-[#1f1f1f] outline-none transition hover:border-[#f0d7d9] focus:border-[#d71920] focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)]';
 
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -325,16 +325,16 @@ export function ReportsPage() {
 
   return (
     <PageFrame>
-      <div className="grid gap-5 rounded-[14px] border border-[#d9e1eb] bg-white p-5 shadow-[0_18px_46px_rgba(28,39,56,0.07)]">
+      <div className="grid gap-5 rounded-[28px] border border-[#f0d7d9] bg-white/95 p-5 shadow-[0_22px_60px_rgba(120,20,28,0.08)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
-            description="Tổng hợp lắp đặt, máy, khách hàng, model và địa bàn. Các bộ lọc liên kết với nhau để chỉ hiện dữ liệu còn liên quan."
+            description="Đọc nhanh tình hình lắp đặt theo kỹ sư, khách hàng, model và tỉnh. Bộ lọc liên kết để chỉ giữ dữ liệu còn liên quan."
             eyebrow="Báo cáo kỹ thuật"
             title="Báo cáo vận hành kỹ thuật"
           />
           <div className="flex flex-wrap items-center gap-2">
             <button
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#dde3ea] bg-white px-3.5 text-sm font-semibold text-[#303a4b] hover:border-[#f1c4c9] hover:text-[#c91f2d] disabled:opacity-50"
+              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-[#f0d7d9] bg-[#fff7f7] px-3.5 text-sm font-bold text-[#b5121b] hover:border-[#d71920] disabled:opacity-50"
               disabled={!report && !engineerReportQuery.data && !modelReportQuery.data}
               onClick={exportCurrentView}
               type="button"
@@ -345,16 +345,16 @@ export function ReportsPage() {
           </div>
         </div>
 
-        <section className="grid gap-3 rounded-[12px] border border-[#dde3ea] bg-[#f8fafc] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e9edf2] pb-3">
+        <section className="grid gap-3 rounded-[24px] border border-[#f0d7d9] bg-[#fffafa] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f2e2e3] pb-3">
             <div>
-              <span className="text-xs font-semibold text-[#c91f2d]">Bộ lọc báo cáo</span>
-              <p className="mt-0.5 text-xs font-medium text-[#647084]">Chọn điều kiện là dữ liệu tự tải lại, không cần bấm áp dụng.</p>
+              <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#d71920]">Bộ lọc báo cáo</span>
+              <p className="mt-0.5 text-xs font-semibold text-[#666666]">Chọn điều kiện là dữ liệu tự tải lại, không cần bấm áp dụng.</p>
             </div>
             <div className="flex items-center gap-2">
               {hasAdvancedFilters ? <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-1 text-xs font-semibold text-[#9b5a17]">Đang lọc nâng cao</span> : null}
-              <button className="inline-flex h-9 items-center justify-center rounded-lg border border-[#dde3ea] bg-white px-3 text-xs font-semibold text-[#647084] hover:border-[#f1c4c9] hover:text-[#c91f2d]" onClick={resetFilters} type="button">
-                Clear
+              <button className="inline-flex h-9 items-center justify-center rounded-xl border border-[#ded8d8] bg-white px-3 text-xs font-bold text-[#666666] hover:border-[#f0d7d9] hover:text-[#d71920]" onClick={resetFilters} type="button">
+                Xóa lọc
               </button>
             </div>
           </div>
@@ -451,13 +451,13 @@ export function ReportsPage() {
           </div>
         </section>
 
-        <div className="flex gap-2 overflow-x-auto border-b border-[#e9edf2] pb-3">
+        <div className="flex gap-2 overflow-x-auto border-b border-[#f2e2e3] pb-3">
           {reportTabs.map((tab) => (
             <button
-              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition ${
+              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-bold transition ${
                 activeView === tab.key
-                  ? 'border-[#f1c4c9] bg-[#fff3f4] text-[#a81524]'
-                  : 'border-[#dde3ea] bg-white text-[#647084] hover:border-[#f1c4c9] hover:text-[#c91f2d]'
+                  ? 'border-[#f0d7d9] bg-[#fff1f3] text-[#b5121b] shadow-[0_10px_24px_rgba(215,25,32,0.08)]'
+                  : 'border-[#ded8d8] bg-white text-[#666666] hover:border-[#f0d7d9] hover:text-[#d71920]'
               }`}
               key={tab.key}
               onClick={() => changeView(tab.key)}
@@ -470,9 +470,10 @@ export function ReportsPage() {
         </div>
 
         {error ? (
-          <div className="rounded-lg border border-[#f1c4c9] bg-[#fff3f4] px-4 py-3 text-sm font-medium text-[#a81524]">{error}</div>
+          <div className="rounded-2xl border border-[#fecdd3] bg-[#fff1f3] px-4 py-3 text-sm font-bold text-[#b5121b]">{error}</div>
         ) : null}
 
+        {report ? <ReportExecutiveSummary from={from} report={report} to={to} /> : null}
         {report ? <ReportScopeInsight labels={selectedFilterLabels} report={report} /> : null}
 
         {loading && !report ? (
@@ -530,6 +531,65 @@ function ReportScopeInsight({ labels, report }: { labels: Record<FilterKey, stri
         <InsightList title={labels.engineer ? 'Khách hàng kỹ sư đang care' : 'Khách hàng liên quan'} rows={topCustomers} />
       </div>
     </section>
+  );
+}
+
+function ReportExecutiveSummary({ from, report, to }: { from: string; report: InstallationReport; to: string }) {
+  const topEngineer = topGroup(report.byEngineer);
+  const topCustomer = topGroup(report.byCustomer);
+  const topModel = topGroup(report.byModel);
+  const topProvince = topGroup(report.byProvince);
+  const latest = latestInstallation(report.rows);
+  const coverage = [
+    `${report.summary.totalEngineers} kỹ sư`,
+    `${report.summary.totalCustomers} khách hàng`,
+    `${report.summary.totalMachines} máy`,
+    `${report.summary.totalProvinces} tỉnh`,
+  ].join(' · ');
+
+  return (
+    <section className="grid gap-4 rounded-[26px] border border-[#f0d7d9] bg-[linear-gradient(135deg,#fffafa,#ffffff_48%,#f8fbfd)] p-5 shadow-[0_18px_50px_rgba(120,20,28,0.06)]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#d71920]">Tóm tắt điều hành</span>
+          <h2 className="mt-1 text-2xl font-extrabold leading-tight text-[#1f1f1f]">
+            {report.summary.totalInstallations} phiếu lắp đặt trong kỳ {formatDate(from)} - {formatDate(to)}
+          </h2>
+          <p className="mt-2 max-w-[760px] text-sm font-semibold leading-6 text-[#666666]">
+            Phạm vi hiện tại bao gồm {coverage}. Dữ liệu bên dưới được xếp theo mức đóng góp để đọc nhanh điểm nổi bật trước khi xem chi tiết.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-[#f0d7d9] bg-white px-4 py-3 text-right shadow-[0_12px_28px_rgba(120,20,28,0.06)]">
+          <span className="block text-xs font-bold text-[#666666]">Lắp gần nhất</span>
+          <strong className="mt-1 block text-sm text-[#1f1f1f]">{latest ? formatDate(latest.installedAt) : '-'}</strong>
+          <span className="mt-1 block max-w-[220px] truncate text-xs font-semibold text-[#d71920]">{latest?.code || 'Chưa có phiếu'}</span>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <ExecutiveFocusCard label="Kỹ sư nổi bật" row={topEngineer} total={report.summary.totalInstallations} />
+        <ExecutiveFocusCard label="Khách hàng nổi bật" row={topCustomer} total={report.summary.totalInstallations} />
+        <ExecutiveFocusCard label="Model nhiều nhất" row={topModel} total={report.summary.totalInstallations} />
+        <ExecutiveFocusCard label="Tỉnh phát sinh nhiều" row={topProvince} total={report.summary.totalInstallations} />
+      </div>
+    </section>
+  );
+}
+
+function ExecutiveFocusCard({ label, row, total }: { label: string; row?: InstallationReportGroup; total: number }) {
+  const percent = total > 0 && row ? Math.round((row.count / total) * 100) : 0;
+
+  return (
+    <article className="grid gap-3 rounded-[22px] border border-[#f2e2e3] bg-white p-4">
+      <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#d71920]">{label}</span>
+      <div>
+        <strong className="line-clamp-2 text-lg font-extrabold leading-tight text-[#1f1f1f]">{row?.label || 'Chưa có dữ liệu'}</strong>
+        <p className="mt-1 text-sm font-semibold text-[#666666]">{row ? `${row.count} phiếu · ${percent}% tổng kỳ` : 'Không phát sinh trong kỳ'}</p>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-[#f1f2f4]">
+        <span className="block h-full rounded-full bg-[#d71920]" style={{ width: `${Math.max(0, percent)}%` }} />
+      </div>
+    </article>
   );
 }
 
@@ -597,9 +657,9 @@ function ReportContent({ report, view, from, to }: { report: InstallationReport;
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="grid min-h-[118px] content-between rounded-[10px] border border-[#e9edf2] bg-[#f8fafc] p-4">
-      <span className="text-sm font-semibold text-[#647084]">{label}</span>
-      <strong className="text-[36px] leading-none text-[#18212f]">{value}</strong>
+    <div className="grid min-h-[118px] content-between rounded-[22px] border border-[#f0d7d9] bg-[#fffafa] p-4 shadow-[0_12px_28px_rgba(120,20,28,0.04)]">
+      <span className="text-sm font-bold text-[#666666]">{label}</span>
+      <strong className="text-[38px] font-extrabold leading-none text-[#1f1f1f]">{value}</strong>
     </div>
   );
 }
@@ -619,43 +679,67 @@ function GroupTable({
 }) {
   const labelHeader =
     variant === 'engineers' ? 'Kỹ sư' : variant === 'customers' ? 'Khách hàng' : variant === 'models' ? 'Model máy' : 'Tỉnh';
+  const sortedRows = [...rows].sort(compareReportGroups);
+  const maxCount = Math.max(1, ...sortedRows.map((row) => row.count));
+  const totalCount = sortedRows.reduce((total, row) => total + row.count, 0);
 
   return (
-    <section className="overflow-hidden rounded-[10px] border border-[#e9edf2] bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e9edf2] bg-[#f8fafc] px-4 py-3">
-        <h2 className="text-base font-semibold text-[#18212f]">{title}</h2>
-        <span className="text-xs font-semibold text-[#647084]">{rows.length} dòng</span>
+    <section className="overflow-hidden rounded-[24px] border border-[#f0d7d9] bg-white shadow-[0_14px_38px_rgba(120,20,28,0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f2e2e3] bg-[#fffafa] px-4 py-3">
+        <div>
+          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#d71920]">Ranking</span>
+          <h2 className="mt-1 text-base font-extrabold text-[#1f1f1f]">{title}</h2>
+        </div>
+        <span className="rounded-full border border-[#f0d7d9] bg-white px-3 py-1 text-xs font-bold text-[#b5121b]">{rows.length} dòng</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
+        <table className="w-full min-w-[860px] border-separate border-spacing-0 text-left text-sm">
           <thead>
-            <tr className="text-[11px] uppercase text-[#647084]">
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">{labelHeader}</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Số phiếu</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Máy</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Khách hàng</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Kỹ sư</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Tỉnh</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Lắp gần nhất</th>
+            <tr className="text-[11px] uppercase tracking-[0.08em] text-[#666666]">
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">#</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">{labelHeader}</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Tỷ trọng</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Số phiếu</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Phạm vi liên quan</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Lắp gần nhất</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {sortedRows.map((row, index) => {
+              const percent = totalCount > 0 ? Math.round((row.count / totalCount) * 100) : 0;
+              const width = Math.max(4, (row.count / maxCount) * 100);
+              return (
               <tr className="hover:bg-[#fffafa]" key={row.id}>
-                <td className="border-b border-[#eeeeee] px-4 py-3 font-bold text-[#18212f]">
+                <td className="border-b border-[#f4eded] px-4 py-3">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#fff1f3] text-xs font-extrabold text-[#b5121b]">{index + 1}</span>
+                </td>
+                <td className="border-b border-[#f4eded] px-4 py-3 font-bold text-[#1f1f1f]">
                   <GroupLink from={from} row={row} to={to} variant={variant} />
                 </td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-lg font-bold text-[#a81524]">{row.count}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">{row.machines}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">{row.customers}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">{row.engineers}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">{row.provinces}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#647084]">{formatDate(row.lastInstalledAt)}</td>
+                <td className="border-b border-[#f4eded] px-4 py-3">
+                  <div className="grid gap-1.5">
+                    <div className="h-2 overflow-hidden rounded-full bg-[#f1f2f4]">
+                      <span className="block h-full rounded-full bg-[#d71920]" style={{ width: `${width}%` }} />
+                    </div>
+                    <span className="text-xs font-bold text-[#666666]">{percent}% tổng nhóm</span>
+                  </div>
+                </td>
+                <td className="border-b border-[#f4eded] px-4 py-3 text-xl font-extrabold text-[#b5121b]">{row.count}</td>
+                <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">
+                  <div className="flex flex-wrap gap-1.5">
+                    <MiniMetric label="máy" value={row.machines} />
+                    <MiniMetric label="khách" value={row.customers} />
+                    <MiniMetric label="kỹ sư" value={row.engineers} />
+                    <MiniMetric label="tỉnh" value={row.provinces} />
+                  </div>
+                </td>
+                <td className="border-b border-[#f4eded] px-4 py-3 text-[#666666]">{formatDate(row.lastInstalledAt)}</td>
               </tr>
-            ))}
-            {rows.length === 0 ? (
+              );
+            })}
+            {sortedRows.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-sm font-medium text-[#647084]" colSpan={7}>
+                <td className="px-4 py-8 text-center text-sm font-semibold text-[#666666]" colSpan={6}>
                   Không có dữ liệu trong kỳ này.
                 </td>
               </tr>
@@ -664,6 +748,14 @@ function GroupTable({
         </table>
       </div>
     </section>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="rounded-lg border border-[#edf0f4] bg-[#f8fbfd] px-2 py-1 text-xs font-bold text-[#333333]">
+      {value} {label}
+    </span>
   );
 }
 
@@ -878,6 +970,8 @@ function MachineHistoryTable({ rows, title }: { rows: DrilldownMachine[]; title:
 }
 
 function WorkLogTable({ rows, title }: { rows: WorkReportRow[]; title: string }) {
+  const sortedRows = [...rows].sort(compareWorkRowsByDateDesc);
+
   return (
     <section className="overflow-hidden rounded-[10px] border border-[#e9edf2] bg-white">
       <TableHeader count={rows.length} title={title} />
@@ -895,7 +989,7 @@ function WorkLogTable({ rows, title }: { rows: WorkReportRow[]; title: string })
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {sortedRows.map((row) => (
               <tr className="hover:bg-[#fffafa]" key={`${row.kind}-${row.id}`}>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-bold text-[#18212f]">
                   <Link className="hover:text-[#c91f2d]" to={workHref(row)}>
@@ -920,12 +1014,16 @@ function WorkLogTable({ rows, title }: { rows: WorkReportRow[]; title: string })
                 <td className="border-b border-[#eeeeee] px-4 py-3 text-[#647084]">{row.status}</td>
               </tr>
             ))}
-            <EmptyRow colSpan={7} show={rows.length === 0} />
+            <EmptyRow colSpan={7} show={sortedRows.length === 0} />
           </tbody>
         </table>
       </div>
     </section>
   );
+}
+
+function compareWorkRowsByDateDesc(left: WorkReportRow, right: WorkReportRow) {
+  return dateTime(right.date) - dateTime(left.date) || left.code.localeCompare(right.code);
 }
 
 function TableHeader({ title, count }: { title: string; count: number }) {
@@ -981,52 +1079,38 @@ function TrendPanel({ rows, title }: { rows: Array<{ date: string; kind?: WorkRe
 }
 
 function DetailTable({ title, rows }: { title: string; rows: InstallationReportRow[] }) {
+  const groups = groupInstallationRowsByDate(rows);
+
   return (
-    <section className="overflow-hidden rounded-[10px] border border-[#e9edf2] bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e9edf2] bg-[#f8fafc] px-4 py-3">
-        <h2 className="text-base font-semibold text-[#18212f]">{title}</h2>
-        <span className="text-xs font-semibold text-[#647084]">{rows.length} máy / phiếu</span>
+    <section className="overflow-hidden rounded-[24px] border border-[#f0d7d9] bg-white shadow-[0_14px_38px_rgba(120,20,28,0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f2e2e3] bg-[#fffafa] px-4 py-3">
+        <div>
+          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#d71920]">Chi tiết theo ngày</span>
+          <h2 className="mt-1 text-base font-extrabold text-[#1f1f1f]">{title}</h2>
+        </div>
+        <span className="rounded-full border border-[#f0d7d9] bg-white px-3 py-1 text-xs font-bold text-[#b5121b]">{rows.length} máy / phiếu</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] border-separate border-spacing-0 text-left text-sm">
           <thead>
-            <tr className="text-[11px] uppercase text-[#647084]">
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Mã phiếu</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Ngày lắp</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Kỹ sư</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Khách hàng</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Model</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Mã máy</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Serial</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Tỉnh</th>
-              <th className="border-b border-[#e9edf2] px-4 py-2.5 font-semibold">Trạng thái</th>
+            <tr className="text-[11px] uppercase tracking-[0.08em] text-[#666666]">
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Mã phiếu</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Kỹ sư</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Khách hàng</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Model</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Mã máy</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Serial</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Tỉnh</th>
+              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Trạng thái</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr className="hover:bg-[#fffafa]" key={row.id}>
-                <td className="border-b border-[#eeeeee] px-4 py-3 font-bold text-[#18212f]">
-                  <Link className="hover:text-[#c91f2d]" to={`/installations/${row.id}/update`}>
-                    {row.code}
-                  </Link>
-                </td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#647084]">{formatDate(row.installedAt)}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">{row.engineer}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold text-[#303a4b]">{row.customer}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">{row.model}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">{row.machineCode}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">{row.serialNumber}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">{row.province}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3">
-                  <span className="inline-flex min-h-7 items-center rounded-lg border border-[#dde3ea] bg-[#f8fafc] px-2.5 text-xs font-semibold text-[#647084]">
-                    {row.status}
-                  </span>
-                </td>
-              </tr>
+            {groups.map((group) => (
+              <DateDetailGroup group={group} key={group.key} />
             ))}
-            {rows.length === 0 ? (
+            {groups.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-sm font-medium text-[#647084]" colSpan={9}>
+                <td className="px-4 py-8 text-center text-sm font-semibold text-[#666666]" colSpan={8}>
                   Không có dữ liệu trong kỳ này.
                 </td>
               </tr>
@@ -1035,6 +1119,41 @@ function DetailTable({ title, rows }: { title: string; rows: InstallationReportR
         </table>
       </div>
     </section>
+  );
+}
+
+function DateDetailGroup({ group }: { group: { key: string; label: string; rows: InstallationReportRow[] } }) {
+  return (
+    <>
+      <tr>
+        <td className="border-b border-[#f4eded] bg-[#fffafa] px-4 py-3" colSpan={8}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <strong className="text-sm text-[#1f1f1f]">{group.label}</strong>
+            <span className="rounded-full border border-[#f0d7d9] bg-white px-2.5 py-1 text-xs font-bold text-[#b5121b]">{group.rows.length} phiếu</span>
+          </div>
+        </td>
+      </tr>
+      {group.rows.map((row) => (
+        <tr className="hover:bg-[#fffafa]" key={row.id}>
+          <td className="border-b border-[#f4eded] px-4 py-3 font-bold text-[#1f1f1f]">
+            <Link className="hover:text-[#d71920]" to={`/installations/${row.id}/update`}>
+              {row.code}
+            </Link>
+          </td>
+          <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">{row.engineer}</td>
+          <td className="border-b border-[#f4eded] px-4 py-3 font-semibold text-[#333333]">{row.customer}</td>
+          <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">{row.model}</td>
+          <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">{row.machineCode}</td>
+          <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">{row.serialNumber}</td>
+          <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">{row.province}</td>
+          <td className="border-b border-[#f4eded] px-4 py-3">
+            <span className="inline-flex min-h-7 items-center rounded-lg border border-[#edf0f4] bg-[#f8fbfd] px-2.5 text-xs font-bold text-[#666666]">
+              {row.status}
+            </span>
+          </td>
+        </tr>
+      ))}
+    </>
   );
 }
 
@@ -1063,6 +1182,58 @@ function toDateInput(date: Date) {
 function formatDate(value?: string | null) {
   if (!value) return '-';
   return new Date(value).toLocaleDateString('vi-VN');
+}
+
+function compareReportGroups(left: InstallationReportGroup, right: InstallationReportGroup) {
+  return right.count - left.count || dateTime(right.lastInstalledAt) - dateTime(left.lastInstalledAt) || left.label.localeCompare(right.label, 'vi');
+}
+
+function topGroup(rows: InstallationReportGroup[]) {
+  return [...rows].filter((row) => row.count > 0).sort(compareReportGroups)[0];
+}
+
+function latestInstallation(rows: InstallationReportRow[]) {
+  return [...rows].sort(compareInstallationRowsByDateDesc)[0];
+}
+
+function compareInstallationRowsByDateDesc(left: InstallationReportRow, right: InstallationReportRow) {
+  return dateTime(right.installedAt) - dateTime(left.installedAt) || left.code.localeCompare(right.code);
+}
+
+function groupInstallationRowsByDate(rows: InstallationReportRow[]) {
+  const groups = new Map<string, InstallationReportRow[]>();
+
+  rows.forEach((row) => {
+    const key = dateKey(row.installedAt);
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  });
+
+  return Array.from(groups.entries())
+    .sort(([left], [right]) => compareDateKeysDesc(left, right))
+    .map(([key, groupRows]) => ({
+      key,
+      label: key === '__missing__' ? 'Chưa có ngày lắp' : formatDate(key),
+      rows: groupRows.sort(compareInstallationRowsByDateDesc),
+    }));
+}
+
+function compareDateKeysDesc(left: string, right: string) {
+  if (left === '__missing__') return 1;
+  if (right === '__missing__') return -1;
+  return right.localeCompare(left);
+}
+
+function dateKey(value?: string | null) {
+  if (!value) return '__missing__';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '__missing__';
+  return date.toISOString().slice(0, 10);
+}
+
+function dateTime(value?: string | null) {
+  if (!value) return 0;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
 function errorMessage(error: unknown) {

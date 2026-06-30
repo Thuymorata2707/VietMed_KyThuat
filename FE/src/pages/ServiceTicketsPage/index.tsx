@@ -232,7 +232,7 @@ function OperationsBoard({
     },
   });
 
-  const items = boardQuery.data ?? [];
+  const items = useMemo(() => [...(boardQuery.data ?? [])].sort(compareBoardItemsByDateDesc), [boardQuery.data]);
   const engineers = engineersQuery.data ?? [];
   const loading = boardQuery.isLoading || boardQuery.isFetching;
   const error =
@@ -240,7 +240,7 @@ function OperationsBoard({
     (engineersQuery.error instanceof Error ? engineersQuery.error.message : '');
 
   const counts = useMemo(() => buildQueueCounts(items), [items]);
-  const visibleItems = useMemo(() => filterByQueue(items, queue), [items, queue]);
+  const visibleItems = useMemo(() => filterByQueue(items, queue).sort(compareBoardItemsByDateDesc), [items, queue]);
   const groupedItems = useMemo(() => groupItems(visibleItems, groupBy), [groupBy, visibleItems]);
 
   return (
@@ -498,12 +498,7 @@ function groupItems(items: BoardItem[], groupBy: GroupByKey) {
     .map(([key, groupItems]) => ({
       key,
       label: groupLabel(key, groupBy),
-      items: groupItems.sort(
-        (left, right) =>
-          urgencyRank(right) - urgencyRank(left) ||
-          compareItemDateDesc(left, right) ||
-          left.code.localeCompare(right.code),
-      ),
+      items: groupItems.sort(compareBoardItemsByDateDesc),
     }));
 }
 
@@ -538,6 +533,10 @@ function compareItemDateDesc(left: BoardItem, right: BoardItem) {
   const leftTime = left.date ? new Date(left.date).getTime() : 0;
   const rightTime = right.date ? new Date(right.date).getTime() : 0;
   return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
+}
+
+function compareBoardItemsByDateDesc(left: BoardItem, right: BoardItem) {
+  return compareItemDateDesc(left, right) || urgencyRank(right) - urgencyRank(left) || left.code.localeCompare(right.code);
 }
 
 function isAction(item: BoardItem) {

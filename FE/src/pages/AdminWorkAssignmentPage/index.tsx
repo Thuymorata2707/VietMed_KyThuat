@@ -272,7 +272,7 @@ export function AdminWorkAssignmentPage() {
         if (engineerFilter === '__unassigned') return !item.engineer?.id;
         return item.engineer?.id === engineerFilter;
       })
-      .sort((left, right) => actionRank(left) - actionRank(right) || dateRank(left) - dateRank(right) || left.code.localeCompare(right.code));
+      .sort((left, right) => actionRank(left) - actionRank(right) || dateRank(right) - dateRank(left) || left.code.localeCompare(right.code));
   }, [engineerFilter, filter, installations, kindFilter, maintenances, repairs]);
 
   async function assignWork(item: WorkItem) {
@@ -729,33 +729,75 @@ function groupWorkItems(items: WorkItem[], filter: WorkFilter) {
       key: 'review',
       title: 'Chờ admin xác nhận',
       description: 'Kỹ sư đã gửi kết quả, admin cần duyệt hoặc trả về bổ sung.',
-      items: items.filter((item) => item.reviewStatus === 'PENDING'),
+      items: items.filter((item) => item.reviewStatus === 'PENDING').sort(compareWorkItemsByDateDesc),
     },
     {
       key: 'unassigned',
       title: 'Chưa phân kỹ sư',
       description: 'Cần chọn người phụ trách để việc bắt đầu chạy.',
-      items: items.filter((item) => !item.engineer?.id),
+      items: items.filter((item) => !item.engineer?.id).sort(compareWorkItemsByDateDesc),
     },
     {
       key: 'active',
       title: 'Đang thực hiện',
       description: 'Đã có kỹ sư phụ trách, cần theo dõi tiến độ và lịch hẹn.',
-      items: items.filter((item) => item.engineer?.id && item.reviewStatus !== 'PENDING' && !isClosed(item.status)),
+      items: items.filter((item) => item.engineer?.id && item.reviewStatus !== 'PENDING' && !isClosed(item.status)).sort(compareWorkItemsByDateDesc),
     },
     {
       key: 'closed',
       title: 'Đã đóng',
       description: 'Các việc đã hoàn tất, đã lắp đặt hoặc đã hủy.',
-      items: items.filter((item) => item.engineer?.id && item.reviewStatus !== 'PENDING' && isClosed(item.status)),
+      items: items.filter((item) => item.engineer?.id && item.reviewStatus !== 'PENDING' && isClosed(item.status)).sort(compareWorkItemsByDateDesc),
     },
   ];
 
-  if (filter === 'review') return groups.filter((group) => group.key === 'review' && group.items.length);
-  if (filter === 'unassigned') return groups.filter((group) => group.key === 'unassigned' && group.items.length);
-  if (filter === 'active') return groups.filter((group) => group.key === 'active' && group.items.length);
-  if (filter === 'action') return groups.filter((group) => ['review', 'unassigned'].includes(group.key) && group.items.length);
-  return groups.filter((group) => group.items.length);
+  const visibleGroups =
+    filter === 'review'
+      ? groups.filter((group) => group.key === 'review' && group.items.length)
+      : filter === 'unassigned'
+        ? groups.filter((group) => group.key === 'unassigned' && group.items.length)
+        : filter === 'active'
+          ? groups.filter((group) => group.key === 'active' && group.items.length)
+          : filter === 'action'
+            ? groups.filter((group) => ['review', 'unassigned'].includes(group.key) && group.items.length)
+            : groups.filter((group) => group.items.length);
+
+  return visibleGroups.flatMap(splitWorkGroupByDate);
+}
+
+function splitWorkGroupByDate(group: { key: string; title: string; description: string; items: WorkItem[] }) {
+  const dateGroups = new Map<string, WorkItem[]>();
+
+  group.items.forEach((item) => {
+    const key = workDateGroupKey(item);
+    dateGroups.set(key, [...(dateGroups.get(key) ?? []), item]);
+  });
+
+  return Array.from(dateGroups.entries())
+    .sort(([left], [right]) => compareWorkGroupDateKeys(left, right))
+    .map(([dateKey, items]) => ({
+      key: `${group.key}:${dateKey}`,
+      title: dateKey === '__missing__' ? `${group.title} · Chưa có ngày` : `${group.title} · ${formatDate(dateKey)}`,
+      description: group.description,
+      items: items.sort(compareWorkItemsByDateDesc),
+    }));
+}
+
+function workDateGroupKey(item: WorkItem) {
+  if (!item.date) return '__missing__';
+  const date = new Date(item.date);
+  if (Number.isNaN(date.getTime())) return '__missing__';
+  return date.toISOString().slice(0, 10);
+}
+
+function compareWorkGroupDateKeys(left: string, right: string) {
+  if (left === '__missing__') return 1;
+  if (right === '__missing__') return -1;
+  return right.localeCompare(left);
+}
+
+function compareWorkItemsByDateDesc(left: WorkItem, right: WorkItem) {
+  return dateRank(right) - dateRank(left) || left.code.localeCompare(right.code);
 }
 
 function buildEngineerLoads(engineers: ApiUser[], items: WorkItem[]) {
@@ -781,9 +823,9 @@ function actionRank(item: WorkItem) {
 }
 
 function dateRank(item: WorkItem) {
-  if (!item.date) return Number.MAX_SAFE_INTEGER;
+  if (!item.date) return 0;
   const date = new Date(item.date);
-  return Number.isNaN(date.getTime()) ? Number.MAX_SAFE_INTEGER : date.getTime();
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
 function actionLabel(item: WorkItem) {
