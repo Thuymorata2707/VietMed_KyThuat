@@ -151,7 +151,6 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
 
   return (
     <OperationsBoard
-      createHref={createTicketHref(kind)}
       description="Tra cứu lắp đặt, sửa chữa, bảo trì và bảo hành theo khách hàng, model hoặc S/N."
       kind={kind}
       kindSelector={
@@ -176,7 +175,6 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
 export function InstallationsPage({ user }: { user: ApiUser }) {
   return (
     <OperationsBoard
-      createHref="/installations/create?returnTo=/installations"
       description="Theo dõi kế hoạch lắp đặt, kỹ sư phụ trách, nghiệm thu và bảo hành theo ngành hàng."
       kind="installations"
       reportHref="/technical-statistics?workType=installation&returnTo=/installations"
@@ -187,7 +185,6 @@ export function InstallationsPage({ user }: { user: ApiUser }) {
 }
 
 function OperationsBoard({
-  createHref,
   description,
   kind,
   kindSelector,
@@ -195,7 +192,6 @@ function OperationsBoard({
   title,
   user,
 }: {
-  createHref: string;
   description: string;
   kind: TicketScope;
   kindSelector?: ReactNode;
@@ -264,10 +260,7 @@ function OperationsBoard({
         <PageTitle eyebrow="Hồ sơ phiếu" title={title} description={description} />
         <div className="operation-board-actions">
           {kindSelector}
-          <Link className="primary-button" to={createHref}>
-            <Plus size={16} />
-            Tạo phiếu
-          </Link>
+          <CreateTicketButtons />
           {role !== 'engineer' ? (
             <Link className="secondary-button" to={reportHref}>
               <BarChart3 size={16} />
@@ -372,6 +365,29 @@ function OperationsBoard({
         ) : null}
       </section>
     </PageFrame>
+  );
+}
+
+function CreateTicketButtons() {
+  const links = [
+    { label: 'Lắp đặt', to: '/installations/create?returnTo=/service-tickets' },
+    { label: 'Sửa chữa', to: '/service-tickets/create?kind=repair&returnTo=/service-tickets' },
+    { label: 'Bảo trì', to: '/service-tickets/create?kind=maintenance&returnTo=/service-tickets' },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#f0d7d9] bg-[#fffafa] p-1">
+      {links.map((item, index) => (
+        <Link
+          className={index === 0 ? 'primary-button compact' : 'secondary-button compact bg-white'}
+          key={item.to}
+          to={item.to}
+        >
+          <Plus size={15} />
+          {item.label}
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -683,13 +699,6 @@ function warrantyStatus(value: string): 'active' | 'expiring' | 'expired' {
   if (daysLeft < 0) return 'expired';
   if (daysLeft <= 45) return 'expiring';
   return 'active';
-}
-
-function createTicketHref(kind: TicketScope) {
-  if (kind === 'installations') return '/installations/create?returnTo=/service-tickets';
-  if (kind === 'maintenance') return '/service-tickets/create?kind=maintenance&returnTo=/service-tickets';
-  if (kind === 'repairs') return '/service-tickets/create?kind=repair&returnTo=/service-tickets';
-  return '/service-tickets/create?returnTo=/service-tickets';
 }
 
 function paramsForScope(baseParams: string, scope: BoardKind, engineerId: string) {

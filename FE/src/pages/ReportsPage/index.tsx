@@ -1126,10 +1126,11 @@ function DateDetailGroup({ group }: { group: { key: string; label: string; rows:
   return (
     <>
       <tr>
-        <td className="border-b border-[#f4eded] bg-[#fffafa] px-4 py-3" colSpan={8}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <strong className="text-sm text-[#1f1f1f]">{group.label}</strong>
-            <span className="rounded-full border border-[#f0d7d9] bg-white px-2.5 py-1 text-xs font-bold text-[#b5121b]">{group.rows.length} phiếu</span>
+        <td className="border-b border-[#f4eded] bg-[#fbfcfd] px-4 py-2" colSpan={8}>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="h-px w-7 bg-[#d8dde5]" />
+            <span className="font-semibold text-[#8a94a3]">{group.label}</span>
+            <span className="rounded-md border border-[#e5e9ef] bg-white px-2 py-0.5 font-semibold text-[#9aa3af]">{group.rows.length} phiếu</span>
           </div>
         </td>
       </tr>
