@@ -185,7 +185,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
-          Back
+          Quay lại
         </button>
       </div>
 
@@ -198,13 +198,18 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
           Đang tải phiếu lắp đặt...
         </div>
       ) : (
-        <form className="grid min-w-0 gap-4 min-[1320px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
-          <section className="grid min-w-0 gap-4">
-            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-              <div className="mb-4">
-                <h2 className="text-lg font-medium text-[#1f1f1f]">Thông tin lắp đặt</h2>
+        <form className="grid min-w-0 gap-5 min-[1320px]:grid-cols-[minmax(0,1fr)_380px]" onSubmit={submit}>
+          <section className="grid min-w-0 gap-5">
+            <div className={panelClass}>
+              <div className={sectionHeaderClass}>
+                <span className={stepBadgeClass}>1</span>
+                <div>
+                  <span className={eyebrowClass}>Thời gian và bảo hành</span>
+                  <h2 className={sectionTitleClass}>Thông tin lắp đặt</h2>
+                  <p className={sectionDescriptionClass}>Nhập ngày lắp đặt, thời hạn bảo hành và ghi chú cần lưu lại.</p>
+                </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-5 md:grid-cols-2">
                 <label className="grid gap-2 text-sm font-semibold text-[#333333]">
                   Ngày lắp đặt
                   <input className={fieldClass} onChange={(event) => setInstalledAt(event.target.value)} required type="date" value={installedAt} />
@@ -228,11 +233,16 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-              <div className="mb-4">
-                <h2 className="text-lg font-medium text-[#1f1f1f]">Bên bàn giao</h2>
+            <div className={panelClass}>
+              <div className={sectionHeaderClass}>
+                <span className={stepBadgeClass}>2</span>
+                <div>
+                  <span className={eyebrowClass}>Bên bàn giao</span>
+                  <h2 className={sectionTitleClass}>Thông tin kỹ sư</h2>
+                  <p className={sectionDescriptionClass}>Người đi lắp đặt và thông tin di chuyển.</p>
+                </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-5 md:grid-cols-2">
                 <label className={labelClass}>
                   Người lắp đặt
                   <input
@@ -257,11 +267,16 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-              <div className="mb-4">
-                <h2 className="text-lg font-medium text-[#1f1f1f]">Bên nhận bàn giao</h2>
+            <div className={panelClass}>
+              <div className={sectionHeaderClass}>
+                <span className={stepBadgeClass}>3</span>
+                <div>
+                  <span className={eyebrowClass}>Bên nhận bàn giao</span>
+                  <h2 className={sectionTitleClass}>Thông tin khách hàng</h2>
+                  <p className={sectionDescriptionClass}>Địa chỉ lắp đặt, đại diện nhận máy và số liên hệ.</p>
+                </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-5 md:grid-cols-2">
                 <label className={`${labelClass} md:col-span-2`}>
                   Địa chỉ lắp đặt
                   <input className={fieldClass} onChange={(event) => updateForm({ receiverInstallAddress: event.target.value })} value={form.receiverInstallAddress} />
@@ -281,12 +296,16 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-              <div className="mb-4">
-                <h2 className="text-lg font-medium text-[#1f1f1f]">Máy thực tế sau bóc hàng</h2>
-                <p className="mt-1 text-sm text-[#666666]">Kỹ sư nhập S/N máy và đầu dò/phụ kiện thực tế sau khi mở thùng tại khách hàng.</p>
+            <div className={panelClass}>
+              <div className={sectionHeaderClass}>
+                <span className={stepBadgeClass}>4</span>
+                <div>
+                  <span className={eyebrowClass}>Máy thực tế</span>
+                  <h2 className={sectionTitleClass}>Sau bóc hàng</h2>
+                  <p className={sectionDescriptionClass}>Kỹ sư nhập S/N máy và đầu dò/phụ kiện thực tế sau khi mở thùng tại khách hàng.</p>
+                </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-5 md:grid-cols-2">
                 <label className={labelClass}>
                   Model dự kiến
                   <input className={fieldClass} readOnly value={detail?.machine?.modelName || detail?.plannedMachineModel?.name || detail?.plannedModelName || ''} />
@@ -310,7 +329,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                     <label className={labelClass}>
                       Phụ kiện đi kèm
                       <textarea
-                        className={`${fieldClass} min-h-28 py-2.5`}
+                        className={`${textareaClass} min-h-28`}
                         onChange={(event) => setMachineAccessoriesText(event.target.value)}
                         placeholder="Mỗi dòng: Phụ kiện | S/N"
                         value={machineAccessoriesText}
@@ -321,17 +340,30 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-medium text-[#1f1f1f]">Danh mục thiết bị lắp đặt</h2>
+            <div className={panelClass}>
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-[#f2e2e3] pb-4">
+                <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
+                  <span className={stepBadgeClass}>5</span>
+                  <div>
+                    <span className={eyebrowClass}>Danh mục thiết bị</span>
+                    <h2 className={sectionTitleClass}>Thiết bị lắp đặt</h2>
+                    <p className={sectionDescriptionClass}>Mỗi dòng là một thiết bị/phụ kiện cần bàn giao.</p>
+                  </div>
+                </div>
                 <button className="secondary-button" onClick={addDeviceItem} type="button">
-                  Add device
+                  Thêm thiết bị
                 </button>
               </div>
               <div className="grid gap-3">
                 {form.installedDeviceItems.map((item, index) => (
-                  <div className="rounded-lg border border-[#edf1f5] bg-[#ffffff] p-4" key={index}>
-                    <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-[20px] border border-[#f0d7d9] bg-[#fffdfd] p-4" key={index}>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <strong className="text-sm text-[#1f1f1f]">Dòng thiết bị {index + 1}</strong>
+                      <button className="secondary-button compact" onClick={() => removeDeviceItem(index)} type="button">
+                        Xóa dòng
+                      </button>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-3">
                       <label className={labelClass}>
                         Tên hàng
                         <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required value={item.itemName} />
@@ -357,21 +389,21 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                         <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { warrantyPeriod: event.target.value })} placeholder="VD: 12 tháng" value={item.warrantyPeriod} />
                       </label>
                     </div>
-                    <div className="mt-3 flex justify-end">
-                      <button className="secondary-button" onClick={() => removeDeviceItem(index)} type="button">
-                        Delete row
-                      </button>
-                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-              <div className="mb-4">
-                <h2 className="text-lg font-medium text-[#1f1f1f]">Tình trạng thiết bị</h2>
+            <div className={panelClass}>
+              <div className={sectionHeaderClass}>
+                <span className={stepBadgeClass}>6</span>
+                <div>
+                  <span className={eyebrowClass}>Kiểm tra cuối</span>
+                  <h2 className={sectionTitleClass}>Tình trạng thiết bị</h2>
+                  <p className={sectionDescriptionClass}>Xác nhận tình trạng khi bàn giao.</p>
+                </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-5 md:grid-cols-2">
                 <label className={labelClass}>
                   Tình trạng
                   <select className={fieldClass} onChange={(event) => updateForm({ deviceCondition: event.target.value })} value={form.deviceCondition}>
@@ -389,14 +421,14 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
             </div>
           </section>
 
-          <aside className="grid gap-4 self-start">
-            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-              <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Trạng thái phiếu</h2>
+          <aside className="grid gap-4 self-start min-[1320px]:sticky min-[1320px]:top-5">
+            <div className={sidePanelClass}>
+              <span className={eyebrowClass}>Trạng thái</span>
+              <h2 className={sectionTitleClass}>Trạng thái phiếu</h2>
               <label className="grid gap-2 text-sm font-semibold text-[#333333]">
                 Trạng thái
                 <select
                   className={fieldClass}
-                  disabled={role !== 'admin' && detail?.status !== 'PENDING'}
                   onChange={(event) => setStatus(event.target.value)}
                   value={status}
                 >
@@ -407,6 +439,14 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   ))}
                 </select>
               </label>
+              <button
+                className="secondary-button mt-3 w-full justify-center border-[#f0d7d9] bg-[#fff7f7] text-[#b5121b]"
+                disabled={status === 'INSTALLED' || status === 'CANCELLED'}
+                onClick={() => setStatus('INSTALLED')}
+                type="button"
+              >
+                Đã lắp đặt
+              </button>
               {isAdmin ? (
                 <label className="mt-4 grid gap-2 text-sm font-semibold text-[#333333]">
                   Kỹ sư lắp đặt
@@ -422,13 +462,14 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               ) : null}
               {role !== 'admin' ? (
                 <p className="mt-3 text-sm font-medium text-[#666666]">
-                  Kỹ sư được chuyển sang Đã lắp đặt sau khi nhập S/N máy thực tế. Khi lưu, hệ thống sẽ tạo/gắn máy vào kho và cập nhật tổng máy đã lắp.
+                  Nhập S/N máy thực tế, bấm Đã lắp đặt rồi lưu phiếu. Hệ thống sẽ gửi admin duyệt và cập nhật máy sau khi hợp lệ.
                 </p>
               ) : null}
             </div>
 
-            <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-              <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Thiết bị</h2>
+            <div className={sidePanelClass}>
+              <span className={eyebrowClass}>Tóm tắt</span>
+              <h2 className={sectionTitleClass}>Thiết bị</h2>
               <div className="grid gap-3 text-sm text-[#333333]">
                 <InfoRow label="Mã phiếu" value={detail?.code} />
                 <InfoRow label="Mã máy" value={detail?.machine?.machineCode || detail?.machine?.serialNumber} />
@@ -437,14 +478,16 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <div className="flex flex-wrap justify-end gap-2">
-              <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
-                Cancel
-              </button>
-              <button className="primary-button" disabled={saving} type="submit">
-                {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-                {saving ? 'Saving' : 'Save'}
-              </button>
+            <div className="rounded-[22px] border border-[#f0d7d9] bg-[#fff7f7] p-3 shadow-[0_16px_40px_rgba(120,20,28,0.08)]">
+              <div className="grid gap-2 sm:grid-cols-2 min-[1320px]:grid-cols-1">
+                <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
+                  Hủy
+                </button>
+                <button className="primary-button" disabled={saving} type="submit">
+                  {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
+                  {saving ? 'Đang lưu' : 'Lưu phiếu'}
+                </button>
+              </div>
             </div>
           </aside>
         </form>
@@ -453,13 +496,19 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   );
 }
 
+const panelClass = 'rounded-[24px] border border-[#f0d7d9] bg-white/95 p-5 shadow-[0_18px_50px_rgba(120,20,28,0.07)] sm:p-6';
+const sidePanelClass = 'rounded-[24px] border border-[#f0d7d9] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(120,20,28,0.06)]';
+const sectionHeaderClass = 'mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#f2e2e3] pb-4';
+const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#d71920] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(215,25,32,0.24)]';
+const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#d71920]';
+const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
+const sectionDescriptionClass = 'mt-1 text-sm leading-6 text-[#666666]';
+const labelClass = 'grid gap-2 text-sm font-semibold text-[#333333]';
 const fieldClass =
-  'h-11 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
+  'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition focus:border-[#d71920] focus:bg-white focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
 
 const textareaClass =
-  'min-h-28 rounded-lg border border-[#d6d6d6] px-3 py-2 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';
-
-const labelClass = 'grid gap-2 text-sm font-semibold text-[#333333]';
+  'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition focus:border-[#d71920] focus:bg-white focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)]';
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (

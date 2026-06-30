@@ -1070,7 +1070,12 @@ export class RepairsService {
     }
 
     const allowedTransitions: Record<RepairStatus, RepairStatus[]> = {
-      [RepairStatus.PENDING]: [RepairStatus.ASSIGNED, RepairStatus.CANCELLED],
+      [RepairStatus.PENDING]: [
+        RepairStatus.ASSIGNED,
+        RepairStatus.IN_PROGRESS,
+        RepairStatus.COMPLETED,
+        RepairStatus.CANCELLED,
+      ],
       [RepairStatus.ASSIGNED]: [
         RepairStatus.IN_PROGRESS,
         RepairStatus.WAITING_PARTS,
@@ -1084,6 +1089,7 @@ export class RepairsService {
       ],
       [RepairStatus.WAITING_PARTS]: [
         RepairStatus.IN_PROGRESS,
+        RepairStatus.COMPLETED,
         RepairStatus.CANCELLED,
       ],
       [RepairStatus.COMPLETED]: [],

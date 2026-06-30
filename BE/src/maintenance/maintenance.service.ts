@@ -1107,6 +1107,8 @@ export class MaintenanceService {
     const allowedTransitions: Record<MaintenanceStatus, MaintenanceStatus[]> = {
       [MaintenanceStatus.SCHEDULED]: [
         MaintenanceStatus.ASSIGNED,
+        MaintenanceStatus.IN_PROGRESS,
+        MaintenanceStatus.COMPLETED,
         MaintenanceStatus.OVERDUE,
         MaintenanceStatus.CANCELLED,
       ],

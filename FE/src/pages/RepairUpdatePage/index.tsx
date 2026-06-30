@@ -208,7 +208,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
-          Back
+          Quay lại
         </button>
       </div>
 
@@ -221,26 +221,37 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
           Đang tải phiếu sửa chữa...
         </div>
       ) : (
-        <form className="grid min-w-0 gap-4 min-[1320px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
-          <section className="grid min-w-0 gap-4">
+        <form className="grid min-w-0 gap-5 min-[1320px]:grid-cols-[minmax(0,1fr)_380px]" onSubmit={submit}>
+          <section className="grid min-w-0 gap-5">
             <div className={panelClass}>
-              <div className="mb-4 border-b border-[#eeeeee] pb-4">
-                <span className="text-xs font-medium text-[#d71920]">Thông tin phiếu</span>
-                <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">{detail?.title || 'Phiếu sửa chữa'}</h2>
-                <p className="mt-1 text-sm text-[#666666]">{detail?.code} - {statusLabel(detail?.status || '')}</p>
+              <div className={sectionHeaderClass}>
+                <span className={stepBadgeClass}>1</span>
+                <div>
+                  <span className={eyebrowClass}>Thông tin phiếu</span>
+                  <h2 className={sectionTitleClass}>{detail?.title || 'Phiếu sửa chữa'}</h2>
+                  <p className={sectionDescriptionClass}>{detail?.code} - {statusLabel(detail?.status || '')}</p>
+                </div>
               </div>
 
-              <div className="grid min-w-0 gap-4 md:grid-cols-2">
-                <label className={labelClass}>
+              <div className="grid min-w-0 gap-5 md:grid-cols-2">
+                <div className={labelClass}>
                   Trạng thái xử lý
                   <select className={fieldClass} onChange={(event) => updateForm({ status: event.target.value })} required value={form.status}>
-                    {statusOptionsForCurrent(detail?.status || form.status).map((option) => (
+                    {statusOptionsForCurrent(form.status).map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
                   </select>
-                </label>
+                  <button
+                    className="secondary-button w-full justify-center border-[#f0d7d9] bg-[#fff7f7] text-[#b5121b]"
+                    disabled={form.status === 'COMPLETED' || form.status === 'CANCELLED'}
+                    onClick={() => updateForm({ status: 'COMPLETED' })}
+                    type="button"
+                  >
+                    Hoàn thành phiếu
+                  </button>
+                </div>
                 {isAdmin ? (
                   <label className={labelClass}>
                     Mức ưu tiên
@@ -289,11 +300,15 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
             </div>
 
             <div className={panelClass}>
-              <div className="mb-4 border-b border-[#eeeeee] pb-4">
-                <span className="text-xs font-medium text-[#d71920]">Khách hàng</span>
-                <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Thông tin tại điểm sửa chữa</h2>
+              <div className={sectionHeaderClass}>
+                <span className={stepBadgeClass}>2</span>
+                <div>
+                  <span className={eyebrowClass}>Khách hàng</span>
+                  <h2 className={sectionTitleClass}>Thông tin tại điểm sửa chữa</h2>
+                  <p className={sectionDescriptionClass}>Người nhận việc, khoa/phòng và địa chỉ thực tế.</p>
+                </div>
               </div>
-              <div className="grid min-w-0 gap-4 md:grid-cols-2">
+              <div className="grid min-w-0 gap-5 md:grid-cols-2">
                 <label className={labelClass}>
                   Đơn vị sử dụng
                   <input className={fieldClass} onChange={(event) => updateForm({ usingDepartment: event.target.value })} value={form.usingDepartment} />
@@ -314,11 +329,15 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
             </div>
 
             <div className={panelClass}>
-              <div className="mb-4 border-b border-[#eeeeee] pb-4">
-                <span className="text-xs font-medium text-[#d71920]">Kết quả</span>
-                <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Ghi nhận sau xử lý</h2>
+              <div className={sectionHeaderClass}>
+                <span className={stepBadgeClass}>3</span>
+                <div>
+                  <span className={eyebrowClass}>Kết quả</span>
+                  <h2 className={sectionTitleClass}>Ghi nhận sau xử lý</h2>
+                  <p className={sectionDescriptionClass}>Viết ngắn gọn lỗi, cách xử lý và phản hồi khách hàng.</p>
+                </div>
               </div>
-              <div className="grid min-w-0 gap-4">
+              <div className="grid min-w-0 gap-5">
                 <label className={labelClass}>
                   Kết quả xử lý
                   <textarea className={textareaClass} onChange={(event) => updateForm({ resultNote: event.target.value })} value={form.resultNote} />
@@ -331,9 +350,9 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
             </div>
           </section>
 
-          <aside className="grid min-w-0 gap-4 self-start">
-            <div className={panelClass}>
-              <span className="text-xs font-medium text-[#d71920]">Tóm tắt máy</span>
+          <aside className="grid min-w-0 gap-4 self-start min-[1320px]:sticky min-[1320px]:top-5">
+            <div className={sidePanelClass}>
+              <span className={eyebrowClass}>Tóm tắt máy</span>
               <div className="mt-3 grid gap-3 text-sm text-[#333333]">
                 <SummaryRow label="Mã máy" value={detail?.machine?.machineCode || '-'} />
                 <SummaryRow label="S/N hệ thống" value={detail?.machine?.serialNumber || '-'} />
@@ -349,11 +368,11 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
               })}
             />
 
-            <section className={panelClass}>
-              <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
+            <section className={sidePanelClass}>
+              <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#f0e6e6] pb-4">
                 <div>
-                  <span className="text-xs font-medium text-[#d71920]">Tài liệu hiện trường</span>
-                  <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Ảnh và biên bản</h2>
+                  <span className={eyebrowClass}>Tài liệu hiện trường</span>
+                  <h2 className={sectionTitleClass}>Ảnh và biên bản</h2>
                 </div>
                 <strong className="rounded-full border border-[#e5e5e5] bg-[#fafafa] px-2.5 py-1 text-sm text-[#333333]">{attachments.length}</strong>
               </div>
@@ -407,32 +426,34 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 </label>
                 <label className={labelClass}>
                   Ghi chú
-                  <textarea className="min-h-20 w-full min-w-0 resize-y rounded-lg border border-[#d6d6d6] bg-white px-3 py-2.5 text-sm font-medium leading-relaxed text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => setAttachmentDescription(event.target.value)} value={attachmentDescription} />
+                  <textarea className={`${textareaClass} min-h-24`} onChange={(event) => setAttachmentDescription(event.target.value)} value={attachmentDescription} />
                 </label>
                 <label className={labelClass}>
                   File
                   <input
                     accept="image/jpeg,image/png,image/webp,application/pdf"
-                    className="w-full min-w-0 rounded-lg border border-dashed border-[#d6d6d6] bg-[#fbfdff] px-3 py-3 text-sm text-[#333333]"
+                    className="w-full min-w-0 rounded-2xl border border-dashed border-[#ded8d8] bg-[#fffefe] px-4 py-3 text-sm font-semibold text-[#333333]"
                     onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)}
                     type="file"
                   />
                 </label>
                 <button className="primary-button" disabled={uploadingAttachment || !attachmentFile} type="submit">
                   {uploadingAttachment ? <Loader2 className="spin-icon" size={17} /> : null}
-                  {uploadingAttachment ? 'Uploading' : 'Upload'}
+                  {uploadingAttachment ? 'Đang tải lên' : 'Tải lên'}
                 </button>
               </form>
             </section>
 
-            <div className="flex flex-wrap justify-end gap-2">
-              <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
-                Cancel
-              </button>
-              <button className="primary-button" disabled={saving} type="submit">
-                {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-                {saving ? 'Saving' : 'Save'}
-              </button>
+            <div className="rounded-[22px] border border-[#f0d7d9] bg-[#fff7f7] p-3 shadow-[0_16px_40px_rgba(120,20,28,0.08)]">
+              <div className="grid gap-2 sm:grid-cols-2 min-[1320px]:grid-cols-1">
+                <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
+                  Hủy
+                </button>
+                <button className="primary-button" disabled={saving} type="submit">
+                  {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
+                  {saving ? 'Đang lưu' : 'Lưu phiếu'}
+                </button>
+              </div>
             </div>
           </aside>
         </form>
@@ -484,6 +505,8 @@ function statusOptionsForCurrent(status: string) {
     PENDING: [
       { value: 'PENDING', label: statusLabel('PENDING') },
       { value: 'ASSIGNED', label: statusLabel('ASSIGNED') },
+      { value: 'IN_PROGRESS', label: statusLabel('IN_PROGRESS') },
+      { value: 'COMPLETED', label: statusLabel('COMPLETED') },
       { value: 'CANCELLED', label: statusLabel('CANCELLED') },
     ],
     ASSIGNED: [
@@ -502,6 +525,7 @@ function statusOptionsForCurrent(status: string) {
     WAITING_PARTS: [
       { value: 'WAITING_PARTS', label: statusLabel('WAITING_PARTS') },
       { value: 'IN_PROGRESS', label: statusLabel('IN_PROGRESS') },
+      { value: 'COMPLETED', label: statusLabel('COMPLETED') },
       { value: 'CANCELLED', label: statusLabel('CANCELLED') },
     ],
     COMPLETED: [{ value: 'COMPLETED', label: statusLabel('COMPLETED') }],
@@ -542,7 +566,7 @@ function StandardRepairChecklist({
         ))}
       </div>
       <button className="secondary-button mt-4 w-full justify-center" onClick={onApplyPartsTemplate} type="button">
-        Add template
+        Thêm mẫu linh kiện
       </button>
     </section>
   );
@@ -552,7 +576,13 @@ function appendTextBlock(current: string, block: string) {
   return [current.trim(), block.trim()].filter(Boolean).join('\n\n');
 }
 
-const panelClass = 'rounded-lg border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]';
-const labelClass = 'grid min-w-0 content-start gap-2 text-sm font-medium text-[#333333]';
-const fieldClass = 'h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';
-const textareaClass = 'min-h-28 w-full min-w-0 resize-y rounded-lg border border-[#d6d6d6] bg-white px-3 py-2.5 text-sm font-medium leading-relaxed text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';
+const panelClass = 'rounded-[24px] border border-[#f0d7d9] bg-white/95 p-5 shadow-[0_18px_50px_rgba(120,20,28,0.07)] sm:p-6';
+const sidePanelClass = 'rounded-[24px] border border-[#f0d7d9] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(120,20,28,0.06)]';
+const sectionHeaderClass = 'mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#f2e2e3] pb-4';
+const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#d71920] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(215,25,32,0.24)]';
+const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#d71920]';
+const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
+const sectionDescriptionClass = 'mt-1 text-sm leading-6 text-[#666666]';
+const labelClass = 'grid min-w-0 content-start gap-2 text-sm font-semibold text-[#333333]';
+const fieldClass = 'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition focus:border-[#d71920] focus:bg-white focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
+const textareaClass = 'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition focus:border-[#d71920] focus:bg-white focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)]';

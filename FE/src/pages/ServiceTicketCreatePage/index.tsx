@@ -427,7 +427,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         />
         <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
           <ArrowLeft size={17} />
-          Back
+          Quay lại
         </button>
       </div>
 
@@ -440,14 +440,17 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         </div>
       ) : null}
 
-      <form className="grid min-w-0 gap-4 font-sans min-[1320px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
-        <section className="grid min-w-0 gap-4">
+      <form className="grid min-w-0 gap-5 font-sans min-[1320px]:grid-cols-[minmax(0,1fr)_380px]" onSubmit={submit}>
+        <section className="grid min-w-0 gap-5">
           <div className={panelClass}>
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
-              <div>
-                <span className="text-xs font-medium text-[#d71920]">Bước 1</span>
-                <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Thông tin phiếu</h2>
-                <p className="mt-1 text-sm text-[#666666]">Chọn đúng loại phiếu, thiết bị và kỹ sư phụ trách trước khi nhập chi tiết.</p>
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#f2e2e3] pb-4">
+              <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
+                <span className={stepBadgeClass}>1</span>
+                <div>
+                  <span className={eyebrowClass}>Thông tin phiếu</span>
+                  <h2 className={sectionTitleClass}>Chọn nghiệp vụ và người phụ trách</h2>
+                  <p className={sectionDescriptionClass}>Chọn đúng loại phiếu, thiết bị và kỹ sư trước khi nhập chi tiết.</p>
+                </div>
               </div>
               <label className="grid min-w-[220px] max-sm:min-w-0 max-sm:w-full gap-2 text-sm font-semibold text-[#333333]">
                 Loại phiếu
@@ -464,7 +467,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
               </label>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-2">
               {kind !== 'installation' ? (
                 <label className={wideLabelClass}>
                   Tiêu đề
@@ -561,11 +564,14 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           </div>
 
           <div className={panelClass}>
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
-              <div>
-                <span className="text-xs font-medium text-[#d71920]">Bước 2</span>
-                <h2 className="text-lg font-medium text-[#1f1f1f]">Dữ liệu chưa có</h2>
-                <p className="mt-1 text-sm text-[#666666]">Chỉ mở phần này khi tìm không thấy khách hàng hoặc thiết bị trong danh sách.</p>
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#f2e2e3] pb-4">
+              <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
+                <span className={stepBadgeClass}>2</span>
+                <div>
+                  <span className={eyebrowClass}>Dữ liệu chưa có</span>
+                  <h2 className={sectionTitleClass}>Tạo nhanh khi cần</h2>
+                  <p className={sectionDescriptionClass}>Chỉ mở phần này khi tìm không thấy khách hàng hoặc thiết bị.</p>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button className="secondary-button" onClick={() => setShowQuickCustomer((value) => !value)} type="button">
@@ -609,10 +615,10 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           </div>
         </section>
 
-        <aside className="grid min-w-0 gap-4 self-start">
-          <div className={panelClass}>
-            <span className="text-xs font-medium text-[#d71920]">Kiểm tra</span>
-            <h2 className="mb-4 mt-1 text-lg font-medium text-[#1f1f1f]">Tóm tắt</h2>
+        <aside className="grid min-w-0 gap-4 self-start min-[1320px]:sticky min-[1320px]:top-5">
+          <div className={sidePanelClass}>
+            <span className={eyebrowClass}>Kiểm tra</span>
+            <h2 className={`${sectionTitleClass} mb-4`}>Tóm tắt</h2>
             <div className="grid gap-3 text-sm text-[#333333]">
               <SummaryRow label="Loại phiếu" value={ticketKindLabel(kind)} />
               <SummaryRow label="Thiết bị" value={selectedMachine ? machineLabel(selectedMachine) : 'Chưa chọn'} />
@@ -621,14 +627,16 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="rounded-[22px] border border-[#f0d7d9] bg-[#fff7f7] p-3 shadow-[0_16px_40px_rgba(120,20,28,0.08)]">
+            <div className="grid gap-2 sm:grid-cols-2 min-[1320px]:grid-cols-1">
             <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
-              Cancel
+              Hủy
             </button>
             <button className="primary-button" disabled={saving || loading} type="submit">
               {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-              {saving ? 'Saving' : 'Save'}
+              {saving ? 'Đang tạo' : 'Tạo phiếu'}
             </button>
+            </div>
           </div>
         </aside>
       </form>
@@ -943,13 +951,18 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-const panelClass = 'rounded-lg border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]';
-const labelClass = 'grid min-w-0 content-start gap-2 font-sans text-sm font-medium leading-snug text-[#333333]';
+const panelClass = 'rounded-[24px] border border-[#f0d7d9] bg-white/95 p-5 shadow-[0_18px_50px_rgba(120,20,28,0.07)] sm:p-6';
+const sidePanelClass = 'rounded-[24px] border border-[#f0d7d9] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(120,20,28,0.06)]';
+const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#d71920] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(215,25,32,0.24)]';
+const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#d71920]';
+const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
+const sectionDescriptionClass = 'mt-1 text-sm leading-6 text-[#666666]';
+const labelClass = 'grid min-w-0 content-start gap-2 font-sans text-sm font-semibold leading-snug text-[#333333]';
 const wideLabelClass = `${labelClass} md:col-span-2`;
 const fieldClass =
-  'h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 font-sans text-sm font-medium text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
+  'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 font-sans text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#d71920] focus:bg-white focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
 const textareaClass =
-  'min-h-28 w-full min-w-0 resize-y rounded-lg border border-[#d6d6d6] bg-white px-3 py-2.5 font-sans text-sm font-medium leading-relaxed text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
+  'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 font-sans text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#d71920] focus:bg-white focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
 
 function normalizeKind(value: string | null): TicketKind {
   if (value === 'maintenance' || value === 'installation') return value;
