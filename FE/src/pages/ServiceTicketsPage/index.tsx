@@ -13,6 +13,7 @@ import { displayLabel } from '../../utils/displayLabels';
 
 type ServiceTicketKind = 'repairs' | 'maintenance';
 type BoardKind = ServiceTicketKind | 'installations';
+type TicketScope = BoardKind | 'all';
 type QueueKey = 'action' | 'active' | 'review' | 'closed' | 'all';
 type GroupByKey = 'date' | 'engineer' | 'industry' | 'customer';
 
@@ -32,6 +33,8 @@ type MachineSummary = {
   machineCode?: string | null;
   serialNumber?: string | null;
   modelName?: string | null;
+  warrantyStartDate?: string | null;
+  warrantyEndDate?: string | null;
   productCategory?: string | null;
   businessLine?: {
     name?: string | null;
@@ -98,6 +101,10 @@ type InstallationRow = {
       } | null;
     } | null;
   } | null;
+  warrantyEndDate?: string | null;
+  warrantyCard?: {
+    endDate?: string | null;
+  } | null;
 };
 
 type BoardItem = {
@@ -112,21 +119,24 @@ type BoardItem = {
   machine?: MachineSummary | null;
   customer?: { name?: string | null; hospitalName?: string | null; province?: string | null } | null;
   productIndustry?: string | null;
+  warrantyEndDate?: string | null;
   secondary?: string | null;
   urgency?: string | null;
 };
 
-const serviceTicketOptions: Array<{ label: string; value: ServiceTicketKind }> = [
+const serviceTicketOptions: Array<{ label: string; value: TicketScope }> = [
+  { label: 'Tất cả phiếu', value: 'all' },
   { label: 'Sửa chữa', value: 'repairs' },
   { label: 'Bảo trì', value: 'maintenance' },
+  { label: 'Lắp đặt', value: 'installations' },
 ];
 
 const queues: Array<{ key: QueueKey; label: string }> = [
+  { key: 'all', label: 'Tất cả phiếu' },
   { key: 'action', label: 'Cần xử lý' },
   { key: 'active', label: 'Đang làm' },
   { key: 'review', label: 'Chờ xác nhận' },
-  { key: 'closed', label: 'Hoàn tất' },
-  { key: 'all', label: 'Tất cả' },
+  { key: 'closed', label: 'Đã xong' },
 ];
 
 const groupOptions: Array<{ label: string; value: GroupByKey }> = [
@@ -137,17 +147,17 @@ const groupOptions: Array<{ label: string; value: GroupByKey }> = [
 ];
 
 export function ServiceTicketsPage({ user }: { user: ApiUser }) {
-  const [kind, setKind] = useState<ServiceTicketKind>('repairs');
+  const [kind, setKind] = useState<TicketScope>('all');
 
   return (
     <OperationsBoard
-      createHref={`/service-tickets/create?kind=${kind === 'maintenance' ? 'maintenance' : 'repair'}&returnTo=/service-tickets`}
-      description="Theo dõi phiếu sửa chữa và bảo trì theo hàng đợi xử lý, ngành hàng, kỹ sư và trạng thái."
+      createHref={createTicketHref(kind)}
+      description="Tra cứu lắp đặt, sửa chữa, bảo trì và bảo hành theo khách hàng, model hoặc S/N."
       kind={kind}
       kindSelector={
         <label className="operation-filter-field operation-filter-field--compact">
-          <span>Loại phiếu</span>
-          <select onChange={(event) => setKind(event.target.value as ServiceTicketKind)} value={kind}>
+          <span>Phạm vi</span>
+          <select onChange={(event) => setKind(event.target.value as TicketScope)} value={kind}>
             {serviceTicketOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -156,8 +166,8 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
           </select>
         </label>
       }
-      reportHref={`/technical-statistics?workType=${kind === 'maintenance' ? 'maintenance' : 'repair'}&returnTo=/service-tickets`}
-      title="Phiếu kỹ thuật"
+      reportHref={kind === 'all' ? '/reports?view=details' : `/technical-statistics?workType=${kind === 'maintenance' ? 'maintenance' : kind === 'installations' ? 'installation' : 'repair'}&returnTo=/service-tickets`}
+      title="Tổng hợp phiếu"
       user={user}
     />
   );
@@ -187,7 +197,7 @@ function OperationsBoard({
 }: {
   createHref: string;
   description: string;
-  kind: BoardKind;
+  kind: TicketScope;
   kindSelector?: ReactNode;
   reportHref: string;
   title: string;
@@ -196,7 +206,7 @@ function OperationsBoard({
   const role = getRoleName(user);
   const [productIndustryId, setProductIndustryId] = useState('');
   const [engineerId, setEngineerId] = useState('');
-  const [queue, setQueue] = useState<QueueKey>('action');
+  const [queue, setQueue] = useState<QueueKey>('all');
   const [groupBy, setGroupBy] = useState<GroupByKey>('date');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -210,17 +220,22 @@ function OperationsBoard({
     const params = new URLSearchParams({ limit: '100' });
     if (debouncedQuery) params.set('search', debouncedQuery);
     if (productIndustryId) params.set('productIndustryId', productIndustryId);
-    if (engineerId) params.set(kind === 'installations' ? 'installedById' : 'engineerId', engineerId);
     return params.toString();
-  }, [debouncedQuery, engineerId, kind, productIndustryId]);
+  }, [debouncedQuery, productIndustryId]);
 
   const boardQuery = useQuery({
-    queryKey: queryKeys.serviceTickets.board(kind, boardParams),
+    queryKey: queryKeys.serviceTickets.board(kind, `${boardParams}&engineer=${engineerId}`),
     queryFn: async () => {
-      const endpoint = kind === 'installations' ? '/installations' : kind === 'maintenance' ? '/maintenance' : '/repairs';
-      const result = await apiFetch<Paginated<ServiceRow | InstallationRow> | Array<ServiceRow | InstallationRow>>(`${endpoint}?${boardParams}`);
-      const rows = Array.isArray(result) ? result : result.data ?? [];
-      return rows.map((row) => normalizeBoardItem(row, kind));
+      const scopes: BoardKind[] = kind === 'all' ? ['repairs', 'maintenance', 'installations'] : [kind];
+      const responses = await Promise.all(
+        scopes.map(async (scope) => {
+          const endpoint = scope === 'installations' ? '/installations' : scope === 'maintenance' ? '/maintenance' : '/repairs';
+          const result = await apiFetch<Paginated<ServiceRow | InstallationRow> | Array<ServiceRow | InstallationRow>>(`${endpoint}?${paramsForScope(boardParams, scope, engineerId)}`);
+          const rows = Array.isArray(result) ? result : result.data ?? [];
+          return rows.map((row) => normalizeBoardItem(row, scope));
+        }),
+      );
+      return responses.flat();
     },
   });
 
@@ -246,7 +261,7 @@ function OperationsBoard({
   return (
     <PageFrame>
       <div className="grid gap-4 min-[900px]:flex min-[900px]:items-start min-[900px]:justify-between">
-        <PageTitle eyebrow="Vận hành kỹ thuật" title={title} description={description} />
+        <PageTitle eyebrow="Hồ sơ phiếu" title={title} description={description} />
         <div className="operation-board-actions">
           {kindSelector}
           <Link className="primary-button" to={createHref}>
@@ -319,7 +334,7 @@ function OperationsBoard({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
           <div>
             <h2 className="text-base font-semibold text-[#1f1f1f]">{queues.find((item) => item.key === queue)?.label}</h2>
-            <p className="mt-1 text-sm text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${visibleItems.length} phiếu - ${groupOptions.find((item) => item.value === groupBy)?.label.toLowerCase()}`}</p>
+            <p className="mt-1 text-sm text-[#666666]">{loading ? 'Đang tải' : `${visibleItems.length} phiếu · ${groupOptions.find((item) => item.value === groupBy)?.label.toLowerCase()}`}</p>
           </div>
         </div>
 
@@ -334,7 +349,7 @@ function OperationsBoard({
           <div className="grid min-h-[260px] place-items-center gap-2 p-8 text-center text-[#666666]">
             <ClipboardCheck size={26} />
             <strong className="text-[#1f1f1f]">Không có phiếu phù hợp</strong>
-            <span className="text-sm">Thử đổi ngành hàng, kỹ sư hoặc hàng đợi trạng thái.</span>
+            <span className="text-sm">Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</span>
           </div>
         ) : null}
 
@@ -380,6 +395,7 @@ function TicketCard({ item }: { item: BoardItem }) {
         <div className="flex flex-wrap gap-2 text-[13px] leading-5 text-[#666666]">
           <span>{customerText(item)}</span>
           <span>{machineText(item)}</span>
+          {item.warrantyEndDate ? <WarrantyBadge value={item.warrantyEndDate} /> : null}
           {item.secondary ? <span>{item.secondary}</span> : null}
         </div>
       </div>
@@ -444,6 +460,7 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
       machine,
       customer,
       productIndustry: item.businessLine?.productIndustry?.name || machine?.businessLine?.productIndustry?.name || item.plannedMachineModel?.businessLine?.productIndustry?.name,
+      warrantyEndDate: item.warrantyEndDate || item.warrantyCard?.endDate || machine?.warrantyEndDate,
       secondary: [item.businessLine?.name || item.plannedMachineModel?.businessLine?.name || machine?.businessLine?.name, item.plannedMachineModel?.displayName || item.plannedMachineModel?.name || item.plannedModelName].filter(Boolean).join(' - '),
       urgency: null,
     };
@@ -463,6 +480,7 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
     machine: item.machine,
     customer: item.customer || item.machine?.customer || (item.usingDepartment ? { name: item.usingDepartment } : null),
     productIndustry: item.machine?.businessLine?.productIndustry?.name,
+    warrantyEndDate: item.machine?.warrantyEndDate,
     secondary: isMaintenance ? displayLabel(item.type || '') : displayLabel(item.priority || ''),
     urgency: isMaintenance ? item.type : item.priority,
   };
@@ -575,7 +593,7 @@ function isClosed(status: string) {
 }
 
 function editHref(item: BoardItem) {
-  if (item.kind === 'installation') return `/installations/${item.id}/update?returnTo=/installations`;
+  if (item.kind === 'installation') return `/installations/${item.id}/update?returnTo=/service-tickets`;
   if (item.kind === 'maintenance') return `/maintenance/${item.id}/update?returnTo=/service-tickets`;
   return `/repairs/${item.id}/update?returnTo=/service-tickets`;
 }
@@ -590,6 +608,7 @@ function queueCardClass(active: boolean) {
 function kindIconClass(kind: BoardItem['kind']) {
   const base = 'flex h-[42px] w-[42px] items-center justify-center rounded-lg border';
   if (kind === 'maintenance') return `${base} border-[#b9e8ca] bg-[#eefaf3] text-[#177245]`;
+  if (kind === 'installation') return `${base} border-[#f0d7d9] bg-[#fff7f7] text-[#b5121b]`;
   return `${base} border-[#f5c7cb] bg-[#fff5f5] text-[#d71920]`;
 }
 
@@ -642,6 +661,41 @@ function customerText(item: BoardItem) {
 
 function machineText(item: BoardItem) {
   return [item.machine?.machineCode, item.machine?.modelName, item.machine?.serialNumber ? `S/N ${item.machine.serialNumber}` : ''].filter(Boolean).join(' - ') || 'Chưa gắn máy';
+}
+
+function WarrantyBadge({ value }: { value: string }) {
+  const status = warrantyStatus(value);
+  const classes = {
+    active: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
+    expiring: 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]',
+    expired: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]',
+  };
+
+  return <span className={`rounded-full border px-2 py-0.5 text-[12px] font-semibold ${classes[status]}`}>BH đến {formatDate(value)}</span>;
+}
+
+function warrantyStatus(value: string): 'active' | 'expiring' | 'expired' {
+  const endDate = new Date(value);
+  if (Number.isNaN(endDate.getTime())) return 'active';
+
+  const today = new Date();
+  const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / 86_400_000);
+  if (daysLeft < 0) return 'expired';
+  if (daysLeft <= 45) return 'expiring';
+  return 'active';
+}
+
+function createTicketHref(kind: TicketScope) {
+  if (kind === 'installations') return '/installations/create?returnTo=/service-tickets';
+  if (kind === 'maintenance') return '/service-tickets/create?kind=maintenance&returnTo=/service-tickets';
+  if (kind === 'repairs') return '/service-tickets/create?kind=repair&returnTo=/service-tickets';
+  return '/service-tickets/create?returnTo=/service-tickets';
+}
+
+function paramsForScope(baseParams: string, scope: BoardKind, engineerId: string) {
+  const params = new URLSearchParams(baseParams);
+  if (engineerId) params.set(scope === 'installations' ? 'installedById' : 'engineerId', engineerId);
+  return params.toString();
 }
 
 function formatDate(value: string) {

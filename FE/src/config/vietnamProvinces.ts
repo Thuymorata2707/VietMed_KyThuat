@@ -1,0 +1,41 @@
+export type VietnamProvinceOption = {
+  code: string;
+  name: string;
+};
+
+export const vietnamProvinceOptions: VietnamProvinceOption[] = [
+  { code: 'HN', name: 'Hà Nội' },
+  { code: 'HP', name: 'Hải Phòng' },
+  { code: 'HUE', name: 'Huế' },
+  { code: 'DN', name: 'Đà Nẵng' },
+  { code: 'CT', name: 'Cần Thơ' },
+  { code: 'HCM', name: 'Hồ Chí Minh' },
+  { code: 'CB', name: 'Cao Bằng' },
+  { code: 'TQ', name: 'Tuyên Quang' },
+  { code: 'LAOC', name: 'Lào Cai' },
+  { code: 'TN', name: 'Thái Nguyên' },
+  { code: 'LS', name: 'Lạng Sơn' },
+  { code: 'QN', name: 'Quảng Ninh' },
+  { code: 'BN', name: 'Bắc Ninh' },
+  { code: 'PT', name: 'Phú Thọ' },
+  { code: 'DB', name: 'Điện Biên' },
+  { code: 'LCH', name: 'Lai Châu' },
+  { code: 'SL', name: 'Sơn La' },
+  { code: 'HY', name: 'Hưng Yên' },
+  { code: 'NB', name: 'Ninh Bình' },
+  { code: 'TH', name: 'Thanh Hóa' },
+  { code: 'NA', name: 'Nghệ An' },
+  { code: 'HT', name: 'Hà Tĩnh' },
+  { code: 'QT', name: 'Quảng Trị' },
+  { code: 'QNG', name: 'Quảng Ngãi' },
+  { code: 'GL', name: 'Gia Lai' },
+  { code: 'DL', name: 'Đắk Lắk' },
+  { code: 'KH', name: 'Khánh Hòa' },
+  { code: 'LD', name: 'Lâm Đồng' },
+  { code: 'DNI', name: 'Đồng Nai' },
+  { code: 'TNI', name: 'Tây Ninh' },
+  { code: 'DT', name: 'Đồng Tháp' },
+  { code: 'AG', name: 'An Giang' },
+  { code: 'VL', name: 'Vĩnh Long' },
+  { code: 'CM', name: 'Cà Mau' },
+];

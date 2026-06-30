@@ -7,7 +7,6 @@ import {
   CalendarDays,
   Gauge,
   MapPinned,
-  PackageCheck,
   FileBarChart2,
   SquareCheckBig,
   ShieldCheck,
@@ -33,8 +32,7 @@ export const navItems: NavItem[] = [
   { path: '/', label: 'Tổng quan', icon: <Gauge size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/customers', label: 'Khách hàng', icon: <Building2 size={18} />, roles: ['admin', 'manager'] },
   { path: '/my-customers', label: 'Khách hàng phụ trách', icon: <Building2 size={18} />, roles: ['engineer'] },
-  { path: '/installations', label: 'Lắp đặt', icon: <PackageCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
-  { path: '/service-tickets', label: 'Sửa chữa / Bảo trì', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
+  { path: '/service-tickets', label: 'Tổng hợp phiếu', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/daily-work', label: 'Lịch công việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
   { path: '/knowledge-base', label: 'Chia sẻ kinh nghiệm', icon: <BookOpenCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/technical-statistics', label: 'Thống kê kỹ thuật', icon: <BarChart3 size={18} />, roles: ['admin'] },
@@ -72,8 +70,7 @@ export const navGroups: NavGroup[] = [
     label: 'Vận hành kỹ thuật',
     items: [
       { path: '/my-customers', label: 'Khách hàng phụ trách', icon: <Building2 size={18} />, roles: ['engineer'] },
-      { path: '/service-tickets', label: 'Sửa chữa / Bảo trì', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
-      { path: '/installations', label: 'Lắp đặt', icon: <PackageCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
+      { path: '/service-tickets', label: 'Tổng hợp phiếu', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
     ],
   },
   {

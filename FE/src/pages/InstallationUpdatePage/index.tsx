@@ -1,7 +1,7 @@
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch } from '../../api';
+import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
@@ -33,6 +33,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   const returnTo = searchParams.get('returnTo') || '/installations';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [detail, setDetail] = useState<InstallationTask | null>(null);
@@ -175,13 +176,50 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
     }
   }
 
+  async function downloadHandoverDocx() {
+    if (!id) return;
+
+    setExporting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const headers = new Headers();
+      const token = getToken();
+      if (token) headers.set('Authorization', `Bearer ${token}`);
+
+      const response = await fetch(`${getApiBaseUrl()}/installations/${id}/handover-docx`, {
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error('Không tạo được file Word biên bản.');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `phieu-ban-giao-${safeFileName(detail?.code || id)}.docx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+      setSuccess('Đã tạo file Word biên bản.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không tạo được file Word biên bản.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <PageFrame>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle
           eyebrow="Lắp đặt"
           title="Cập nhật phiếu lắp đặt"
-          description="Hoàn thiện biên bản bàn giao, danh mục thiết bị và thông tin bảo hành trước khi admin duyệt."
+          description="Nhập dữ liệu ngắn gọn. Biên bản Word sẽ tự ghép đủ nội dung theo mẫu."
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
@@ -206,7 +244,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Thời gian và bảo hành</span>
                   <h2 className={sectionTitleClass}>Thông tin lắp đặt</h2>
-                  <p className={sectionDescriptionClass}>Nhập ngày lắp đặt, thời hạn bảo hành và ghi chú cần lưu lại.</p>
+                  <p className={sectionDescriptionClass}>Ngày lắp, hạn bảo hành và ghi chú nội bộ.</p>
                 </div>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
@@ -302,7 +340,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Máy thực tế</span>
                   <h2 className={sectionTitleClass}>Sau bóc hàng</h2>
-                  <p className={sectionDescriptionClass}>Kỹ sư nhập S/N máy và đầu dò/phụ kiện thực tế sau khi mở thùng tại khách hàng.</p>
+                  <p className={sectionDescriptionClass}>Nhập S/N và phụ kiện thực tế.</p>
                 </div>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
@@ -347,7 +385,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   <div>
                     <span className={eyebrowClass}>Danh mục thiết bị</span>
                     <h2 className={sectionTitleClass}>Thiết bị lắp đặt</h2>
-                    <p className={sectionDescriptionClass}>Mỗi dòng là một thiết bị/phụ kiện cần bàn giao.</p>
+                    <p className={sectionDescriptionClass}>Dữ liệu này sẽ lên bảng trong file Word.</p>
                   </div>
                 </div>
                 <button className="secondary-button" onClick={addDeviceItem} type="button">
@@ -422,6 +460,23 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
           </section>
 
           <aside className="grid gap-4 self-start min-[1320px]:sticky min-[1320px]:top-5">
+            <div className={sidePanelClass}>
+              <span className={eyebrowClass}>Biên bản</span>
+              <h2 className={sectionTitleClass}>Xuất Word</h2>
+              <p className="mt-2 text-sm leading-6 text-[#666666]">
+                Lưu phiếu trước khi tải để file có dữ liệu mới nhất.
+              </p>
+              <button
+                className="secondary-button mt-4 w-full justify-center border-[#f0d7d9] bg-white text-[#b5121b]"
+                disabled={exporting}
+                onClick={downloadHandoverDocx}
+                type="button"
+              >
+                {exporting ? <Loader2 className="spin-icon" size={17} /> : <Download size={17} />}
+                {exporting ? 'Đang tạo Word' : 'Tải biên bản Word'}
+              </button>
+            </div>
+
             <div className={sidePanelClass}>
               <span className={eyebrowClass}>Trạng thái</span>
               <h2 className={sectionTitleClass}>Trạng thái phiếu</h2>
@@ -554,4 +609,15 @@ function buildForm(task: InstallationTask): CreateTicketForm {
 
 function dateInputValue(value?: string | null) {
   return value ? value.slice(0, 10) : '';
+}
+
+function safeFileName(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/Đ/g, 'D')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
 }

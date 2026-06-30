@@ -109,8 +109,8 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
   const reportsHref = (view: string) => `/reports?view=${view}`;
   const scopeTitle = isAdmin ? 'Toàn hệ thống' : user.fullName || user.email;
   const scopeDescription = isAdmin
-    ? 'Tóm tắt những gì cần quan tâm trước: việc mở, máy vướng và dữ liệu còn thiếu.'
-    : 'Tóm tắt phần việc, lịch và hồ sơ máy đang gắn với tài khoản của bạn.';
+    ? 'Việc mở, máy vướng, dữ liệu thiếu.'
+    : 'Việc, lịch và máy của bạn.';
   const machineHealthItems = [
     { label: 'Đang hoạt động', value: activeMachines, tone: 'good' as const, href: canOpenReports ? reportsHref('machines') : undefined },
     { label: 'Đã lắp tại khách', value: installedMachines, tone: 'good' as const, href: canOpenReports ? reportsHref('machines') : undefined },
@@ -282,10 +282,10 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
               </h1>
               <p className="mt-5 max-w-[620px] text-[15px] leading-7 text-[#555555]">
                 {loading
-                  ? 'Hệ thống đang gom dữ liệu máy, ticket và lịch bảo trì để tạo bức tranh vận hành mới nhất.'
+                  ? 'Đang gom dữ liệu mới nhất.'
                   : totalOpenWork > 0
-                  ? `Còn ${totalOpenWork} việc chưa xong. Ưu tiên kiểm tra các mục quá hạn, chờ nhận và đợi linh kiện.`
-                  : 'Các hàng đợi chính không có cảnh báo lớn. Bạn có thể kiểm tra lịch bảo trì sắp tới hoặc hồ sơ cần bổ sung.'}
+                  ? `${totalOpenWork} việc chưa xong. Xem Tổng hợp phiếu để xử lý.`
+                  : 'Không có cảnh báo lớn.'}
               </p>
             </div>
 
@@ -347,9 +347,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             <h2 className="mt-1 text-xl font-semibold text-[#18212f]">Thiết bị đang quản lý</h2>
             <p className="mt-1 max-w-[760px] text-sm leading-6 text-[#647084]">{scopeDescription}</p>
           </div>
-          <span className="rounded-lg border border-[#dde3ea] bg-white/80 px-3 py-2 text-right text-xs font-medium text-[#647084] shadow-[0_1px_2px_rgba(28,39,56,0.04)]">
-            Cập nhật: {lastUpdatedAt ?? 'Chưa có'}
-          </span>
+          <span className="rounded-lg border border-[#dde3ea] bg-white/80 px-3 py-2 text-right text-xs font-medium text-[#647084] shadow-[0_1px_2px_rgba(28,39,56,0.04)]">{lastUpdatedAt ?? 'Chưa cập nhật'}</span>
         </div>
 
         <div className="grid gap-4 min-[1120px]:grid-cols-[minmax(360px,0.95fr)_minmax(0,1.4fr)]">
@@ -393,7 +391,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
           <BoardPanel eyebrow="Hàng đợi công việc" title="Việc đang nằm ở đâu">
             <QueueBars items={workQueues} loading={loading} />
             <div className="grid grid-cols-3 gap-2.5 border-t border-[#eeeeee] pt-3 max-sm:grid-cols-1">
-              <ActionLink icon={<Wrench size={17} />} label={isAdmin ? 'Điều phối ticket' : 'Ticket của tôi'} to={isAdmin ? '/service-tickets' : '/my-tasks'} />
+              <ActionLink icon={<Wrench size={17} />} label="Tổng hợp phiếu" to="/service-tickets" />
               <ActionLink icon={<ClipboardCheck size={17} />} label="Lịch công việc" to="/daily-work" />
               <ActionLink icon={<ArrowUpRight size={17} />} label="Tạo phiếu" to="/service-tickets/create" />
             </div>
@@ -409,7 +407,6 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
           </BoardPanel>
         </div>
 
-        <PriorityTable loading={loading} rows={priorityRows} />
       </section>
 
       <Link
@@ -436,11 +433,11 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Mở nhanh</h2>
           </div>
           <div className="grid grid-cols-3 gap-3 max-[1180px]:grid-cols-2 max-[860px]:grid-cols-1">
-            <AdminShortcut to="/users" icon={<Users size={19} />} title="Nhân sự" detail="Tài khoản, vai trò và khu vực." />
-            <AdminShortcut to="/technical-machines" icon={<Stethoscope size={19} />} title="Máy chờ duyệt" detail={`${summary?.pendingReviewMachines ?? 0} máy cần kiểm tra thông tin.`} />
-            <AdminShortcut to="/roles" icon={<ShieldCheck size={19} />} title="Vai trò" detail="Quyền truy cập của từng nhóm." />
-            <AdminShortcut to="/regions" icon={<MapPinned size={19} />} title="Khu vực" detail="Phân vùng khách hàng và kỹ sư." />
-            <AdminShortcut to="/audit-logs" icon={<History size={19} />} title="Nhật ký" detail="Các thay đổi quan trọng." />
+            <AdminShortcut to="/users" icon={<Users size={19} />} title="Nhân sự" detail="Tài khoản và vai trò." />
+            <AdminShortcut to="/technical-machines" icon={<Stethoscope size={19} />} title="Máy chờ duyệt" detail={`${summary?.pendingReviewMachines ?? 0} máy.`} />
+            <AdminShortcut to="/roles" icon={<ShieldCheck size={19} />} title="Vai trò" detail="Quyền truy cập." />
+            <AdminShortcut to="/regions" icon={<MapPinned size={19} />} title="Khu vực" detail="Tỉnh và kỹ sư." />
+            <AdminShortcut to="/audit-logs" icon={<History size={19} />} title="Nhật ký" detail="Lịch sử thay đổi." />
           </div>
         </section>
       ) : null}

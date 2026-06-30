@@ -13,6 +13,20 @@ import {
   WarrantyStatus,
   WorkReviewStatus,
 } from '@prisma/client';
+import {
+  AlignmentType,
+  BorderStyle,
+  Document,
+  HeadingLevel,
+  Packer,
+  Paragraph,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  UnderlineType,
+  WidthType,
+} from 'docx';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
 import { installationAccessWhere, isAdmin, isEngineer } from '../auth/access-scope';
@@ -227,6 +241,262 @@ export class InstallationsService {
     }
 
     return installation;
+  }
+
+  async generateHandoverDocx(id: string, user?: RequestUser) {
+    const installation = (await this.findOne(id, user)) as any;
+    const deviceRows = this.buildHandoverDeviceRows(installation);
+    const titleRun = (text: string) =>
+      new TextRun({ text, bold: true, size: 24, font: 'Times New Roman' });
+    const normalRun = (text: string, options: { bold?: boolean } = {}) =>
+      new TextRun({
+        text,
+        bold: options.bold,
+        size: 24,
+        font: 'Times New Roman',
+      });
+
+    const document = new Document({
+      sections: [
+        {
+          properties: {
+            page: {
+              margin: {
+                top: 720,
+                right: 720,
+                bottom: 720,
+                left: 720,
+              },
+            },
+          },
+          children: [
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: borderlessTableBorders(),
+              rows: [
+                new TableRow({
+                  children: [
+                    docCell([
+                      new Paragraph({
+                        children: [
+                          new TextRun({
+                            text: 'VIETMED',
+                            bold: true,
+                            size: 28,
+                            font: 'Arial',
+                          }),
+                        ],
+                      }),
+                      docParagraph('Đối tác chuyên nghiệp', { size: 18 }),
+                    ]),
+                    docCell([
+                      docParagraph(
+                        'CÔNG TY TNHH THIẾT BỊ VÀ CÔNG NGHỆ Y TẾ VIỆT NAM',
+                        { bold: true, align: AlignmentType.CENTER },
+                      ),
+                      docParagraph(
+                        'Lô D24-NV14, Ô 6, Khu D, KĐT Lê Trọng Tấn - Geleximco, P. Dương Nội, Tp. Hà Nội',
+                        { size: 20, align: AlignmentType.CENTER },
+                      ),
+                      docParagraph(
+                        'Hotline: 1800 6844    vietmed@vnn.vn    www.vietmed.vn',
+                        { size: 20, align: AlignmentType.CENTER },
+                      ),
+                    ]),
+                    docCell([
+                      docParagraph('BM-KTH-01-01', {
+                        bold: true,
+                        align: AlignmentType.CENTER,
+                      }),
+                      docParagraph('Ngày BH: 25/12/2020', {
+                        size: 20,
+                        align: AlignmentType.CENTER,
+                      }),
+                      docParagraph('Lần ban hành: 03', {
+                        size: 20,
+                        align: AlignmentType.CENTER,
+                      }),
+                    ]),
+                  ],
+                }),
+              ],
+            }),
+            new Paragraph({ text: '' }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              heading: HeadingLevel.HEADING_1,
+              children: [
+                new TextRun({
+                  text: 'PHIẾU BÀN GIAO VÀ BẢO HÀNH THIẾT BỊ',
+                  bold: true,
+                  size: 32,
+                  font: 'Times New Roman',
+                }),
+              ],
+            }),
+            new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [
+                normalRun(
+                  `${installation.customer?.province || installation.customer?.region?.name || '........'}, ${formatVietnameseFullDate(
+                    installation.installedAt,
+                  )}`,
+                ),
+              ],
+            }),
+            docParagraph('BÊN BÀN GIAO:', { bold: true, underline: true }),
+            docFieldLine(
+              'Công ty TNHH Thiết bị và Công nghệ Y tế Việt Nam (Vietmed)',
+            ),
+            docTwoColumns(
+              `Người lắp đặt: ${docValue(
+                installation.handoverInstallerName ||
+                  installation.installedBy?.fullName ||
+                  installation.installedBy?.email,
+              )}`,
+              `Chức vụ: ${docValue(
+                installation.handoverInstallerPosition ||
+                  installation.installedBy?.engineerProfile?.position,
+              )}`,
+            ),
+            docTwoColumns(
+              `Phương tiện đi: ${docValue(installation.handoverVehicle)}`,
+              `Ngày đi: ${formatShortDate(installation.handoverDepartureDate)}`,
+            ),
+            docParagraph('BÊN NHẬN BÀN GIAO:', { bold: true, underline: true }),
+            docFieldLine(docValue(installation.customer?.name)),
+            docFieldLine(
+              `Địa chỉ lắp đặt: ${docValue(
+                installation.receiverInstallAddress ||
+                  installation.customer?.address,
+              )}`,
+            ),
+            docTwoColumns(
+              `Người đại diện: ${docValue(installation.receiverRepresentative)}`,
+              `Chức vụ: ${docValue(installation.receiverPosition)}`,
+            ),
+            docFieldLine(`ĐT: ${docValue(installation.receiverPhone)}`),
+            docParagraph('DANH MỤC THIẾT BỊ LẮP ĐẶT', {
+              bold: true,
+              size: 28,
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: [
+                new TableRow({
+                  tableHeader: true,
+                  children: [
+                    docHeaderCell('TT'),
+                    docHeaderCell('Tên hàng'),
+                    docHeaderCell('Model'),
+                    docHeaderCell('S/N'),
+                    docHeaderCell('Ngày/tháng/năm SX'),
+                    docHeaderCell('SL'),
+                    docHeaderCell('Thời gian BH'),
+                  ],
+                }),
+                ...deviceRows.map(
+                  (item, index) =>
+                    new TableRow({
+                      children: [
+                        docBodyCell(String(index + 1), { align: AlignmentType.CENTER }),
+                        docBodyCell(item.itemName),
+                        docBodyCell(item.model),
+                        docBodyCell(item.serialNumber),
+                        docBodyCell(formatShortDate(item.manufactureDate)),
+                        docBodyCell(String(item.quantity || 1), {
+                          align: AlignmentType.CENTER,
+                        }),
+                        docBodyCell(
+                          item.warrantyPeriod ||
+                            formatWarrantyPeriod(
+                              installation.warrantyStartDate ||
+                                installation.warrantyCard?.startDate,
+                              installation.warrantyEndDate ||
+                                installation.warrantyCard?.endDate,
+                            ),
+                        ),
+                      ],
+                    }),
+                ),
+                ...Array.from({ length: Math.max(0, 6 - deviceRows.length) }).map(
+                  () =>
+                    new TableRow({
+                      children: [
+                        docBodyCell(''),
+                        docBodyCell(''),
+                        docBodyCell(''),
+                        docBodyCell(''),
+                        docBodyCell(''),
+                        docBodyCell(''),
+                        docBodyCell(''),
+                      ],
+                    }),
+                ),
+              ],
+            }),
+            new Paragraph({ text: '' }),
+            new Paragraph({
+              children: [
+                titleRun('Tình trạng thiết bị: '),
+                normalRun(
+                  installation.deviceCondition === 'OTHER'
+                    ? `☐ mới 100%.    ☑ Khác: ${docValue(
+                        installation.deviceConditionNote,
+                      )}`
+                    : '☑ mới 100%.    ☐ Khác',
+                ),
+              ],
+            }),
+            docParagraph('Bên bàn giao:', { bold: true }),
+            docParagraph(
+              '- Đã lắp đặt và vận hành máy hoạt động bình thường',
+            ),
+            docParagraph(
+              '- Đã hướng dẫn cho khách hàng quy trình hoạt động, cách sử dụng thiết bị, các lưu ý trong khi sử dụng. Khách hàng đã thực hành các quy trình được hướng dẫn đạt kết quả tốt.',
+            ),
+            ...(installation.note
+              ? [docParagraph(`Ghi chú lắp đặt: ${installation.note}`)]
+              : []),
+            ...(installation.warrantyNote
+              ? [docParagraph(`Ghi chú bảo hành: ${installation.warrantyNote}`)]
+              : []),
+            docFieldLine('Bên nhận bàn giao'),
+            docParagraph(
+              '* Biên bản có hiệu lực từ ngày ký, mỗi bên giữ 01 (một) bản./',
+              { italics: true },
+            ),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: borderlessTableBorders(),
+              rows: [
+                new TableRow({
+                  children: [
+                    signatureCell('BÊN BÀN GIAO'),
+                    signatureCell('BÊN NHẬN BÀN GIAO'),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    signatureNameCell(
+                      installation.handoverInstallerName ||
+                        installation.installedBy?.fullName,
+                    ),
+                    signatureNameCell(installation.receiverRepresentative),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        },
+      ],
+    });
+
+    const buffer = await Packer.toBuffer(document);
+    return {
+      buffer,
+      filename: `phieu-ban-giao-${safeFilename(installation.code || id)}.docx`,
+    };
   }
 
   async update(id: string, dto: UpdateInstallationDto, actor: RequestUser) {
@@ -915,6 +1185,57 @@ export class InstallationsService {
     return Object.values(InstallationStatus);
   }
 
+  private buildHandoverDeviceRows(installation: any): Array<{
+    itemName: string;
+    model: string;
+    serialNumber: string;
+    manufactureDate: string | null;
+    quantity: number;
+    warrantyPeriod: string;
+  }> {
+    const items = Array.isArray(installation.installedDeviceItems)
+      ? installation.installedDeviceItems
+      : [];
+    const normalized = items
+      .map((item) => ({
+        itemName: docValue(item?.itemName),
+        model: docValue(item?.model),
+        serialNumber: docValue(item?.serialNumber),
+        manufactureDate: item?.manufactureDate || null,
+        quantity: Number(item?.quantity) || 1,
+        warrantyPeriod: docValue(item?.warrantyPeriod),
+      }))
+      .filter((item) => item.itemName !== '................................');
+
+    if (normalized.length) {
+      return normalized;
+    }
+
+    return [
+      {
+        itemName: docValue(
+          installation.machine?.name ||
+            installation.plannedMachineModel?.displayName ||
+            installation.plannedMachineModel?.name ||
+            installation.plannedModelName ||
+            'Thiết bị',
+        ),
+        model: docValue(
+          installation.machine?.modelName ||
+            installation.plannedMachineModel?.name ||
+            installation.plannedModelName,
+        ),
+        serialNumber: docValue(installation.machine?.serialNumber),
+        manufactureDate: null,
+        quantity: 1,
+        warrantyPeriod: formatWarrantyPeriod(
+          installation.warrantyStartDate || installation.warrantyCard?.startDate,
+          installation.warrantyEndDate || installation.warrantyCard?.endDate,
+        ),
+      },
+    ];
+  }
+
   private validateCreate(dto: CreateInstallationDto) {
     if (
       !dto.customerId ||
@@ -1516,4 +1837,190 @@ export class InstallationsService {
       warrantyCard: true,
     };
   }
+}
+
+function docParagraph(
+  text: string,
+  options: {
+    bold?: boolean;
+    italics?: boolean;
+    underline?: boolean;
+    size?: number;
+    align?: (typeof AlignmentType)[keyof typeof AlignmentType];
+  } = {},
+) {
+  return new Paragraph({
+    alignment: options.align,
+    spacing: { after: 80 },
+    children: [
+      new TextRun({
+        text,
+        bold: options.bold,
+        italics: options.italics,
+        underline: options.underline
+          ? { type: UnderlineType.SINGLE }
+          : undefined,
+        size: options.size ?? 24,
+        font: 'Times New Roman',
+      }),
+    ],
+  });
+}
+
+function docFieldLine(text: string) {
+  return docParagraph(text || '................................');
+}
+
+function docTwoColumns(left: string, right: string) {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: borderlessTableBorders(),
+    rows: [
+      new TableRow({
+        children: [
+          docCell([docParagraph(left)]),
+          docCell([docParagraph(right)]),
+        ],
+      }),
+    ],
+  });
+}
+
+function docCell(children: Paragraph[], options: { width?: number } = {}) {
+  return new TableCell({
+    width: options.width
+      ? { size: options.width, type: WidthType.PERCENTAGE }
+      : undefined,
+    margins: { top: 80, bottom: 80, left: 80, right: 80 },
+    children,
+  });
+}
+
+function docHeaderCell(text: string) {
+  return new TableCell({
+    shading: { fill: 'F3F4F6' },
+    margins: { top: 80, bottom: 80, left: 80, right: 80 },
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({
+            text,
+            bold: true,
+            size: 22,
+            font: 'Times New Roman',
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+function docBodyCell(
+  text: string,
+  options: { align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {},
+) {
+  return new TableCell({
+    margins: { top: 100, bottom: 100, left: 80, right: 80 },
+    children: [
+      new Paragraph({
+        alignment: options.align,
+        children: [
+          new TextRun({
+            text: text || '',
+            size: 22,
+            font: 'Times New Roman',
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+function signatureCell(title: string) {
+  return new TableCell({
+    margins: { top: 220, bottom: 900, left: 80, right: 80 },
+    children: [
+      docParagraph(title, {
+        bold: true,
+        align: AlignmentType.CENTER,
+      }),
+    ],
+  });
+}
+
+function signatureNameCell(name?: string | null) {
+  return new TableCell({
+    margins: { top: 80, bottom: 80, left: 80, right: 80 },
+    children: [
+      docParagraph(docValue(name), {
+        align: AlignmentType.CENTER,
+      }),
+    ],
+  });
+}
+
+function borderlessTableBorders() {
+  return {
+    top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  };
+}
+
+function docValue(value?: string | number | null) {
+  const text = value === undefined || value === null ? '' : String(value).trim();
+  return text || '................................';
+}
+
+function formatVietnameseFullDate(value?: Date | string | null) {
+  const date = toDate(value) ?? new Date();
+  return `Ngày ${String(date.getDate()).padStart(2, '0')} tháng ${String(
+    date.getMonth() + 1,
+  ).padStart(2, '0')} năm ${date.getFullYear()}`;
+}
+
+function formatShortDate(value?: Date | string | null) {
+  const date = toDate(value);
+  if (!date) return '................................';
+
+  return `${String(date.getDate()).padStart(2, '0')}/${String(
+    date.getMonth() + 1,
+  ).padStart(2, '0')}/${date.getFullYear()}`;
+}
+
+function formatWarrantyPeriod(
+  startValue?: Date | string | null,
+  endValue?: Date | string | null,
+) {
+  const start = toDate(startValue);
+  const end = toDate(endValue);
+  if (!start || !end) return 'Theo hợp đồng';
+
+  const months =
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth());
+  if (months > 0) return `${months} tháng`;
+
+  return `${formatShortDate(start)} - ${formatShortDate(end)}`;
+}
+
+function toDate(value?: Date | string | null) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function safeFilename(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/Đ/g, 'D')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
 }

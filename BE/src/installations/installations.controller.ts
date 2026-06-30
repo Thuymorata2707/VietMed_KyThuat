@@ -7,8 +7,10 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -48,6 +50,25 @@ export class InstallationsController {
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.installationsService.findOne(id, user);
+  }
+
+  @Get(':id/handover-docx')
+  async downloadHandoverDocx(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+    @Res() response: Response,
+  ) {
+    const file = await this.installationsService.generateHandoverDocx(id, user);
+
+    response.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.filename}"`,
+    );
+    response.send(file.buffer);
   }
 
   @Roles('admin', 'engineer')

@@ -5,6 +5,7 @@ import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { vietnamProvinceOptions } from '../../config/vietnamProvinces';
 import { queryKeys } from '../../lib/queryKeys';
 
 type Region = {
@@ -115,6 +116,7 @@ export function AdminRegionsPage() {
       [region.name, region.code].join(' ').toLowerCase().includes(keyword),
     );
   }, [query, regions]);
+  const existingRegionCodes = useMemo(() => new Set(regions.map((region) => region.code.toUpperCase())), [regions]);
 
   function selectRegion(region: Region) {
     setSelectedRegion(region);
@@ -149,6 +151,11 @@ export function AdminRegionsPage() {
     setFormError('');
     setSuccess('');
 
+    if (!form.name || !form.code) {
+      setFormError('Vui lòng chọn tỉnh/thành.');
+      return;
+    }
+
     try {
       await createRegionMutation.mutateAsync();
     } catch (err) {
@@ -166,7 +173,7 @@ export function AdminRegionsPage() {
         />
         <button className="secondary-button" disabled={loading} onClick={() => void regionsQuery.refetch()} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-          {loading ? 'Loading' : 'Refresh'}
+          {loading ? 'Đang tải' : 'Làm mới'}
         </button>
       </div>
 
@@ -178,7 +185,7 @@ export function AdminRegionsPage() {
           <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm tên hoặc mã khu vực" value={query} />
           <button className="primary-button compact" onClick={openCreateModal} type="button">
             <Plus size={17} />
-            Add Region
+            Thêm khu vực
           </button>
         </div>
 
@@ -366,7 +373,7 @@ export function AdminRegionsPage() {
           <section aria-modal="true" className="crud-modal" role="dialog">
             <div className="form-panel-heading">
               <div>
-                <span>Add</span>
+                <span>Thêm</span>
                 <h2>Khu vực phụ trách</h2>
               </div>
               <button className="icon-button" onClick={closeModal} title="Close" type="button">
@@ -376,29 +383,43 @@ export function AdminRegionsPage() {
 
             <form className="grid gap-[18px]" onSubmit={handleSubmit}>
               <label className="grid gap-[7px] font-medium text-[#333333]">
-                Tên khu vực
-                <input
+                Tỉnh/Thành
+                <select
                   className="min-h-10 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
-                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                  onChange={(event) => {
+                    const province = vietnamProvinceOptions.find((item) => item.code === event.target.value);
+                    setForm(province ? { name: province.name, code: province.code } : emptyForm);
+                  }}
                   required
-                  value={form.name}
-                />
+                  value={form.code}
+                >
+                  <option value="">Chọn tỉnh/thành</option>
+                  {vietnamProvinceOptions.map((province) => {
+                    const exists = existingRegionCodes.has(province.code);
+                    return (
+                      <option disabled={exists} key={province.code} value={province.code}>
+                        {province.name} ({province.code}){exists ? ' - đã có' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
               </label>
               <label className="grid gap-[7px] font-medium text-[#333333]">
-                Mã khu vực
+                Mã tỉnh
                 <input
-                  className="min-h-10 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
-                  onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
+                  className="min-h-10 rounded-lg border border-[#d6d6d6] bg-[#f8fbfd] px-3 text-[#1f1f1f] outline-none"
+                  readOnly
                   required
                   value={form.code}
                 />
+                <span className="text-xs font-medium text-[#666666]">Mã tự sinh từ viết tắt tỉnh/thành để tránh nhập sai.</span>
               </label>
               <div className="modal-actions">
                 <button className="secondary-button" onClick={closeModal} type="button">
-                  Cancel
+                  Hủy
                 </button>
                 <button className="primary-button" disabled={saving} type="submit">
-                  {saving ? 'Saving' : 'Save'}
+                  {saving ? 'Đang lưu' : 'Lưu khu vực'}
                 </button>
               </div>
             </form>

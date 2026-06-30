@@ -60,7 +60,7 @@ export function InstallationHandoverForm({
         <input onChange={(event) => updateForm({ receiverPhone: event.target.value })} value={form.receiverPhone} />
       </label>
 
-      <div className="create-form-section">Danh mục thiết bị lắp đặt</div>
+      <div className="create-form-section">Thiết bị bàn giao</div>
       <div className="installation-device-list">
         {form.installedDeviceItems.map((item, index) => (
           <div className="installation-device-row" key={index}>
@@ -77,7 +77,7 @@ export function InstallationHandoverForm({
               <input onChange={(event) => updateDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} />
             </label>
             <label>
-              Ngày tháng năm sản xuất
+              NSX
               <input
                 onChange={(event) => updateDeviceItem(index, { manufactureDate: event.target.value })}
                 type="date"
@@ -102,12 +102,12 @@ export function InstallationHandoverForm({
               />
             </label>
             <button className="task-secondary device-remove-button" onClick={() => removeDeviceItem(index)} type="button">
-              Delete row
+              Xóa dòng
             </button>
           </div>
         ))}
         <button className="task-secondary device-add-button" onClick={addDeviceItem} type="button">
-          Add device
+          Thêm thiết bị
         </button>
       </div>
 
