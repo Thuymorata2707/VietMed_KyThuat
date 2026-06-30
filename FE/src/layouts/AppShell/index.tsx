@@ -32,6 +32,8 @@ const KnowledgeBasePage = lazy(() => import('../../pages/KnowledgeBasePage').the
 const MaintenanceUpdatePage = lazy(() => import('../../pages/MaintenanceUpdatePage').then((module) => ({ default: module.MaintenanceUpdatePage })));
 const ProductAddPage = lazy(() => import('../../pages/ProductCatalogPage').then((module) => ({ default: module.ProductAddPage })));
 const ProductCatalogPage = lazy(() => import('../../pages/ProductCatalogPage').then((module) => ({ default: module.ProductCatalogPage })));
+const ProductCatalogPortalPage = lazy(() => import('../../pages/ProductCatalogPortalPage').then((module) => ({ default: module.ProductCatalogPortalPage })));
+const ProductIndustryModelsPage = lazy(() => import('../../pages/ProductCatalogPortalPage').then((module) => ({ default: module.ProductIndustryModelsPage })));
 const ProductModelDetailPage = lazy(() => import('../../pages/ProductCatalogPage').then((module) => ({ default: module.ProductModelDetailPage })));
 const RepairUpdatePage = lazy(() => import('../../pages/RepairUpdatePage').then((module) => ({ default: module.RepairUpdatePage })));
 const ReportsPage = lazy(() => import('../../pages/ReportsPage').then((module) => ({ default: module.ReportsPage })));
@@ -554,6 +556,30 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <ProductAddPage user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/product-catalog"
+            element={
+              <RequireRole
+                allowedRoles={resources['business-lines'].roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <ProductCatalogPortalPage user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/product-catalog/industries/:industryId"
+            element={
+              <RequireRole
+                allowedRoles={resources['business-lines'].roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <ProductIndustryModelsPage user={user} />
               </RequireRole>
             }
           />

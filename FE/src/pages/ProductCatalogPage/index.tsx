@@ -381,7 +381,11 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
   const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
   const canAddProduct = role === 'admin' || role === 'engineer';
   const canEditModelImage = role === 'admin';
-  const backToCatalogHref = `/business-lines${buildCatalogSearch(searchParams.get('industry') || allIndustriesKey, searchParams.get('q') || '')}`;
+  const backIndustryId = searchParams.get('industry') || '';
+  const backQuery = searchParams.get('q') || '';
+  const backToCatalogHref = backIndustryId
+    ? `/product-catalog/industries/${backIndustryId}${buildCatalogSearch('', backQuery)}`
+    : '/product-catalog';
 
   const modelDetailQuery = useQuery({
     enabled: Boolean(modelId),
@@ -659,7 +663,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
           title="Add Product"
           description="Chọn model, nhập serial và phụ kiện."
         />
-        <button className="secondary-button" onClick={() => navigate('/business-lines')} type="button">
+        <button className="secondary-button" onClick={() => navigate('/product-catalog')} type="button">
           <ArrowLeft size={17} />
           Back
         </button>
@@ -799,7 +803,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
           </div>
 
           <div className="flex flex-wrap justify-end gap-2">
-            <button className="secondary-button" onClick={() => navigate('/business-lines')} type="button">
+            <button className="secondary-button" onClick={() => navigate('/product-catalog')} type="button">
               Cancel
             </button>
             <button className="primary-button" disabled={saving || loading || !canAddProduct} type="submit">
