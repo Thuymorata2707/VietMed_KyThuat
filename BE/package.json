@@ -17,6 +17,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
     "db:seed": "prisma db seed",
+    "db:clean-operational": "node scripts/clean-operational-data.mjs",
     "db:studio": "prisma studio --port 5556",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest --passWithNoTests",

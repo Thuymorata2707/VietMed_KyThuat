@@ -1,6 +1,6 @@
-import { ArrowLeft, Edit3, History, ImageOff, Loader2, Power, PowerOff, RefreshCw, Save, Trash2, UserPlus } from 'lucide-react';
+import { ArrowLeft, Briefcase, Edit3, History, ImageOff, Loader2, MapPin, Power, PowerOff, RefreshCw, Save, Search, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useState } from 'react';
+import { Dispatch, FormEvent, ReactNode, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
@@ -239,6 +239,20 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
     );
   }, [query, users]);
 
+  const userStats = useMemo(() => {
+    const technical = users.filter(isTechnicalUser).length;
+    const admins = users.filter((user) => isAdminRole(user.role?.name)).length;
+    const active = users.filter((user) => user.status === 'ACTIVE').length;
+
+    return {
+      active,
+      admins,
+      inactive: users.length - active,
+      technical,
+      total: users.length,
+    };
+  }, [users]);
+
   const selectedRole = roles.find((role) => role.id === form.roleId);
   const roleIsEngineer = isEngineerRole(selectedRole?.name);
   const shouldShowEngineerProfile = roleIsEngineer || form.isTechnicalStaff;
@@ -323,12 +337,12 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
             eyebrow="Admin"
-            title={formMode === 'edit' ? 'Edit nhân sự' : 'Add nhân sự'}
-            description="Tài khoản, quyền và hồ sơ kỹ sư."
+            title={formMode === 'edit' ? 'Sửa nhân sự' : 'Thêm nhân sự'}
+            description="Tài khoản, quyền và hồ sơ kỹ thuật."
           />
           <button className="secondary-button" onClick={closeForm} type="button">
             <ArrowLeft size={17} />
-            Back
+            Quay lại
           </button>
         </div>
 
@@ -371,8 +385,8 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
       <div className="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
         <PageTitle
           eyebrow="Admin"
-          title="Quản lý nhân sự"
-          description="Tài khoản, quyền và trạng thái."
+          title="Nhân sự"
+          description="Quản lý tài khoản, quyền truy cập và hồ sơ kỹ sư."
         />
         <div className="flex flex-wrap justify-end gap-2">
           <Link className="secondary-button" to="/audit-logs">
@@ -398,123 +412,66 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="min-w-0 overflow-hidden rounded-lg border border-[#e5e5e5] bg-white">
-          <div className="list-toolbar">
-            <input
-              onChange={(event) => handleSearchChange(event.target.value)}
-              placeholder="Tìm tên, email, vai trò, khu vực"
-              value={query}
-            />
+      <section className="user-metrics-grid">
+        <UserMetricCard icon={<Users size={18} />} label="Tổng nhân sự" value={userStats.total} />
+        <UserMetricCard icon={<ShieldCheck size={18} />} label="Đang hoạt động" value={userStats.active} />
+        <UserMetricCard icon={<Briefcase size={18} />} label="Kỹ thuật" value={userStats.technical} />
+        <UserMetricCard icon={<MapPin size={18} />} label="Admin" value={userStats.admins} note={userStats.inactive ? `${userStats.inactive} tạm khóa` : 'Ổn định'} />
+      </section>
+
+      <section className="user-directory-panel">
+          <div className="user-directory-toolbar">
+            <label className="user-search-field">
+              <Search size={18} />
+              <input
+                onChange={(event) => handleSearchChange(event.target.value)}
+                placeholder="Tìm tên, email, vai trò, khu vực"
+                value={query}
+              />
+            </label>
             <Link className="primary-button compact" to="/users/new">
               <UserPlus size={17} />
-              Add
+              Add nhân sự
             </Link>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] border-collapse">
-              <thead>
-                <tr>
-                  <th className="border-b border-[#eeeeee] px-3.5 py-[13px] text-left text-xs font-medium text-[#666666]">Nhân sự</th>
-                  <th className="border-b border-[#eeeeee] px-3.5 py-[13px] text-left text-xs font-medium text-[#666666]">Vai trò</th>
-                  <th className="border-b border-[#eeeeee] px-3.5 py-[13px] text-left text-xs font-medium text-[#666666]">Khu vực</th>
-                  <th className="border-b border-[#eeeeee] px-3.5 py-[13px] text-left text-xs font-medium text-[#666666]">Trạng thái</th>
-                  <th className="sticky right-0 z-[2] border-b border-[#eeeeee] bg-white px-3.5 py-[13px] text-left text-xs font-medium text-[#666666]"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleUsers.map((user) => (
-                  <tr key={user.id}>
-                    <td className="border-b border-[#eeeeee] px-3.5 py-[13px]">
-                      <div className="flex min-w-0 items-center gap-[11px]">
-                        <UserPhoto name={user.fullName || user.email} photoUrl={user.engineerProfile?.photoUrl} />
-                        <div className="min-w-0">
-                          <strong className="block font-semibold">{user.fullName}</strong>
-                          <span className="mt-1 block text-[#666666]">{user.email}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="border-b border-[#eeeeee] px-3.5 py-[13px]">{user.role?.name ?? 'Chưa gán'}</td>
-                    <td className="border-b border-[#eeeeee] px-3.5 py-[13px]">{user.region?.name ?? 'Chưa gán'}</td>
-                    <td className="border-b border-[#eeeeee] px-3.5 py-[13px]">
-                      <span className={`inline-flex min-h-7 items-center gap-[7px] whitespace-nowrap rounded-full border px-2.5 py-[7px] text-xs font-medium leading-none before:h-[7px] before:w-[7px] before:rounded-full before:content-[''] ${
-                        user.status === 'ACTIVE'
-                          ? 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245] before:bg-[#12b76a]'
-                          : 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b] before:bg-[#f04438]'
-                      }`}>
-                        {user.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm khóa'}
-                      </span>
-                    </td>
-                    <td className="sticky right-0 z-[1] border-b border-[#eeeeee] bg-white px-3.5 py-[13px]">
-                      <div className="flex justify-end gap-1.5">
-                        <Link className="icon-button" to={`/users/${user.id}/edit`} title="Edit">
-                          <Edit3 size={16} />
-                        </Link>
-                        {user.status === 'ACTIVE' ? (
-                          <button
-                            className="icon-button danger"
-                            onClick={() => setUserStatus(user, 'INACTIVE')}
-                            title="Vô hiệu hóa"
-                            type="button"
-                          >
-                            <PowerOff size={16} />
-                          </button>
-                        ) : (
-                          <button
-                            className="icon-button"
-                            onClick={() => setUserStatus(user, 'ACTIVE')}
-                            title="Kích hoạt"
-                            type="button"
-                          >
-                            <Power size={16} />
-                          </button>
-                        )}
-                        <button
-                          className="icon-button danger"
-                          onClick={() => setDeletingUser(user)}
-                          title="Delete"
-                          type="button"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {loading ? (
-                  <tr>
-                    <td colSpan={5}>
-                      <div className="table-state">
-                        <Loader2 className="spin-icon" size={18} />
-                        Đang tải dữ liệu nhân sự...
-                      </div>
-                    </td>
-                  </tr>
-                ) : null}
-                {!loading && filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5}>
-                      <div className="table-state empty-state">
-                        <strong>Không có tài khoản phù hợp</strong>
-                        <span>Thử đổi từ khóa tìm kiếm hoặc tạo tài khoản mới.</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+          {loading ? (
+            <div className="table-state">
+              <Loader2 className="spin-icon" size={18} />
+              Đang tải dữ liệu nhân sự...
+            </div>
+          ) : null}
+
+          {!loading && filteredUsers.length === 0 ? (
+            <div className="table-state empty-state">
+              <strong>Không có tài khoản phù hợp</strong>
+              <span>Thử đổi từ khóa tìm kiếm hoặc tạo tài khoản mới.</span>
+            </div>
+          ) : null}
+
+          {!loading && visibleUsers.length ? (
+            <div className="user-card-list">
+              {visibleUsers.map((user) => (
+                <UserCard
+                  key={user.id}
+                  onDelete={() => setDeletingUser(user)}
+                  onToggleStatus={() => setUserStatus(user, user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE')}
+                  user={user}
+                />
+              ))}
+            </div>
+          ) : null}
 
           <div className="pagination-bar">
             <div>
               <span>
-                Trang {Math.min(page, totalPages)}/{totalPages} - {filteredUsers.length} tài khoản
+                Trang {Math.min(page, totalPages)}/{totalPages} - {filteredUsers.length} nhân sự
               </span>
             </div>
 
             <div className="pagination-controls">
               <label>
-                Dòng/trang
+                Hiển thị
                 <select onChange={(event) => handlePageSizeChange(event.target.value)} value={pageSize}>
                   {pageSizeOptions.map((size) => (
                     <option key={size} value={size}>
@@ -698,7 +655,7 @@ function UserForm({
             <span>
               Kiêm kỹ sư kỹ thuật
               <span className="mt-1 block text-xs font-normal leading-5 text-[#667085]">
-                Dùng cho trường hợp nhân sự vẫn giữ quyền admin nhưng vẫn xuất hiện trong danh sách kỹ sư để quản lý khách hàng, máy và báo cáo.
+                Cho phép nhân sự xuất hiện trong danh sách kỹ sư.
               </span>
             </span>
           </span>
@@ -727,7 +684,7 @@ function UserForm({
           <div className="engineer-profile-section">
             <div className="engineer-profile-heading">
               <span>Hồ sơ kỹ sư</span>
-              <p>Thông tin chuyên môn dùng cho phân công lắp đặt, bảo trì và sửa chữa.</p>
+              <p>Dùng cho phân công và báo cáo kỹ thuật.</p>
             </div>
 
             <div className="form-grid compact-grid">
@@ -884,16 +841,111 @@ function isEngineerRole(roleName?: string) {
   return normalized === 'engineer' || normalized === 'kỹ sư' || normalized === 'ky su';
 }
 
+function isAdminRole(roleName?: string) {
+  const normalized = roleName?.toLowerCase().trim();
+  return normalized === 'admin' || normalized === 'quản trị viên' || normalized === 'quan tri vien';
+}
+
+function isTechnicalUser(user: AdminUser) {
+  return Boolean(user.engineerProfile) || isEngineerRole(user.role?.name);
+}
+
+function expertiseGroupLabel(value?: ExpertiseGroup | null) {
+  return expertiseGroupOptions.find((option) => option.value === value)?.label ?? 'Chưa chọn nhóm';
+}
+
+function roleTone(roleName?: string | null) {
+  if (isAdminRole(roleName ?? undefined)) return 'admin';
+  if (isEngineerRole(roleName ?? undefined)) return 'engineer';
+  return 'default';
+}
+
+function UserMetricCard({ icon, label, note, value }: { icon: ReactNode; label: string; note?: string; value: number }) {
+  return (
+    <article className="user-metric-card">
+      <span className="user-metric-icon">{icon}</span>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        {note ? <small>{note}</small> : null}
+      </div>
+    </article>
+  );
+}
+
+function UserCard({ onDelete, onToggleStatus, user }: { onDelete: () => void; onToggleStatus: () => void; user: AdminUser }) {
+  const profile = user.engineerProfile;
+  const isTechnical = isTechnicalUser(user);
+
+  return (
+    <article className="user-card">
+      <div className="user-card-main">
+        <UserPhoto name={user.fullName || user.email} photoUrl={profile?.photoUrl} />
+        <div className="min-w-0">
+          <div className="user-card-title-row">
+            <h2>{user.fullName || 'Chưa có tên'}</h2>
+            <span className={`user-status-pill ${user.status === 'ACTIVE' ? 'is-active' : 'is-inactive'}`}>
+              {user.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm khóa'}
+            </span>
+          </div>
+          <p>{user.email}</p>
+          <div className="user-card-chips">
+            <span className={`user-role-chip is-${roleTone(user.role?.name)}`}>{user.role?.name ?? 'Chưa gán vai trò'}</span>
+            {isTechnical ? <span className="user-role-chip is-technical">Kỹ thuật</span> : null}
+            <span>{user.region ? `${user.region.name} (${user.region.code})` : 'Chưa gán khu vực'}</span>
+          </div>
+        </div>
+      </div>
+
+      <dl className="user-card-details">
+        <div>
+          <dt>Điện thoại</dt>
+          <dd>{user.phone || '-'}</dd>
+        </div>
+        <div>
+          <dt>Mã NV</dt>
+          <dd>{profile?.employeeCode || '-'}</dd>
+        </div>
+        <div>
+          <dt>Chuyên môn</dt>
+          <dd>{isTechnical ? expertiseGroupLabel(profile?.expertiseGroup) : '-'}</dd>
+        </div>
+        <div>
+          <dt>Phòng ban</dt>
+          <dd>{profile?.department || profile?.position || '-'}</dd>
+        </div>
+      </dl>
+
+      <div className="user-card-actions">
+        <Link className="icon-button" to={`/users/${user.id}/edit`} title="Edit">
+          <Edit3 size={16} />
+        </Link>
+        <button
+          className={user.status === 'ACTIVE' ? 'icon-button danger' : 'icon-button'}
+          onClick={onToggleStatus}
+          title={user.status === 'ACTIVE' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+          type="button"
+        >
+          {user.status === 'ACTIVE' ? <PowerOff size={16} /> : <Power size={16} />}
+        </button>
+        <button className="icon-button danger" onClick={onDelete} title="Delete" type="button">
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </article>
+  );
+}
+
 function UserPhoto({ name, photoUrl }: { name: string; photoUrl?: string | null }) {
   const [hasError, setHasError] = useState(false);
 
   if (photoUrl) {
     return (
-      <span className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] text-xs font-medium text-[#d71920]">
+      <span className="user-photo">
         {hasError ? <ImageOff size={18} /> : <img alt="" className="h-full w-full object-cover" onError={() => setHasError(true)} src={photoUrl} />}
       </span>
     );
   }
 
-  return <span className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] text-xs font-medium text-[#d71920]">{initials(name)}</span>;
+  return <span className="user-photo">{initials(name)}</span>;
 }
