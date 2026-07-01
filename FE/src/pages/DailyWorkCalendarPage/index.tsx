@@ -310,7 +310,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
   return (
     <PageFrame>
       <section className="relative flex min-w-0 items-end justify-between gap-[18px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#fafafa] p-6 text-[#1f1f1f] shadow-[0_12px_30px_rgba(24,24,27,0.05)] max-[1180px]:grid max-[1180px]:items-stretch">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(24,24,27,0.12),transparent_30%),radial-gradient(circle_at_86%_8%,rgba(255,214,220,0.55),transparent_28%),linear-gradient(135deg,#fafafa,#ffffff_55%,#fafafa)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(14,165,233,0.10),transparent_30%),radial-gradient(circle_at_86%_8%,rgba(191,219,254,0.55),transparent_28%),linear-gradient(135deg,#fafafa,#ffffff_55%,#fafafa)]" />
         <div className="relative z-10 min-w-0">
           <span className="relative mb-2 inline-flex items-center gap-2 rounded-xl border border-[#e4e4e7] bg-white/75 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#18181b]"><CalendarDays size={15} /> Lịch kỹ sư</span>
           <h1 className="relative mb-2.5 text-[clamp(30px,4vw,46px)] font-extrabold leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Lịch làm việc của tôi'}</h1>

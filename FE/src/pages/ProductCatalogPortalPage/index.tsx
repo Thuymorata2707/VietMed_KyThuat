@@ -304,7 +304,7 @@ function IndustryPortalCard({ item }: { item: { id: string; name: string; expert
       className="group relative min-h-[172px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white/92 p-5 shadow-[0_8px_24px_rgba(24,24,27,0.05)] transition hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_14px_34px_rgba(24,24,27,0.08)]"
       to={`/product-catalog/industries/${item.id}`}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(24,24,27,0.12),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(248,251,251,0.9))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,0.10),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(248,250,252,0.9))]" />
       <div className="relative grid grid-cols-[56px_minmax(0,1fr)] gap-4">
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#18181b,#3f3f46)] text-white shadow-[0_16px_34px_rgba(24,24,27,0.24)]">
           <Boxes size={23} />

@@ -221,7 +221,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
   return (
     <PageFrame>
       <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] p-5 text-[#1f1f1f] shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_12%,rgba(24,24,27,0.15),transparent_30%),radial-gradient(circle_at_86%_6%,rgba(255,255,255,0.96),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,248,0.78))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_12%,rgba(37,99,235,0.12),transparent_30%),radial-gradient(circle_at_86%_6%,rgba(255,255,255,0.96),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(239,246,255,0.78))]" />
         <div className="pointer-events-none absolute -right-16 bottom-[-120px] h-72 w-72 rounded-full border border-[#e4e4e7] bg-white/45" />
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
           <div className="grid content-between gap-10 rounded-[24px] border border-white/80 bg-white/70 p-6 shadow-[0_18px_44px_rgba(24,24,27,0.08)] backdrop-blur-md max-sm:p-5">

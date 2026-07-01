@@ -280,7 +280,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
       {error ? <Notice message={error} /> : null}
 
       <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_12%,rgba(24,24,27,0.13),transparent_28%),radial-gradient(circle_at_92%_20%,rgba(228,228,231,0.52),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.94),rgba(236,253,248,0.82))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_12%,rgba(37,99,235,0.10),transparent_28%),radial-gradient(circle_at_92%_20%,rgba(228,228,231,0.52),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.94),rgba(236,253,245,0.82))]" />
         <div className="relative grid gap-5 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid content-between gap-6">
             <div>

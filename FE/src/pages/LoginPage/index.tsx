@@ -37,7 +37,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <main className="grid min-h-screen place-items-center overflow-hidden bg-[#fafafa] px-6 py-7 max-sm:px-4 max-sm:py-4">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_18%,rgba(24,24,27,0.08),transparent_34%),radial-gradient(circle_at_88%_14%,rgba(255,228,232,0.62),transparent_31%),linear-gradient(135deg,#fafafa,#fafafa_58%,#f4f4f5)]" />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_18%,rgba(14,165,233,0.07),transparent_34%),radial-gradient(circle_at_88%_14%,rgba(191,219,254,0.62),transparent_31%),linear-gradient(135deg,#fafafa,#fafafa_58%,#f4f4f5)]" />
       <section className="relative grid min-h-[calc(100vh-56px)] w-full max-w-[1360px] grid-cols-[minmax(390px,0.9fr)_minmax(0,1.1fr)] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white/90 shadow-[0_30px_90px_rgba(24,24,27,0.13)] backdrop-blur-xl max-[980px]:min-h-[calc(100vh-32px)] max-[980px]:grid-cols-1">
         <div className="relative grid content-between gap-8 bg-white/92 px-12 py-10 max-[980px]:px-8 max-[620px]:px-5 max-[620px]:py-6">
           <div className="flex items-center justify-between gap-4">
@@ -109,7 +109,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         <aside className="relative overflow-hidden bg-[#f4f4f5] p-8 text-[#1f1f1f] max-[980px]:min-h-[420px] max-[620px]:p-5">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(24,24,27,0.14),transparent_28%),radial-gradient(circle_at_82%_78%,rgba(228,228,231,0.50),transparent_36%),linear-gradient(135deg,#fafafa,#f4f4f5_48%,#fafafa)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(37,99,235,0.11),transparent_28%),radial-gradient(circle_at_82%_78%,rgba(228,228,231,0.50),transparent_36%),linear-gradient(135deg,#fafafa,#f4f4f5_48%,#fafafa)]" />
           <div className="absolute inset-0 opacity-55 [background-image:linear-gradient(rgba(24,24,27,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(24,24,27,0.045)_1px,transparent_1px)] [background-size:34px_34px]" />
           <div className="absolute inset-x-0 top-0 h-px bg-[#e4e4e7]" />
           <div className="absolute inset-y-0 left-0 w-px bg-[#e4e4e7]" />

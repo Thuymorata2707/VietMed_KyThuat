@@ -69,7 +69,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
   return (
     <PageFrame>
       <section className="relative flex items-stretch justify-between gap-[18px] overflow-hidden rounded-[30px] border border-[#e4e4e7] bg-[#f4f4f5] p-6 text-[#1f1f1f] shadow-[0_12px_30px_rgba(24,24,27,0.06)] max-[760px]:grid">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_9%_18%,rgba(24,24,27,0.15),transparent_30%),radial-gradient(circle_at_92%_16%,rgba(255,255,255,0.96),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,247,248,0.78))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_9%_18%,rgba(37,99,235,0.12),transparent_30%),radial-gradient(circle_at_92%_16%,rgba(255,255,255,0.96),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(239,246,255,0.78))]" />
         <div className="relative flex min-w-0 items-center gap-[18px] max-[760px]:grid max-[760px]:items-start">
           <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border border-white bg-white text-[28px] font-semibold text-[#18181b] shadow-[0_18px_42px_rgba(24,24,27,0.14)]">
             {form.photoUrl && !photoFailed ? (

@@ -302,7 +302,7 @@ function TicketPortalCardButton({ count, item, onSelect }: { count: number; item
       onClick={() => onSelect(item.value)}
       type="button"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(24,24,27,0.12),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(255,250,250,0.9))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,0.10),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(248,250,252,0.9))]" />
       <div className="relative grid h-full gap-5">
         <div className="flex items-start justify-between gap-4">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#18181b,#3f3f46)] text-white shadow-[0_16px_34px_rgba(24,24,27,0.24)]">
@@ -464,7 +464,7 @@ function OperationsBoard({
       </div>
 
       <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#fafafa] p-4 shadow-[0_18px_46px_rgba(24,24,27,0.07)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_0%,rgba(24,24,27,0.08),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.72),rgba(255,250,250,0.86))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_0%,rgba(14,165,233,0.07),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.72),rgba(248,250,252,0.86))]" />
         <div className="relative grid gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 flex-1 flex-wrap gap-2">
@@ -679,7 +679,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
         role="dialog"
       >
         <div className="relative overflow-hidden border-b border-[#f4e2e4] bg-[#f4f4f5] p-5">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(24,24,27,0.12),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,248,0.82))]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(14,165,233,0.10),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(239,246,255,0.82))]" />
           <div className="relative flex items-start justify-between gap-4">
             <div className="grid min-w-0 gap-3">
               <div className="flex flex-wrap items-center gap-2">

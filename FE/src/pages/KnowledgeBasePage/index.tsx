@@ -292,7 +292,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
   return (
     <PageFrame>
       <section className="relative overflow-hidden rounded-[30px] border border-[#e4e4e7] bg-[#f4f4f5] p-6 shadow-[0_12px_30px_rgba(24,24,27,0.06)] lg:p-8">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_10%,rgba(24,24,27,0.14),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(255,255,255,0.92),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.86),rgba(255,247,248,0.78))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_10%,rgba(37,99,235,0.11),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(255,255,255,0.92),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.86),rgba(239,246,255,0.78))]" />
         <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-end">
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-semibold text-[#18181b]">
@@ -591,7 +591,7 @@ function ArticleDetail({ article }: { article: KnowledgeArticle }) {
             <SectionBlock icon={<AlertTriangle size={18} />} title="Dấu hiệu nhận biết">
               <ul className="grid gap-2">
                 {safeList(article.symptoms).map((symptom) => (
-                  <li className="rounded-xl border border-[#f0d9dc] bg-[#fff8f8] px-3 py-2 text-sm text-[#555555]" key={symptom}>{symptom}</li>
+                  <li className="rounded-xl border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2 text-sm text-[#555555]" key={symptom}>{symptom}</li>
                 ))}
               </ul>
             </SectionBlock>
