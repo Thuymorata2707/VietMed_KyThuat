@@ -35,7 +35,7 @@
 }
 
 .engineer-workspace-tabs button.active {
-  @apply bg-white text-[#2a2926] shadow-[0_1px_3px_rgba(20,32,51,0.08)];
+  @apply bg-white text-[#18181b] shadow-[0_1px_3px_rgba(20,32,51,0.08)];
 }
 
 .engineer-create-panel {
@@ -65,8 +65,8 @@
 .engineer-create-form select:focus,
 .engineer-create-form textarea:focus,
 .async-picker-control:focus-within input {
-  border-color: #2a2926;
-  box-shadow: 0 0 0 3px rgba(42, 41, 38, 0.12);
+  border-color: #18181b;
+  box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.12);
 }
 
 .async-entity-picker {
@@ -115,8 +115,8 @@
 
 .async-picker-menu button:hover,
 .async-picker-menu button.active {
-  background: #fff7d6;
-  color: #2a2926;
+  background: #f4f4f5;
+  color: #18181b;
 }
 
 .async-picker-state {
@@ -134,7 +134,7 @@
 
 .create-form-section {
   border-top: 1px solid #eeeeee;
-  color: #2a2926;
+  color: #18181b;
   font-size: 11px;
   font-weight: 800;
   grid-column: 1 / -1;
@@ -162,7 +162,7 @@
 }
 
 .quick-machine-form {
-  @apply col-span-full grid grid-cols-5 gap-3 rounded-lg border border-[#e5e5e5] bg-[#fbf8ec] p-3.5;
+  @apply col-span-full grid grid-cols-5 gap-3 rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3.5;
 }
 
 .quick-machine-form label {
@@ -234,7 +234,7 @@
 }
 
 .installation-device-row {
-  background: #fbf8ec;
+  background: #fafafa;
   border: 1px solid #eeeeee;
   border-radius: 8px;
   display: grid;
@@ -330,13 +330,13 @@
 .engineer-business-tabs button.active {
   background: #ffffff;
   box-shadow: 0 1px 5px rgba(20, 32, 51, 0.08);
-  color: #2a2926;
+  color: #18181b;
 }
 
 .engineer-business-tabs button.active strong {
-  background: #fff7d6;
-  border-color: #eadfbd;
-  color: #2a2926;
+  background: #f4f4f5;
+  border-color: #e4e4e7;
+  color: #18181b;
 }
 
 .task-toolbar {
@@ -363,7 +363,7 @@
 }
 
 .task-search:focus-within {
-  border-color: #2a2926;
+  border-color: #18181b;
   box-shadow: var(--focus-ring);
 }
 
@@ -399,7 +399,7 @@
 .task-tabs button.active {
   background: #ffffff;
   box-shadow: 0 1px 4px rgba(20, 32, 51, 0.08);
-  color: #2a2926;
+  color: #18181b;
 }
 
 .task-filter-select {
@@ -436,8 +436,8 @@
 }
 
 .task-filter-select select:focus {
-  border-color: #2a2926;
-  box-shadow: 0 0 0 3px rgba(42, 41, 38, 0.12);
+  border-color: #18181b;
+  box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.12);
 }
 
 .create-kind-select {
@@ -454,7 +454,7 @@
 }
 
 .engineer-day-group {
-  border-bottom: 1px solid #ebe4d3;
+  border-bottom: 1px solid #ededf0;
 }
 
 .engineer-day-group:last-child {
@@ -464,7 +464,7 @@
 .engineer-day-group__head {
   align-items: center;
   background:
-    linear-gradient(90deg, rgba(42, 41, 38, 0.08), transparent 38%),
+    linear-gradient(90deg, rgba(24, 24, 27, 0.08), transparent 38%),
     #f8fbfb;
   border-bottom: 1px solid #dbe9e8;
   display: flex;
@@ -491,9 +491,9 @@
 
 .engineer-day-group__head em {
   background: #ffffff;
-  border: 1px solid #e8dcc0;
+  border: 1px solid #e4e4e7;
   border-radius: 999px;
-  color: #2a2926;
+  color: #18181b;
   font-size: 12px;
   font-style: normal;
   font-weight: 800;
@@ -503,9 +503,9 @@
 .engineer-task-row {
   align-items: stretch;
   background:
-    linear-gradient(90deg, rgba(42, 41, 38, 0.055), transparent 38%),
+    linear-gradient(90deg, rgba(24, 24, 27, 0.055), transparent 38%),
     #ffffff;
-  border-bottom: 1px solid #ebe4d3;
+  border-bottom: 1px solid #ededf0;
   display: grid;
   gap: 14px;
   grid-template-columns: minmax(0, 1fr);
@@ -514,12 +514,12 @@
 
 .engineer-task-row:hover {
   background:
-    linear-gradient(90deg, rgba(42, 41, 38, 0.08), transparent 42%),
+    linear-gradient(90deg, rgba(24, 24, 27, 0.08), transparent 42%),
     #fffdfd;
 }
 
 .engineer-task-row.danger {
-  box-shadow: inset 4px 0 0 #2a2926;
+  box-shadow: inset 4px 0 0 #18181b;
 }
 
 .engineer-task-row.warn {
@@ -544,10 +544,10 @@
 
 .engineer-task-row__icon {
   align-items: center;
-  background: #fff7d6;
-  border: 1px solid #eadfbd;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
   border-radius: 12px;
-  color: #2a2926;
+  color: #18181b;
   display: flex;
   height: 42px;
   justify-content: center;
@@ -601,8 +601,8 @@
 }
 
 .engineer-task-row__facts {
-  background: #fbf8ec;
-  border: 1px solid #ebe4d3;
+  background: #fafafa;
+  border: 1px solid #ededf0;
   border-radius: 12px;
   padding: 9px 11px;
 }
@@ -701,7 +701,7 @@
 .daily-work-date {
   align-items: center;
   background: #fffdfb;
-  border: 1px solid #eadfbd;
+  border: 1px solid #e4e4e7;
   border-left-width: 4px;
   border-radius: 8px;
   display: grid;
@@ -747,10 +747,10 @@
 
 .task-icon {
   align-items: center;
-  background: #fff7d6;
-  border: 1px solid #eadfbd;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
   border-radius: 8px;
-  color: #2a2926;
+  color: #18181b;
   display: flex;
   height: 40px;
   justify-content: center;
@@ -885,7 +885,7 @@
 
 .task-action,
 .task-primary {
-  background: #2a2926;
+  background: #18181b;
   color: #ffffff;
 }
 
@@ -901,9 +901,9 @@
 }
 
 .task-secondary:hover {
-  background: #fff7d6;
-  border-color: #eadfbd;
-  color: #2a2926;
+  background: #f4f4f5;
+  border-color: #e4e4e7;
+  color: #18181b;
 }
 
 .task-state {
@@ -955,7 +955,7 @@
 }
 
 .task-drawer-heading span {
-  color: #2a2926;
+  color: #18181b;
   font-size: 12px;
   font-weight: 700;
   text-transform:;
@@ -984,7 +984,7 @@
 }
 
 .task-detail-grid div {
-  background: #fbf8ec;
+  background: #fafafa;
   border: 1px solid #eeeeee;
   border-radius: 8px;
   padding: 12px;
@@ -1003,7 +1003,7 @@
 
 .task-info-block,
 .task-readonly-note {
-  background: #fbf8ec;
+  background: #fafafa;
   border: 1px solid #eeeeee;
   border-radius: 8px;
   display: grid;
@@ -1138,8 +1138,8 @@
 .task-upload-form input:focus,
 .task-upload-form select:focus,
 .task-upload-form textarea:focus {
-  border-color: #2a2926;
-  box-shadow: 0 0 0 3px rgba(42, 41, 38, 0.12);
+  border-color: #18181b;
+  box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.12);
 }
 
 .task-drawer-actions {
@@ -1164,7 +1164,7 @@
 }
 
 .task-section-heading span {
-  color: #2a2926;
+  color: #18181b;
   font-size: 12px;
   font-weight: 700;
   text-transform:;
@@ -1178,10 +1178,10 @@
 
 .task-section-heading strong {
   align-items: center;
-  background: #fff7d6;
-  border: 1px solid #eadfbd;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
   border-radius: 999px;
-  color: #2a2926;
+  color: #18181b;
   display: inline-flex;
   height: 30px;
   justify-content: center;
@@ -1196,7 +1196,7 @@
 
 .task-attachment-state {
   align-items: center;
-  background: #fbf8ec;
+  background: #fafafa;
   border: 1px dashed #d6d6d6;
   border-radius: 8px;
   color: #666666;
@@ -1229,7 +1229,7 @@
 }
 
 .task-attachment-item span {
-  color: #2a2926;
+  color: #18181b;
   font-size: 12px;
   font-weight: 700;
 }
@@ -1252,7 +1252,7 @@
 }
 
 .task-upload-form {
-  background: #fbf8ec;
+  background: #fafafa;
   border: 1px solid #eeeeee;
   border-radius: 8px;
   display: grid;

@@ -105,10 +105,10 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
   return (
     <section className="grid min-w-0 gap-5 overflow-x-hidden p-6 max-sm:p-4">
-      <div className="grid gap-4 rounded-[28px] border border-[#e8dcc0] bg-white/95 p-5 shadow-[0_22px_60px_rgba(42,41,38,0.08)]">
+      <div className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_22px_60px_rgba(24,24,27,0.08)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2a2926]">Chăm sóc khách hàng</span>
+            <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#18181b]">Chăm sóc khách hàng</span>
             <h1 className="mt-1 text-2xl font-extrabold tracking-normal text-[#1f1f1f]">{isAdminProfile ? 'Hồ sơ khách hàng' : 'Khách hàng phụ trách'}</h1>
             <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-[#666666]">
               {isAdminProfile
@@ -128,7 +128,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
           <label className="grid max-w-sm gap-1.5 text-sm font-bold text-[#333333]">
             Lọc theo kỹ sư quản lý
             <select
-              className="h-12 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)]"
+              className="h-12 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]"
               onChange={(event) => {
                 setSelectedEngineerId(event.target.value);
                 setSelectedCustomerId('');
@@ -157,11 +157,11 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
       {error ? <div className="rounded-2xl border border-[#fecdd3] bg-[#fff1f3] px-4 py-3 text-sm font-bold text-[#b5121b]">{error}</div> : null}
 
       <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-        <aside className="grid min-w-0 content-start gap-3 rounded-[26px] border border-[#e8dcc0] bg-white p-4 shadow-[0_18px_50px_rgba(42,41,38,0.06)] lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:grid-rows-[auto_auto_minmax(0,1fr)_auto] lg:overflow-hidden">
+        <aside className="grid min-w-0 content-start gap-3 rounded-[26px] border border-[#e4e4e7] bg-white p-4 shadow-[0_18px_50px_rgba(24,24,27,0.06)] lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:grid-rows-[auto_auto_minmax(0,1fr)_auto] lg:overflow-hidden">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8a8a]" size={16} />
             <input
-              className="h-12 w-full rounded-2xl border border-[#ded8d8] bg-[#fffefe] pl-9 pr-3 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#8a8a8a] focus:border-[#2a2926] focus:bg-white focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)]"
+              className="h-12 w-full rounded-2xl border border-[#ded8d8] bg-[#fffefe] pl-9 pr-3 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#8a8a8a] focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]"
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Tìm khách hàng, mã, tỉnh..."
               value={search}
@@ -188,8 +188,8 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
                   <button
                     className={`grid min-w-0 gap-2 rounded-lg border p-3 text-left transition ${
                       isActive
-                        ? 'border-[#e8dcc0] bg-[#fff7d6] shadow-[inset_4px_0_0_#2a2926,0_10px_24px_rgba(42,41,38,0.08)]'
-                        : 'border-[#eeeeee] bg-white hover:border-[#e8dcc0] hover:bg-[#f8fbfb]'
+                        ? 'border-[#e4e4e7] bg-[#f4f4f5] shadow-[inset_4px_0_0_#18181b,0_10px_24px_rgba(24,24,27,0.08)]'
+                        : 'border-[#eeeeee] bg-white hover:border-[#e4e4e7] hover:bg-[#f8fbfb]'
                     }`}
                     key={customer.id}
                     onClick={() => setSelectedCustomerId(customer.id)}
@@ -197,7 +197,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
                   >
                     <div className="flex items-start justify-between gap-2">
                       <strong className="line-clamp-2 min-w-0 [overflow-wrap:anywhere] text-sm leading-5 text-[#1f1f1f]">{customer.hospitalName || customer.name}</strong>
-                      <span className="shrink-0 rounded-lg border border-[#ebe4d3] bg-[#fbf8ec] px-2 py-1 text-[11px] font-bold text-[#555555]">{customer._count?.machines ?? 0} máy</span>
+                      <span className="shrink-0 rounded-lg border border-[#ededf0] bg-[#fafafa] px-2 py-1 text-[11px] font-bold text-[#555555]">{customer._count?.machines ?? 0} máy</span>
                     </div>
                     <span className="min-w-0 [overflow-wrap:anywhere] text-xs font-medium text-[#666666]">{[customer.customerCode, customer.province].filter(Boolean).join(' - ') || 'Chưa có mã/tỉnh'}</span>
                     <span className="min-w-0 [overflow-wrap:anywhere] text-xs text-[#8a8a8a]">{customer.primaryEngineer?.fullName ? `Phụ trách: ${customer.primaryEngineer.fullName}` : 'Chưa gán kỹ sư phụ trách'}</span>
@@ -211,7 +211,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
           <div className="grid grid-cols-2 gap-2">
             <button
-              className="h-10 rounded-2xl border border-[#ded8d8] bg-white text-sm font-bold text-[#333333] transition hover:border-[#e8dcc0] hover:text-[#2a2926] disabled:cursor-not-allowed disabled:opacity-45"
+              className="h-10 rounded-2xl border border-[#ded8d8] bg-white text-sm font-bold text-[#333333] transition hover:border-[#e4e4e7] hover:text-[#18181b] disabled:cursor-not-allowed disabled:opacity-45"
               disabled={page <= 1 || customersQuery.isFetching}
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               type="button"
@@ -219,7 +219,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
               Trước
             </button>
             <button
-              className="h-10 rounded-2xl border border-[#ded8d8] bg-white text-sm font-bold text-[#333333] transition hover:border-[#e8dcc0] hover:text-[#2a2926] disabled:cursor-not-allowed disabled:opacity-45"
+              className="h-10 rounded-2xl border border-[#ded8d8] bg-white text-sm font-bold text-[#333333] transition hover:border-[#e4e4e7] hover:text-[#18181b] disabled:cursor-not-allowed disabled:opacity-45"
               disabled={page >= totalPages || customersQuery.isFetching}
               onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
               type="button"

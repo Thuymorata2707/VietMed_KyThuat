@@ -192,7 +192,7 @@ const reportTabs: Array<{ key: ReportView; label: string; icon: ReactNode }> = [
 ];
 
 const reportFieldClass =
-  'h-11 min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-3.5 text-sm font-semibold text-[#1f1f1f] outline-none transition hover:border-[#e8dcc0] focus:border-[#2a2926] focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)]';
+  'h-11 min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-3.5 text-sm font-semibold text-[#1f1f1f] outline-none transition hover:border-[#e4e4e7] focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]';
 
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -340,7 +340,7 @@ export function ReportsPage() {
 
   return (
     <PageFrame>
-      <div className="grid gap-5 rounded-[28px] border border-[#e8dcc0] bg-white/95 p-5 shadow-[0_22px_60px_rgba(42,41,38,0.08)]">
+      <div className="grid gap-5 rounded-[28px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_22px_60px_rgba(24,24,27,0.08)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
             description="Đọc nhanh tình hình lắp đặt theo kỹ sư, khách hàng, model và tỉnh. Bộ lọc liên kết để chỉ giữ dữ liệu còn liên quan."
@@ -349,7 +349,7 @@ export function ReportsPage() {
           />
           <div className="flex flex-wrap items-center gap-2">
             <button
-              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-[#e8dcc0] bg-[#fff7d6] px-3.5 text-sm font-bold text-[#2a2926] hover:border-[#2a2926] disabled:opacity-50"
+              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-[#e4e4e7] bg-[#f4f4f5] px-3.5 text-sm font-bold text-[#18181b] hover:border-[#18181b] disabled:opacity-50"
               disabled={!report && !engineerReportQuery.data && !modelReportQuery.data}
               onClick={exportCurrentView}
               type="button"
@@ -360,22 +360,22 @@ export function ReportsPage() {
           </div>
         </div>
 
-        <section className="grid gap-3 rounded-[24px] border border-[#e8dcc0] bg-[#f8fbfb] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+        <section className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-[#f8fbfb] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dbe9e8] pb-3">
             <div>
-              <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2a2926]">Bộ lọc báo cáo</span>
+              <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#18181b]">Bộ lọc báo cáo</span>
               <p className="mt-0.5 text-xs font-semibold text-[#666666]">Chọn điều kiện là dữ liệu tự tải lại, không cần bấm áp dụng.</p>
             </div>
             <div className="flex items-center gap-2">
               {hasAdvancedFilters ? <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-1 text-xs font-semibold text-[#9b5a17]">Đang lọc nâng cao</span> : null}
-              <button className="inline-flex h-9 items-center justify-center rounded-xl border border-[#ded8d8] bg-white px-3 text-xs font-bold text-[#666666] hover:border-[#e8dcc0] hover:text-[#2a2926]" onClick={resetFilters} type="button">
+              <button className="inline-flex h-9 items-center justify-center rounded-xl border border-[#ded8d8] bg-white px-3 text-xs font-bold text-[#666666] hover:border-[#e4e4e7] hover:text-[#18181b]" onClick={resetFilters} type="button">
                 Xóa lọc
               </button>
             </div>
           </div>
 
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#777066]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]">
               Từ ngày
               <input
                 className={reportFieldClass}
@@ -387,7 +387,7 @@ export function ReportsPage() {
                 value={draftFrom}
               />
             </label>
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#777066]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]">
               Đến ngày
               <input
                 className={reportFieldClass}
@@ -399,7 +399,7 @@ export function ReportsPage() {
                 value={draftTo}
               />
             </label>
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#777066]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]">
               Kỹ sư
               <select
                 className={reportFieldClass}
@@ -415,7 +415,7 @@ export function ReportsPage() {
                 ))}
               </select>
             </label>
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#777066]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]">
               Khách hàng
               <select
                 className={reportFieldClass}
@@ -431,7 +431,7 @@ export function ReportsPage() {
                 ))}
               </select>
             </label>
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#777066]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]">
               Model
               <select
                 className={reportFieldClass}
@@ -447,7 +447,7 @@ export function ReportsPage() {
                 ))}
               </select>
             </label>
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#777066]">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]">
               Tỉnh
               <select
                 className={reportFieldClass}
@@ -471,8 +471,8 @@ export function ReportsPage() {
             <button
               className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-bold transition ${
                 activeView === tab.key
-                  ? 'border-[#e8dcc0] bg-[#fff1f3] text-[#b5121b] shadow-[0_10px_24px_rgba(42,41,38,0.08)]'
-                  : 'border-[#ded8d8] bg-white text-[#666666] hover:border-[#e8dcc0] hover:text-[#2a2926]'
+                  ? 'border-[#e4e4e7] bg-[#fff1f3] text-[#b5121b] shadow-[0_10px_24px_rgba(24,24,27,0.08)]'
+                  : 'border-[#ded8d8] bg-white text-[#666666] hover:border-[#e4e4e7] hover:text-[#18181b]'
               }`}
               key={tab.key}
               onClick={() => changeView(tab.key)}
@@ -492,7 +492,7 @@ export function ReportsPage() {
         {report ? <ReportScopeInsight labels={selectedFilterLabels} report={report} /> : null}
 
         {loading && !report ? (
-          <div className="grid min-h-[360px] place-items-center rounded-[10px] border border-[#ebe4d3] bg-[#fbf8ec] text-[#777066]">
+          <div className="grid min-h-[360px] place-items-center rounded-[10px] border border-[#ededf0] bg-[#fafafa] text-[#71717a]">
             <span className="inline-flex items-center gap-2 text-sm font-semibold">
               <Loader2 className="spin-icon" size={18} />
               Đang tổng hợp báo cáo
@@ -534,9 +534,9 @@ function ReportScopeInsight({ labels, report }: { labels: Record<FilterKey, stri
     <section className="grid gap-3 rounded-[12px] border border-[#f1c4c9] bg-[#f8fbfb] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <span className="text-xs font-semibold text-[#2a2926]">{focusTitle}</span>
+          <span className="text-xs font-semibold text-[#18181b]">{focusTitle}</span>
           <h2 className="mt-1 text-lg font-semibold text-[#18212f]">{activeFilters.join(' | ')}</h2>
-          <p className="mt-1 text-sm text-[#777066]">
+          <p className="mt-1 text-sm text-[#71717a]">
             Đang có {report.summary.totalInstallations} phiếu, {report.summary.totalMachines} máy, {report.summary.totalCustomers} khách hàng, {report.byModel.length} model và {report.summary.totalProvinces} tỉnh trong phạm vi này.
           </p>
         </div>
@@ -563,10 +563,10 @@ function ReportExecutiveSummary({ from, report, to }: { from: string; report: In
   ].join(' · ');
 
   return (
-    <section className="grid gap-4 rounded-[26px] border border-[#e8dcc0] bg-[linear-gradient(135deg,#f8fbfb,#ffffff_48%,#fbf8ec)] p-5 shadow-[0_18px_50px_rgba(42,41,38,0.06)]">
+    <section className="grid gap-4 rounded-[26px] border border-[#e4e4e7] bg-[linear-gradient(135deg,#f8fbfb,#ffffff_48%,#fafafa)] p-5 shadow-[0_18px_50px_rgba(24,24,27,0.06)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2a2926]">Tóm tắt điều hành</span>
+          <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#18181b]">Tóm tắt điều hành</span>
           <h2 className="mt-1 text-2xl font-extrabold leading-tight text-[#1f1f1f]">
             {report.summary.totalInstallations} phiếu lắp đặt trong kỳ {formatDate(from)} - {formatDate(to)}
           </h2>
@@ -574,10 +574,10 @@ function ReportExecutiveSummary({ from, report, to }: { from: string; report: In
             Phạm vi hiện tại bao gồm {coverage}. Dữ liệu bên dưới được xếp theo mức đóng góp để đọc nhanh điểm nổi bật trước khi xem chi tiết.
           </p>
         </div>
-        <div className="rounded-2xl border border-[#e8dcc0] bg-white px-4 py-3 text-right shadow-[0_12px_28px_rgba(42,41,38,0.06)]">
+        <div className="rounded-2xl border border-[#e4e4e7] bg-white px-4 py-3 text-right shadow-[0_12px_28px_rgba(24,24,27,0.06)]">
           <span className="block text-xs font-bold text-[#666666]">Lắp gần nhất</span>
           <strong className="mt-1 block text-sm text-[#1f1f1f]">{latest ? formatDate(latest.installedAt) : '-'}</strong>
-          <span className="mt-1 block max-w-[220px] truncate text-xs font-semibold text-[#2a2926]">{latest?.code || 'Chưa có phiếu'}</span>
+          <span className="mt-1 block max-w-[220px] truncate text-xs font-semibold text-[#18181b]">{latest?.code || 'Chưa có phiếu'}</span>
         </div>
       </div>
 
@@ -596,13 +596,13 @@ function ExecutiveFocusCard({ label, row, total }: { label: string; row?: Instal
 
   return (
     <article className="grid gap-3 rounded-[22px] border border-[#dbe9e8] bg-white p-4">
-      <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#2a2926]">{label}</span>
+      <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#18181b]">{label}</span>
       <div>
         <strong className="line-clamp-2 text-lg font-extrabold leading-tight text-[#1f1f1f]">{row?.label || 'Chưa có dữ liệu'}</strong>
         <p className="mt-1 text-sm font-semibold text-[#666666]">{row ? `${row.count} phiếu · ${percent}% tổng kỳ` : 'Không phát sinh trong kỳ'}</p>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-[#f1f2f4]">
-        <span className="block h-full rounded-full bg-[#2a2926]" style={{ width: `${Math.max(0, percent)}%` }} />
+        <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${Math.max(0, percent)}%` }} />
       </div>
     </article>
   );
@@ -613,15 +613,15 @@ function InsightList({ rows, title }: { rows: InstallationReportGroup[]; title: 
     <div className="rounded-[10px] border border-[#f3d5d8] bg-white p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
         <strong className="text-sm text-[#18212f]">{title}</strong>
-        <span className="text-xs font-semibold text-[#777066]">{rows.length} mục nổi bật</span>
+        <span className="text-xs font-semibold text-[#71717a]">{rows.length} mục nổi bật</span>
       </div>
       <div className="grid gap-2">
         {rows.length ? rows.map((row) => (
-          <div className="flex items-center justify-between gap-3 rounded-lg bg-[#fbf8ec] px-3 py-2 text-sm" key={row.id}>
-            <span className="min-w-0 truncate font-semibold text-[#3b3832]">{row.label}</span>
-            <span className="shrink-0 rounded-md bg-white px-2 py-1 text-xs font-bold text-[#171614]">{row.count} phiếu</span>
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-[#fafafa] px-3 py-2 text-sm" key={row.id}>
+            <span className="min-w-0 truncate font-semibold text-[#3f3f46]">{row.label}</span>
+            <span className="shrink-0 rounded-md bg-white px-2 py-1 text-xs font-bold text-[#09090b]">{row.count} phiếu</span>
           </div>
-        )) : <span className="rounded-lg bg-[#fbf8ec] px-3 py-3 text-sm font-medium text-[#777066]">Chưa có dữ liệu phù hợp.</span>}
+        )) : <span className="rounded-lg bg-[#fafafa] px-3 py-3 text-sm font-medium text-[#71717a]">Chưa có dữ liệu phù hợp.</span>}
       </div>
     </div>
   );
@@ -672,7 +672,7 @@ function ReportContent({ report, view, from, to }: { report: InstallationReport;
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="grid min-h-[118px] content-between rounded-[22px] border border-[#e8dcc0] bg-[#f8fbfb] p-4 shadow-[0_12px_28px_rgba(42,41,38,0.04)]">
+    <div className="grid min-h-[118px] content-between rounded-[22px] border border-[#e4e4e7] bg-[#f8fbfb] p-4 shadow-[0_12px_28px_rgba(24,24,27,0.04)]">
       <span className="text-sm font-bold text-[#666666]">{label}</span>
       <strong className="text-[38px] font-extrabold leading-none text-[#1f1f1f]">{value}</strong>
     </div>
@@ -699,13 +699,13 @@ function GroupTable({
   const totalCount = sortedRows.reduce((total, row) => total + row.count, 0);
 
   return (
-    <section className="overflow-hidden rounded-[24px] border border-[#e8dcc0] bg-white shadow-[0_14px_38px_rgba(42,41,38,0.05)]">
+    <section className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_14px_38px_rgba(24,24,27,0.05)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dbe9e8] bg-[#f8fbfb] px-4 py-3">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2a2926]">Ranking</span>
+          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#18181b]">Ranking</span>
           <h2 className="mt-1 text-base font-extrabold text-[#1f1f1f]">{title}</h2>
         </div>
-        <span className="rounded-full border border-[#e8dcc0] bg-white px-3 py-1 text-xs font-bold text-[#2a2926]">{rows.length} dòng</span>
+        <span className="rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-bold text-[#18181b]">{rows.length} dòng</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[860px] border-separate border-spacing-0 text-left text-sm">
@@ -726,7 +726,7 @@ function GroupTable({
               return (
               <tr className="hover:bg-[#f8fbfb]" key={row.id}>
                 <td className="border-b border-[#e4ecee] px-4 py-3">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#fff7d6] text-xs font-extrabold text-[#2a2926]">{index + 1}</span>
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#f4f4f5] text-xs font-extrabold text-[#18181b]">{index + 1}</span>
                 </td>
                 <td className="border-b border-[#e4ecee] px-4 py-3 font-bold text-[#1f1f1f]">
                   <GroupLink from={from} row={row} to={to} variant={variant} />
@@ -734,12 +734,12 @@ function GroupTable({
                 <td className="border-b border-[#e4ecee] px-4 py-3">
                   <div className="grid gap-1.5">
                     <div className="h-2 overflow-hidden rounded-full bg-[#f1f2f4]">
-                      <span className="block h-full rounded-full bg-[#2a2926]" style={{ width: `${width}%` }} />
+                      <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${width}%` }} />
                     </div>
                     <span className="text-xs font-bold text-[#666666]">{percent}% tổng nhóm</span>
                   </div>
                 </td>
-                <td className="border-b border-[#e4ecee] px-4 py-3 text-xl font-extrabold text-[#2a2926]">{row.count}</td>
+                <td className="border-b border-[#e4ecee] px-4 py-3 text-xl font-extrabold text-[#18181b]">{row.count}</td>
                 <td className="border-b border-[#e4ecee] px-4 py-3 text-[#333333]">
                   <div className="flex flex-wrap gap-1.5">
                     <MiniMetric label="máy" value={row.machines} />
@@ -768,7 +768,7 @@ function GroupTable({
 
 function MiniMetric({ label, value }: { label: string; value: number }) {
   return (
-    <span className="rounded-lg border border-[#ebe4d3] bg-[#fbf8ec] px-2 py-1 text-xs font-bold text-[#333333]">
+    <span className="rounded-lg border border-[#ededf0] bg-[#fafafa] px-2 py-1 text-xs font-bold text-[#333333]">
       {value} {label}
     </span>
   );
@@ -787,7 +787,7 @@ function GroupLink({
 }) {
   if (variant === 'engineers' && row.id !== 'unassigned') {
     return (
-      <Link className="inline-flex items-center gap-1.5 hover:text-[#2a2926]" to={`/reports?view=engineers&from=${from}&to=${to}&engineerId=${row.id}`}>
+      <Link className="inline-flex items-center gap-1.5 hover:text-[#18181b]" to={`/reports?view=engineers&from=${from}&to=${to}&engineerId=${row.id}`}>
         {row.label}
         <ArrowDownWideNarrow size={14} />
       </Link>
@@ -796,7 +796,7 @@ function GroupLink({
 
   if (variant === 'models' && row.id !== 'unknown-model') {
     return (
-      <Link className="inline-flex items-center gap-1.5 hover:text-[#2a2926]" to={`/reports?view=models&from=${from}&to=${to}&modelKey=${encodeURIComponent(row.id)}`}>
+      <Link className="inline-flex items-center gap-1.5 hover:text-[#18181b]" to={`/reports?view=models&from=${from}&to=${to}&modelKey=${encodeURIComponent(row.id)}`}>
         {row.label}
         <ArrowDownWideNarrow size={14} />
       </Link>
@@ -805,7 +805,7 @@ function GroupLink({
 
   if (variant === 'customers' && row.id !== 'unknown-customer') {
     return (
-      <Link className="inline-flex items-center gap-1.5 hover:text-[#2a2926]" to={`/customers/profile?customerId=${row.id}`}>
+      <Link className="inline-flex items-center gap-1.5 hover:text-[#18181b]" to={`/customers/profile?customerId=${row.id}`}>
         {row.label}
         <Building2 size={14} />
       </Link>
@@ -880,13 +880,13 @@ function DrilldownHeader({
   onBack: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 rounded-[10px] border border-[#ebe4d3] bg-[#fbf8ec] p-4">
+    <div className="flex flex-wrap items-start justify-between gap-3 rounded-[10px] border border-[#ededf0] bg-[#fafafa] p-4">
       <div>
-        <span className="text-xs font-semibold text-[#2a2926]">{eyebrow}</span>
+        <span className="text-xs font-semibold text-[#18181b]">{eyebrow}</span>
         <h2 className="mt-1 text-2xl font-semibold text-[#18212f]">{title}</h2>
-        {meta ? <p className="mt-1 text-sm font-medium text-[#777066]">{meta}</p> : null}
+        {meta ? <p className="mt-1 text-sm font-medium text-[#71717a]">{meta}</p> : null}
       </div>
-      <button className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#e2d9c4] bg-white px-3 text-sm font-semibold text-[#3b3832] hover:border-[#f1c4c9] hover:text-[#2a2926]" onClick={onBack} type="button">
+      <button className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#e4e4e7] bg-white px-3 text-sm font-semibold text-[#3f3f46] hover:border-[#f1c4c9] hover:text-[#18181b]" onClick={onBack} type="button">
         <ChevronLeft size={16} />
         Back
       </button>
@@ -896,19 +896,19 @@ function DrilldownHeader({
 
 function CustomerCareTable({ rows, title }: { rows: DrilldownCustomer[]; title: string }) {
   return (
-    <section className="overflow-hidden rounded-[10px] border border-[#ebe4d3] bg-white">
+    <section className="overflow-hidden rounded-[10px] border border-[#ededf0] bg-white">
       <TableHeader count={rows.length} title={title} />
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm">
           <thead>
-            <tr className="text-[11px] uppercase text-[#777066]">
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Khách hàng</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Tỉnh</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Lắp</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Sửa</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Bảo trì</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Máy</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Gần nhất</th>
+            <tr className="text-[11px] uppercase text-[#71717a]">
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Khách hàng</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Tỉnh</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Lắp</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Sửa</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Bảo trì</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Máy</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Gần nhất</th>
             </tr>
           </thead>
           <tbody>
@@ -918,18 +918,18 @@ function CustomerCareTable({ rows, title }: { rows: DrilldownCustomer[]; title: 
                   {row.id.startsWith('unknown') || !row.id ? (
                     row.label
                   ) : (
-                    <Link className="hover:text-[#2a2926]" to={`/customers/profile?customerId=${row.id}`}>
+                    <Link className="hover:text-[#18181b]" to={`/customers/profile?customerId=${row.id}`}>
                       {row.label}
                     </Link>
                   )}
                   {row.assigned ? <span className="ml-2 rounded-md bg-[#eefaf3] px-2 py-1 text-[11px] text-[#177245]">phụ trách</span> : null}
                 </td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#777066]">{row.province}</td>
+                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#71717a]">{row.province}</td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold">{row.installations}</td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold">{row.repairs}</td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold">{row.maintenances}</td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold">{row.machines}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#777066]">{formatDate(row.lastWorkedAt)}</td>
+                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#71717a]">{formatDate(row.lastWorkedAt)}</td>
               </tr>
             ))}
             <EmptyRow colSpan={7} show={rows.length === 0} />
@@ -942,20 +942,20 @@ function CustomerCareTable({ rows, title }: { rows: DrilldownCustomer[]; title: 
 
 function MachineHistoryTable({ rows, title }: { rows: DrilldownMachine[]; title: string }) {
   return (
-    <section className="overflow-hidden rounded-[10px] border border-[#ebe4d3] bg-white">
+    <section className="overflow-hidden rounded-[10px] border border-[#ededf0] bg-white">
       <TableHeader count={rows.length} title={title} />
       <div className="overflow-x-auto">
         <table className="w-full min-w-[860px] border-separate border-spacing-0 text-left text-sm">
           <thead>
-            <tr className="text-[11px] uppercase text-[#777066]">
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Máy</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Model</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Khách hàng</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Tỉnh</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Lắp</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Sửa</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Bảo trì</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Ghi chú gần đây</th>
+            <tr className="text-[11px] uppercase text-[#71717a]">
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Máy</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Model</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Khách hàng</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Tỉnh</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Lắp</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Sửa</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Bảo trì</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Ghi chú gần đây</th>
             </tr>
           </thead>
           <tbody>
@@ -963,17 +963,17 @@ function MachineHistoryTable({ rows, title }: { rows: DrilldownMachine[]; title:
               <tr className="hover:bg-[#f8fbfb]" key={row.id}>
                 <td className="border-b border-[#eeeeee] px-4 py-3">
                   <strong className="block text-[#18212f]">{row.label || '-'}</strong>
-                  <span className="text-xs text-[#777066]">{row.serialNumber}</span>
+                  <span className="text-xs text-[#71717a]">{row.serialNumber}</span>
                 </td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#3b3832]">{row.model}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold text-[#3b3832]">
-                  {row.customerId ? <Link className="hover:text-[#2a2926]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
+                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#3f3f46]">{row.model}</td>
+                <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold text-[#3f3f46]">
+                  {row.customerId ? <Link className="hover:text-[#18181b]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
                 </td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#777066]">{row.province}</td>
+                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#71717a]">{row.province}</td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold">{row.installations}</td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold">{row.repairs}</td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold">{row.maintenances}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#777066]">{row.notes[0] || formatDate(row.lastWorkedAt)}</td>
+                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#71717a]">{row.notes[0] || formatDate(row.lastWorkedAt)}</td>
               </tr>
             ))}
             <EmptyRow colSpan={8} show={rows.length === 0} />
@@ -988,45 +988,45 @@ function WorkLogTable({ rows, title }: { rows: WorkReportRow[]; title: string })
   const sortedRows = [...rows].sort(compareWorkRowsByDateDesc);
 
   return (
-    <section className="overflow-hidden rounded-[10px] border border-[#ebe4d3] bg-white">
+    <section className="overflow-hidden rounded-[10px] border border-[#ededf0] bg-white">
       <TableHeader count={rows.length} title={title} />
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] border-separate border-spacing-0 text-left text-sm">
           <thead>
-            <tr className="text-[11px] uppercase text-[#777066]">
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Phiếu</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Loại việc</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Ngày</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Khách hàng</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Máy / model</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Nội dung</th>
-              <th className="border-b border-[#ebe4d3] px-4 py-2.5">Trạng thái</th>
+            <tr className="text-[11px] uppercase text-[#71717a]">
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Phiếu</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Loại việc</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Ngày</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Khách hàng</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Máy / model</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Nội dung</th>
+              <th className="border-b border-[#ededf0] px-4 py-2.5">Trạng thái</th>
             </tr>
           </thead>
           <tbody>
             {sortedRows.map((row) => (
               <tr className="hover:bg-[#f8fbfb]" key={`${row.kind}-${row.id}`}>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-bold text-[#18212f]">
-                  <Link className="hover:text-[#2a2926]" to={workHref(row)}>
+                  <Link className="hover:text-[#18181b]" to={workHref(row)}>
                     {row.code}
                   </Link>
                 </td>
                 <td className="border-b border-[#eeeeee] px-4 py-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#e2d9c4] bg-[#fbf8ec] px-2.5 py-1 text-xs font-semibold text-[#777066]">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#e4e4e7] bg-[#fafafa] px-2.5 py-1 text-xs font-semibold text-[#71717a]">
                     {workIcon(row.kind)}
                     {workLabel(row.kind)}
                   </span>
                 </td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#777066]">{formatDate(row.date)}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold text-[#3b3832]">
-                  {row.customerId ? <Link className="hover:text-[#2a2926]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
+                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#71717a]">{formatDate(row.date)}</td>
+                <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold text-[#3f3f46]">
+                  {row.customerId ? <Link className="hover:text-[#18181b]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
                 </td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#3b3832]">
+                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#3f3f46]">
                   <strong className="block">{row.machineCode}</strong>
-                  <span className="text-xs text-[#777066]">{row.model}</span>
+                  <span className="text-xs text-[#71717a]">{row.model}</span>
                 </td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#3b3832]">{row.note || row.title}</td>
-                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#777066]">{row.status}</td>
+                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#3f3f46]">{row.note || row.title}</td>
+                <td className="border-b border-[#eeeeee] px-4 py-3 text-[#71717a]">{row.status}</td>
               </tr>
             ))}
             <EmptyRow colSpan={7} show={sortedRows.length === 0} />
@@ -1043,9 +1043,9 @@ function compareWorkRowsByDateDesc(left: WorkReportRow, right: WorkReportRow) {
 
 function TableHeader({ title, count }: { title: string; count: number }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ebe4d3] bg-[#fbf8ec] px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ededf0] bg-[#fafafa] px-4 py-3">
       <h2 className="text-base font-semibold text-[#18212f]">{title}</h2>
-      <span className="text-xs font-semibold text-[#777066]">{count} dòng</span>
+      <span className="text-xs font-semibold text-[#71717a]">{count} dòng</span>
     </div>
   );
 }
@@ -1054,7 +1054,7 @@ function EmptyRow({ show, colSpan }: { show: boolean; colSpan: number }) {
   if (!show) return null;
   return (
     <tr>
-      <td className="px-4 py-8 text-center text-sm font-medium text-[#777066]" colSpan={colSpan}>
+      <td className="px-4 py-8 text-center text-sm font-medium text-[#71717a]" colSpan={colSpan}>
         Không có dữ liệu trong kỳ này.
       </td>
     </tr>
@@ -1066,25 +1066,25 @@ function TrendPanel({ rows, title }: { rows: Array<{ date: string; kind?: WorkRe
   const maxValue = Math.max(1, ...buckets.map((item) => item.total));
 
   return (
-    <section className="rounded-[10px] border border-[#ebe4d3] bg-white p-4">
+    <section className="rounded-[10px] border border-[#ededf0] bg-white p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="text-xs font-semibold text-[#2a2926]">Xu hướng</span>
+          <span className="text-xs font-semibold text-[#18181b]">Xu hướng</span>
           <h2 className="mt-1 text-base font-semibold text-[#18212f]">{title}</h2>
         </div>
-        <span className="text-xs font-semibold text-[#777066]">{rows.length} việc</span>
+        <span className="text-xs font-semibold text-[#71717a]">{rows.length} việc</span>
       </div>
-      <div className="grid min-h-[190px] grid-cols-[repeat(auto-fit,minmax(56px,1fr))] items-end gap-2 border-b border-[#ebe4d3] pb-3">
+      <div className="grid min-h-[190px] grid-cols-[repeat(auto-fit,minmax(56px,1fr))] items-end gap-2 border-b border-[#ededf0] pb-3">
         {buckets.map((item) => (
           <div className="grid gap-2 text-center" key={item.label}>
-            <div className="flex h-[142px] items-end justify-center rounded-lg bg-[#fbf8ec] px-2">
+            <div className="flex h-[142px] items-end justify-center rounded-lg bg-[#fafafa] px-2">
               <span
-                className="block w-full max-w-10 rounded-t-lg bg-[#2a2926]"
+                className="block w-full max-w-10 rounded-t-lg bg-[#18181b]"
                 style={{ height: `${Math.max(6, (item.total / maxValue) * 100)}%` }}
                 title={`${item.label}: ${item.total}`}
               />
             </div>
-            <span className="text-[11px] font-semibold text-[#777066]">{item.label}</span>
+            <span className="text-[11px] font-semibold text-[#71717a]">{item.label}</span>
             <strong className="text-sm text-[#18212f]">{item.total}</strong>
           </div>
         ))}
@@ -1097,13 +1097,13 @@ function DetailTable({ title, rows }: { title: string; rows: InstallationReportR
   const groups = groupInstallationRowsByDate(rows);
 
   return (
-    <section className="overflow-hidden rounded-[24px] border border-[#e8dcc0] bg-white shadow-[0_14px_38px_rgba(42,41,38,0.05)]">
+    <section className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_14px_38px_rgba(24,24,27,0.05)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dbe9e8] bg-[#f8fbfb] px-4 py-3">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2a2926]">Chi tiết theo ngày</span>
+          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#18181b]">Chi tiết theo ngày</span>
           <h2 className="mt-1 text-base font-extrabold text-[#1f1f1f]">{title}</h2>
         </div>
-        <span className="rounded-full border border-[#e8dcc0] bg-white px-3 py-1 text-xs font-bold text-[#2a2926]">{rows.length} máy / phiếu</span>
+        <span className="rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-bold text-[#18181b]">{rows.length} máy / phiếu</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] border-separate border-spacing-0 text-left text-sm">
@@ -1141,7 +1141,7 @@ function DateDetailGroup({ group }: { group: { key: string; label: string; rows:
   return (
     <>
       <tr>
-        <td className="border-b border-[#e4ecee] bg-[#fbf8ec] px-4 py-2" colSpan={8}>
+        <td className="border-b border-[#e4ecee] bg-[#fafafa] px-4 py-2" colSpan={8}>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="h-px w-7 bg-[#d8dde5]" />
             <span className="font-semibold text-[#8a94a3]">{group.label}</span>
@@ -1152,7 +1152,7 @@ function DateDetailGroup({ group }: { group: { key: string; label: string; rows:
       {group.rows.map((row) => (
         <tr className="hover:bg-[#f8fbfb]" key={row.id}>
           <td className="border-b border-[#e4ecee] px-4 py-3 font-bold text-[#1f1f1f]">
-            <Link className="hover:text-[#2a2926]" to={`/installations/${row.id}/update`}>
+            <Link className="hover:text-[#18181b]" to={`/installations/${row.id}/update`}>
               {row.code}
             </Link>
           </td>
@@ -1163,7 +1163,7 @@ function DateDetailGroup({ group }: { group: { key: string; label: string; rows:
           <td className="border-b border-[#e4ecee] px-4 py-3 text-[#333333]">{row.serialNumber}</td>
           <td className="border-b border-[#e4ecee] px-4 py-3 text-[#333333]">{row.province}</td>
           <td className="border-b border-[#e4ecee] px-4 py-3">
-            <span className="inline-flex min-h-7 items-center rounded-lg border border-[#ebe4d3] bg-[#fbf8ec] px-2.5 text-xs font-bold text-[#666666]">
+            <span className="inline-flex min-h-7 items-center rounded-lg border border-[#ededf0] bg-[#fafafa] px-2.5 text-xs font-bold text-[#666666]">
               {row.status}
             </span>
           </td>

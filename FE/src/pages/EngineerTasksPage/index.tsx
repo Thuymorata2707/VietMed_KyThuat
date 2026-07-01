@@ -1462,7 +1462,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 className={[
                   'flex min-h-12 min-w-0 items-center justify-between gap-2 rounded-lg border-0 px-3 text-left text-sm font-medium transition',
                   businessTab === tab.value
-                    ? 'bg-white text-[#2a2926] shadow-[0_1px_5px_rgba(20,32,51,0.08)]'
+                    ? 'bg-white text-[#18181b] shadow-[0_1px_5px_rgba(20,32,51,0.08)]'
                     : 'bg-transparent text-[#333333] hover:bg-white/70',
                 ].join(' ')}
                 key={tab.value}
@@ -1477,7 +1477,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   className={[
                     'inline-flex min-w-7 items-center justify-center rounded-full border px-2 py-[3px] text-xs',
                     businessTab === tab.value
-                      ? 'border-[#eadfbd] bg-[#fff7d6] text-[#2a2926]'
+                      ? 'border-[#e4e4e7] bg-[#f4f4f5] text-[#18181b]'
                       : 'border-[#e5e5e5] bg-white text-[#666666]',
                   ].join(' ')}
                 >
@@ -1488,7 +1488,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           </div>
 
           <div className="grid min-w-0 gap-3 border-b border-[#eeeeee] p-3 min-[1180px]:grid-cols-[minmax(220px,1fr)_auto_minmax(180px,220px)] min-[1180px]:items-end">
-            <div className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#666666] focus-within:border-[#2a2926] focus-within:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]">
+            <div className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#666666] focus-within:border-[#18181b] focus-within:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]">
               <Search size={17} />
               <input className="min-w-0 flex-1 border-0 text-[#1f1f1f] outline-none" onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, mã máy, serial, khách hàng" value={query} />
             </div>
@@ -1504,7 +1504,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <button
                   className={[
                     'min-h-8 min-w-0 flex-1 rounded-md border-0 px-2 text-xs font-medium leading-tight min-[560px]:flex-none min-[560px]:px-3 min-[560px]:text-sm',
-                    filter === value ? 'bg-white text-[#2a2926] shadow-[0_1px_4px_rgba(20,32,51,0.08)]' : 'bg-transparent text-[#333333]',
+                    filter === value ? 'bg-white text-[#18181b] shadow-[0_1px_4px_rgba(20,32,51,0.08)]' : 'bg-transparent text-[#333333]',
                   ].join(' ')}
                   key={value}
                   onClick={() => setFilter(value as TaskFilter)}
@@ -1516,7 +1516,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             </div>
             <label className="grid min-w-0 gap-1.5 text-xs font-medium text-[#333333]">
               <span>Loại công việc</span>
-              <select className="h-10 w-full rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]" onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
+              <select className="h-10 w-full rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
                 {businessTab === 'all' ? (
                   <>
                     <option value="all">Tất cả loại việc</option>
@@ -1579,7 +1579,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 {!loadingDailyWork
                   ? filteredDailyWorkNotes.map((note) => (
                       <article className="grid min-w-0 items-center gap-3.5 border-b border-[#eeeeee] p-4 last:border-b-0 min-[640px]:grid-cols-[66px_minmax(0,1fr)]" key={note.id}>
-                        <div className="grid min-h-16 justify-items-center rounded-lg border border-l-4 bg-[#fffdfb] p-2" style={{ borderColor: note.color || '#2a2926' }}>
+                        <div className="grid min-h-16 justify-items-center rounded-lg border border-l-4 bg-[#fffdfb] p-2" style={{ borderColor: note.color || '#18181b' }}>
                           <strong className="text-2xl leading-none text-[#1f1f1f]">{dayNumber(note.workDate)}</strong>
                           <span className="text-xs font-medium text-[#666666]">{monthLabel(note.workDate)}</span>
                         </div>
@@ -2577,7 +2577,7 @@ function taskActionTextClass(task: EngineerTask) {
   if (task.reviewStatus === 'NEEDS_REVISION' || isOverdueTask(task)) return 'text-[#b5121b]';
   if (task.reviewStatus === 'PENDING' || needsMachineProfile(task)) return 'text-[#9b5a17]';
   if (['COMPLETED', 'INSTALLED'].includes(task.status)) return 'text-[#177245]';
-  return 'text-[#2a2926]';
+  return 'text-[#18181b]';
 }
 
 function createTicketHrefForTab(tab: BusinessTab) {

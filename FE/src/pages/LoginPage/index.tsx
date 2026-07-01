@@ -37,8 +37,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <main className="grid min-h-screen place-items-center overflow-hidden bg-[#f8fbfb] px-6 py-7 max-sm:px-4 max-sm:py-4">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_18%,rgba(42,41,38,0.08),transparent_34%),radial-gradient(circle_at_88%_14%,rgba(255,228,232,0.62),transparent_31%),linear-gradient(135deg,#f8fbfb,#fbf8ec_58%,#fff7d6)]" />
-      <section className="relative grid min-h-[calc(100vh-56px)] w-full max-w-[1360px] grid-cols-[minmax(390px,0.9fr)_minmax(0,1.1fr)] overflow-hidden rounded-[28px] border border-[#e8dcc0] bg-white/90 shadow-[0_30px_90px_rgba(42,41,38,0.13)] backdrop-blur-xl max-[980px]:min-h-[calc(100vh-32px)] max-[980px]:grid-cols-1">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_14%_18%,rgba(24,24,27,0.08),transparent_34%),radial-gradient(circle_at_88%_14%,rgba(255,228,232,0.62),transparent_31%),linear-gradient(135deg,#f8fbfb,#fafafa_58%,#f4f4f5)]" />
+      <section className="relative grid min-h-[calc(100vh-56px)] w-full max-w-[1360px] grid-cols-[minmax(390px,0.9fr)_minmax(0,1.1fr)] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white/90 shadow-[0_30px_90px_rgba(24,24,27,0.13)] backdrop-blur-xl max-[980px]:min-h-[calc(100vh-32px)] max-[980px]:grid-cols-1">
         <div className="relative grid content-between gap-8 bg-white/92 px-12 py-10 max-[980px]:px-8 max-[620px]:px-5 max-[620px]:py-6">
           <div className="flex items-center justify-between gap-4">
             <Brand size="large" />
@@ -49,7 +49,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
           <div className="grid max-w-[480px] content-center gap-7 self-center justify-self-center py-10 max-[980px]:w-full max-[980px]:max-w-[560px] max-[620px]:py-6">
             <div className="grid gap-3">
-              <span className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-[#2a2926]">VietMed Kỹ Thuật</span>
+              <span className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-[#18181b]">VietMed Kỹ Thuật</span>
               <h1 className="max-w-[420px] text-[42px] font-extrabold leading-[1.04] text-[#1f1f1f] max-sm:text-[32px]">
                 Đăng nhập hệ thống kỹ thuật
               </h1>
@@ -58,11 +58,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               </p>
             </div>
 
-            <form className="grid gap-4 rounded-[24px] border border-[#e8dcc0] bg-[#fffdfd] p-4 shadow-[0_18px_50px_rgba(42,41,38,0.07)]" onSubmit={handleSubmit}>
+            <form className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-[#fffdfd] p-4 shadow-[0_18px_50px_rgba(24,24,27,0.07)]" onSubmit={handleSubmit}>
               <label className="grid gap-2 text-[13px] font-bold text-[#333333]">
                 Email
                 <input
-                  className="min-h-[52px] rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#98a3b4] hover:border-[#e8dcc0] focus:border-[#2a2926] focus:bg-white focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)]"
+                  className="min-h-[52px] rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#98a3b4] hover:border-[#e4e4e7] focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]"
                   autoComplete="email"
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="name@vietmed.com.vn"
@@ -73,7 +73,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               <label className="grid gap-2 text-[13px] font-bold text-[#333333]">
                 Mật khẩu
                 <input
-                  className="min-h-[52px] rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#98a3b4] hover:border-[#e8dcc0] focus:border-[#2a2926] focus:bg-white focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)]"
+                  className="min-h-[52px] rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#98a3b4] hover:border-[#e4e4e7] focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]"
                   autoComplete="current-password"
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="Nhập mật khẩu"
@@ -87,7 +87,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 </p>
               ) : null}
               <button
-                className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,#f4cf56,#2a2926)] px-[18px] font-bold text-white shadow-[0_18px_34px_rgba(42,41,38,0.24),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:-translate-y-px hover:bg-[#171614] disabled:hover:translate-y-0"
+                className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,#18181b,#18181b)] px-[18px] font-bold text-white shadow-[0_18px_34px_rgba(24,24,27,0.24),inset_0_1px_0_rgba(255,255,255,0.22)] transition hover:-translate-y-px hover:bg-[#09090b] disabled:hover:translate-y-0"
                 disabled={loginMutation.isPending}
                 type="submit"
               >
@@ -108,15 +108,15 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           <span className="text-[12px] font-semibold text-[#8a8a8a]">VietMed Ky Thuat · Internal workspace</span>
         </div>
 
-        <aside className="relative overflow-hidden bg-[#fff7d6] p-8 text-[#1f1f1f] max-[980px]:min-h-[420px] max-[620px]:p-5">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(42,41,38,0.14),transparent_28%),radial-gradient(circle_at_82%_78%,rgba(234,223,189,0.50),transparent_36%),linear-gradient(135deg,#f8fbfb,#fff7d6_48%,#fbf8ec)]" />
-          <div className="absolute inset-0 opacity-55 [background-image:linear-gradient(rgba(42,41,38,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(42,41,38,0.045)_1px,transparent_1px)] [background-size:34px_34px]" />
-          <div className="absolute inset-x-0 top-0 h-px bg-[#e8dcc0]" />
-          <div className="absolute inset-y-0 left-0 w-px bg-[#e8dcc0]" />
+        <aside className="relative overflow-hidden bg-[#f4f4f5] p-8 text-[#1f1f1f] max-[980px]:min-h-[420px] max-[620px]:p-5">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(24,24,27,0.14),transparent_28%),radial-gradient(circle_at_82%_78%,rgba(228,228,231,0.50),transparent_36%),linear-gradient(135deg,#f8fbfb,#f4f4f5_48%,#fafafa)]" />
+          <div className="absolute inset-0 opacity-55 [background-image:linear-gradient(rgba(24,24,27,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(24,24,27,0.045)_1px,transparent_1px)] [background-size:34px_34px]" />
+          <div className="absolute inset-x-0 top-0 h-px bg-[#e4e4e7]" />
+          <div className="absolute inset-y-0 left-0 w-px bg-[#e4e4e7]" />
 
           <div className="relative grid h-full content-center gap-8">
             <div className="max-w-[620px]">
-              <span className="inline-flex rounded-xl border border-[#e8dcc0] bg-white/75 px-3 py-2 text-[12px] font-bold text-[#2a2926] backdrop-blur">
+              <span className="inline-flex rounded-xl border border-[#e4e4e7] bg-white/75 px-3 py-2 text-[12px] font-bold text-[#18181b] backdrop-blur">
                 Không gian vận hành kỹ thuật
               </span>
               <h2 className="mt-5 max-w-[560px] text-[46px] font-extrabold leading-[1.03] text-[#1f1f1f] max-[980px]:text-[36px] max-sm:text-[30px]">
@@ -141,8 +141,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
 function LoginFeature({ icon, label }: { icon: ReactNode; label: string }) {
   return (
-    <div className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-[#e8dcc0] bg-white/78 px-4 text-[#333333] shadow-[0_14px_34px_rgba(42,41,38,0.08)] backdrop-blur-md">
-      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#fff7d6] text-[#2a2926]">
+    <div className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-[#e4e4e7] bg-white/78 px-4 text-[#333333] shadow-[0_14px_34px_rgba(24,24,27,0.08)] backdrop-blur-md">
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f4f4f5] text-[#18181b]">
         {icon}
       </span>
       <span className="text-[13px] font-bold">{label}</span>

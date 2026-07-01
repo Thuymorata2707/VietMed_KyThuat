@@ -667,7 +667,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Ngành hàng
               <select
-                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]"
+                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
                 onChange={(event) => {
                   setSelectedBusinessLineKey(event.target.value);
                   setSelectedMachineId(null);
@@ -686,7 +686,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <label className="relative min-w-0">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8a8a]" size={17} />
               <input
-                className="mt-[22px] h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-[#fafafa] pl-9 pr-3 text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:bg-white focus:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]"
+                className="mt-[22px] h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-[#fafafa] pl-9 pr-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Tìm S/N, model, khách hàng, đầu dò..."
                 value={searchInput}
@@ -695,7 +695,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Trạng thái
               <select
-                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]"
+                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
                 onChange={(event) => {
                   setInstallState(event.target.value);
                   setPage(1);
@@ -711,7 +711,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Số dòng
               <select
-                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]"
+                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
                 onChange={(event) => {
                   setLimit(Number(event.target.value));
                   setPage(1);
@@ -740,7 +740,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 {selectedBusinessLine?.name ?? 'Tất cả ngành hàng'} - {technicalMachines?.filteredTotal ?? 0} kết quả
               </p>
             </div>
-            <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-white px-2.5 text-sm font-medium text-[#2a2926]">
+            <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-white px-2.5 text-sm font-medium text-[#18181b]">
               {loading ? <Loader2 className="spin-icon" size={17} /> : <PackageSearch size={17} />}
               {loading ? '-' : technicalMachines?.total ?? 0}
             </span>
@@ -925,7 +925,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
               <div className="grid gap-3">
                 {editForm.accessories.map((accessory, index) => (
-                  <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-3" key={accessory.clientId}>
+                  <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3" key={accessory.clientId}>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-medium text-[#333333]">Phụ kiện {index + 1}</span>
                       <button className="icon-button" onClick={() => removeAccessoryForm(accessory.clientId)} title="Delete accessory" type="button">
@@ -1026,14 +1026,14 @@ function MachineDetailPanel({
         <div className="mb-5 flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-2xl font-medium leading-tight text-[#1f1f1f]">Thông tin máy</h2>
-            <p className="mt-1 text-lg font-medium text-[#2a2926]">{machine.serialNumber}</p>
+            <p className="mt-1 text-lg font-medium text-[#18181b]">{machine.serialNumber}</p>
             {loading ? <span className="mt-1 inline-flex items-center gap-2 text-xs text-[#666666]"><Loader2 className="spin-icon" size={14} />Đang tải hồ sơ đầy đủ</span> : null}
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             {machine.dataStatus === 'PENDING_REVIEW' ? (
               <span className="inline-flex min-h-8 items-center rounded-full border border-[#efd8a8] bg-[#fff8ed] px-3 text-sm font-medium text-[#9b5a17]">Chờ xác minh</span>
             ) : null}
-            <span className="inline-flex min-h-8 items-center rounded-full bg-[#eef6ff] px-3 text-sm font-medium text-[#2a2926]">
+            <span className="inline-flex min-h-8 items-center rounded-full bg-[#eef6ff] px-3 text-sm font-medium text-[#18181b]">
               {displayLabel(machine.inventoryStatus || machine.status || '')}
             </span>
             {canEdit ? (
@@ -1065,12 +1065,12 @@ function MachineDetailPanel({
         <div className="mt-6 border-t border-[#eeeeee] pt-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-xl font-medium text-[#1f1f1f]">Đầu dò / Phụ kiện</h3>
-            <span className="rounded-full bg-[#fafafa] px-3 py-1 text-sm font-medium text-[#2a2926]">{accessories.length}</span>
+            <span className="rounded-full bg-[#fafafa] px-3 py-1 text-sm font-medium text-[#18181b]">{accessories.length}</span>
           </div>
           {accessories.length ? (
             <div className="grid min-w-0 gap-3 md:grid-cols-2 2xl:grid-cols-3">
               {accessories.map((accessory) => (
-                <div className="grid min-w-0 gap-2 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-4" key={accessory.id}>
+                <div className="grid min-w-0 gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-4" key={accessory.id}>
                   <div className="grid gap-1">
                     <span className="text-[12px] font-medium text-[#666666]">
                       {accessory.componentAccessory?.component?.name || accessory.componentAccessory?.name || accessory.code || 'Phụ kiện'}
@@ -1079,7 +1079,7 @@ function MachineDetailPanel({
                   </div>
                   <div className="grid grid-cols-[76px_minmax(0,1fr)] gap-2 text-sm">
                     <span className="font-semibold text-[#666666]">S/N</span>
-                    <strong className="break-words text-[#2a2926]">{accessory.serialNumber || '-'}</strong>
+                    <strong className="break-words text-[#18181b]">{accessory.serialNumber || '-'}</strong>
                     <span className="font-semibold text-[#666666]">Mã</span>
                     <span className="break-words text-[#333333]">{accessory.code || accessory.componentAccessory?.code || '-'}</span>
                   </div>
@@ -1192,7 +1192,7 @@ function MachineLifecycleTimeline({ events }: { events: MachineLifecycleEvent[] 
           <h2 className="mt-1 text-2xl font-medium leading-tight text-[#1f1f1f]">Timeline hồ sơ máy</h2>
           <p className="mt-1 text-sm leading-6 text-[#666666]">Gom lắp đặt, bảo hành, sửa chữa, bảo trì và luân chuyển kho theo một dòng thời gian.</p>
         </div>
-        <span className="inline-flex min-h-9 items-center rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-sm font-semibold text-[#2a2926]">
+        <span className="inline-flex min-h-9 items-center rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-sm font-semibold text-[#18181b]">
           {events.length} sự kiện
         </span>
       </div>
@@ -1244,7 +1244,7 @@ function TimelineBox({
       <h3 className="text-base font-medium text-[#1f1f1f]">{title}</h3>
       <div className="mt-3 grid gap-2">
         {items.length ? items.map((item) => (
-          <div className="grid gap-1 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-3" key={item.id}>
+          <div className="grid gap-1 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3" key={item.id}>
             <div className="flex items-start justify-between gap-2">
               <strong className="text-sm leading-snug text-[#1f1f1f]">{item.title}</strong>
               {item.date ? <span className="shrink-0 text-xs font-medium text-[#666666]">{item.date}</span> : null}
@@ -1269,9 +1269,9 @@ function MachineListActionPanel({ canEdit, machine }: { canEdit: boolean; machin
       </div>
 
       {machine ? (
-        <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-4">
+        <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-4">
           <div>
-            <strong className="block text-lg text-[#2a2926]">{machine.serialNumber}</strong>
+            <strong className="block text-lg text-[#18181b]">{machine.serialNumber}</strong>
             <span className="text-sm text-[#666666]">{[machine.machineCode, machine.modelName, machine.customer?.name].filter(Boolean).join(' - ') || 'Chưa có thông tin thêm'}</span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1298,7 +1298,7 @@ function MachineSummaryCard({ label, tone = 'neutral', value }: { label: string;
   const toneClass = {
     neutral: 'bg-[#fafafa] text-[#333333]',
     green: 'bg-[#eefaf3] text-[#177245]',
-    blue: 'bg-[#eef6ff] text-[#2a2926]',
+    blue: 'bg-[#eef6ff] text-[#18181b]',
     amber: 'bg-[#fff8ed] text-[#9b5a17]',
   }[tone];
 
@@ -1335,14 +1335,14 @@ function MachineIndustryBarChart({
           <span className="text-[12px] font-semibold text-[#666666]">Biểu đồ ngành hàng</span>
           <h2 className="mt-1 text-xl font-semibold text-[#1f1f1f]">Số máy theo ngành hàng</h2>
         </div>
-        <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-[#fafafa] px-2.5 text-sm font-medium text-[#2a2926]">
+        <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-[#fafafa] px-2.5 text-sm font-medium text-[#18181b]">
           <PackageSearch size={17} />
           {items.reduce((sum, item) => sum + item.count, 0)}
         </span>
       </div>
 
       {loading ? (
-        <div className="grid min-h-[180px] place-items-center rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbf8ec] text-sm font-semibold text-[#666666]">
+        <div className="grid min-h-[180px] place-items-center rounded-lg border border-dashed border-[#d7e0eb] bg-[#fafafa] text-sm font-semibold text-[#666666]">
           <span className="inline-flex items-center gap-2">
             <Loader2 className="spin-icon" size={17} />
             Đang tải biểu đồ
@@ -1356,7 +1356,7 @@ function MachineIndustryBarChart({
             const height = Math.max(12, Math.round((item.count / maxCount) * 100));
             return (
               <button
-                className={`group grid h-full min-h-[220px] items-end gap-2 rounded-lg border p-2 text-center transition hover:border-[#b8cbe1] hover:bg-[#fbf8ec] ${activeId === item.id ? 'border-[#b8cbe1] bg-[#f3f8ff]' : 'border-transparent'}`}
+                className={`group grid h-full min-h-[220px] items-end gap-2 rounded-lg border p-2 text-center transition hover:border-[#b8cbe1] hover:bg-[#fafafa] ${activeId === item.id ? 'border-[#b8cbe1] bg-[#f3f8ff]' : 'border-transparent'}`}
                 key={item.id}
                 onClick={() => onSelect(item.id)}
                 type="button"
@@ -1364,7 +1364,7 @@ function MachineIndustryBarChart({
                 <span className="text-sm font-semibold tabular-nums text-[#1f1f1f]">{item.count}</span>
                 <span className="flex h-36 items-end rounded-lg bg-[#eeeeee] p-1.5">
                   <span
-                    className={`block w-full rounded-md transition-all duration-300 group-hover:bg-[#2a2926] ${activeId === item.id ? 'bg-[#2a2926]' : 'bg-[#2a2926]'}`}
+                    className={`block w-full rounded-md transition-all duration-300 group-hover:bg-[#18181b] ${activeId === item.id ? 'bg-[#18181b]' : 'bg-[#18181b]'}`}
                     style={{ height: `${height}%` }}
                   />
                 </span>
@@ -1386,10 +1386,10 @@ function MachineTableRow({ canEdit, machine }: { canEdit: boolean; machine: Dash
   const engineerName = machine.primaryEngineer?.fullName || machine.installedBy?.fullName || machine.primaryEngineer?.email || machine.installedBy?.email || '';
 
   return (
-    <tr className="border-b border-[#eeeeee] transition hover:bg-[#fbf8ec]">
+    <tr className="border-b border-[#eeeeee] transition hover:bg-[#fafafa]">
       <td className="px-4 py-3">
         <div className="grid gap-1">
-          <Link className="font-semibold text-[#2a2926] hover:underline" to={`/technical-machines/${machine.id}`}>
+          <Link className="font-semibold text-[#18181b] hover:underline" to={`/technical-machines/${machine.id}`}>
             {machine.serialNumber}
           </Link>
           <span className="text-sm text-[#1f1f1f]">{machine.machineCode || machine.name || 'Chưa có mã máy'}</span>
@@ -1441,9 +1441,9 @@ function StatusPill({ subtle, value }: { subtle?: boolean; value: string }) {
 
 function statusPillTone(value: string) {
   if (value === 'INSTALLED' || value === 'ACTIVE') return 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]';
-  if (value === 'IN_STOCK' || value === 'RESERVED') return 'border-[#b8cbe1] bg-[#eef6ff] text-[#2a2926]';
+  if (value === 'IN_STOCK' || value === 'RESERVED') return 'border-[#b8cbe1] bg-[#eef6ff] text-[#18181b]';
   if (value === 'RETURNED' || value === 'REPAIRING' || value === 'MAINTENANCE') return 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]';
-  if (value === 'SOLD' || value === 'INACTIVE') return 'border-[#eadfbd] bg-[#fff7d6] text-[#2a2926]';
+  if (value === 'SOLD' || value === 'INACTIVE') return 'border-[#e4e4e7] bg-[#f4f4f5] text-[#18181b]';
   return 'border-[#e5e5e5] bg-[#fafafa] text-[#333333]';
 }
 
@@ -1544,7 +1544,7 @@ function lifecycleKindShortLabel(kind: MachineLifecycleEvent['kind']) {
 function lifecycleKindClass(kind: MachineLifecycleEvent['kind']) {
   const classes: Record<MachineLifecycleEvent['kind'], string> = {
     installation: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
-    warranty: 'border-[#d8e0ea] bg-[#eef6ff] text-[#2a2926]',
+    warranty: 'border-[#d8e0ea] bg-[#eef6ff] text-[#18181b]',
     repair: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]',
     maintenance: 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]',
     inventory: 'border-[#e5e5e5] bg-[#f4f7fb] text-[#333333]',
@@ -1571,7 +1571,7 @@ function warrantyClass(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'text-[#1f1f1f]';
   const daysLeft = Math.ceil((date.getTime() - Date.now()) / 86_400_000);
-  if (daysLeft < 0) return 'text-[#2a2926]';
+  if (daysLeft < 0) return 'text-[#18181b]';
   if (daysLeft <= 30) return 'text-[#9b5a17]';
   return 'text-[#177245]';
 }
@@ -1759,7 +1759,7 @@ function MachineEditForm({
 
         <div className="grid gap-3">
           {editForm.accessories.map((accessory, index) => (
-            <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbf8ec] p-4" key={accessory.clientId}>
+            <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fafafa] p-4" key={accessory.clientId}>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-[#333333]">Phụ kiện {index + 1}</span>
                 <button className="icon-button" onClick={() => onRemoveAccessory(accessory.clientId)} title="Delete accessory" type="button">
@@ -1821,7 +1821,7 @@ function MachineEditForm({
 
 function InfoItem({ label, value }: { label: string; value?: string | number | null }) {
   return (
-    <div className="grid min-w-0 gap-1.5 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-3">
+    <div className="grid min-w-0 gap-1.5 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3">
       <span className="text-[12px] font-medium text-[#666666]">{label}</span>
       <strong className="min-h-6 break-words text-base font-semibold leading-snug text-[#1f1f1f]">{value || '-'}</strong>
     </div>
@@ -1829,12 +1829,12 @@ function InfoItem({ label, value }: { label: string; value?: string | number | n
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="rounded-lg border border-dashed border-[#d7e0eb] bg-[#fbf8ec] p-4 text-sm text-[#666666]">{text}</div>;
+  return <div className="rounded-lg border border-dashed border-[#d7e0eb] bg-[#fafafa] p-4 text-sm text-[#666666]">{text}</div>;
 }
 
 function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
   return (
-    <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbf8ec] p-4">
+    <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fafafa] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <span className="text-sm font-semibold text-[#333333]">Add probe</span>
@@ -1857,7 +1857,7 @@ function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {ultrasoundProbeOptions.slice(0, 8).map((option) => (
           <button
-            className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-left text-sm font-medium text-[#2a2926] transition hover:-translate-y-px hover:border-[#b8cbe1] hover:bg-[#f3f8ff]"
+            className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-left text-sm font-medium text-[#18181b] transition hover:-translate-y-px hover:border-[#b8cbe1] hover:bg-[#f3f8ff]"
             key={option.value}
             onClick={() => onSelect(option.value)}
             type="button"
@@ -1878,7 +1878,7 @@ function EndoscopyAccessoryChecklist({
   selectedNames: Set<string>;
 }) {
   return (
-    <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbf8ec] p-4">
+    <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fafafa] p-4">
       <div>
         <span className="text-sm font-semibold text-[#333333]">Checklist phụ kiện nội soi tiêu hóa</span>
         <p className="mt-1 text-xs leading-5 text-[#666666]">Tích vật tư có theo máy. Nếu checklist chưa có, dùng Add accessory.</p>
@@ -1912,7 +1912,7 @@ function TemplateAccessoryPicker({
 }) {
   if (loading) {
     return (
-      <div className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] px-3 text-sm text-[#666666]">
+      <div className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] px-3 text-sm text-[#666666]">
         <Loader2 className="spin-icon" size={16} />
         Đang tải danh sách phụ kiện mẫu
       </div>
@@ -1928,7 +1928,7 @@ function TemplateAccessoryPicker({
       <span className="text-sm font-medium text-[#333333]">Tích chọn phụ kiện mẫu của model</span>
       <div className="grid gap-2 md:grid-cols-2">
         {templates.map((template) => (
-          <label className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] px-3 py-2 text-sm text-[#333333]" key={template.id}>
+          <label className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] px-3 py-2 text-sm text-[#333333]" key={template.id}>
             <input
               checked={selectedIds.has(template.id)}
               className="mt-1"
@@ -2099,4 +2099,4 @@ function toDateInput(value?: string | null) {
 }
 
 const editLabelClass = 'grid min-w-0 gap-2 text-sm font-medium text-[#333333]';
-const editFieldClass = 'h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]';
+const editFieldClass = 'h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';

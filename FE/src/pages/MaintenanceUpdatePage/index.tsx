@@ -244,7 +244,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                     ))}
                   </select>
                   <button
-                    className="secondary-button w-full justify-center border-[#e8dcc0] bg-[#fff7d6] text-[#b5121b]"
+                    className="secondary-button w-full justify-center border-[#e4e4e7] bg-[#f4f4f5] text-[#b5121b]"
                     disabled={form.status === 'COMPLETED' || form.status === 'CANCELLED'}
                     onClick={() => updateForm({ status: 'COMPLETED' })}
                     type="button"
@@ -374,14 +374,14 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 ) : null}
 
                 {!loadingAttachments && attachments.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-[#e5e5e5] bg-[#fbf8ec] p-4 text-center text-sm text-[#666666]">
+                  <div className="rounded-lg border border-dashed border-[#e5e5e5] bg-[#fafafa] p-4 text-center text-sm text-[#666666]">
                     Chưa có ảnh hoặc tài liệu nào cho phiếu này.
                   </div>
                 ) : null}
 
                 {!loadingAttachments
                   ? attachments.map((attachment) => (
-                      <article className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-3" key={attachment.id}>
+                      <article className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3" key={attachment.id}>
                         <div className="min-w-0">
                           <span className="text-xs font-medium text-[#666666]">{attachmentTypeLabel(attachment.type)}</span>
                           <strong className="mt-1 block truncate text-sm text-[#1f1f1f]">{attachment.title || attachment.originalName}</strong>
@@ -432,7 +432,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
               </form>
             </section>
 
-            <div className="rounded-[22px] border border-[#e8dcc0] bg-[#fff7d6] p-3 shadow-[0_16px_40px_rgba(42,41,38,0.08)]">
+            <div className="rounded-[22px] border border-[#e4e4e7] bg-[#f4f4f5] p-3 shadow-[0_16px_40px_rgba(24,24,27,0.08)]">
               <div className="grid gap-2 sm:grid-cols-2 min-[1320px]:grid-cols-1">
                 <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
                   Hủy
@@ -524,7 +524,7 @@ function statusOptionsForCurrent(status: string) {
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid min-w-0 gap-1 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-3">
+    <div className="grid min-w-0 gap-1 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3">
       <span className="text-xs font-medium text-[#666666]">{label}</span>
       <strong className="break-words text-[#1f1f1f]">{value}</strong>
     </div>
@@ -533,7 +533,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 
 function StandardChecklistPanel({ items, onApply, title }: { items: string[]; onApply: () => void; title: string }) {
   return (
-    <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbf8ec] p-4">
+    <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fafafa] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <strong className="text-sm text-[#1f1f1f]">{title}</strong>
@@ -565,13 +565,13 @@ function dateInputValue(value?: string | null) {
   return value ? value.slice(0, 10) : '';
 }
 
-const panelClass = 'rounded-[24px] border border-[#e8dcc0] bg-white/95 p-5 shadow-[0_18px_50px_rgba(42,41,38,0.07)] sm:p-6';
-const sidePanelClass = 'rounded-[24px] border border-[#e8dcc0] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(42,41,38,0.06)]';
+const panelClass = 'rounded-[24px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_18px_50px_rgba(24,24,27,0.07)] sm:p-6';
+const sidePanelClass = 'rounded-[24px] border border-[#e4e4e7] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(24,24,27,0.06)]';
 const sectionHeaderClass = 'mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#dbe9e8] pb-4';
-const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#2a2926] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(42,41,38,0.24)]';
-const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#2a2926]';
+const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#18181b] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(24,24,27,0.24)]';
+const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#18181b]';
 const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
 const sectionDescriptionClass = 'mt-1 text-xs font-medium leading-5 text-[#8a8f99]';
 const labelClass = 'grid min-w-0 content-start gap-2 text-sm font-semibold text-[#333333]';
-const fieldClass = 'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition focus:border-[#2a2926] focus:bg-white focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
-const textareaClass = 'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition focus:border-[#2a2926] focus:bg-white focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)]';
+const fieldClass = 'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
+const textareaClass = 'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]';

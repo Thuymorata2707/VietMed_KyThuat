@@ -265,13 +265,13 @@ function useTicketPortalOverview() {
 
 function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh: () => void }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-[#e8dcc0] bg-[#fff7d6] px-5 py-9 shadow-[0_24px_70px_rgba(42,41,38,0.08)] md:px-8 md:py-12">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(42,41,38,0.075)_1px,transparent_1px),linear-gradient(180deg,rgba(42,41,38,0.055)_1px,transparent_1px)] bg-[size:70px_70px]" />
-      <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-[#eadfbd]/38 blur-3xl" />
+    <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] px-5 py-9 shadow-[0_24px_70px_rgba(24,24,27,0.08)] md:px-8 md:py-12">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(24,24,27,0.075)_1px,transparent_1px),linear-gradient(180deg,rgba(24,24,27,0.055)_1px,transparent_1px)] bg-[size:70px_70px]" />
+      <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-[#e4e4e7]/38 blur-3xl" />
       <div className="relative grid gap-5 min-[980px]:grid-cols-[minmax(0,1fr)_auto] min-[980px]:items-end">
         <div>
-          <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#e8dcc0] bg-white/84 px-4 text-sm font-bold text-[#2a2926] shadow-[0_10px_28px_rgba(42,41,38,0.08)]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#2a2926]" />
+          <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#e4e4e7] bg-white/84 px-4 text-sm font-bold text-[#18181b] shadow-[0_10px_28px_rgba(24,24,27,0.08)]">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#18181b]" />
             Trung tâm phiếu kỹ thuật
           </span>
           <h1 className="mt-5 max-w-[760px] text-[clamp(38px,6vw,76px)] font-black leading-[0.96] tracking-[-0.055em] text-[#1f1f1f]">
@@ -296,28 +296,28 @@ function TicketPortalCardButton({ count, item, onSelect }: { count: number; item
   return (
     <button
       className={[
-        'group relative min-h-[218px] overflow-hidden rounded-[28px] border border-[#e8dcc0] bg-white/94 p-5 text-left shadow-[0_18px_42px_rgba(42,41,38,0.08)] transition',
-        isDisabled ? 'cursor-pointer opacity-78 hover:border-[#e8dcc0]' : 'hover:-translate-y-1 hover:border-[#2a2926]/35 hover:shadow-[0_26px_58px_rgba(42,41,38,0.12)]',
+        'group relative min-h-[218px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white/94 p-5 text-left shadow-[0_18px_42px_rgba(24,24,27,0.08)] transition',
+        isDisabled ? 'cursor-pointer opacity-78 hover:border-[#e4e4e7]' : 'hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_26px_58px_rgba(24,24,27,0.12)]',
       ].join(' ')}
       onClick={() => onSelect(item.value)}
       type="button"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(42,41,38,0.12),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(255,250,250,0.9))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(24,24,27,0.12),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(255,250,250,0.9))]" />
       <div className="relative grid h-full gap-5">
         <div className="flex items-start justify-between gap-4">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2a2926,#f1c84c)] text-white shadow-[0_16px_34px_rgba(42,41,38,0.24)]">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#18181b,#3f3f46)] text-white shadow-[0_16px_34px_rgba(24,24,27,0.24)]">
             {item.icon}
           </span>
-          <span className="rounded-full border border-[#e8dcc0] bg-white px-3 py-1 text-xs font-black text-[#667985]">
+          <span className="rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-black text-[#667985]">
             {count} phiếu
           </span>
         </div>
         <div className="grid gap-2">
-          <span className="text-sm font-black text-[#2a2926]">{item.meta}</span>
+          <span className="text-sm font-black text-[#18181b]">{item.meta}</span>
           <strong className="block text-2xl font-black tracking-[-0.03em] text-[#1f1f1f]">{item.label}</strong>
           <span className="text-sm font-semibold leading-6 text-[#667985]">{item.description}</span>
         </div>
-        <span className="mt-auto inline-flex items-center gap-2 text-sm font-black text-[#2a2926]">
+        <span className="mt-auto inline-flex items-center gap-2 text-sm font-black text-[#18181b]">
           {item.actionLabel}
           <ArrowRight className={isDisabled ? '' : 'transition group-hover:translate-x-1'} size={16} />
         </span>
@@ -328,13 +328,13 @@ function TicketPortalCardButton({ count, item, onSelect }: { count: number; item
 
 function ReceivingPlaceholder({ onBack }: { onBack: () => void }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-dashed border-[#e8dcc0] bg-[#f8fbfb] p-8 text-center shadow-[0_18px_46px_rgba(42,41,38,0.06)]">
+    <section className="relative overflow-hidden rounded-[28px] border border-dashed border-[#e4e4e7] bg-[#f8fbfb] p-8 text-center shadow-[0_18px_46px_rgba(24,24,27,0.06)]">
       <div className="mx-auto grid max-w-2xl justify-items-center gap-4">
-        <span className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-[#fff7d6] text-[#2a2926]">
+        <span className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-[#f4f4f5] text-[#18181b]">
           <Archive size={28} />
         </span>
         <div>
-          <span className="text-sm font-black text-[#2a2926]">Để trống nghiệp vụ</span>
+          <span className="text-sm font-black text-[#18181b]">Để trống nghiệp vụ</span>
           <h1 className="mt-2 text-[clamp(30px,5vw,52px)] font-black tracking-[-0.045em] text-[#1f1f1f]">Phiếu nhận thiết bị</h1>
           <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-7 text-[#667985]">
             Mục này đã được đặt chỗ trong luồng tổng hợp. Khi chốt nghiệp vụ nhận thiết bị, mình sẽ nối form, danh sách và báo cáo vào đúng vị trí này.
@@ -463,8 +463,8 @@ function OperationsBoard({
         </div>
       </div>
 
-      <section className="relative overflow-hidden rounded-[28px] border border-[#e8dcc0] bg-[#f8fbfb] p-4 shadow-[0_18px_46px_rgba(42,41,38,0.07)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_0%,rgba(42,41,38,0.08),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.72),rgba(255,250,250,0.86))]" />
+      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f8fbfb] p-4 shadow-[0_18px_46px_rgba(24,24,27,0.07)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_0%,rgba(24,24,27,0.08),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.72),rgba(255,250,250,0.86))]" />
         <div className="relative grid gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 flex-1 flex-wrap gap-2">
@@ -486,7 +486,7 @@ function OperationsBoard({
           <div className="grid gap-3 min-[980px]:grid-cols-[minmax(280px,1fr)_auto] min-[980px]:items-center">
             <label className="grid min-w-0 gap-1.5">
               <span className="text-xs font-bold text-[#7a6367]">Tìm nhanh</span>
-              <div className="flex min-h-12 items-center gap-3 rounded-[20px] border border-[#e8dcc0] bg-white px-4 text-[#667985] shadow-[0_12px_28px_rgba(42,41,38,0.06)] focus-within:border-[#2a2926] focus-within:shadow-[0_0_0_4px_rgba(42,41,38,0.12)]">
+              <div className="flex min-h-12 items-center gap-3 rounded-[20px] border border-[#e4e4e7] bg-white px-4 text-[#667985] shadow-[0_12px_28px_rgba(24,24,27,0.06)] focus-within:border-[#18181b] focus-within:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]">
                 <Search size={17} />
                 <input
                   className="min-w-0 flex-1 border-0 bg-transparent text-sm font-semibold text-[#1f1f1f] outline-none placeholder:text-[#9b8a8d]"
@@ -495,7 +495,7 @@ function OperationsBoard({
                   value={query}
                 />
                 {query ? (
-                  <button className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#667985] hover:bg-[#fff7d6] hover:text-[#2a2926]" onClick={() => setQuery('')} type="button" aria-label="Xóa tìm kiếm">
+                  <button className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#667985] hover:bg-[#f4f4f5] hover:text-[#18181b]" onClick={() => setQuery('')} type="button" aria-label="Xóa tìm kiếm">
                     <X size={15} />
                   </button>
                 ) : null}
@@ -510,7 +510,7 @@ function OperationsBoard({
           </div>
 
           {filtersOpen ? (
-            <div className="grid gap-3 rounded-[24px] border border-[#e8dcc0] bg-white/86 p-3 shadow-[0_10px_28px_rgba(42,41,38,0.06)] min-[900px]:grid-cols-[minmax(210px,1fr)_minmax(210px,1fr)_180px_auto] min-[900px]:items-end">
+            <div className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white/86 p-3 shadow-[0_10px_28px_rgba(24,24,27,0.06)] min-[900px]:grid-cols-[minmax(210px,1fr)_minmax(210px,1fr)_180px_auto] min-[900px]:items-end">
               <ProductIndustryFilter onChange={setProductIndustryId} value={productIndustryId} />
               <label className="operation-filter-field">
                 <span>Kỹ sư</span>
@@ -554,7 +554,7 @@ function OperationsBoard({
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="overflow-hidden rounded-[28px] border border-[#e8dcc0] bg-white shadow-[0_18px_46px_rgba(42,41,38,0.06)]">
+      <section className="overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white shadow-[0_18px_46px_rgba(24,24,27,0.06)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f4e2e4] bg-[#f8fbfb] px-4 py-3">
           <div>
             <h2 className="text-base font-semibold text-[#1f1f1f]">{queues.find((item) => item.key === queue)?.label}</h2>
@@ -581,7 +581,7 @@ function OperationsBoard({
           <div className="grid">
             {groupedItems.map((group) => (
               <section className="border-b border-[#eeeeee] last:border-b-0" key={group.key}>
-                <div className="flex items-center justify-between bg-[#fbf8ec] px-4 py-2.5">
+                <div className="flex items-center justify-between bg-[#fafafa] px-4 py-2.5">
                   <strong className="text-sm text-[#1f1f1f]">{group.label}</strong>
                   <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#667985]">{group.items.length} phiếu</span>
                 </div>
@@ -614,7 +614,7 @@ function CreateTicketButton({ kind }: { kind: BoardKind }) {
 
 function FilterSummary({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border border-[#e8dcc0] bg-white/82 px-3 text-[#667985] shadow-[0_6px_14px_rgba(42,41,38,0.04)]">
+    <span className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border border-[#e4e4e7] bg-white/82 px-3 text-[#667985] shadow-[0_6px_14px_rgba(24,24,27,0.04)]">
       <span className="text-[#9b7479]">{label}</span>
       <strong className="max-w-[220px] truncate text-[#333333]">{value}</strong>
     </span>
@@ -624,7 +624,7 @@ function FilterSummary({ label, value }: { label: string; value: string }) {
 function TicketCard({ item, onView }: { item: BoardItem; onView: (item: BoardItem) => void }) {
   return (
     <article
-      className={`${ticketCardClass(item)} cursor-pointer focus:outline-none focus-visible:shadow-[0_0_0_3px_rgba(42,41,38,0.14)]`}
+      className={`${ticketCardClass(item)} cursor-pointer focus:outline-none focus-visible:shadow-[0_0_0_3px_rgba(24,24,27,0.14)]`}
       onClick={() => onView(item)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -674,12 +674,12 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
       <section
         aria-modal="true"
-        className="grid max-h-[92vh] w-full max-w-[860px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[30px] border border-[#e8dcc0] bg-white shadow-[0_30px_90px_rgba(28,39,56,0.28)]"
+        className="grid max-h-[92vh] w-full max-w-[860px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[30px] border border-[#e4e4e7] bg-white shadow-[0_30px_90px_rgba(28,39,56,0.28)]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <div className="relative overflow-hidden border-b border-[#f4e2e4] bg-[#fff7d6] p-5">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(42,41,38,0.12),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,248,0.82))]" />
+        <div className="relative overflow-hidden border-b border-[#f4e2e4] bg-[#f4f4f5] p-5">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(24,24,27,0.12),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,248,0.82))]" />
           <div className="relative flex items-start justify-between gap-4">
             <div className="grid min-w-0 gap-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -688,11 +688,11 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
                 {item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? <Badge tone={reviewTone(item.reviewStatus)}>{reviewLabel(item.reviewStatus)}</Badge> : null}
               </div>
               <div>
-                <span className="text-sm font-black text-[#2a2926]">{kindLabel(item.kind)} · {item.code}</span>
+                <span className="text-sm font-black text-[#18181b]">{kindLabel(item.kind)} · {item.code}</span>
                 <h2 className="mt-2 text-[clamp(26px,4vw,42px)] font-black leading-[1.02] tracking-[-0.04em] text-[#1f1f1f]">{item.title}</h2>
               </div>
             </div>
-            <button className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e8dcc0] bg-white text-[#667985] shadow-[0_8px_18px_rgba(42,41,38,0.08)] hover:border-[#2a2926]/35 hover:text-[#2a2926]" onClick={onClose} type="button" aria-label="Đóng xem phiếu">
+            <button className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e4e4e7] bg-white text-[#667985] shadow-[0_8px_18px_rgba(24,24,27,0.08)] hover:border-[#18181b]/35 hover:text-[#18181b]" onClick={onClose} type="button" aria-label="Đóng xem phiếu">
               <X size={18} />
             </button>
           </div>
@@ -700,7 +700,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
 
         <div className="min-h-0 overflow-y-auto p-5">
           <div className="grid gap-4 min-[760px]:grid-cols-[minmax(0,1fr)_280px]">
-            <section className="grid gap-3 rounded-[24px] border border-[#e8dcc0] bg-[#fffefe] p-4">
+            <section className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-[#fffefe] p-4">
               <h3 className="text-sm font-black text-[#1f1f1f]">Thông tin phiếu</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 <PreviewField label="Loại phiếu" value={kindLabel(item.kind)} />
@@ -712,7 +712,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
               </div>
             </section>
 
-            <aside className="grid content-start gap-3 rounded-[24px] border border-[#e8dcc0] bg-[#f8fbfb] p-4">
+            <aside className="grid content-start gap-3 rounded-[24px] border border-[#e4e4e7] bg-[#f8fbfb] p-4">
               <h3 className="text-sm font-black text-[#1f1f1f]">Tình trạng cần chú ý</h3>
               <div className="flex flex-wrap gap-2">
                 {alertBadges(item).length ? (
@@ -726,7 +726,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
               <PreviewField label="Duyệt admin" value={item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? reviewLabel(item.reviewStatus) : 'Không yêu cầu'} />
             </aside>
 
-            <section className="grid gap-3 rounded-[24px] border border-[#e8dcc0] bg-white p-4 min-[760px]:col-span-2">
+            <section className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white p-4 min-[760px]:col-span-2">
               <h3 className="text-sm font-black text-[#1f1f1f]">Khách hàng và thiết bị</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 <PreviewField label="Khách hàng" value={customerText(item)} />
@@ -763,10 +763,10 @@ function PreviewField({ label, value }: { label: string; value: string }) {
 }
 
 function ticketCardClass(item: BoardItem) {
-  const base = 'grid gap-3 rounded-[22px] border px-4 py-4 shadow-[0_8px_24px_rgba(42,41,38,0.045)] transition hover:-translate-y-px hover:shadow-[0_16px_34px_rgba(42,41,38,0.08)] min-[960px]:grid-cols-[42px_minmax(0,1fr)_220px_118px] min-[960px]:items-center';
-  if (urgencyRank(item) >= 70) return `${base} border-[#eadfbd] bg-[#f8fbfb]`;
+  const base = 'grid gap-3 rounded-[22px] border px-4 py-4 shadow-[0_8px_24px_rgba(24,24,27,0.045)] transition hover:-translate-y-px hover:shadow-[0_16px_34px_rgba(24,24,27,0.08)] min-[960px]:grid-cols-[42px_minmax(0,1fr)_220px_118px] min-[960px]:items-center';
+  if (urgencyRank(item) >= 70) return `${base} border-[#e4e4e7] bg-[#f8fbfb]`;
   if (urgencyRank(item) >= 30) return `${base} border-[#efd8a8] bg-[#fffdf8]`;
-  return `${base} border-[#e8dcc0] bg-white`;
+  return `${base} border-[#e4e4e7] bg-white`;
 }
 
 function ProductIndustryFilter({ onChange, value }: { onChange: (value: string) => void; value: string }) {
@@ -957,10 +957,10 @@ function createTicketLink(kind: BoardKind) {
 
 function queueChipClass(active: boolean) {
   return [
-    'inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 text-sm font-bold transition hover:-translate-y-px hover:border-[#2a2926]/35 hover:bg-white',
+    'inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 text-sm font-bold transition hover:-translate-y-px hover:border-[#18181b]/35 hover:bg-white',
     active
-      ? 'border-[#2a2926] bg-white text-[#2a2926] shadow-[0_10px_24px_rgba(42,41,38,0.10)]'
-      : 'border-[#e8dcc0] bg-white/64 text-[#667985]',
+      ? 'border-[#18181b] bg-white text-[#18181b] shadow-[0_10px_24px_rgba(24,24,27,0.10)]'
+      : 'border-[#e4e4e7] bg-white/64 text-[#667985]',
   ].join(' ');
 }
 
@@ -968,16 +968,16 @@ function filterToggleClass(active: boolean) {
   return [
     'inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 text-sm font-bold transition hover:-translate-y-px',
     active
-      ? 'border-[#2a2926] bg-white text-[#2a2926] shadow-[0_10px_24px_rgba(42,41,38,0.10)]'
-      : 'border-[#e8dcc0] bg-white/70 text-[#667985] hover:border-[#2a2926]/35 hover:bg-white',
+      ? 'border-[#18181b] bg-white text-[#18181b] shadow-[0_10px_24px_rgba(24,24,27,0.10)]'
+      : 'border-[#e4e4e7] bg-white/70 text-[#667985] hover:border-[#18181b]/35 hover:bg-white',
   ].join(' ');
 }
 
 function kindIconClass(kind: BoardItem['kind']) {
   const base = 'flex h-[42px] w-[42px] items-center justify-center rounded-lg border';
   if (kind === 'maintenance') return `${base} border-[#b9e8ca] bg-[#eefaf3] text-[#177245]`;
-  if (kind === 'installation') return `${base} border-[#e8dcc0] bg-[#fff7d6] text-[#2a2926]`;
-  return `${base} border-[#eadfbd] bg-[#fff7d6] text-[#2a2926]`;
+  if (kind === 'installation') return `${base} border-[#e4e4e7] bg-[#f4f4f5] text-[#18181b]`;
+  return `${base} border-[#e4e4e7] bg-[#f4f4f5] text-[#18181b]`;
 }
 
 function kindIcon(kind: BoardItem['kind']) {

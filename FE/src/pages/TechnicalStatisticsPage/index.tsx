@@ -200,15 +200,15 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
         <div className="grid gap-3 min-[1180px]:grid-cols-[150px_150px_150px_minmax(190px,1fr)_minmax(190px,1fr)_170px]">
           <label className="operation-filter-field">
             <span>Từ ngày</span>
-            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]" onChange={(event) => setFrom(event.target.value)} type="date" value={from} />
+            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => setFrom(event.target.value)} type="date" value={from} />
           </label>
           <label className="operation-filter-field">
             <span>Đến ngày</span>
-            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]" onChange={(event) => setTo(event.target.value)} type="date" value={to} />
+            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => setTo(event.target.value)} type="date" value={to} />
           </label>
           <label className="operation-filter-field">
             <span>Tuần báo cáo</span>
-            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]" onChange={(event) => setWeekStart(toDateInput(startOfWeek(new Date(`${event.target.value}T00:00:00`))))} type="date" value={weekStart} />
+            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => setWeekStart(toDateInput(startOfWeek(new Date(`${event.target.value}T00:00:00`))))} type="date" value={weekStart} />
           </label>
           <label className="operation-filter-field">
             <span>Kỹ sư</span>
@@ -362,7 +362,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
 function StatCard({ hint, icon, label, value }: { hint: string; icon: ReactNode; label: string; value: number | string }) {
   return (
     <article className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
-      <div className="flex h-[42px] w-[42px] items-center justify-center rounded-lg border border-[#eadfbd] bg-[#fff7d6] text-[#2a2926]">{icon}</div>
+      <div className="flex h-[42px] w-[42px] items-center justify-center rounded-lg border border-[#e4e4e7] bg-[#f4f4f5] text-[#18181b]">{icon}</div>
       <div>
         <span className="text-xs font-semibold text-[#666666]">{label}</span>
         <strong className="block text-2xl leading-tight text-[#1f1f1f]">{value}</strong>
@@ -398,7 +398,7 @@ function StackedBarRow({ installation, label, maintenance, max, repair, total }:
       </div>
       <div className="h-4 overflow-hidden rounded-full bg-[#f2f2f2]">
         <div className="flex h-full overflow-hidden rounded-full" style={{ width: `${width}%` }}>
-          <span className="bg-[#2a2926]" style={{ width: `${repairWidth}%` }} />
+          <span className="bg-[#18181b]" style={{ width: `${repairWidth}%` }} />
           <span className="bg-[#9b5a17]" style={{ width: `${maintenanceWidth}%` }} />
           <span className="bg-[#177245]" style={{ width: `${installationWidth}%` }} />
         </div>
@@ -416,7 +416,7 @@ function SimpleBarRow({ label, max, value }: { label: string; max: number; value
         <span className="font-semibold text-[#666666]">{value}</span>
       </div>
       <div className="h-3 overflow-hidden rounded-full bg-[#f2f2f2]">
-        <span className="block h-full rounded-full bg-[#2a2926]" style={{ width: `${width}%` }} />
+        <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${width}%` }} />
       </div>
     </div>
   );
@@ -427,7 +427,7 @@ function DonutChart({ counts }: { counts: TechnicalStatistics['typeCounts'] }) {
   const repairEnd = total ? (counts.repair / total) * 100 : 0;
   const maintenanceEnd = total ? repairEnd + (counts.maintenance / total) * 100 : 0;
   const background = total
-    ? `conic-gradient(#2a2926 0 ${repairEnd}%, #9b5a17 ${repairEnd}% ${maintenanceEnd}%, #177245 ${maintenanceEnd}% 100%)`
+    ? `conic-gradient(#18181b 0 ${repairEnd}%, #9b5a17 ${repairEnd}% ${maintenanceEnd}%, #177245 ${maintenanceEnd}% 100%)`
     : '#f2f2f2';
 
   return (
@@ -439,7 +439,7 @@ function DonutChart({ counts }: { counts: TechnicalStatistics['typeCounts'] }) {
         </div>
       </div>
       <div className="grid gap-2 text-sm">
-        <Legend color="#2a2926" label="Sửa chữa" value={counts.repair} />
+        <Legend color="#18181b" label="Sửa chữa" value={counts.repair} />
         <Legend color="#9b5a17" label="Bảo trì" value={counts.maintenance} />
         <Legend color="#177245" label="Lắp đặt" value={counts.installation} />
       </div>
@@ -468,7 +468,7 @@ function TrendBars({ max, trend }: { max: number; trend: TrendItem[] }) {
         return (
           <div className="grid min-w-8 justify-items-center gap-2" key={item.date} title={`${formatDay(item.date)}: ${item.total} việc`}>
             <div className="flex h-[170px] items-end">
-              <span className="block w-5 rounded-t-md bg-[#2a2926]" style={{ height }} />
+              <span className="block w-5 rounded-t-md bg-[#18181b]" style={{ height }} />
             </div>
             <span className="text-[11px] font-semibold text-[#666666]">{new Date(item.date).getDate()}</span>
           </div>

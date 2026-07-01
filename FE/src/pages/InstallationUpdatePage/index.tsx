@@ -394,7 +394,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
               <div className="grid gap-3">
                 {form.installedDeviceItems.map((item, index) => (
-                  <div className="rounded-[20px] border border-[#e8dcc0] bg-[#fffdfd] p-4" key={index}>
+                  <div className="rounded-[20px] border border-[#e4e4e7] bg-[#fffdfd] p-4" key={index}>
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <strong className="text-sm text-[#1f1f1f]">Dòng thiết bị {index + 1}</strong>
                       <button className="secondary-button compact" onClick={() => removeDeviceItem(index)} type="button">
@@ -467,7 +467,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 Lưu phiếu trước khi tải để file có dữ liệu mới nhất.
               </p>
               <button
-                className="secondary-button mt-4 w-full justify-center border-[#e8dcc0] bg-white text-[#b5121b]"
+                className="secondary-button mt-4 w-full justify-center border-[#e4e4e7] bg-white text-[#b5121b]"
                 disabled={exporting}
                 onClick={downloadHandoverDocx}
                 type="button"
@@ -495,7 +495,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 </select>
               </label>
               <button
-                className="secondary-button mt-3 w-full justify-center border-[#e8dcc0] bg-[#fff7d6] text-[#b5121b]"
+                className="secondary-button mt-3 w-full justify-center border-[#e4e4e7] bg-[#f4f4f5] text-[#b5121b]"
                 disabled={status === 'INSTALLED' || status === 'CANCELLED'}
                 onClick={() => setStatus('INSTALLED')}
                 type="button"
@@ -533,7 +533,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <div className="rounded-[22px] border border-[#e8dcc0] bg-[#fff7d6] p-3 shadow-[0_16px_40px_rgba(42,41,38,0.08)]">
+            <div className="rounded-[22px] border border-[#e4e4e7] bg-[#f4f4f5] p-3 shadow-[0_16px_40px_rgba(24,24,27,0.08)]">
               <div className="grid gap-2 sm:grid-cols-2 min-[1320px]:grid-cols-1">
                 <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
                   Hủy
@@ -551,19 +551,19 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   );
 }
 
-const panelClass = 'rounded-[24px] border border-[#e8dcc0] bg-white/95 p-5 shadow-[0_18px_50px_rgba(42,41,38,0.07)] sm:p-6';
-const sidePanelClass = 'rounded-[24px] border border-[#e8dcc0] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(42,41,38,0.06)]';
+const panelClass = 'rounded-[24px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_18px_50px_rgba(24,24,27,0.07)] sm:p-6';
+const sidePanelClass = 'rounded-[24px] border border-[#e4e4e7] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(24,24,27,0.06)]';
 const sectionHeaderClass = 'mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#dbe9e8] pb-4';
-const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#2a2926] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(42,41,38,0.24)]';
-const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#2a2926]';
+const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#18181b] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(24,24,27,0.24)]';
+const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#18181b]';
 const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
 const sectionDescriptionClass = 'mt-1 text-xs font-medium leading-5 text-[#8a8f99]';
 const labelClass = 'grid gap-2 text-sm font-semibold text-[#333333]';
 const fieldClass =
-  'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition focus:border-[#2a2926] focus:bg-white focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
+  'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
 
 const textareaClass =
-  'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition focus:border-[#2a2926] focus:bg-white focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)]';
+  'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]';
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (

@@ -382,8 +382,8 @@ export function AdminWorkAssignmentPage() {
 
   return (
     <PageFrame>
-      <section className="relative overflow-hidden rounded-[28px] border border-[#eadfbd] bg-[#fff7d6] p-5 shadow-[0_24px_70px_rgba(42,41,38,0.10)] lg:p-6">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_7%_12%,rgba(42,41,38,0.14),transparent_30%),radial-gradient(circle_at_92%_18%,rgba(255,255,255,0.94),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,247,248,0.78))]" />
+      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] p-5 shadow-[0_24px_70px_rgba(24,24,27,0.10)] lg:p-6">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_7%_12%,rgba(24,24,27,0.14),transparent_30%),radial-gradient(circle_at_92%_18%,rgba(255,255,255,0.94),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,247,248,0.78))]" />
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <PageTitle
             eyebrow="Điều phối kỹ thuật"
@@ -433,19 +433,19 @@ export function AdminWorkAssignmentPage() {
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="overflow-hidden rounded-[24px] border border-[#e8edf3] bg-white shadow-[0_18px_50px_rgba(20,32,51,0.07)]">
-          <div className="grid gap-4 border-b border-[#ebe4d3] bg-[#fbf8ec] p-4">
+          <div className="grid gap-4 border-b border-[#ededf0] bg-[#fafafa] p-4">
             <div className="grid gap-1">
               <h2 className="text-lg font-semibold text-[#1f1f1f]">{currentFilterLabel}</h2>
               <p className="text-xs font-medium leading-5 text-[#8a8f99]">{filterDescription(filter)}</p>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-[#eadfbd] bg-[#fff7d6] p-1" aria-label="Lọc công việc">
+              <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-[#e4e4e7] bg-[#f4f4f5] p-1" aria-label="Lọc công việc">
                 {filterOptions.map((option) => (
                   <button
                     className={`inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-semibold ${
                       filter === option.value
-                        ? 'bg-white text-[#2a2926] shadow-[0_8px_20px_rgba(42,41,38,0.10)]'
-                        : 'bg-transparent text-[#444444] hover:bg-white/70 hover:text-[#2a2926]'
+                        ? 'bg-white text-[#18181b] shadow-[0_8px_20px_rgba(24,24,27,0.10)]'
+                        : 'bg-transparent text-[#444444] hover:bg-white/70 hover:text-[#18181b]'
                     }`}
                     key={option.value}
                     onClick={() => setFilter(option.value)}
@@ -461,7 +461,7 @@ export function AdminWorkAssignmentPage() {
               <span className="text-[13px] font-semibold text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} việc đang hiển thị`}</span>
             </div>
             <div className="grid gap-2 min-[861px]:grid-cols-[minmax(260px,1fr)_190px_220px]">
-              <label className="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-[#d8cfba] bg-white px-3 text-[#666666] focus-within:border-[#2a2926] focus-within:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]">
+              <label className="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-[#d4d4d8] bg-white px-3 text-[#666666] focus-within:border-[#18181b] focus-within:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]">
                 <Search size={16} />
                 <input
                   className="min-w-0 flex-1 border-0 text-[#1f1f1f] outline-none"
@@ -503,13 +503,13 @@ export function AdminWorkAssignmentPage() {
             ) : null}
 
             {!loading ? groupedItems.map((group) => (
-              <section className="border-b border-[#ebe4d3] last:border-b-0" key={group.key}>
+              <section className="border-b border-[#ededf0] last:border-b-0" key={group.key}>
                 <div className="flex flex-wrap items-center justify-between gap-2 bg-[#f8fbfb] px-4 py-3">
                   <div>
                     <h3 className="text-sm font-semibold text-[#1f1f1f]">{group.title}</h3>
                     <p className="mt-0.5 text-[11px] leading-4 text-[#9aa2ad]">{group.description}</p>
                   </div>
-                  <span className="rounded-lg border border-[#eadfbd] bg-white px-2.5 py-1 text-xs font-semibold text-[#2a2926]">{group.items.length} việc</span>
+                  <span className="rounded-lg border border-[#e4e4e7] bg-white px-2.5 py-1 text-xs font-semibold text-[#18181b]">{group.items.length} việc</span>
                 </div>
                 {group.items.map((item) => (
                   <WorkDispatchRow
@@ -532,12 +532,12 @@ export function AdminWorkAssignmentPage() {
         </div>
 
         <aside className="grid content-start gap-4">
-          <div className="rounded-[24px] border border-[#eadfbd] bg-[#fff7d6] p-4 shadow-[0_18px_48px_rgba(42,41,38,0.08)]">
+          <div className="rounded-[24px] border border-[#e4e4e7] bg-[#f4f4f5] p-4 shadow-[0_18px_48px_rgba(24,24,27,0.08)]">
             <h2 className="text-base font-semibold text-[#1f1f1f]">Tải việc theo kỹ sư</h2>
             <div className="mt-4 grid gap-3">
               {engineerLoads.map((engineer) => (
                 <button
-                  className={`grid gap-2 rounded-2xl border bg-white p-3 text-left transition hover:border-[#eadfbd] hover:text-[#2a2926] ${engineerFilter === engineer.id ? 'border-[#2a2926] shadow-[0_10px_24px_rgba(42,41,38,0.10)]' : 'border-[#ebe4d3]'}`}
+                  className={`grid gap-2 rounded-2xl border bg-white p-3 text-left transition hover:border-[#e4e4e7] hover:text-[#18181b] ${engineerFilter === engineer.id ? 'border-[#18181b] shadow-[0_10px_24px_rgba(24,24,27,0.10)]' : 'border-[#ededf0]'}`}
                   key={engineer.id}
                   onClick={() => setEngineerFilter(engineer.id)}
                   type="button"
@@ -547,7 +547,7 @@ export function AdminWorkAssignmentPage() {
                     <span className="rounded-full bg-[#fff1f3] px-2 py-1 text-xs font-semibold text-[#b5121b]">{engineer.active} mở</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-[#f1f2f4]">
-                    <div className="h-full rounded-full bg-[#2a2926]" style={{ width: `${Math.min(100, (engineer.active / busiestEngineerCount) * 100)}%` }} />
+                    <div className="h-full rounded-full bg-[#18181b]" style={{ width: `${Math.min(100, (engineer.active / busiestEngineerCount) * 100)}%` }} />
                   </div>
                   <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold text-[#666666]">
                     <span>{engineer.review} chờ duyệt</span>
@@ -574,8 +574,8 @@ export function AdminWorkAssignmentPage() {
 
 function summaryCardClass(active: boolean) {
   return [
-    'grid min-h-[106px] gap-1.5 rounded-2xl border bg-white/90 p-4 text-left transition hover:-translate-y-[1px] hover:border-[#2a2926] hover:shadow-[0_14px_32px_rgba(42,41,38,0.10)] [&>small]:text-[11px] [&>small]:font-medium [&>small]:leading-4 [&>small]:text-[#8a8f99] [&>span]:text-[13px] [&>span]:font-semibold [&>span]:text-[#666666] [&>strong]:text-[32px] [&>strong]:font-semibold [&>strong]:leading-none [&>strong]:text-[#1f1f1f]',
-    active ? 'border-[#2a2926] shadow-[0_14px_32px_rgba(42,41,38,0.12)]' : 'border-white/80',
+    'grid min-h-[106px] gap-1.5 rounded-2xl border bg-white/90 p-4 text-left transition hover:-translate-y-[1px] hover:border-[#18181b] hover:shadow-[0_14px_32px_rgba(24,24,27,0.10)] [&>small]:text-[11px] [&>small]:font-medium [&>small]:leading-4 [&>small]:text-[#8a8f99] [&>span]:text-[13px] [&>span]:font-semibold [&>span]:text-[#666666] [&>strong]:text-[32px] [&>strong]:font-semibold [&>strong]:leading-none [&>strong]:text-[#1f1f1f]',
+    active ? 'border-[#18181b] shadow-[0_14px_32px_rgba(24,24,27,0.12)]' : 'border-white/80',
   ].join(' ');
 }
 
@@ -605,7 +605,7 @@ function WorkDispatchRow({
   reviewingKey: string;
 }) {
   return (
-    <article className="grid items-start gap-3.5 border-b border-[#ebe4d3] px-4 py-4 last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(240px,330px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(150px,210px)_minmax(260px,330px)]">
+    <article className="grid items-start gap-3.5 border-b border-[#ededf0] px-4 py-4 last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(240px,330px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(150px,210px)_minmax(260px,330px)]">
       <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
       <div className="grid min-w-0 gap-[7px]">
         <div className={metaClass}>
@@ -665,7 +665,7 @@ function WorkDispatchRow({
           Assign
         </button>
         {item.reviewStatus === 'PENDING' ? (
-          <div className="col-span-full grid gap-2 rounded-2xl border border-[#eadfbd] bg-[#f8fbfb] p-3">
+          <div className="col-span-full grid gap-2 rounded-2xl border border-[#e4e4e7] bg-[#f8fbfb] p-3">
             <QualityReviewChecklist item={item} />
             <textarea
               className="form-input min-h-16"
@@ -700,7 +700,7 @@ function QualityReviewChecklist({ item }: { item: WorkItem }) {
       </div>
       <div className="grid gap-1.5">
         {checks.map((check) => (
-          <label className="flex items-start gap-2 rounded-md bg-[#fbf8ec] px-2.5 py-2 text-xs leading-5 text-[#333333]" key={`${scope}-${check}`}>
+          <label className="flex items-start gap-2 rounded-md bg-[#fafafa] px-2.5 py-2 text-xs leading-5 text-[#333333]" key={`${scope}-${check}`}>
             <input className="mt-1" type="checkbox" />
             <span>{check}</span>
           </label>
@@ -843,9 +843,9 @@ function actionTone(item: WorkItem): Tone {
 function kindIconClass(kind: WorkKind) {
   const base = 'flex h-[42px] w-[42px] items-center justify-center rounded-lg border';
   const tones: Record<WorkKind, string> = {
-    repair: 'border-[#eadfbd] bg-[#fff7d6] text-[#2a2926]',
+    repair: 'border-[#e4e4e7] bg-[#f4f4f5] text-[#18181b]',
     maintenance: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
-    installation: 'border-[#eadfbd] bg-[#fff7d6] text-[#2a2926]',
+    installation: 'border-[#e4e4e7] bg-[#f4f4f5] text-[#18181b]',
   };
   return `${base} ${tones[kind]}`;
 }

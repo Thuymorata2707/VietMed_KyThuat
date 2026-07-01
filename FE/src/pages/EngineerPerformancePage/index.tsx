@@ -325,13 +325,13 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
               const maxCustomer = Math.max(1, ...topCustomers.map((item) => item.installationCount + item.repairCount + item.maintenanceCount));
 
               return (
-                <div className="grid gap-2 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-3" key={customer.id || customer.name}>
+                <div className="grid gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3" key={customer.id || customer.name}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <strong className="text-sm text-[#1f1f1f]">{customer.name}</strong>
                     <span className="rounded-lg bg-white px-2 py-1 text-xs font-medium text-[#333333]">{displayCustomerStatus(customer.status)}</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-[#eeeeee]">
-                    <span className="block h-full rounded-full bg-[#2a2926]" style={{ width: `${Math.round((total / maxCustomer) * 100)}%` }} />
+                    <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${Math.round((total / maxCustomer) * 100)}%` }} />
                   </div>
                   <span className="text-xs text-[#666666]">{total} việc, {customer.machineCount} máy - {[customer.code, customer.province, customer.phone].filter(Boolean).join(' - ') || '-'}</span>
                 </div>
@@ -424,7 +424,7 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
     <div className="grid min-h-[104px] gap-2 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-[#666666]">{label}</span>
-        <span className="text-[#2a2926]">{icon}</span>
+        <span className="text-[#18181b]">{icon}</span>
       </div>
       <strong className="text-3xl leading-none text-[#1f1f1f]">{value}</strong>
     </div>
@@ -463,7 +463,7 @@ function WorkDonut({ items }: { items: Array<{ label: string; value: number; ton
   let offset = 0;
 
   return (
-    <div className="mt-5 grid grid-cols-[132px_minmax(0,1fr)] items-center gap-4 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-3 max-sm:grid-cols-1">
+    <div className="mt-5 grid grid-cols-[132px_minmax(0,1fr)] items-center gap-4 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3 max-sm:grid-cols-1">
       <div className="relative h-[132px] w-[132px] justify-self-center">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 132 132" role="img" aria-label="Biểu đồ tỷ trọng công việc">
           <circle cx="66" cy="66" fill="none" r={radius} stroke="#e8eef6" strokeWidth="16" />
@@ -526,7 +526,7 @@ function LoadingRows() {
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="rounded-lg border border-dashed border-[#e5e5e5] bg-[#fbf8ec] p-4 text-sm text-[#666666]">{text}</div>;
+  return <div className="rounded-lg border border-dashed border-[#e5e5e5] bg-[#fafafa] p-4 text-sm text-[#666666]">{text}</div>;
 }
 
 function activityKindLabel(kind: EngineerWorkSummary['activities'][number]['kind']) {
@@ -578,19 +578,19 @@ function buildTechnicalReportHref(from: string, to: string, engineerId: string, 
 function toneText(tone: 'good' | 'warn' | 'neutral') {
   if (tone === 'good') return 'text-[#177245]';
   if (tone === 'warn') return 'text-[#9b5a17]';
-  return 'text-[#2a2926]';
+  return 'text-[#18181b]';
 }
 
 function toneBar(tone: 'good' | 'warn' | 'neutral') {
   if (tone === 'good') return 'bg-[#177245]';
   if (tone === 'warn') return 'bg-[#9b5a17]';
-  return 'bg-[#2a2926]';
+  return 'bg-[#18181b]';
 }
 
 function toneHex(tone: 'good' | 'warn' | 'neutral') {
   if (tone === 'good') return '#177245';
   if (tone === 'warn') return '#9b5a17';
-  return '#2a2926';
+  return '#18181b';
 }
 
 function startOfWeek(value: Date) {
@@ -634,5 +634,5 @@ function firstWeeklyReportSummary(report: EngineerWorkSummary['weeklyReports'][n
   return [row?.content, row?.result, row?.pending, row?.proposal].filter(Boolean).join(' - ');
 }
 
-const fieldClass = 'min-h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#2a2926] focus:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]';
+const fieldClass = 'min-h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
 const cellClass = 'border-b border-[#eeeeee] px-4 py-3 align-top text-[#333333]';
