@@ -388,7 +388,7 @@ export function AdminWorkAssignmentPage() {
         <PageTitle
             eyebrow="Điều phối kỹ thuật"
             title="Bảng điều phối đội kỹ sư"
-            description="Giao người phụ trách, theo dõi việc đang mở và duyệt báo cáo kỹ thuật sau khi hoàn tất."
+            description="Phân kỹ sư, theo dõi việc mở và duyệt báo cáo."
         />
           <button
             className="secondary-button bg-white/90"
@@ -408,22 +408,22 @@ export function AdminWorkAssignmentPage() {
           <button className={summaryCardClass(filter === 'action')} onClick={() => setFilter('action')} type="button">
             <span>Cần xử lý</span>
             <strong>{actionCount}</strong>
-            <small>Chưa phân hoặc chờ duyệt</small>
+            <small>Ưu tiên</small>
           </button>
           <button className={summaryCardClass(filter === 'unassigned')} onClick={() => setFilter('unassigned')} type="button">
             <span>Chưa phân kỹ sư</span>
             <strong>{unassignedCount}</strong>
-            <small>Cần chọn người phụ trách</small>
+            <small>Cần phân</small>
           </button>
           <button className={summaryCardClass(filter === 'review')} onClick={() => setFilter('review')} type="button">
             <span>Chờ xác nhận</span>
             <strong>{pendingReviewCount}</strong>
-            <small>Duyệt hoặc trả về bổ sung</small>
+            <small>Chờ duyệt</small>
           </button>
           <button className={summaryCardClass(filter === 'active')} onClick={() => setFilter('active')} type="button">
             <span>Đang thực hiện</span>
             <strong>{assignedActiveCount}</strong>
-            <small>Theo dõi tiến độ</small>
+            <small>Đang chạy</small>
           </button>
         </div>
       </section>
@@ -436,7 +436,7 @@ export function AdminWorkAssignmentPage() {
           <div className="grid gap-4 border-b border-[#edf0f4] bg-[#fbfcfd] p-4">
             <div className="grid gap-1">
               <h2 className="text-lg font-semibold text-[#1f1f1f]">{currentFilterLabel}</h2>
-              <p className="text-sm leading-6 text-[#666666]">{filterDescription(filter)}</p>
+              <p className="text-xs font-medium leading-5 text-[#8a8f99]">{filterDescription(filter)}</p>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-[#f5c7cb] bg-[#fff7f8] p-1" aria-label="Lọc công việc">
@@ -507,7 +507,7 @@ export function AdminWorkAssignmentPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2 bg-[#fffafa] px-4 py-3">
                   <div>
                     <h3 className="text-sm font-semibold text-[#1f1f1f]">{group.title}</h3>
-                    <p className="mt-0.5 text-xs leading-5 text-[#666666]">{group.description}</p>
+                    <p className="mt-0.5 text-[11px] leading-4 text-[#9aa2ad]">{group.description}</p>
                   </div>
                   <span className="rounded-lg border border-[#f5c7cb] bg-white px-2.5 py-1 text-xs font-semibold text-[#d71920]">{group.items.length} việc</span>
                 </div>
@@ -534,7 +534,6 @@ export function AdminWorkAssignmentPage() {
         <aside className="grid content-start gap-4">
           <div className="rounded-[24px] border border-[#f5c7cb] bg-[#fff7f8] p-4 shadow-[0_18px_48px_rgba(215,25,32,0.08)]">
             <h2 className="text-base font-semibold text-[#1f1f1f]">Tải việc theo kỹ sư</h2>
-            <p className="mt-1 text-sm leading-6 text-[#666666]">Dùng để chọn người phù hợp trước khi phân công.</p>
             <div className="mt-4 grid gap-3">
               {engineerLoads.map((engineer) => (
                 <button
@@ -559,13 +558,12 @@ export function AdminWorkAssignmentPage() {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-[#e8edf3] bg-white p-4 shadow-[0_12px_34px_rgba(20,32,51,0.06)]">
-            <h2 className="text-base font-semibold text-[#1f1f1f]">Nghiệp vụ màn này</h2>
-            <div className="mt-3 grid gap-3 text-sm leading-6 text-[#555555]">
-              <p><strong>1.</strong> Phiếu mới vào trạng thái chưa phân.</p>
-              <p><strong>2.</strong> Admin chọn kỹ sư theo tải việc rồi bấm Assign.</p>
-              <p><strong>3.</strong> Kỹ sư xử lý trong Việc của tôi.</p>
-              <p><strong>4.</strong> Khi kỹ sư gửi kết quả, admin Confirm hoặc trả về sửa.</p>
+          <div className="rounded-[20px] border border-[#e8edf3] bg-white p-4 shadow-[0_10px_26px_rgba(20,32,51,0.05)]">
+            <h2 className="text-base font-semibold text-[#1f1f1f]">Luồng nhanh</h2>
+            <div className="mt-3 grid gap-2 text-xs font-medium leading-5 text-[#6f7784]">
+              <p><strong>1.</strong> Chọn kỹ sư.</p>
+              <p><strong>2.</strong> Kỹ sư xử lý.</p>
+              <p><strong>3.</strong> Admin duyệt.</p>
             </div>
           </div>
         </aside>
@@ -576,7 +574,7 @@ export function AdminWorkAssignmentPage() {
 
 function summaryCardClass(active: boolean) {
   return [
-    'grid min-h-[118px] gap-1.5 rounded-2xl border bg-white/90 p-4 text-left transition hover:-translate-y-[1px] hover:border-[#d71920] hover:shadow-[0_14px_32px_rgba(215,25,32,0.10)] [&>small]:text-xs [&>small]:font-medium [&>small]:leading-5 [&>small]:text-[#666666] [&>span]:text-[13px] [&>span]:font-semibold [&>span]:text-[#666666] [&>strong]:text-[32px] [&>strong]:font-semibold [&>strong]:leading-none [&>strong]:text-[#1f1f1f]',
+    'grid min-h-[106px] gap-1.5 rounded-2xl border bg-white/90 p-4 text-left transition hover:-translate-y-[1px] hover:border-[#d71920] hover:shadow-[0_14px_32px_rgba(215,25,32,0.10)] [&>small]:text-[11px] [&>small]:font-medium [&>small]:leading-4 [&>small]:text-[#8a8f99] [&>span]:text-[13px] [&>span]:font-semibold [&>span]:text-[#666666] [&>strong]:text-[32px] [&>strong]:font-semibold [&>strong]:leading-none [&>strong]:text-[#1f1f1f]',
     active ? 'border-[#d71920] shadow-[0_14px_32px_rgba(215,25,32,0.12)]' : 'border-white/80',
   ].join(' ');
 }
@@ -714,11 +712,11 @@ function QualityReviewChecklist({ item }: { item: WorkItem }) {
 
 function filterDescription(filter: WorkFilter) {
   const descriptions: Record<WorkFilter, string> = {
-    action: 'Những việc admin cần làm ngay: phân kỹ sư hoặc xác nhận báo cáo kỹ sư gửi về.',
-    unassigned: 'Danh sách phiếu chưa có người phụ trách. Chọn kỹ sư rồi bấm phân việc.',
-    review: 'Những báo cáo đã hoàn tất và đang chờ admin xác nhận hoặc trả về bổ sung.',
-    active: 'Những việc đã có kỹ sư phụ trách và chưa đóng, dùng để theo dõi tiến độ.',
-    all: 'Toàn bộ phiếu sửa chữa, bảo trì và lắp đặt trong phạm vi tìm kiếm hiện tại.',
+    action: 'Việc cần admin xử lý.',
+    unassigned: 'Chưa có người phụ trách.',
+    review: 'Chờ admin xác nhận.',
+    active: 'Đang được kỹ sư xử lý.',
+    all: 'Tất cả việc trong bộ lọc.',
   };
   return descriptions[filter];
 }
@@ -728,25 +726,25 @@ function groupWorkItems(items: WorkItem[], filter: WorkFilter) {
     {
       key: 'review',
       title: 'Chờ admin xác nhận',
-      description: 'Kỹ sư đã gửi kết quả, admin cần duyệt hoặc trả về bổ sung.',
+      description: 'Cần duyệt hoặc trả về.',
       items: items.filter((item) => item.reviewStatus === 'PENDING').sort(compareWorkItemsByDateDesc),
     },
     {
       key: 'unassigned',
       title: 'Chưa phân kỹ sư',
-      description: 'Cần chọn người phụ trách để việc bắt đầu chạy.',
+      description: 'Cần chọn kỹ sư.',
       items: items.filter((item) => !item.engineer?.id).sort(compareWorkItemsByDateDesc),
     },
     {
       key: 'active',
       title: 'Đang thực hiện',
-      description: 'Đã có kỹ sư phụ trách, cần theo dõi tiến độ và lịch hẹn.',
+      description: 'Đang theo dõi.',
       items: items.filter((item) => item.engineer?.id && item.reviewStatus !== 'PENDING' && !isClosed(item.status)).sort(compareWorkItemsByDateDesc),
     },
     {
       key: 'closed',
       title: 'Đã đóng',
-      description: 'Các việc đã hoàn tất, đã lắp đặt hoặc đã hủy.',
+      description: 'Đã hoàn tất.',
       items: items.filter((item) => item.engineer?.id && item.reviewStatus !== 'PENDING' && isClosed(item.status)).sort(compareWorkItemsByDateDesc),
     },
   ];

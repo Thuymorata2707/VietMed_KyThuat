@@ -377,7 +377,7 @@ function Panel({ children, subtitle, title }: { children: ReactNode; subtitle: s
     <section className="grid content-start gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
       <div>
         <h2 className="text-base font-semibold text-[#1f1f1f]">{title}</h2>
-        <p className="mt-1 text-sm text-[#666666]">{subtitle}</p>
+        <p className="mt-1 line-clamp-1 text-xs font-medium text-[#8a8f99]">{subtitle}</p>
       </div>
       {children}
     </section>

@@ -276,7 +276,7 @@ export function AdminRegionsPage() {
                     <Building2 size={18} />
                     <span className="grid min-w-0 gap-0.5">
                       <strong className="overflow-hidden text-ellipsis whitespace-nowrap">{customer.name}</strong>
-                      <small className="overflow-hidden text-ellipsis whitespace-nowrap text-xs leading-snug text-[#666666]">
+                      <small className="overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-snug text-[#8a8f99]">
                         {[customer.customerCode, customer.phone, customer.fullAddress || customer.address].filter(Boolean).join(' - ') ||
                           'Chưa có thông tin liên hệ'}
                       </small>
@@ -298,14 +298,14 @@ export function AdminRegionsPage() {
                   <div className="grid min-h-[220px] content-center justify-items-center gap-2 text-center text-[#666666]">
                     <PackageSearch size={24} />
                     <strong>Chọn khách hàng để xem máy đã mua</strong>
-                    <span className="text-xs leading-snug">Một khách hàng có thể có nhiều máy, mỗi máy sẽ hiển thị thành một khối riêng.</span>
+                    <span className="text-xs leading-snug">Chọn khách hàng để xem máy.</span>
                   </div>
                 ) : null}
 
                 {!loadingCustomerDetail && selectedCustomer ? (
                   <>
                     <div className="grid gap-1">
-                      <span className="text-xs leading-snug text-[#666666]">Máy của khách hàng</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#98a2b3]">Máy của khách hàng</span>
                       <h3>{selectedCustomer.name}</h3>
                     </div>
 
@@ -314,8 +314,12 @@ export function AdminRegionsPage() {
                         {selectedCustomer.machines.map((machine) => (
                           <article className="grid min-w-0 gap-3 rounded-[14px] border border-[#eeeeee] bg-white p-[13px]" key={machine.id}>
                             <div className="grid min-w-0 gap-1">
-                              <strong className="overflow-hidden text-ellipsis whitespace-nowrap">{machine.machineCode || machine.serialNumber || machine.name || 'Máy chưa có mã'}</strong>
-                              <span className="overflow-hidden text-ellipsis whitespace-nowrap text-xs leading-snug text-[#666666]">{[machine.modelName, machine.manufacturer].filter(Boolean).join(' - ') || 'Chưa có model'}</span>
+                              <strong className="overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-semibold text-[#182033]">
+                                {machine.name || machine.modelName || machine.manufacturer || 'Máy chưa có tên'}
+                              </strong>
+                              <span className="overflow-hidden text-ellipsis whitespace-nowrap text-xs leading-snug text-[#8a8f99]">
+                                {[machine.machineCode, machine.serialNumber].filter(Boolean).join(' - ') || 'Chưa có mã/SN'}
+                              </span>
                             </div>
                             <dl className="m-0 grid grid-cols-5 gap-2 max-sm:grid-cols-1">
                               <div>
@@ -346,7 +350,7 @@ export function AdminRegionsPage() {
                       <div className="grid min-h-[220px] content-center justify-items-center gap-2 text-center text-[#666666]">
                         <PackageSearch size={24} />
                         <strong>Khách hàng này chưa có máy</strong>
-                        <span className="text-xs leading-snug">Khi máy được bán/lắp đặt và gán khách hàng, danh sách sẽ hiện ở đây.</span>
+                        <span className="text-xs leading-snug">Chưa có máy gắn với khách hàng này.</span>
                       </div>
                     )}
                   </>

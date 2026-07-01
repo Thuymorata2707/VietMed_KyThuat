@@ -451,7 +451,7 @@ function PanelHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: str
     <div>
       <span className="text-[12px] font-medium text-[#666666]">{eyebrow}</span>
       <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">{title}</h2>
-      {subtitle ? <p className="mt-1 text-sm text-[#666666]">{subtitle}</p> : null}
+      {subtitle ? <p className="mt-1 line-clamp-1 text-xs font-medium text-[#8a8f99]">{subtitle}</p> : null}
     </div>
   );
 }
