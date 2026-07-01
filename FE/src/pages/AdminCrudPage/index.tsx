@@ -300,41 +300,45 @@ export function AdminCrudPage({
           ) : null}
         </div>
 
-        <div className={isCustomerCrud ? 'crud-table-wrap customer-table-wrap' : 'crud-table-wrap'}>
-          <table>
-            <thead>
-              <tr>
-                {isCustomerCrud ? (
-                  <>
-                    <th>Khách hàng</th>
-                    <th>Liên hệ</th>
-                    <th>Khu vực</th>
-                    <th>Phụ trách</th>
-                    <th>Máy</th>
-                    <th>Trạng thái</th>
-                  </>
-                ) : (
-                  config.columns.map((column) => (
+        {isCustomerCrud ? (
+          <div className="customer-card-list">
+            {filteredRows.map((row, index) => (
+              <CustomerCard
+                canDelete={config.canDelete !== false}
+                canUpdate={config.canUpdate !== false}
+                key={String(row.id ?? index)}
+                onDelete={() => setDeletingRow(row)}
+                onEdit={() => startEdit(row)}
+                onSelect={() => setSelectedRow(row)}
+                row={row}
+              />
+            ))}
+            {loading ? (
+              <div className="table-state">
+                <Loader2 className="spin-icon" size={18} />
+                Đang tải dữ liệu...
+              </div>
+            ) : null}
+            {!loading && filteredRows.length === 0 ? (
+              <div className="table-state empty-state">
+                <strong>Không có dữ liệu phù hợp</strong>
+                <span>Thử đổi từ khóa tìm kiếm hoặc tạo mới {config.entityLabel}.</span>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="crud-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  {config.columns.map((column) => (
                     <th key={column.key}>{column.label}</th>
-                  ))
-                )}
-                {config.canUpdate !== false || config.canDelete !== false ? <th className="actions-column"></th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.map((row, index) => (
-                isCustomerCrud ? (
-                  <CustomerTableRow
-                    canDelete={config.canDelete !== false}
-                    canUpdate={config.canUpdate !== false}
-                    key={String(row.id ?? index)}
-                    onDelete={() => setDeletingRow(row)}
-                    onEdit={() => startEdit(row)}
-                    onKeyDown={(event) => handleRowKeyDown(event, row)}
-                    onSelect={() => setSelectedRow(row)}
-                    row={row}
-                  />
-                ) : (
+                  ))}
+                  {config.canUpdate !== false || config.canDelete !== false ? <th className="actions-column"></th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((row, index) => (
                   <tr
                     className="clickable-row"
                     key={String(row.id ?? index)}
@@ -383,31 +387,31 @@ export function AdminCrudPage({
                       </td>
                     ) : null}
                   </tr>
-                )
-              ))}
-              {loading ? (
-                <tr>
-                  <td colSpan={tableColumnCount}>
-                    <div className="table-state">
-                      <Loader2 className="spin-icon" size={18} />
-                      Đang tải dữ liệu...
-                    </div>
-                  </td>
-                </tr>
-              ) : null}
-              {!loading && filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={tableColumnCount}>
-                    <div className="table-state empty-state">
-                      <strong>Không có dữ liệu phù hợp</strong>
-                      <span>Thử đổi từ khóa tìm kiếm hoặc tạo mới {config.entityLabel}.</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+                ))}
+                {loading ? (
+                  <tr>
+                    <td colSpan={tableColumnCount}>
+                      <div className="table-state">
+                        <Loader2 className="spin-icon" size={18} />
+                        Đang tải dữ liệu...
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                {!loading && filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={tableColumnCount}>
+                      <div className="table-state empty-state">
+                        <strong>Không có dữ liệu phù hợp</strong>
+                        <span>Thử đổi từ khóa tìm kiếm hoặc tạo mới {config.entityLabel}.</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <div className="pagination-bar">
           <div>
@@ -1072,14 +1076,13 @@ function CustomerQuickField({ label, value }: { label: string; value: ReactNode 
   );
 }
 
-function CustomerTableRow({
+function CustomerCard({
   row,
   canUpdate,
   canDelete,
   onSelect,
   onEdit,
   onDelete,
-  onKeyDown,
 }: {
   row: TableRow;
   canUpdate: boolean;
@@ -1087,7 +1090,6 @@ function CustomerTableRow({
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => void;
 }) {
   const editHref = adminCrudFormEditHref('/customers', row);
   const name = formatDisplayValue(readPath(row, 'hospitalName') || readPath(row, 'name'));
@@ -1103,80 +1105,69 @@ function CustomerTableRow({
   const machineCount = Number(readPath(row, '_count.machines') ?? 0);
 
   return (
-    <tr className="clickable-row customer-row" onClick={onSelect} onKeyDown={onKeyDown} tabIndex={0}>
-      <td>
+    <article
+      className="customer-card"
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      tabIndex={0}
+    >
+      <div className="customer-card-main">
         <div className="customer-name-cell">
           <strong>{name}</strong>
           <span>{[code !== '-' ? code : '', displayLabel(String(readPath(row, 'customerType') ?? ''))].filter(Boolean).join(' - ') || 'Chưa phân loại'}</span>
           {address ? <small>{address}</small> : null}
         </div>
-      </td>
-      <td>
-        <div className="customer-stack-cell">
-          <strong>{contact}</strong>
-          <span>{phone}</span>
+
+        <div className="customer-card-meta">
+          <div className="customer-stack-cell">
+            <span>Liên hệ</span>
+            <strong>{contact}</strong>
+            <small>{phone}</small>
+          </div>
+          <div className="customer-stack-cell">
+            <span>Khu vực</span>
+            <strong>{region}</strong>
+          </div>
+          <div className="customer-stack-cell">
+            <span>Phụ trách</span>
+            <strong>{engineer === '-' ? 'Chưa gán' : engineer}</strong>
+          </div>
         </div>
-      </td>
-      <td>{region}</td>
-      <td>
-        <span className={engineer === '-' ? 'customer-muted-chip' : 'customer-owner-chip'}>{engineer === '-' ? 'Chưa gán' : engineer}</span>
-      </td>
-      <td>
-        <span className="customer-machine-count">{machineCount}</span>
-      </td>
-      <td>{renderStatusBadge(readPath(row, 'status'))}</td>
-      {canUpdate || canDelete ? (
-        <td className="actions-cell">
-          <div className="row-actions">
-            <button
-              className="customer-view-button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onSelect();
-              }}
-              type="button"
-            >
-              Xem
-            </button>
-            <Link className="customer-profile-link" onClick={(event) => event.stopPropagation()} to={`/customers/profile?customerId=${String(readPath(row, 'id') ?? '')}`}>
+      </div>
+
+      <div className="customer-card-side">
+        <span className="customer-machine-count">{machineCount} máy</span>
+        {renderStatusBadge(readPath(row, 'status'))}
+        {canUpdate || canDelete ? (
+          <div className="row-actions" onClick={(event) => event.stopPropagation()}>
+            <Link className="customer-profile-link" to={`/customers/profile?customerId=${String(readPath(row, 'id') ?? '')}`}>
               Hồ sơ
             </Link>
             {canUpdate ? (
               editHref ? (
-                <Link className="icon-button" onClick={(event) => event.stopPropagation()} title="Edit" to={editHref}>
+                <Link className="icon-button" title="Edit" to={editHref}>
                   <Edit3 size={16} />
                 </Link>
               ) : (
-                <button
-                  className="icon-button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onEdit();
-                  }}
-                  title="Edit"
-                  type="button"
-                >
+                <button className="icon-button" onClick={onEdit} title="Edit" type="button">
                   <Edit3 size={16} />
                 </button>
               )
             ) : null}
             {canDelete ? (
-              <button
-                className="icon-button danger"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDelete();
-                }}
-                title="Delete"
-                type="button"
-              >
+              <button className="icon-button danger" onClick={onDelete} title="Delete" type="button">
                 <Trash2 size={16} />
               </button>
             ) : null}
           </div>
-        </td>
-      ) : null}
-    </tr>
+        ) : null}
+      </div>
+    </article>
   );
 }
 

@@ -623,7 +623,17 @@ function FilterSummary({ label, value }: { label: string; value: string }) {
 
 function TicketCard({ item, onView }: { item: BoardItem; onView: (item: BoardItem) => void }) {
   return (
-    <article className={ticketCardClass(item)}>
+    <article
+      className={`${ticketCardClass(item)} cursor-pointer focus:outline-none focus-visible:shadow-[0_0_0_3px_rgba(215,25,32,0.14)]`}
+      onClick={() => onView(item)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onView(item);
+        }
+      }}
+      tabIndex={0}
+    >
       <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
       <div className="grid min-w-0 gap-1.5">
         <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#666666]">
@@ -650,10 +660,7 @@ function TicketCard({ item, onView }: { item: BoardItem; onView: (item: BoardIte
         {item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? <Badge tone={reviewTone(item.reviewStatus)}>{reviewLabel(item.reviewStatus)}</Badge> : null}
         <span className="text-[13px] font-semibold text-[#333333]">{item.engineer?.fullName || item.engineer?.email || 'Chưa phân kỹ sư'}</span>
       </div>
-      <div className="grid gap-2 min-[520px]:grid-cols-2 min-[960px]:grid-cols-1">
-        <button className="secondary-button justify-center rounded-2xl" onClick={() => onView(item)} type="button">
-          Xem
-        </button>
+      <div className="grid gap-2" onClick={(event) => event.stopPropagation()}>
         <Link className="primary-button justify-center rounded-2xl" to={editHref(item)}>
           Cập nhật
         </Link>
