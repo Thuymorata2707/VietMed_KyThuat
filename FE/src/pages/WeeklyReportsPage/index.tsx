@@ -313,7 +313,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       <section className="grid min-w-0 gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <span className="text-xs font-medium text-[#d71920]">Tuần báo cáo</span>
+            <span className="text-xs font-medium text-[#0f766e]">Tuần báo cáo</span>
             <h2 className="mt-1 text-xl text-[#1f1f1f]">
               {formatDate(weekStart)} - {formatDate(weekEnd)}
             </h2>
@@ -390,7 +390,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
         <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <span className="text-xs font-semibold text-[#d71920]">Phản hồi báo cáo</span>
+              <span className="text-xs font-semibold text-[#0f766e]">Phản hồi báo cáo</span>
               <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">
                 {canReview ? 'Kiểm duyệt báo cáo tuần' : 'Ý kiến từ admin'}
               </h2>
@@ -416,7 +416,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             <label className="grid gap-2 text-sm font-medium text-[#333333]">
               Nội dung cần chỉnh nếu trả báo cáo
               <textarea
-                className="min-h-24 rounded-lg border border-[#d6d6d6] px-3 py-2.5 text-[#1f1f1f] outline-none focus:border-[#d71920]"
+                className="min-h-24 rounded-lg border border-[#d6d6d6] px-3 py-2.5 text-[#1f1f1f] outline-none focus:border-[#0f766e]"
                 onChange={(event) => setReviewNoteDraft(event.target.value)}
                 placeholder="Ví dụ: bổ sung kết quả sửa chữa tại khách hàng A và ghi rõ tồn đọng còn lại."
                 value={reviewNoteDraft}
@@ -441,11 +441,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-[#ffffff] p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff5f5] text-[#d71920]">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#ecfdf8] text-[#0f766e]">
               <CalendarCheck size={18} />
             </span>
             <div>
-              <span className="text-xs font-semibold text-[#d71920]">Lịch trong tuần</span>
+              <span className="text-xs font-semibold text-[#0f766e]">Lịch trong tuần</span>
               <h2 className="text-lg font-semibold text-[#1f1f1f]">Dùng lịch để lập báo cáo</h2>
             </div>
           </div>
@@ -548,7 +548,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
           <label className="grid min-w-[min(520px,100%)] gap-2 text-sm font-medium text-[#333333]">
             Ghi chú chung
             <textarea
-              className="min-h-20 rounded-lg border border-[#d6d6d6] px-3 py-2.5 text-[#1f1f1f] outline-none focus:border-[#d71920]"
+              className="min-h-20 rounded-lg border border-[#d6d6d6] px-3 py-2.5 text-[#1f1f1f] outline-none focus:border-[#0f766e]"
               disabled={!canEdit}
               onChange={(event) => setNote(event.target.value)}
               value={note}

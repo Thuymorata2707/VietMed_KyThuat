@@ -331,7 +331,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
                     <span className="rounded-lg bg-white px-2 py-1 text-xs font-medium text-[#333333]">{displayCustomerStatus(customer.status)}</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-[#eeeeee]">
-                    <span className="block h-full rounded-full bg-[#d71920]" style={{ width: `${Math.round((total / maxCustomer) * 100)}%` }} />
+                    <span className="block h-full rounded-full bg-[#0f766e]" style={{ width: `${Math.round((total / maxCustomer) * 100)}%` }} />
                   </div>
                   <span className="text-xs text-[#666666]">{total} việc, {customer.machineCount} máy - {[customer.code, customer.province, customer.phone].filter(Boolean).join(' - ') || '-'}</span>
                 </div>
@@ -424,7 +424,7 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
     <div className="grid min-h-[104px] gap-2 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-[#666666]">{label}</span>
-        <span className="text-[#d71920]">{icon}</span>
+        <span className="text-[#0f766e]">{icon}</span>
       </div>
       <strong className="text-3xl leading-none text-[#1f1f1f]">{value}</strong>
     </div>
@@ -435,7 +435,7 @@ function QualityCard({ label, tone, value }: { label: string; tone: 'good' | 'wa
   const toneClass = tone === 'good'
     ? 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]'
     : tone === 'danger'
-      ? 'border-[#f5c7cb] bg-[#fff5f5] text-[#b5121b]'
+      ? 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]'
       : 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]';
 
   return (
@@ -578,19 +578,19 @@ function buildTechnicalReportHref(from: string, to: string, engineerId: string, 
 function toneText(tone: 'good' | 'warn' | 'neutral') {
   if (tone === 'good') return 'text-[#177245]';
   if (tone === 'warn') return 'text-[#9b5a17]';
-  return 'text-[#d71920]';
+  return 'text-[#0f766e]';
 }
 
 function toneBar(tone: 'good' | 'warn' | 'neutral') {
   if (tone === 'good') return 'bg-[#177245]';
   if (tone === 'warn') return 'bg-[#9b5a17]';
-  return 'bg-[#d71920]';
+  return 'bg-[#0f766e]';
 }
 
 function toneHex(tone: 'good' | 'warn' | 'neutral') {
   if (tone === 'good') return '#177245';
   if (tone === 'warn') return '#9b5a17';
-  return '#d71920';
+  return '#0f766e';
 }
 
 function startOfWeek(value: Date) {
@@ -634,5 +634,5 @@ function firstWeeklyReportSummary(report: EngineerWorkSummary['weeklyReports'][n
   return [row?.content, row?.result, row?.pending, row?.proposal].filter(Boolean).join(' - ');
 }
 
-const fieldClass = 'min-h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';
+const fieldClass = 'min-h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]';
 const cellClass = 'border-b border-[#eeeeee] px-4 py-3 align-top text-[#333333]';

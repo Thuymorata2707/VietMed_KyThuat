@@ -24,8 +24,8 @@ export function SummaryTile({
   const className = [
     'grid min-h-[104px] min-w-0 gap-2 overflow-hidden rounded-lg border p-4 text-left shadow-[0_1px_2px_rgba(20,32,51,0.04)] transition',
     toneClass,
-    onClick ? 'hover:-translate-y-[1px] hover:border-[#d71920] hover:shadow-[0_10px_28px_rgba(20,32,51,0.08)]' : '',
-    active ? 'ring-2 ring-[#d71920]/15' : '',
+    onClick ? 'hover:-translate-y-[1px] hover:border-[#0f766e] hover:shadow-[0_10px_28px_rgba(20,32,51,0.08)]' : '',
+    active ? 'ring-2 ring-[#0f766e]/15' : '',
   ].join(' ');
   const content = (
     <>

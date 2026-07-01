@@ -105,10 +105,10 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
   return (
     <section className="grid min-w-0 gap-5 overflow-x-hidden p-6 max-sm:p-4">
-      <div className="grid gap-4 rounded-[28px] border border-[#f0d7d9] bg-white/95 p-5 shadow-[0_22px_60px_rgba(120,20,28,0.08)]">
+      <div className="grid gap-4 rounded-[28px] border border-[#cfe4e2] bg-white/95 p-5 shadow-[0_22px_60px_rgba(15,118,110,0.08)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#d71920]">Chăm sóc khách hàng</span>
+            <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#0f766e]">Chăm sóc khách hàng</span>
             <h1 className="mt-1 text-2xl font-extrabold tracking-normal text-[#1f1f1f]">{isAdminProfile ? 'Hồ sơ khách hàng' : 'Khách hàng phụ trách'}</h1>
             <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-[#666666]">
               {isAdminProfile
@@ -128,7 +128,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
           <label className="grid max-w-sm gap-1.5 text-sm font-bold text-[#333333]">
             Lọc theo kỹ sư quản lý
             <select
-              className="h-12 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)]"
+              className="h-12 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)]"
               onChange={(event) => {
                 setSelectedEngineerId(event.target.value);
                 setSelectedCustomerId('');
@@ -157,18 +157,18 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
       {error ? <div className="rounded-2xl border border-[#fecdd3] bg-[#fff1f3] px-4 py-3 text-sm font-bold text-[#b5121b]">{error}</div> : null}
 
       <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-        <aside className="grid min-w-0 content-start gap-3 rounded-[26px] border border-[#f0d7d9] bg-white p-4 shadow-[0_18px_50px_rgba(120,20,28,0.06)] lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:grid-rows-[auto_auto_minmax(0,1fr)_auto] lg:overflow-hidden">
+        <aside className="grid min-w-0 content-start gap-3 rounded-[26px] border border-[#cfe4e2] bg-white p-4 shadow-[0_18px_50px_rgba(15,118,110,0.06)] lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:grid-rows-[auto_auto_minmax(0,1fr)_auto] lg:overflow-hidden">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8a8a]" size={16} />
             <input
-              className="h-12 w-full rounded-2xl border border-[#ded8d8] bg-[#fffefe] pl-9 pr-3 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#8a8a8a] focus:border-[#d71920] focus:bg-white focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)]"
+              className="h-12 w-full rounded-2xl border border-[#ded8d8] bg-[#fffefe] pl-9 pr-3 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#8a8a8a] focus:border-[#0f766e] focus:bg-white focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)]"
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Tìm khách hàng, mã, tỉnh..."
               value={search}
             />
           </label>
 
-          <div className="grid gap-2 rounded-2xl border border-[#f2e2e3] bg-[#fffafa] px-3 py-2 text-xs font-bold text-[#666666]">
+          <div className="grid gap-2 rounded-2xl border border-[#dbe9e8] bg-[#f8fbfb] px-3 py-2 text-xs font-bold text-[#666666]">
             <div className="flex items-center justify-between gap-3">
               <span>{totalCustomers} khách phù hợp</span>
               <span>Trang {page}/{totalPages}</span>
@@ -188,8 +188,8 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
                   <button
                     className={`grid min-w-0 gap-2 rounded-lg border p-3 text-left transition ${
                       isActive
-                        ? 'border-[#f0d7d9] bg-[#fff7f7] shadow-[inset_4px_0_0_#d71920,0_10px_24px_rgba(215,25,32,0.08)]'
-                        : 'border-[#eeeeee] bg-white hover:border-[#f0d7d9] hover:bg-[#fffafa]'
+                        ? 'border-[#cfe4e2] bg-[#ecfdf8] shadow-[inset_4px_0_0_#0f766e,0_10px_24px_rgba(15,118,110,0.08)]'
+                        : 'border-[#eeeeee] bg-white hover:border-[#cfe4e2] hover:bg-[#f8fbfb]'
                     }`}
                     key={customer.id}
                     onClick={() => setSelectedCustomerId(customer.id)}
@@ -211,7 +211,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
 
           <div className="grid grid-cols-2 gap-2">
             <button
-              className="h-10 rounded-2xl border border-[#ded8d8] bg-white text-sm font-bold text-[#333333] transition hover:border-[#f0d7d9] hover:text-[#d71920] disabled:cursor-not-allowed disabled:opacity-45"
+              className="h-10 rounded-2xl border border-[#ded8d8] bg-white text-sm font-bold text-[#333333] transition hover:border-[#cfe4e2] hover:text-[#0f766e] disabled:cursor-not-allowed disabled:opacity-45"
               disabled={page <= 1 || customersQuery.isFetching}
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               type="button"
@@ -219,7 +219,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
               Trước
             </button>
             <button
-              className="h-10 rounded-2xl border border-[#ded8d8] bg-white text-sm font-bold text-[#333333] transition hover:border-[#f0d7d9] hover:text-[#d71920] disabled:cursor-not-allowed disabled:opacity-45"
+              className="h-10 rounded-2xl border border-[#ded8d8] bg-white text-sm font-bold text-[#333333] transition hover:border-[#cfe4e2] hover:text-[#0f766e] disabled:cursor-not-allowed disabled:opacity-45"
               disabled={page >= totalPages || customersQuery.isFetching}
               onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
               type="button"

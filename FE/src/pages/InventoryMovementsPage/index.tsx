@@ -231,7 +231,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
         <SummaryCard icon={<PackageCheck size={18} />} label="Đã lắp đặt" tone="good" value={stats.installed} />
       </section>
 
-      <div className="rounded-[20px] border border-[#f0d7d9] bg-white/90 p-1 font-sans shadow-[0_10px_26px_rgba(120,20,28,0.05)]">
+      <div className="rounded-[20px] border border-[#cfe4e2] bg-white/90 p-1 font-sans shadow-[0_10px_26px_rgba(15,118,110,0.05)]">
         <div className="grid grid-cols-3 gap-1 max-sm:grid-cols-1">
           <TabButton active={tab === 'stock'} icon={<Boxes size={17} />} label="Tồn kho" onClick={() => updateInventoryState('stock', query, 'ALL')} />
           <TabButton active={tab === 'installed'} icon={<PackageCheck size={17} />} label="Máy đã lắp" onClick={() => updateInventoryState('installed', query, 'ALL')} />
@@ -240,13 +240,13 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       </div>
 
       {tab === 'stock' ? (
-        <section className="grid gap-3 rounded-[22px] border border-[#f0d7d9] bg-[#fffafa] p-4 shadow-[0_14px_34px_rgba(120,20,28,0.05)]">
+        <section className="grid gap-3 rounded-[22px] border border-[#cfe4e2] bg-[#f8fbfb] p-4 shadow-[0_14px_34px_rgba(15,118,110,0.05)]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <span className="text-xs font-semibold text-[#d71920]">Hàng đợi kho</span>
+              <span className="text-xs font-semibold text-[#0f766e]">Hàng đợi kho</span>
               <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">Chọn nhóm máy cần xử lý</h2>
             </div>
-            <span className="rounded-[18px] border border-[#f0d7d9] bg-white px-3 py-2 text-sm font-medium text-[#333333]">
+            <span className="rounded-[18px] border border-[#cfe4e2] bg-white px-3 py-2 text-sm font-medium text-[#333333]">
               {filteredMachines.length} máy đang hiển thị
             </span>
           </div>
@@ -261,7 +261,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       ) : null}
 
       <div className="flex min-w-0 items-center justify-between gap-3.5 max-sm:flex-col max-sm:items-stretch">
-        <div className="flex min-h-11 max-w-[560px] flex-1 items-center gap-2.5 rounded-[20px] border border-[#f0d7d9] bg-white px-3 text-[#666666] shadow-[0_10px_24px_rgba(120,20,28,0.04)] transition focus-within:-translate-y-px focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] max-sm:max-w-none">
+        <div className="flex min-h-11 max-w-[560px] flex-1 items-center gap-2.5 rounded-[20px] border border-[#cfe4e2] bg-white px-3 text-[#666666] shadow-[0_10px_24px_rgba(15,118,110,0.04)] transition focus-within:-translate-y-px focus-within:border-[#0f766e] focus-within:shadow-[0_0_0_3px_rgba(15,118,110,0.12)] max-sm:max-w-none">
           <Search size={18} />
           <input
             className="min-w-0 flex-1 border-0 font-sans text-[#1f1f1f] outline-none"
@@ -282,7 +282,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
         <section className="grid gap-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <span className="text-xs font-semibold text-[#d71920]">{tab === 'installed' ? 'Máy đã lắp' : 'Danh sách kho'}</span>
+              <span className="text-xs font-semibold text-[#0f766e]">{tab === 'installed' ? 'Máy đã lắp' : 'Danh sách kho'}</span>
               <h2 className="mt-1 text-xl font-semibold text-[#1f1f1f]">
                 {tab === 'installed' ? 'Máy đang ở khách hàng' : statusFilter === 'ALL' ? 'Tất cả máy trong kho' : displayLabel(statusFilter)}
               </h2>
@@ -309,7 +309,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/40 p-5" role="presentation">
           <form className="grid w-full max-w-[520px] gap-4 rounded-lg border border-[#e5e5e5] bg-white p-5 font-sans shadow-[0_24px_70px_rgba(20,32,51,0.2)]" onSubmit={submitMovement}>
             <div>
-              <span className="text-xs font-medium text-[#d71920]">Phiếu kho</span>
+              <span className="text-xs font-medium text-[#0f766e]">Phiếu kho</span>
               <h2 className="mt-1 text-xl font-medium text-[#1f1f1f]">{activeMove.action.label}</h2>
               <p className="mt-1 text-sm text-[#666666]">{machineLabel(activeMove.machine)}</p>
             </div>
@@ -365,7 +365,7 @@ function SummaryCard({
   value: number;
 }) {
   return (
-    <div className="grid gap-2 rounded-[18px] border border-[#f0d7d9] bg-white p-4 font-sans shadow-[0_10px_26px_rgba(120,20,28,0.05)]">
+    <div className="grid gap-2 rounded-[18px] border border-[#cfe4e2] bg-white p-4 font-sans shadow-[0_10px_26px_rgba(15,118,110,0.05)]">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-[#666666]">{label}</span>
         <span className={`inline-flex h-9 w-9 items-center justify-center rounded-[14px] ${summaryIconTone[tone]}`}>{icon}</span>
@@ -381,8 +381,8 @@ function QueueButton({ active, count, label, onClick }: { active: boolean; count
     <button
       className={`grid min-h-[76px] rounded-[16px] border p-3 text-left transition ${
         active
-          ? 'border-[#d71920] bg-[#fff5f5] text-[#d71920] shadow-[0_8px_20px_rgba(215,25,32,0.08)]'
-          : 'border-[#eeeeee] bg-[#fafafa] text-[#333333] hover:border-[#f5c7cb] hover:bg-white'
+          ? 'border-[#0f766e] bg-[#ecfdf8] text-[#0f766e] shadow-[0_8px_20px_rgba(15,118,110,0.08)]'
+          : 'border-[#eeeeee] bg-[#fafafa] text-[#333333] hover:border-[#b7e4dd] hover:bg-white'
       }`}
       onClick={onClick}
       type="button"
@@ -397,7 +397,7 @@ function TabButton({ active, icon, label, onClick }: { active: boolean; icon: Re
   return (
     <button
       className={`inline-flex min-h-[42px] items-center justify-center gap-2 rounded-[14px] px-3 font-medium transition ${
-        active ? 'bg-[#fff8f7] text-[#d71920] shadow-[inset_0_-2px_0_#d71920]' : 'text-[#333333] hover:bg-[#fafafa]'
+        active ? 'bg-[#ecfdf8] text-[#0f766e] shadow-[inset_0_-2px_0_#0f766e]' : 'text-[#333333] hover:bg-[#fafafa]'
       }`}
       onClick={onClick}
       type="button"
@@ -426,7 +426,7 @@ function MachineTable({
   onView: (machine: Machine) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-[22px] border border-[#f0d7d9] bg-white font-sans shadow-[0_14px_34px_rgba(120,20,28,0.05)]">
+    <div className="overflow-x-auto rounded-[22px] border border-[#cfe4e2] bg-white font-sans shadow-[0_14px_34px_rgba(15,118,110,0.05)]">
       <table className="w-full min-w-[1040px] border-collapse">
         <thead>
           <tr>
@@ -441,7 +441,7 @@ function MachineTable({
           {loading ? <LoadingRows columns={6} /> : null}
           {!loading && machines.map((machine) => (
             <tr
-              className="cursor-pointer even:bg-[#fcfdff] hover:bg-[#fbfdff] focus:bg-[#fbfdff] focus:outline-none focus-visible:shadow-[inset_3px_0_0_#d71920]"
+              className="cursor-pointer even:bg-[#fcfdff] hover:bg-[#fbfdff] focus:bg-[#fbfdff] focus:outline-none focus-visible:shadow-[inset_3px_0_0_#0f766e]"
               key={machine.id}
               onClick={() => onView(machine)}
               onKeyDown={(event) => {
@@ -457,7 +457,7 @@ function MachineTable({
                 <span className="mt-1 block text-xs text-[#666666]">{machine.name || machine.modelName || 'Thiết bị'}</span>
               </td>
               <td className={cellClass}>
-                <span className="block font-semibold text-[#d71920]">{machine.serialNumber || '-'}</span>
+                <span className="block font-semibold text-[#0f766e]">{machine.serialNumber || '-'}</span>
                 <span className="mt-1 block text-xs text-[#666666]">{machine.machineModel?.code || machine.modelName || machine.machineModel?.name || '-'}</span>
               </td>
               <td className={cellClass}>
@@ -569,13 +569,13 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
     >
       <section
         aria-modal="true"
-        className="grid max-h-[92vh] w-full max-w-[880px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[24px] border border-[#f0d7d9] bg-white font-sans shadow-[0_34px_90px_rgba(20,32,51,0.24)]"
+        className="grid max-h-[92vh] w-full max-w-[880px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[24px] border border-[#cfe4e2] bg-white font-sans shadow-[0_34px_90px_rgba(20,32,51,0.24)]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-[#f4e1e3] bg-gradient-to-br from-[#fff8f7] via-white to-[#f7fbff] px-5 py-4">
+        <header className="flex items-start justify-between gap-4 border-b border-[#dbe9e8] bg-gradient-to-br from-[#ecfdf8] via-white to-[#f7fbff] px-5 py-4">
           <div className="min-w-0">
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#d71920]">Chi tiết máy</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0f766e]">Chi tiết máy</span>
             <h2 className="mt-1 truncate text-2xl font-semibold text-[#182033]">{title}</h2>
             <p className="mt-1 text-sm text-[#667085]">{machine.name || machine.machineModel?.name || machine.modelName || 'Chưa có tên thiết bị'}</p>
           </div>
@@ -583,7 +583,7 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
             <StatusBadge value={machine.inventoryStatus} />
             <button
               aria-label="Đóng xem chi tiết máy"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#f0d7d9] bg-white text-[#344054] transition hover:-translate-y-0.5 hover:border-[#d71920] hover:text-[#d71920]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#cfe4e2] bg-white text-[#344054] transition hover:-translate-y-0.5 hover:border-[#0f766e] hover:text-[#0f766e]"
               onClick={onClose}
               type="button"
             >
@@ -595,7 +595,7 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
         <div className="overflow-y-auto px-5 py-5">
           <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
             <div className="grid gap-4">
-              <section className="rounded-[18px] border border-[#f0d7d9] bg-[#fffdfd] p-4">
+              <section className="rounded-[18px] border border-[#cfe4e2] bg-[#fffdfd] p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h3 className="font-semibold text-[#182033]">Thông tin máy</h3>
                   {machine.status && machine.status !== 'ACTIVE' ? (
@@ -622,7 +622,7 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
             </div>
 
             <aside className="grid content-start gap-4">
-              <section className="rounded-[18px] border border-[#f0d7d9] bg-white p-4 shadow-[0_12px_30px_rgba(120,20,28,0.05)]">
+              <section className="rounded-[18px] border border-[#cfe4e2] bg-white p-4 shadow-[0_12px_30px_rgba(15,118,110,0.05)]">
                 <h3 className="font-semibold text-[#182033]">Phụ trách</h3>
                 <div className="mt-3 grid gap-3">
                   <PreviewField label="Kỹ sư chính" value={machine.primaryEngineer?.fullName || machine.primaryEngineer?.email || 'Chưa phân kỹ sư'} />
@@ -630,7 +630,7 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
                 </div>
               </section>
 
-              <section className="rounded-[18px] border border-[#f0d7d9] bg-[#fff8f7] p-4">
+              <section className="rounded-[18px] border border-[#cfe4e2] bg-[#ecfdf8] p-4">
                 <h3 className="font-semibold text-[#182033]">Gợi ý thao tác</h3>
                 <p className="mt-2 text-sm leading-6 text-[#667085]">
                   Xem nhanh thông tin trước khi tạo phiếu, tránh chọn nhầm máy hoặc nhầm khách hàng.
@@ -640,7 +640,7 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
           </div>
         </div>
 
-        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-[#f4e1e3] bg-white px-5 py-4">
+        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-[#dbe9e8] bg-white px-5 py-4">
           <button className="secondary-button" onClick={onClose} type="button">
             Đóng
           </button>
@@ -679,7 +679,7 @@ function PreviewField({ label, value }: { label: string; value: ReactNode }) {
 
 function HistoryTable({ loading, movements }: { loading: boolean; movements: InventoryMovement[] }) {
   return (
-    <div className="overflow-x-auto rounded-[22px] border border-[#f0d7d9] bg-white font-sans shadow-[0_14px_34px_rgba(120,20,28,0.05)]">
+    <div className="overflow-x-auto rounded-[22px] border border-[#cfe4e2] bg-white font-sans shadow-[0_14px_34px_rgba(15,118,110,0.05)]">
       <table className="w-full min-w-[980px] border-collapse">
         <thead>
           <tr>
@@ -779,7 +779,7 @@ function EmptyRow({ columns }: { columns: number }) {
     <tr>
       <td colSpan={columns}>
         <div className="grid min-h-[180px] place-items-center content-center justify-center gap-2.5 text-center text-[#666666]">
-          <Boxes className="rounded-lg border border-[#f5c7cb] bg-[#fff5f5] p-2.5 text-[#d71920]" size={42} />
+          <Boxes className="rounded-lg border border-[#b7e4dd] bg-[#ecfdf8] p-2.5 text-[#0f766e]" size={42} />
           <strong className="text-[15px] text-[#1f1f1f]">Chưa có dữ liệu phù hợp</strong>
           <span className="text-[13px]">Thử đổi tab hoặc từ khóa tìm kiếm.</span>
         </div>
@@ -850,7 +850,7 @@ const movementActions = {
 } satisfies Record<string, MovementAction>;
 
 const cellClass = 'border-b border-[#eeeeee] px-4 py-3.5 text-left align-middle text-[#202939]';
-const fieldClass = 'min-h-11 w-full rounded-lg border border-[#d6d6d6] bg-white px-3 font-sans text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';
+const fieldClass = 'min-h-11 w-full rounded-lg border border-[#d6d6d6] bg-white px-3 font-sans text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]';
 const statusToneClass = {
   good: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
   warn: 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]',
@@ -862,5 +862,5 @@ const summaryIconTone = {
   good: 'bg-[#eefaf3] text-[#177245]',
   warn: 'bg-[#fff8ed] text-[#9b5a17]',
   danger: 'bg-[#fff1f3] text-[#b5121b]',
-  neutral: 'bg-[#fafafa] text-[#d71920]',
+  neutral: 'bg-[#fafafa] text-[#0f766e]',
 };

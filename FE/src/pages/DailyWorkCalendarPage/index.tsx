@@ -52,16 +52,16 @@ type DailyWorkPayload = {
 };
 
 const colorOptions = [
-  { label: 'Đỏ', value: '#d71920' },
+  { label: 'Đỏ', value: '#0f766e' },
   { label: 'Xanh lá', value: '#177245' },
   { label: 'Xanh dương', value: '#2563eb' },
   { label: 'Vàng', value: '#9b5a17' },
 ];
 
 const scheduleTypeOptions = [
-  { label: 'Công tác', type: 'BUSINESS_TRIP', title: 'Công tác', color: '#d71920', note: 'Đăng ký lịch công tác.' },
+  { label: 'Công tác', type: 'BUSINESS_TRIP', title: 'Công tác', color: '#0f766e', note: 'Đăng ký lịch công tác.' },
   { label: 'Nghỉ phép', type: 'LEAVE', title: 'Nghỉ phép', color: '#9b5a17', note: 'Đăng ký nghỉ phép.' },
-  { label: 'Sửa chữa', type: 'REPAIR', title: 'Sửa chữa', color: '#d71920', note: 'Lịch sửa chữa tại khách hàng.' },
+  { label: 'Sửa chữa', type: 'REPAIR', title: 'Sửa chữa', color: '#0f766e', note: 'Lịch sửa chữa tại khách hàng.' },
   { label: 'Lắp đặt', type: 'INSTALLATION', title: 'Lắp đặt', color: '#177245', note: 'Lịch lắp đặt/bàn giao thiết bị.' },
   { label: 'Bảo trì', type: 'MAINTENANCE', title: 'Bảo trì/Bảo dưỡng', color: '#9b5a17', note: 'Lịch bảo trì hoặc bảo dưỡng định kỳ.' },
 ] satisfies Array<{
@@ -86,7 +86,7 @@ const statusMeta: Record<DailyWorkStatus, { label: string; className: string }> 
   DRAFT: { label: 'Nháp', className: 'border-[#e5e5e5] bg-white text-[#666666]' },
   PENDING: { label: 'Chờ duyệt', className: 'border-[#efd8a8] bg-[#fffaeb] text-[#9b5a17]' },
   APPROVED: { label: 'Đã duyệt', className: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]' },
-  REJECTED: { label: 'Từ chối', className: 'border-[#f5c7cb] bg-[#fff5f5] text-[#b5121b]' },
+  REJECTED: { label: 'Từ chối', className: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]' },
   CANCELLED: { label: 'Đã hủy', className: 'border-[#e5e5e5] bg-[#fafafa] text-[#666666]' },
 };
 
@@ -309,10 +309,10 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
   return (
     <PageFrame>
-      <section className="relative flex min-w-0 items-end justify-between gap-[18px] overflow-hidden rounded-[28px] border border-[#f0d7d9] bg-[#fffafa] p-6 text-[#1f1f1f] shadow-[0_22px_60px_rgba(120,20,28,0.08)] max-[1180px]:grid max-[1180px]:items-stretch">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(215,25,32,0.12),transparent_30%),radial-gradient(circle_at_86%_8%,rgba(255,214,220,0.55),transparent_28%),linear-gradient(135deg,#fffafa,#ffffff_55%,#f8fbfd)]" />
+      <section className="relative flex min-w-0 items-end justify-between gap-[18px] overflow-hidden rounded-[28px] border border-[#cfe4e2] bg-[#f8fbfb] p-6 text-[#1f1f1f] shadow-[0_22px_60px_rgba(15,118,110,0.08)] max-[1180px]:grid max-[1180px]:items-stretch">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(15,118,110,0.12),transparent_30%),radial-gradient(circle_at_86%_8%,rgba(255,214,220,0.55),transparent_28%),linear-gradient(135deg,#f8fbfb,#ffffff_55%,#f8fbfd)]" />
         <div className="relative z-10 min-w-0">
-          <span className="relative mb-2 inline-flex items-center gap-2 rounded-xl border border-[#f0d7d9] bg-white/75 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#d71920]"><CalendarDays size={15} /> Lịch kỹ sư</span>
+          <span className="relative mb-2 inline-flex items-center gap-2 rounded-xl border border-[#cfe4e2] bg-white/75 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#0f766e]"><CalendarDays size={15} /> Lịch kỹ sư</span>
           <h1 className="relative mb-2.5 text-[clamp(30px,4vw,46px)] font-extrabold leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Lịch làm việc của tôi'}</h1>
           <p className="relative max-w-3xl text-sm font-semibold leading-6 text-[#666666]">{isAdmin ? 'Xem lịch công tác, nghỉ phép và việc trong ngày của kỹ sư.' : 'Đăng ký lịch đi công tác, nghỉ phép và ghi chú việc trong ngày.'}</p>
         </div>
@@ -320,7 +320,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
           <label className="relative z-10 grid min-w-0 gap-2 text-sm font-bold text-[#333333] min-[1180px]:min-w-[min(360px,100%)]">
             Chọn kỹ sư
             <select
-              className="min-h-12 rounded-2xl border border-[#ded8d8] bg-white/95 px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)]"
+              className="min-h-12 rounded-2xl border border-[#ded8d8] bg-white/95 px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)]"
               onChange={(event) => {
                 setSelectedEngineerId(event.target.value);
                 setSelectedDayDate('');
@@ -396,7 +396,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                   'group relative grid min-h-[132px] gap-2 border-0 border-b border-r border-[#eeeeee] bg-white p-2.5 text-left text-[#1f1f1f] hover:bg-[#fffdfb] max-[900px]:min-h-[116px]',
                   day.date.getDay() === 6 ? 'border-r-0' : '',
                   day.inMonth ? '' : 'bg-[#ffffff] text-[#9aa6b5]',
-                  isSameDate(day.date, new Date()) ? 'shadow-[inset_0_0_0_2px_#d71920]' : '',
+                  isSameDate(day.date, new Date()) ? 'shadow-[inset_0_0_0_2px_#0f766e]' : '',
                 ].filter(Boolean).join(' ')}
                 key={key}
                 onClick={() => openDay(day.date)}
@@ -422,7 +422,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                   ))}
                   {dayNotes.length > 3 ? <small className="text-[#666666]">+{dayNotes.length - 3} việc khác</small> : null}
                 </div>
-                {canCreate ? <Plus className="absolute right-2.5 top-2.5 text-[#d71920] opacity-0 group-hover:opacity-100" size={15} /> : null}
+                {canCreate ? <Plus className="absolute right-2.5 top-2.5 text-[#0f766e] opacity-0 group-hover:opacity-100" size={15} /> : null}
               </button>
             );
           })}
@@ -434,7 +434,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
           <section aria-modal="true" className="grid w-full max-w-[720px] gap-4 rounded-[14px] border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(20,32,51,0.2)]" onClick={(event) => event.stopPropagation()} role="dialog">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <span className="block text-xs font-medium text-[#d71920]">Công việc trong ngày</span>
+                <span className="block text-xs font-medium text-[#0f766e]">Công việc trong ngày</span>
                 <h2 className="mt-1 text-[#1f1f1f]">{formatDateTitle(selectedDayDate)}</h2>
                 <p className="mt-1 text-sm text-[#666666]">{selectedEngineer?.fullName || selectedEngineer?.email || 'Kỹ sư'}</p>
               </div>
@@ -461,7 +461,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                     </span>
                   </div>
                   {note.note ? <p className="mt-2 text-sm leading-relaxed text-[#333333]">{note.note}</p> : null}
-                  {note.rejectReason ? <p className="mt-2 rounded-lg border border-[#f5c7cb] bg-white px-3 py-2 text-sm text-[#b5121b]">Lý do: {note.rejectReason}</p> : null}
+                  {note.rejectReason ? <p className="mt-2 rounded-lg border border-[#fecdd3] bg-[#fff1f3] px-3 py-2 text-sm text-[#b5121b]">Lý do: {note.rejectReason}</p> : null}
                   {isAdmin && note.status === 'PENDING' ? (
                     <div className="mt-3 flex flex-wrap justify-end gap-2">
                       <button className="secondary-button" disabled={saving} onClick={() => reviewNote(note, 'REJECTED')} type="button">
@@ -498,7 +498,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
           <section aria-modal="true" className="grid w-full max-w-[720px] gap-[18px] rounded-[14px] border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(20,32,51,0.2)]" role="dialog">
             <div className="flex items-start justify-between">
               <div>
-                <span className="block text-xs font-medium text-[#d71920]">{editingNote ? 'Edit note' : isAdmin ? 'Add task' : 'Add note'}</span>
+                <span className="block text-xs font-medium text-[#0f766e]">{editingNote ? 'Edit note' : isAdmin ? 'Add task' : 'Add note'}</span>
                 <h2 className="mt-1 text-[#1f1f1f]">{formatDateTitle(form.workDate)}</h2>
                 {isAdmin ? <p className="mt-1 text-sm text-[#666666]">{selectedEngineer?.fullName || selectedEngineer?.email}</p> : null}
               </div>
@@ -519,7 +519,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                 </button>
               ))}
             </div>
-            <form className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1 [&_input]:min-h-[42px] [&_input]:rounded-lg [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:px-3 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#d71920] [&_input:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] [&_label]:grid [&_label]:gap-2 [&_label]:font-medium [&_label]:text-[#333333] [&_select]:min-h-[42px] [&_select]:rounded-lg [&_select]:border [&_select]:border-[#d6d6d6] [&_select]:px-3 [&_select]:text-[#1f1f1f] [&_select]:outline-none [&_select:focus]:border-[#d71920] [&_select:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] [&_textarea]:min-h-[110px] [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#d6d6d6] [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#1f1f1f] [&_textarea]:outline-none [&_textarea:focus]:border-[#d71920] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onSubmit={handleSubmit}>
+            <form className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1 [&_input]:min-h-[42px] [&_input]:rounded-lg [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:px-3 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#0f766e] [&_input:focus]:shadow-[0_0_0_3px_rgba(15,118,110,0.12)] [&_label]:grid [&_label]:gap-2 [&_label]:font-medium [&_label]:text-[#333333] [&_select]:min-h-[42px] [&_select]:rounded-lg [&_select]:border [&_select]:border-[#d6d6d6] [&_select]:px-3 [&_select]:text-[#1f1f1f] [&_select]:outline-none [&_select:focus]:border-[#0f766e] [&_select:focus]:shadow-[0_0_0_3px_rgba(15,118,110,0.12)] [&_textarea]:min-h-[110px] [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#d6d6d6] [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#1f1f1f] [&_textarea]:outline-none [&_textarea:focus]:border-[#0f766e] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]" onSubmit={handleSubmit}>
               <label>
                 Loại lịch
                 <select onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as DailyWorkType }))} value={form.type}>

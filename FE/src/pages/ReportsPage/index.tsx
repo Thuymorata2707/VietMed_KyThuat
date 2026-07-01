@@ -192,7 +192,7 @@ const reportTabs: Array<{ key: ReportView; label: string; icon: ReactNode }> = [
 ];
 
 const reportFieldClass =
-  'h-11 min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-3.5 text-sm font-semibold text-[#1f1f1f] outline-none transition hover:border-[#f0d7d9] focus:border-[#d71920] focus:shadow-[0_0_0_4px_rgba(215,25,32,0.12)]';
+  'h-11 min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-3.5 text-sm font-semibold text-[#1f1f1f] outline-none transition hover:border-[#cfe4e2] focus:border-[#0f766e] focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)]';
 
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -340,7 +340,7 @@ export function ReportsPage() {
 
   return (
     <PageFrame>
-      <div className="grid gap-5 rounded-[28px] border border-[#f0d7d9] bg-white/95 p-5 shadow-[0_22px_60px_rgba(120,20,28,0.08)]">
+      <div className="grid gap-5 rounded-[28px] border border-[#cfe4e2] bg-white/95 p-5 shadow-[0_22px_60px_rgba(15,118,110,0.08)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
             description="Đọc nhanh tình hình lắp đặt theo kỹ sư, khách hàng, model và tỉnh. Bộ lọc liên kết để chỉ giữ dữ liệu còn liên quan."
@@ -349,7 +349,7 @@ export function ReportsPage() {
           />
           <div className="flex flex-wrap items-center gap-2">
             <button
-              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-[#f0d7d9] bg-[#fff7f7] px-3.5 text-sm font-bold text-[#b5121b] hover:border-[#d71920] disabled:opacity-50"
+              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-[#cfe4e2] bg-[#ecfdf8] px-3.5 text-sm font-bold text-[#0f766e] hover:border-[#0f766e] disabled:opacity-50"
               disabled={!report && !engineerReportQuery.data && !modelReportQuery.data}
               onClick={exportCurrentView}
               type="button"
@@ -360,15 +360,15 @@ export function ReportsPage() {
           </div>
         </div>
 
-        <section className="grid gap-3 rounded-[24px] border border-[#f0d7d9] bg-[#fffafa] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f2e2e3] pb-3">
+        <section className="grid gap-3 rounded-[24px] border border-[#cfe4e2] bg-[#f8fbfb] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dbe9e8] pb-3">
             <div>
-              <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#d71920]">Bộ lọc báo cáo</span>
+              <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#0f766e]">Bộ lọc báo cáo</span>
               <p className="mt-0.5 text-xs font-semibold text-[#666666]">Chọn điều kiện là dữ liệu tự tải lại, không cần bấm áp dụng.</p>
             </div>
             <div className="flex items-center gap-2">
               {hasAdvancedFilters ? <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-1 text-xs font-semibold text-[#9b5a17]">Đang lọc nâng cao</span> : null}
-              <button className="inline-flex h-9 items-center justify-center rounded-xl border border-[#ded8d8] bg-white px-3 text-xs font-bold text-[#666666] hover:border-[#f0d7d9] hover:text-[#d71920]" onClick={resetFilters} type="button">
+              <button className="inline-flex h-9 items-center justify-center rounded-xl border border-[#ded8d8] bg-white px-3 text-xs font-bold text-[#666666] hover:border-[#cfe4e2] hover:text-[#0f766e]" onClick={resetFilters} type="button">
                 Xóa lọc
               </button>
             </div>
@@ -466,13 +466,13 @@ export function ReportsPage() {
           </div>
         </section>
 
-        <div className="flex gap-2 overflow-x-auto border-b border-[#f2e2e3] pb-3">
+        <div className="flex gap-2 overflow-x-auto border-b border-[#dbe9e8] pb-3">
           {reportTabs.map((tab) => (
             <button
               className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-bold transition ${
                 activeView === tab.key
-                  ? 'border-[#f0d7d9] bg-[#fff1f3] text-[#b5121b] shadow-[0_10px_24px_rgba(215,25,32,0.08)]'
-                  : 'border-[#ded8d8] bg-white text-[#666666] hover:border-[#f0d7d9] hover:text-[#d71920]'
+                  ? 'border-[#cfe4e2] bg-[#fff1f3] text-[#b5121b] shadow-[0_10px_24px_rgba(15,118,110,0.08)]'
+                  : 'border-[#ded8d8] bg-white text-[#666666] hover:border-[#cfe4e2] hover:text-[#0f766e]'
               }`}
               key={tab.key}
               onClick={() => changeView(tab.key)}
@@ -531,10 +531,10 @@ function ReportScopeInsight({ labels, report }: { labels: Record<FilterKey, stri
         : 'Phạm vi đang chọn';
 
   return (
-    <section className="grid gap-3 rounded-[12px] border border-[#f1c4c9] bg-[#fffafa] p-4">
+    <section className="grid gap-3 rounded-[12px] border border-[#f1c4c9] bg-[#f8fbfb] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <span className="text-xs font-semibold text-[#c91f2d]">{focusTitle}</span>
+          <span className="text-xs font-semibold text-[#0f766e]">{focusTitle}</span>
           <h2 className="mt-1 text-lg font-semibold text-[#18212f]">{activeFilters.join(' | ')}</h2>
           <p className="mt-1 text-sm text-[#647084]">
             Đang có {report.summary.totalInstallations} phiếu, {report.summary.totalMachines} máy, {report.summary.totalCustomers} khách hàng, {report.byModel.length} model và {report.summary.totalProvinces} tỉnh trong phạm vi này.
@@ -563,10 +563,10 @@ function ReportExecutiveSummary({ from, report, to }: { from: string; report: In
   ].join(' · ');
 
   return (
-    <section className="grid gap-4 rounded-[26px] border border-[#f0d7d9] bg-[linear-gradient(135deg,#fffafa,#ffffff_48%,#f8fbfd)] p-5 shadow-[0_18px_50px_rgba(120,20,28,0.06)]">
+    <section className="grid gap-4 rounded-[26px] border border-[#cfe4e2] bg-[linear-gradient(135deg,#f8fbfb,#ffffff_48%,#f8fbfd)] p-5 shadow-[0_18px_50px_rgba(15,118,110,0.06)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#d71920]">Tóm tắt điều hành</span>
+          <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#0f766e]">Tóm tắt điều hành</span>
           <h2 className="mt-1 text-2xl font-extrabold leading-tight text-[#1f1f1f]">
             {report.summary.totalInstallations} phiếu lắp đặt trong kỳ {formatDate(from)} - {formatDate(to)}
           </h2>
@@ -574,10 +574,10 @@ function ReportExecutiveSummary({ from, report, to }: { from: string; report: In
             Phạm vi hiện tại bao gồm {coverage}. Dữ liệu bên dưới được xếp theo mức đóng góp để đọc nhanh điểm nổi bật trước khi xem chi tiết.
           </p>
         </div>
-        <div className="rounded-2xl border border-[#f0d7d9] bg-white px-4 py-3 text-right shadow-[0_12px_28px_rgba(120,20,28,0.06)]">
+        <div className="rounded-2xl border border-[#cfe4e2] bg-white px-4 py-3 text-right shadow-[0_12px_28px_rgba(15,118,110,0.06)]">
           <span className="block text-xs font-bold text-[#666666]">Lắp gần nhất</span>
           <strong className="mt-1 block text-sm text-[#1f1f1f]">{latest ? formatDate(latest.installedAt) : '-'}</strong>
-          <span className="mt-1 block max-w-[220px] truncate text-xs font-semibold text-[#d71920]">{latest?.code || 'Chưa có phiếu'}</span>
+          <span className="mt-1 block max-w-[220px] truncate text-xs font-semibold text-[#0f766e]">{latest?.code || 'Chưa có phiếu'}</span>
         </div>
       </div>
 
@@ -595,14 +595,14 @@ function ExecutiveFocusCard({ label, row, total }: { label: string; row?: Instal
   const percent = total > 0 && row ? Math.round((row.count / total) * 100) : 0;
 
   return (
-    <article className="grid gap-3 rounded-[22px] border border-[#f2e2e3] bg-white p-4">
-      <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#d71920]">{label}</span>
+    <article className="grid gap-3 rounded-[22px] border border-[#dbe9e8] bg-white p-4">
+      <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#0f766e]">{label}</span>
       <div>
         <strong className="line-clamp-2 text-lg font-extrabold leading-tight text-[#1f1f1f]">{row?.label || 'Chưa có dữ liệu'}</strong>
         <p className="mt-1 text-sm font-semibold text-[#666666]">{row ? `${row.count} phiếu · ${percent}% tổng kỳ` : 'Không phát sinh trong kỳ'}</p>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-[#f1f2f4]">
-        <span className="block h-full rounded-full bg-[#d71920]" style={{ width: `${Math.max(0, percent)}%` }} />
+        <span className="block h-full rounded-full bg-[#0f766e]" style={{ width: `${Math.max(0, percent)}%` }} />
       </div>
     </article>
   );
@@ -619,7 +619,7 @@ function InsightList({ rows, title }: { rows: InstallationReportGroup[]; title: 
         {rows.length ? rows.map((row) => (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-[#f8fafc] px-3 py-2 text-sm" key={row.id}>
             <span className="min-w-0 truncate font-semibold text-[#303a4b]">{row.label}</span>
-            <span className="shrink-0 rounded-md bg-white px-2 py-1 text-xs font-bold text-[#a81524]">{row.count} phiếu</span>
+            <span className="shrink-0 rounded-md bg-white px-2 py-1 text-xs font-bold text-[#115e59]">{row.count} phiếu</span>
           </div>
         )) : <span className="rounded-lg bg-[#f8fafc] px-3 py-3 text-sm font-medium text-[#647084]">Chưa có dữ liệu phù hợp.</span>}
       </div>
@@ -672,7 +672,7 @@ function ReportContent({ report, view, from, to }: { report: InstallationReport;
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="grid min-h-[118px] content-between rounded-[22px] border border-[#f0d7d9] bg-[#fffafa] p-4 shadow-[0_12px_28px_rgba(120,20,28,0.04)]">
+    <div className="grid min-h-[118px] content-between rounded-[22px] border border-[#cfe4e2] bg-[#f8fbfb] p-4 shadow-[0_12px_28px_rgba(15,118,110,0.04)]">
       <span className="text-sm font-bold text-[#666666]">{label}</span>
       <strong className="text-[38px] font-extrabold leading-none text-[#1f1f1f]">{value}</strong>
     </div>
@@ -699,24 +699,24 @@ function GroupTable({
   const totalCount = sortedRows.reduce((total, row) => total + row.count, 0);
 
   return (
-    <section className="overflow-hidden rounded-[24px] border border-[#f0d7d9] bg-white shadow-[0_14px_38px_rgba(120,20,28,0.05)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f2e2e3] bg-[#fffafa] px-4 py-3">
+    <section className="overflow-hidden rounded-[24px] border border-[#cfe4e2] bg-white shadow-[0_14px_38px_rgba(15,118,110,0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dbe9e8] bg-[#f8fbfb] px-4 py-3">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#d71920]">Ranking</span>
+          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#0f766e]">Ranking</span>
           <h2 className="mt-1 text-base font-extrabold text-[#1f1f1f]">{title}</h2>
         </div>
-        <span className="rounded-full border border-[#f0d7d9] bg-white px-3 py-1 text-xs font-bold text-[#b5121b]">{rows.length} dòng</span>
+        <span className="rounded-full border border-[#cfe4e2] bg-white px-3 py-1 text-xs font-bold text-[#0f766e]">{rows.length} dòng</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[860px] border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr className="text-[11px] uppercase tracking-[0.08em] text-[#666666]">
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">#</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">{labelHeader}</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Tỷ trọng</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Số phiếu</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Phạm vi liên quan</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Lắp gần nhất</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">#</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">{labelHeader}</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Tỷ trọng</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Số phiếu</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Phạm vi liên quan</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Lắp gần nhất</th>
             </tr>
           </thead>
           <tbody>
@@ -724,23 +724,23 @@ function GroupTable({
               const percent = totalCount > 0 ? Math.round((row.count / totalCount) * 100) : 0;
               const width = Math.max(4, (row.count / maxCount) * 100);
               return (
-              <tr className="hover:bg-[#fffafa]" key={row.id}>
-                <td className="border-b border-[#f4eded] px-4 py-3">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#fff1f3] text-xs font-extrabold text-[#b5121b]">{index + 1}</span>
+              <tr className="hover:bg-[#f8fbfb]" key={row.id}>
+                <td className="border-b border-[#e4ecee] px-4 py-3">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#ecfdf8] text-xs font-extrabold text-[#0f766e]">{index + 1}</span>
                 </td>
-                <td className="border-b border-[#f4eded] px-4 py-3 font-bold text-[#1f1f1f]">
+                <td className="border-b border-[#e4ecee] px-4 py-3 font-bold text-[#1f1f1f]">
                   <GroupLink from={from} row={row} to={to} variant={variant} />
                 </td>
-                <td className="border-b border-[#f4eded] px-4 py-3">
+                <td className="border-b border-[#e4ecee] px-4 py-3">
                   <div className="grid gap-1.5">
                     <div className="h-2 overflow-hidden rounded-full bg-[#f1f2f4]">
-                      <span className="block h-full rounded-full bg-[#d71920]" style={{ width: `${width}%` }} />
+                      <span className="block h-full rounded-full bg-[#0f766e]" style={{ width: `${width}%` }} />
                     </div>
                     <span className="text-xs font-bold text-[#666666]">{percent}% tổng nhóm</span>
                   </div>
                 </td>
-                <td className="border-b border-[#f4eded] px-4 py-3 text-xl font-extrabold text-[#b5121b]">{row.count}</td>
-                <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">
+                <td className="border-b border-[#e4ecee] px-4 py-3 text-xl font-extrabold text-[#0f766e]">{row.count}</td>
+                <td className="border-b border-[#e4ecee] px-4 py-3 text-[#333333]">
                   <div className="flex flex-wrap gap-1.5">
                     <MiniMetric label="máy" value={row.machines} />
                     <MiniMetric label="khách" value={row.customers} />
@@ -748,7 +748,7 @@ function GroupTable({
                     <MiniMetric label="tỉnh" value={row.provinces} />
                   </div>
                 </td>
-                <td className="border-b border-[#f4eded] px-4 py-3 text-[#666666]">{formatDate(row.lastInstalledAt)}</td>
+                <td className="border-b border-[#e4ecee] px-4 py-3 text-[#666666]">{formatDate(row.lastInstalledAt)}</td>
               </tr>
               );
             })}
@@ -787,7 +787,7 @@ function GroupLink({
 }) {
   if (variant === 'engineers' && row.id !== 'unassigned') {
     return (
-      <Link className="inline-flex items-center gap-1.5 hover:text-[#c91f2d]" to={`/reports?view=engineers&from=${from}&to=${to}&engineerId=${row.id}`}>
+      <Link className="inline-flex items-center gap-1.5 hover:text-[#0f766e]" to={`/reports?view=engineers&from=${from}&to=${to}&engineerId=${row.id}`}>
         {row.label}
         <ArrowDownWideNarrow size={14} />
       </Link>
@@ -796,7 +796,7 @@ function GroupLink({
 
   if (variant === 'models' && row.id !== 'unknown-model') {
     return (
-      <Link className="inline-flex items-center gap-1.5 hover:text-[#c91f2d]" to={`/reports?view=models&from=${from}&to=${to}&modelKey=${encodeURIComponent(row.id)}`}>
+      <Link className="inline-flex items-center gap-1.5 hover:text-[#0f766e]" to={`/reports?view=models&from=${from}&to=${to}&modelKey=${encodeURIComponent(row.id)}`}>
         {row.label}
         <ArrowDownWideNarrow size={14} />
       </Link>
@@ -805,7 +805,7 @@ function GroupLink({
 
   if (variant === 'customers' && row.id !== 'unknown-customer') {
     return (
-      <Link className="inline-flex items-center gap-1.5 hover:text-[#c91f2d]" to={`/customers/profile?customerId=${row.id}`}>
+      <Link className="inline-flex items-center gap-1.5 hover:text-[#0f766e]" to={`/customers/profile?customerId=${row.id}`}>
         {row.label}
         <Building2 size={14} />
       </Link>
@@ -882,11 +882,11 @@ function DrilldownHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 rounded-[10px] border border-[#e9edf2] bg-[#f8fafc] p-4">
       <div>
-        <span className="text-xs font-semibold text-[#c91f2d]">{eyebrow}</span>
+        <span className="text-xs font-semibold text-[#0f766e]">{eyebrow}</span>
         <h2 className="mt-1 text-2xl font-semibold text-[#18212f]">{title}</h2>
         {meta ? <p className="mt-1 text-sm font-medium text-[#647084]">{meta}</p> : null}
       </div>
-      <button className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-semibold text-[#303a4b] hover:border-[#f1c4c9] hover:text-[#c91f2d]" onClick={onBack} type="button">
+      <button className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#dde3ea] bg-white px-3 text-sm font-semibold text-[#303a4b] hover:border-[#f1c4c9] hover:text-[#0f766e]" onClick={onBack} type="button">
         <ChevronLeft size={16} />
         Back
       </button>
@@ -913,12 +913,12 @@ function CustomerCareTable({ rows, title }: { rows: DrilldownCustomer[]; title: 
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr className="hover:bg-[#fffafa]" key={row.id}>
+              <tr className="hover:bg-[#f8fbfb]" key={row.id}>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-bold text-[#18212f]">
                   {row.id.startsWith('unknown') || !row.id ? (
                     row.label
                   ) : (
-                    <Link className="hover:text-[#c91f2d]" to={`/customers/profile?customerId=${row.id}`}>
+                    <Link className="hover:text-[#0f766e]" to={`/customers/profile?customerId=${row.id}`}>
                       {row.label}
                     </Link>
                   )}
@@ -960,14 +960,14 @@ function MachineHistoryTable({ rows, title }: { rows: DrilldownMachine[]; title:
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr className="hover:bg-[#fffafa]" key={row.id}>
+              <tr className="hover:bg-[#f8fbfb]" key={row.id}>
                 <td className="border-b border-[#eeeeee] px-4 py-3">
                   <strong className="block text-[#18212f]">{row.label || '-'}</strong>
                   <span className="text-xs text-[#647084]">{row.serialNumber}</span>
                 </td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">{row.model}</td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold text-[#303a4b]">
-                  {row.customerId ? <Link className="hover:text-[#c91f2d]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
+                  {row.customerId ? <Link className="hover:text-[#0f766e]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
                 </td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 text-[#647084]">{row.province}</td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold">{row.installations}</td>
@@ -1005,9 +1005,9 @@ function WorkLogTable({ rows, title }: { rows: WorkReportRow[]; title: string })
           </thead>
           <tbody>
             {sortedRows.map((row) => (
-              <tr className="hover:bg-[#fffafa]" key={`${row.kind}-${row.id}`}>
+              <tr className="hover:bg-[#f8fbfb]" key={`${row.kind}-${row.id}`}>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-bold text-[#18212f]">
-                  <Link className="hover:text-[#c91f2d]" to={workHref(row)}>
+                  <Link className="hover:text-[#0f766e]" to={workHref(row)}>
                     {row.code}
                   </Link>
                 </td>
@@ -1019,7 +1019,7 @@ function WorkLogTable({ rows, title }: { rows: WorkReportRow[]; title: string })
                 </td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 text-[#647084]">{formatDate(row.date)}</td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 font-semibold text-[#303a4b]">
-                  {row.customerId ? <Link className="hover:text-[#c91f2d]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
+                  {row.customerId ? <Link className="hover:text-[#0f766e]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
                 </td>
                 <td className="border-b border-[#eeeeee] px-4 py-3 text-[#303a4b]">
                   <strong className="block">{row.machineCode}</strong>
@@ -1069,7 +1069,7 @@ function TrendPanel({ rows, title }: { rows: Array<{ date: string; kind?: WorkRe
     <section className="rounded-[10px] border border-[#e9edf2] bg-white p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="text-xs font-semibold text-[#c91f2d]">Xu hướng</span>
+          <span className="text-xs font-semibold text-[#0f766e]">Xu hướng</span>
           <h2 className="mt-1 text-base font-semibold text-[#18212f]">{title}</h2>
         </div>
         <span className="text-xs font-semibold text-[#647084]">{rows.length} việc</span>
@@ -1079,7 +1079,7 @@ function TrendPanel({ rows, title }: { rows: Array<{ date: string; kind?: WorkRe
           <div className="grid gap-2 text-center" key={item.label}>
             <div className="flex h-[142px] items-end justify-center rounded-lg bg-[#f8fafc] px-2">
               <span
-                className="block w-full max-w-10 rounded-t-lg bg-[#c91f2d]"
+                className="block w-full max-w-10 rounded-t-lg bg-[#0f766e]"
                 style={{ height: `${Math.max(6, (item.total / maxValue) * 100)}%` }}
                 title={`${item.label}: ${item.total}`}
               />
@@ -1097,26 +1097,26 @@ function DetailTable({ title, rows }: { title: string; rows: InstallationReportR
   const groups = groupInstallationRowsByDate(rows);
 
   return (
-    <section className="overflow-hidden rounded-[24px] border border-[#f0d7d9] bg-white shadow-[0_14px_38px_rgba(120,20,28,0.05)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f2e2e3] bg-[#fffafa] px-4 py-3">
+    <section className="overflow-hidden rounded-[24px] border border-[#cfe4e2] bg-white shadow-[0_14px_38px_rgba(15,118,110,0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dbe9e8] bg-[#f8fbfb] px-4 py-3">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#d71920]">Chi tiết theo ngày</span>
+          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#0f766e]">Chi tiết theo ngày</span>
           <h2 className="mt-1 text-base font-extrabold text-[#1f1f1f]">{title}</h2>
         </div>
-        <span className="rounded-full border border-[#f0d7d9] bg-white px-3 py-1 text-xs font-bold text-[#b5121b]">{rows.length} máy / phiếu</span>
+        <span className="rounded-full border border-[#cfe4e2] bg-white px-3 py-1 text-xs font-bold text-[#0f766e]">{rows.length} máy / phiếu</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] border-separate border-spacing-0 text-left text-sm">
           <thead>
             <tr className="text-[11px] uppercase tracking-[0.08em] text-[#666666]">
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Mã phiếu</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Kỹ sư</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Khách hàng</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Model</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Mã máy</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Serial</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Tỉnh</th>
-              <th className="border-b border-[#f2e2e3] px-4 py-3 font-bold">Trạng thái</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Mã phiếu</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Kỹ sư</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Khách hàng</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Model</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Mã máy</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Serial</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Tỉnh</th>
+              <th className="border-b border-[#dbe9e8] px-4 py-3 font-bold">Trạng thái</th>
             </tr>
           </thead>
           <tbody>
@@ -1141,7 +1141,7 @@ function DateDetailGroup({ group }: { group: { key: string; label: string; rows:
   return (
     <>
       <tr>
-        <td className="border-b border-[#f4eded] bg-[#fbfcfd] px-4 py-2" colSpan={8}>
+        <td className="border-b border-[#e4ecee] bg-[#fbfcfd] px-4 py-2" colSpan={8}>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="h-px w-7 bg-[#d8dde5]" />
             <span className="font-semibold text-[#8a94a3]">{group.label}</span>
@@ -1150,19 +1150,19 @@ function DateDetailGroup({ group }: { group: { key: string; label: string; rows:
         </td>
       </tr>
       {group.rows.map((row) => (
-        <tr className="hover:bg-[#fffafa]" key={row.id}>
-          <td className="border-b border-[#f4eded] px-4 py-3 font-bold text-[#1f1f1f]">
-            <Link className="hover:text-[#d71920]" to={`/installations/${row.id}/update`}>
+        <tr className="hover:bg-[#f8fbfb]" key={row.id}>
+          <td className="border-b border-[#e4ecee] px-4 py-3 font-bold text-[#1f1f1f]">
+            <Link className="hover:text-[#0f766e]" to={`/installations/${row.id}/update`}>
               {row.code}
             </Link>
           </td>
-          <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">{row.engineer}</td>
-          <td className="border-b border-[#f4eded] px-4 py-3 font-semibold text-[#333333]">{row.customer}</td>
-          <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">{row.model}</td>
-          <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">{row.machineCode}</td>
-          <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">{row.serialNumber}</td>
-          <td className="border-b border-[#f4eded] px-4 py-3 text-[#333333]">{row.province}</td>
-          <td className="border-b border-[#f4eded] px-4 py-3">
+          <td className="border-b border-[#e4ecee] px-4 py-3 text-[#333333]">{row.engineer}</td>
+          <td className="border-b border-[#e4ecee] px-4 py-3 font-semibold text-[#333333]">{row.customer}</td>
+          <td className="border-b border-[#e4ecee] px-4 py-3 text-[#333333]">{row.model}</td>
+          <td className="border-b border-[#e4ecee] px-4 py-3 text-[#333333]">{row.machineCode}</td>
+          <td className="border-b border-[#e4ecee] px-4 py-3 text-[#333333]">{row.serialNumber}</td>
+          <td className="border-b border-[#e4ecee] px-4 py-3 text-[#333333]">{row.province}</td>
+          <td className="border-b border-[#e4ecee] px-4 py-3">
             <span className="inline-flex min-h-7 items-center rounded-lg border border-[#edf0f4] bg-[#f8fbfd] px-2.5 text-xs font-bold text-[#666666]">
               {row.status}
             </span>

@@ -50,7 +50,7 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
     <div className={`${compact ? 'machine-accessory-editor compact' : 'machine-accessory-editor'} grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fbfdff] p-4`}>
       <div className="machine-accessory-header flex flex-wrap items-center justify-between gap-3">
         <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#333333]">
-          <ScanLine size={17} className="text-[#d71920]" />
+          <ScanLine size={17} className="text-[#0f766e]" />
           {isEndoscopy ? 'Phụ kiện nội soi đi kèm' : 'Đầu dò đi kèm'}
         </span>
         <button className="secondary-button compact" onClick={addItem} type="button">
@@ -82,9 +82,9 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
             <label className="grid gap-2 text-sm font-medium text-[#333333]">
               {isEndoscopy ? 'Tên phụ kiện' : 'Ký hiệu đầu dò'}
               {isEndoscopy ? (
-                <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value, name: event.target.value })} value={item.name || item.code || ''} />
+                <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value, name: event.target.value })} value={item.name || item.code || ''} />
               ) : (
-                <select className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
+                <select className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
                   <option value="">Chọn đầu dò</option>
                   {ultrasoundProbeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -96,7 +96,7 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
             </label>
             <label className="grid gap-2 text-sm font-medium text-[#333333]">
               {isEndoscopy ? 'S/N hoặc số lượng/ghi chú' : 'S/N đầu dò'}
-              <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]" onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
+              <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]" onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
             </label>
             <button className="icon-button danger self-end" onClick={() => removeItem(index)} title={isEndoscopy ? 'Delete accessory' : 'Delete probe'} type="button">
               <Trash2 size={16} />

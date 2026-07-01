@@ -667,7 +667,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Ngành hàng
               <select
-                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                 onChange={(event) => {
                   setSelectedBusinessLineKey(event.target.value);
                   setSelectedMachineId(null);
@@ -686,7 +686,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <label className="relative min-w-0">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8a8a]" size={17} />
               <input
-                className="mt-[22px] h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-[#fafafa] pl-9 pr-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:bg-white focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                className="mt-[22px] h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-[#fafafa] pl-9 pr-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:bg-white focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Tìm S/N, model, khách hàng, đầu dò..."
                 value={searchInput}
@@ -695,7 +695,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Trạng thái
               <select
-                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                 onChange={(event) => {
                   setInstallState(event.target.value);
                   setPage(1);
@@ -711,7 +711,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Số dòng
               <select
-                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                 onChange={(event) => {
                   setLimit(Number(event.target.value));
                   setPage(1);
@@ -740,7 +740,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 {selectedBusinessLine?.name ?? 'Tất cả ngành hàng'} - {technicalMachines?.filteredTotal ?? 0} kết quả
               </p>
             </div>
-            <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-white px-2.5 text-sm font-medium text-[#d71920]">
+            <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-white px-2.5 text-sm font-medium text-[#0f766e]">
               {loading ? <Loader2 className="spin-icon" size={17} /> : <PackageSearch size={17} />}
               {loading ? '-' : technicalMachines?.total ?? 0}
             </span>
@@ -1026,14 +1026,14 @@ function MachineDetailPanel({
         <div className="mb-5 flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-2xl font-medium leading-tight text-[#1f1f1f]">Thông tin máy</h2>
-            <p className="mt-1 text-lg font-medium text-[#d71920]">{machine.serialNumber}</p>
+            <p className="mt-1 text-lg font-medium text-[#0f766e]">{machine.serialNumber}</p>
             {loading ? <span className="mt-1 inline-flex items-center gap-2 text-xs text-[#666666]"><Loader2 className="spin-icon" size={14} />Đang tải hồ sơ đầy đủ</span> : null}
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             {machine.dataStatus === 'PENDING_REVIEW' ? (
               <span className="inline-flex min-h-8 items-center rounded-full border border-[#efd8a8] bg-[#fff8ed] px-3 text-sm font-medium text-[#9b5a17]">Chờ xác minh</span>
             ) : null}
-            <span className="inline-flex min-h-8 items-center rounded-full bg-[#eef6ff] px-3 text-sm font-medium text-[#d71920]">
+            <span className="inline-flex min-h-8 items-center rounded-full bg-[#eef6ff] px-3 text-sm font-medium text-[#0f766e]">
               {displayLabel(machine.inventoryStatus || machine.status || '')}
             </span>
             {canEdit ? (
@@ -1065,7 +1065,7 @@ function MachineDetailPanel({
         <div className="mt-6 border-t border-[#eeeeee] pt-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-xl font-medium text-[#1f1f1f]">Đầu dò / Phụ kiện</h3>
-            <span className="rounded-full bg-[#fafafa] px-3 py-1 text-sm font-medium text-[#d71920]">{accessories.length}</span>
+            <span className="rounded-full bg-[#fafafa] px-3 py-1 text-sm font-medium text-[#0f766e]">{accessories.length}</span>
           </div>
           {accessories.length ? (
             <div className="grid min-w-0 gap-3 md:grid-cols-2 2xl:grid-cols-3">
@@ -1079,7 +1079,7 @@ function MachineDetailPanel({
                   </div>
                   <div className="grid grid-cols-[76px_minmax(0,1fr)] gap-2 text-sm">
                     <span className="font-semibold text-[#666666]">S/N</span>
-                    <strong className="break-words text-[#d71920]">{accessory.serialNumber || '-'}</strong>
+                    <strong className="break-words text-[#0f766e]">{accessory.serialNumber || '-'}</strong>
                     <span className="font-semibold text-[#666666]">Mã</span>
                     <span className="break-words text-[#333333]">{accessory.code || accessory.componentAccessory?.code || '-'}</span>
                   </div>
@@ -1192,7 +1192,7 @@ function MachineLifecycleTimeline({ events }: { events: MachineLifecycleEvent[] 
           <h2 className="mt-1 text-2xl font-medium leading-tight text-[#1f1f1f]">Timeline hồ sơ máy</h2>
           <p className="mt-1 text-sm leading-6 text-[#666666]">Gom lắp đặt, bảo hành, sửa chữa, bảo trì và luân chuyển kho theo một dòng thời gian.</p>
         </div>
-        <span className="inline-flex min-h-9 items-center rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-sm font-semibold text-[#d71920]">
+        <span className="inline-flex min-h-9 items-center rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-sm font-semibold text-[#0f766e]">
           {events.length} sự kiện
         </span>
       </div>
@@ -1271,7 +1271,7 @@ function MachineListActionPanel({ canEdit, machine }: { canEdit: boolean; machin
       {machine ? (
         <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-[#fbfdff] p-4">
           <div>
-            <strong className="block text-lg text-[#d71920]">{machine.serialNumber}</strong>
+            <strong className="block text-lg text-[#0f766e]">{machine.serialNumber}</strong>
             <span className="text-sm text-[#666666]">{[machine.machineCode, machine.modelName, machine.customer?.name].filter(Boolean).join(' - ') || 'Chưa có thông tin thêm'}</span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1298,7 +1298,7 @@ function MachineSummaryCard({ label, tone = 'neutral', value }: { label: string;
   const toneClass = {
     neutral: 'bg-[#fafafa] text-[#333333]',
     green: 'bg-[#eefaf3] text-[#177245]',
-    blue: 'bg-[#eef6ff] text-[#d71920]',
+    blue: 'bg-[#eef6ff] text-[#0f766e]',
     amber: 'bg-[#fff8ed] text-[#9b5a17]',
   }[tone];
 
@@ -1335,7 +1335,7 @@ function MachineIndustryBarChart({
           <span className="text-[12px] font-semibold text-[#666666]">Biểu đồ ngành hàng</span>
           <h2 className="mt-1 text-xl font-semibold text-[#1f1f1f]">Số máy theo ngành hàng</h2>
         </div>
-        <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-[#fafafa] px-2.5 text-sm font-medium text-[#d71920]">
+        <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-[#fafafa] px-2.5 text-sm font-medium text-[#0f766e]">
           <PackageSearch size={17} />
           {items.reduce((sum, item) => sum + item.count, 0)}
         </span>
@@ -1364,7 +1364,7 @@ function MachineIndustryBarChart({
                 <span className="text-sm font-semibold tabular-nums text-[#1f1f1f]">{item.count}</span>
                 <span className="flex h-36 items-end rounded-lg bg-[#eeeeee] p-1.5">
                   <span
-                    className={`block w-full rounded-md transition-all duration-300 group-hover:bg-[#d71920] ${activeId === item.id ? 'bg-[#d71920]' : 'bg-[#d71920]'}`}
+                    className={`block w-full rounded-md transition-all duration-300 group-hover:bg-[#0f766e] ${activeId === item.id ? 'bg-[#0f766e]' : 'bg-[#0f766e]'}`}
                     style={{ height: `${height}%` }}
                   />
                 </span>
@@ -1389,7 +1389,7 @@ function MachineTableRow({ canEdit, machine }: { canEdit: boolean; machine: Dash
     <tr className="border-b border-[#eeeeee] transition hover:bg-[#fbfdff]">
       <td className="px-4 py-3">
         <div className="grid gap-1">
-          <Link className="font-semibold text-[#d71920] hover:underline" to={`/technical-machines/${machine.id}`}>
+          <Link className="font-semibold text-[#0f766e] hover:underline" to={`/technical-machines/${machine.id}`}>
             {machine.serialNumber}
           </Link>
           <span className="text-sm text-[#1f1f1f]">{machine.machineCode || machine.name || 'Chưa có mã máy'}</span>
@@ -1441,9 +1441,9 @@ function StatusPill({ subtle, value }: { subtle?: boolean; value: string }) {
 
 function statusPillTone(value: string) {
   if (value === 'INSTALLED' || value === 'ACTIVE') return 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]';
-  if (value === 'IN_STOCK' || value === 'RESERVED') return 'border-[#b8cbe1] bg-[#eef6ff] text-[#d71920]';
+  if (value === 'IN_STOCK' || value === 'RESERVED') return 'border-[#b8cbe1] bg-[#eef6ff] text-[#0f766e]';
   if (value === 'RETURNED' || value === 'REPAIRING' || value === 'MAINTENANCE') return 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]';
-  if (value === 'SOLD' || value === 'INACTIVE') return 'border-[#f5c7cb] bg-[#fff5f5] text-[#d71920]';
+  if (value === 'SOLD' || value === 'INACTIVE') return 'border-[#b7e4dd] bg-[#ecfdf8] text-[#0f766e]';
   return 'border-[#e5e5e5] bg-[#fafafa] text-[#333333]';
 }
 
@@ -1544,8 +1544,8 @@ function lifecycleKindShortLabel(kind: MachineLifecycleEvent['kind']) {
 function lifecycleKindClass(kind: MachineLifecycleEvent['kind']) {
   const classes: Record<MachineLifecycleEvent['kind'], string> = {
     installation: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
-    warranty: 'border-[#d8e0ea] bg-[#eef6ff] text-[#d71920]',
-    repair: 'border-[#f5c7cb] bg-[#fff5f5] text-[#b5121b]',
+    warranty: 'border-[#d8e0ea] bg-[#eef6ff] text-[#0f766e]',
+    repair: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]',
     maintenance: 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]',
     inventory: 'border-[#e5e5e5] bg-[#f4f7fb] text-[#333333]',
   };
@@ -1558,7 +1558,7 @@ function lifecycleStatusClass(status: string) {
     return 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]';
   }
   if (['CANCELLED', 'OVERDUE', 'REPAIRING', 'IN_REPAIR', 'INACTIVE'].includes(normalized)) {
-    return 'border-[#f5c7cb] bg-[#fff5f5] text-[#b5121b]';
+    return 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]';
   }
   if (['PENDING', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS', 'WAITING_PARTS', 'MAINTENANCE'].includes(normalized)) {
     return 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]';
@@ -1571,7 +1571,7 @@ function warrantyClass(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'text-[#1f1f1f]';
   const daysLeft = Math.ceil((date.getTime() - Date.now()) / 86_400_000);
-  if (daysLeft < 0) return 'text-[#d71920]';
+  if (daysLeft < 0) return 'text-[#0f766e]';
   if (daysLeft <= 30) return 'text-[#9b5a17]';
   return 'text-[#177245]';
 }
@@ -1857,7 +1857,7 @@ function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {ultrasoundProbeOptions.slice(0, 8).map((option) => (
           <button
-            className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-left text-sm font-medium text-[#d71920] transition hover:-translate-y-px hover:border-[#b8cbe1] hover:bg-[#f3f8ff]"
+            className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-left text-sm font-medium text-[#0f766e] transition hover:-translate-y-px hover:border-[#b8cbe1] hover:bg-[#f3f8ff]"
             key={option.value}
             onClick={() => onSelect(option.value)}
             type="button"
@@ -2099,4 +2099,4 @@ function toDateInput(value?: string | null) {
 }
 
 const editLabelClass = 'grid min-w-0 gap-2 text-sm font-medium text-[#333333]';
-const editFieldClass = 'h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]';
+const editFieldClass = 'h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]';

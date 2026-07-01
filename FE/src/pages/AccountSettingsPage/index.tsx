@@ -68,10 +68,10 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
 
   return (
     <PageFrame>
-      <section className="relative flex items-stretch justify-between gap-[18px] overflow-hidden rounded-[30px] border border-[#f5c7cb] bg-[#fff7f8] p-6 text-[#1f1f1f] shadow-[0_24px_70px_rgba(215,25,32,0.10)] max-[760px]:grid">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_9%_18%,rgba(215,25,32,0.15),transparent_30%),radial-gradient(circle_at_92%_16%,rgba(255,255,255,0.96),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,247,248,0.78))]" />
+      <section className="relative flex items-stretch justify-between gap-[18px] overflow-hidden rounded-[30px] border border-[#b7e4dd] bg-[#ecfdf8] p-6 text-[#1f1f1f] shadow-[0_24px_70px_rgba(15,118,110,0.10)] max-[760px]:grid">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_9%_18%,rgba(15,118,110,0.15),transparent_30%),radial-gradient(circle_at_92%_16%,rgba(255,255,255,0.96),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,247,248,0.78))]" />
         <div className="relative flex min-w-0 items-center gap-[18px] max-[760px]:grid max-[760px]:items-start">
-          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border border-white bg-white text-[28px] font-semibold text-[#d71920] shadow-[0_18px_42px_rgba(215,25,32,0.14)]">
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border border-white bg-white text-[28px] font-semibold text-[#0f766e] shadow-[0_18px_42px_rgba(15,118,110,0.14)]">
             {form.photoUrl && !photoFailed ? (
               <img alt="" className="h-full w-full object-cover" onError={() => setPhotoFailed(true)} src={form.photoUrl} />
             ) : form.photoUrl && photoFailed ? (
@@ -81,13 +81,13 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
             )}
           </div>
           <div>
-            <span className="mb-2 inline-flex rounded-full border border-[#f5c7cb] bg-white px-3 py-1 text-xs font-semibold text-[#d71920]">Account settings</span>
+            <span className="mb-2 inline-flex rounded-full border border-[#b7e4dd] bg-white px-3 py-1 text-xs font-semibold text-[#0f766e]">Account settings</span>
             <h1 className="mb-2.5 text-[clamp(28px,4vw,46px)] font-semibold leading-none tracking-[-0.03em] text-[#171717]">{form.fullName || user.email}</h1>
             <p className="max-w-[640px] text-[15px] leading-7 text-[#555555]">Cập nhật thông tin cá nhân, hồ sơ kỹ sư và chuyên môn hiển thị trong hệ thống VietMed.</p>
           </div>
         </div>
 
-        <div className="relative grid min-w-60 self-center rounded-2xl border border-white bg-white/82 p-4 shadow-[0_14px_34px_rgba(215,25,32,0.10)]">
+        <div className="relative grid min-w-60 self-center rounded-2xl border border-white bg-white/82 p-4 shadow-[0_14px_34px_rgba(15,118,110,0.10)]">
           <span className="text-sm font-semibold text-[#777777]">{roleLabel(role)}</span>
           <strong className="text-lg text-[#1f1f1f]">{user.region?.name || 'Chưa gán khu vực'}</strong>
           <small className="text-[#666666]">{user.email}</small>
@@ -100,7 +100,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
       <form className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-x-4 gap-y-3.5 max-[1120px]:grid-cols-1" onSubmit={handleSubmit}>
         <aside className="sticky top-[88px] grid gap-[18px] rounded-xl border border-[#e5e5e5] bg-white p-[18px] shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[1120px]:static">
           <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3">
-            <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[10px] bg-[#fff5f5] text-[#d71920]">
+            <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[10px] bg-[#ecfdf8] text-[#0f766e]">
               <ShieldCheck size={18} />
             </span>
             <div>
@@ -124,11 +124,11 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
             </div>
           </dl>
 
-          <label className="grid gap-2 font-medium text-[#333333] [&_svg]:text-[#d71920]">
+          <label className="grid gap-2 font-medium text-[#333333] [&_svg]:text-[#0f766e]">
             <Camera size={17} />
             URL ảnh đại diện
             <input
-              className="min-h-[42px] w-full rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+              className="min-h-[42px] w-full rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
               onChange={(event) => updateField('photoUrl', event.target.value)}
               placeholder="https://..."
               type="url"
@@ -140,14 +140,14 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
         <section className="col-start-2 grid gap-0 rounded-xl border border-[#e5e5e5] bg-white p-[18px] shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[1120px]:col-auto">
           <div className="grid gap-3">
             <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3 border-b border-[#eeeeee] pb-3">
-              <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#f8fbfd] p-[9px] text-[#d71920]" size={18} />
+              <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#f8fbfd] p-[9px] text-[#0f766e]" size={18} />
               <div>
                 <h2 className="text-[#1f1f1f]">Thông tin cá nhân</h2>
                 <p className="mt-1 text-[#666666]">Dữ liệu liên hệ dùng khi phân việc, bàn giao và xử lý phiếu dịch vụ.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3.5 max-[760px]:grid-cols-1 [&_input]:min-h-[42px] [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:bg-white [&_input]:px-3 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#d71920] [&_input:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#333333]">
+            <div className="grid grid-cols-2 gap-3.5 max-[760px]:grid-cols-1 [&_input]:min-h-[42px] [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:bg-white [&_input]:px-3 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#0f766e] [&_input:focus]:shadow-[0_0_0_3px_rgba(15,118,110,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#333333]">
               <label>
                 Họ và tên
                 <input
@@ -189,14 +189,14 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
           {canEditEngineerProfile ? (
             <div className="mt-4 grid gap-3 border-t border-[#e9eef5] pt-4">
               <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3 border-b border-[#eeeeee] pb-3">
-                <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#f8fbfd] p-[9px] text-[#d71920]" size={18} />
+                <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#f8fbfd] p-[9px] text-[#0f766e]" size={18} />
                 <div>
                   <h2 className="text-[#1f1f1f]">Hồ sơ kỹ sư</h2>
                   <p className="mt-1 text-[#666666]">Thông tin chuyên môn giúp điều phối công việc đúng năng lực và khu vực phụ trách.</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3.5 max-[760px]:grid-cols-1 [&_input]:min-h-[42px] [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:bg-white [&_input]:px-3 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#d71920] [&_input:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#333333] [&_select]:min-h-[42px] [&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:border-[#d6d6d6] [&_select]:bg-white [&_select]:px-3 [&_select]:text-[#1f1f1f] [&_select]:outline-none [&_select:focus]:border-[#d71920] [&_select:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] [&_textarea]:min-h-28 [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#d6d6d6] [&_textarea]:bg-white [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#1f1f1f] [&_textarea]:outline-none [&_textarea:focus]:border-[#d71920] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
+              <div className="grid grid-cols-3 gap-3.5 max-[760px]:grid-cols-1 [&_input]:min-h-[42px] [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:bg-white [&_input]:px-3 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#0f766e] [&_input:focus]:shadow-[0_0_0_3px_rgba(15,118,110,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#333333] [&_select]:min-h-[42px] [&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:border-[#d6d6d6] [&_select]:bg-white [&_select]:px-3 [&_select]:text-[#1f1f1f] [&_select]:outline-none [&_select:focus]:border-[#0f766e] [&_select:focus]:shadow-[0_0_0_3px_rgba(15,118,110,0.12)] [&_textarea]:min-h-28 [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#d6d6d6] [&_textarea]:bg-white [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#1f1f1f] [&_textarea]:outline-none [&_textarea:focus]:border-[#0f766e] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]">
                 <label>
                   Mã nhân sự
                   <input onChange={(event) => updateField('employeeCode', event.target.value)} value={form.employeeCode} />

@@ -279,18 +279,18 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="relative overflow-hidden rounded-[28px] border border-[#f5c7cb] bg-[#fff7f8] shadow-[0_24px_70px_rgba(215,25,32,0.10)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_12%,rgba(215,25,32,0.13),transparent_28%),radial-gradient(circle_at_92%_20%,rgba(245,199,203,0.52),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.94),rgba(255,246,247,0.82))]" />
+      <section className="relative overflow-hidden rounded-[28px] border border-[#b7e4dd] bg-[#ecfdf8] shadow-[0_24px_70px_rgba(15,118,110,0.10)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_12%,rgba(15,118,110,0.13),transparent_28%),radial-gradient(circle_at_92%_20%,rgba(183,228,221,0.52),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.94),rgba(236,253,248,0.82))]" />
         <div className="relative grid gap-5 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid content-between gap-6">
             <div>
-              <span className="inline-flex min-h-8 items-center rounded-full border border-[#f5c7cb] bg-white/82 px-3 text-xs font-semibold tracking-[0.08em] text-[#b5121b] shadow-[0_8px_22px_rgba(215,25,32,0.08)]">
+              <span className="inline-flex min-h-8 items-center rounded-full border border-[#b7e4dd] bg-white/82 px-3 text-xs font-semibold tracking-[0.08em] text-[#0f766e] shadow-[0_8px_22px_rgba(15,118,110,0.08)]">
                 Catalog overview
               </span>
               <h2 className="mt-4 max-w-3xl text-[clamp(26px,3.2vw,42px)] font-semibold leading-[1.04] tracking-[-0.035em] text-[#1f1f1f]">
                 Danh mục sản phẩm theo ngành hàng, nhìn nhanh được kho và model.
               </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#66565a]">
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#667985]">
                 Mỗi ngành hàng gom model, số máy thực tế và tồn kho vào cùng một khung để chọn lọc nhanh hơn khi nhập serial hoặc theo dõi danh mục.
               </p>
             </div>
@@ -306,7 +306,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
       </section>
 
       <section className="grid gap-4">
-        <div className="grid gap-3 rounded-2xl border border-[#f5c7cb] bg-white p-3 shadow-[0_10px_30px_rgba(215,25,32,0.06)] md:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
+        <div className="grid gap-3 rounded-2xl border border-[#b7e4dd] bg-white p-3 shadow-[0_10px_30px_rgba(15,118,110,0.06)] md:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
           <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
             <button
               className={industryTabClass(selectedIndustryId === allIndustriesKey)}
@@ -328,7 +328,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
               </button>
             ))}
           </div>
-          <label className="flex h-11 min-w-0 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-[#fafafa] px-3 text-[#666666] focus-within:border-[#d71920] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
+          <label className="flex h-11 min-w-0 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-[#fafafa] px-3 text-[#666666] focus-within:border-[#0f766e] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]">
             <Search size={16} />
             <input
               className="min-w-0 flex-1 border-0 bg-transparent text-[#1f1f1f] outline-none"
@@ -682,7 +682,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 Sản phẩm
                 <select
-                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                   disabled={loading}
                   onChange={(event) => selectProduct(event.target.value)}
                   required
@@ -728,7 +728,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 Serial Number
                 <input
-                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                   onChange={(event) => updateField('serialNumber', event.target.value)}
                   required
                   value={form.serialNumber}
@@ -737,7 +737,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 Mã máy nội bộ (tự sinh nếu để trống)
                 <input
-                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                   onChange={(event) => updateField('machineCode', event.target.value)}
                   placeholder="VD: XCUBE50-001"
                   value={form.machineCode}
@@ -746,7 +746,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 Ngày nhập kho
                 <input
-                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                   onChange={(event) => updateField('warehouseImportDate', event.target.value)}
                   type="date"
                   value={form.warehouseImportDate}
@@ -769,7 +769,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
                 S/N phụ kiện
                 <textarea
-                  className="min-h-36 min-w-0 rounded-lg border border-[#d6d6d6] px-3 py-2 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                  className="min-h-36 min-w-0 rounded-lg border border-[#d6d6d6] px-3 py-2 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                   onChange={(event) => updateField('accessoriesText', event.target.value)}
                   placeholder={'Mỗi dòng: Phụ kiện | Serial Number\nVí dụ:\nBộ dây nguồn | ACC-001\nCáp kết nối | ACC-002'}
                   value={formatMachineAccessoriesText(form.accessoriesText)}
@@ -829,7 +829,7 @@ function ModelRow({
   stock?: ModelStock;
 }) {
   return (
-    <tr className="border-b border-[#eeeeee] hover:bg-[#fff8f7]">
+    <tr className="border-b border-[#eeeeee] hover:bg-[#ecfdf8]">
       <td className="px-4 py-4">
         <Link className="flex min-w-0 items-center gap-3 text-left" to={`/business-lines/models/${model.id}${catalogSearch}`}>
           <ModelImage model={model} />
@@ -940,7 +940,7 @@ function ModelSearchSelect({
 
   return (
     <div className="relative" onBlur={closeIfFocusLeaves} ref={wrapperRef}>
-      <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] transition focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]">
+      <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] transition focus-within:border-[#0f766e] focus-within:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]">
         <Search className="shrink-0 text-[#8a8a8a]" size={16} />
         <input
           className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium outline-none placeholder:text-[#8a8a8a]"
@@ -959,7 +959,7 @@ function ModelSearchSelect({
         />
         {selectedModel ? (
           <button
-            className="shrink-0 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 py-1 text-xs font-semibold text-[#666666] hover:border-[#f5c7cb] hover:text-[#d71920]"
+            className="shrink-0 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 py-1 text-xs font-semibold text-[#666666] hover:border-[#b7e4dd] hover:text-[#0f766e]"
             disabled={disabled}
             onClick={() => {
               onChange('');
@@ -983,7 +983,7 @@ function ModelSearchSelect({
               return (
                 <button
                   className={`grid w-full gap-1 rounded-md px-3 py-2 text-left text-sm transition ${
-                    active ? 'bg-[#fff5f5] text-[#d71920]' : 'text-[#1f1f1f] hover:bg-[#fbfdff]'
+                    active ? 'bg-[#ecfdf8] text-[#0f766e]' : 'text-[#1f1f1f] hover:bg-[#fbfdff]'
                   }`}
                   key={model.id}
                   onClick={() => {
@@ -1074,7 +1074,7 @@ function ModelCard({
         <div className="min-w-0">
           <strong className="block truncate text-base font-semibold text-[#1f1f1f]">{modelShortLabel(model)}</strong>
           <span className="mt-1 block truncate text-sm leading-5 text-[#666666]">{modelDetailLabel(model)}</span>
-          <span className="mt-1 block text-xs font-medium text-[#d71920]">{model.businessLine?.name || 'Chưa có dòng sản phẩm'}</span>
+          <span className="mt-1 block text-xs font-medium text-[#0f766e]">{model.businessLine?.name || 'Chưa có dòng sản phẩm'}</span>
         </div>
       </Link>
 
@@ -1090,7 +1090,7 @@ function ModelCard({
           <strong className="tabular-nums text-[#1f1f1f]">{inStock}/{total}</strong>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-[#eeeeee]">
-          <div className="h-full rounded-full bg-[#d71920]" style={{ width: `${Math.max(ratio, total ? 7 : 0)}%` }} />
+          <div className="h-full rounded-full bg-[#0f766e]" style={{ width: `${Math.max(ratio, total ? 7 : 0)}%` }} />
         </div>
       </div>
 
@@ -1143,7 +1143,7 @@ function ModelDetailBlock({
   const warehouseQuantity = detail?.warehouseQuantity ?? stock?.inStock ?? 0;
 
   return (
-    <div className="rounded-lg border border-[#f5c7cb] bg-white shadow-[0_18px_42px_rgba(23,32,42,0.08)]">
+    <div className="rounded-lg border border-[#b7e4dd] bg-white shadow-[0_18px_42px_rgba(23,32,42,0.08)]">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#eeeeee] p-5">
         <div className="flex min-w-0 gap-4">
           <ModelImage large model={model} />
@@ -1167,7 +1167,7 @@ function ModelDetailBlock({
               <label className="grid gap-2 text-sm font-semibold text-[#333333]">
                 Ảnh model
                 <input
-                  className="h-10 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                  className="h-10 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                   onChange={(event) => onImageUrlChange(event.target.value)}
                   placeholder="Dán URL ảnh model"
                   value={imageUrlDraft}
@@ -1187,7 +1187,7 @@ function ModelDetailBlock({
             {machines.map((machine) => (
               <button
                 className={`rounded-lg border p-3 text-left ${
-                  selectedMachineId === machine.id ? 'border-[#f5c7cb] bg-[#fff8f7]' : 'border-[#e5e5e5] bg-[#fafafa] hover:border-[#d71920]'
+                  selectedMachineId === machine.id ? 'border-[#b7e4dd] bg-[#ecfdf8]' : 'border-[#e5e5e5] bg-[#fafafa] hover:border-[#0f766e]'
                 }`}
                 key={machine.id}
                 onClick={() => void onSelectMachine(machine.id)}
@@ -1303,13 +1303,13 @@ function IndustryMachineChart({
   const maxTotal = Math.max(1, ...items.map((item) => item.stock.total));
 
   return (
-    <section className="grid gap-4 rounded-[22px] border border-white/80 bg-white/82 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_38px_rgba(215,25,32,0.08)] backdrop-blur md:p-6">
+    <section className="grid gap-4 rounded-[22px] border border-white/80 bg-white/82 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_38px_rgba(15,118,110,0.08)] backdrop-blur md:p-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <span className="text-[12px] font-medium text-[#9f3340]">Biểu đồ ngành hàng</span>
           <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Số lượng máy theo ngành</h2>
         </div>
-        <BarChart3 className="text-[#d71920]" size={20} />
+        <BarChart3 className="text-[#0f766e]" size={20} />
       </div>
       <div className="grid gap-4">
         {items.map((item) => {
@@ -1321,7 +1321,7 @@ function IndustryMachineChart({
                 <span className="font-semibold tabular-nums text-[#1f1f1f]">{item.stock.total}</span>
               </div>
               <div className="h-2.5 overflow-hidden rounded-full bg-[#f8dfe2]">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#d71920] to-[#f05b63] transition-[width] duration-300" style={{ width: `${width}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-[#0f766e] to-[#f05b63] transition-[width] duration-300" style={{ width: `${width}%` }} />
               </div>
               <span className="text-xs text-[#666666]">{item.stock.inStock} máy còn kho</span>
             </div>
@@ -1335,10 +1335,10 @@ function IndustryMachineChart({
 
 function IndustryStockCard({ icon, label, subLabel, value }: { icon: ReactNode; label: string; subLabel: string; value: number }) {
   return (
-    <div className="grid gap-3 rounded-[18px] border border-white/80 bg-white/86 p-4 font-sans shadow-[0_18px_34px_rgba(215,25,32,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(215,25,32,0.12)]">
+    <div className="grid gap-3 rounded-[18px] border border-white/80 bg-white/86 p-4 font-sans shadow-[0_18px_34px_rgba(15,118,110,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(15,118,110,0.12)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold text-[#66565a]">{label}</span>
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff0f2] text-[#d71920]">{icon}</span>
+        <span className="text-sm font-semibold text-[#667985]">{label}</span>
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#ecfdf8] text-[#0f766e]">{icon}</span>
       </div>
       <div className="grid gap-1">
         <strong className="text-3xl font-semibold leading-none text-[#1f1f1f]">{value}</strong>
@@ -1350,7 +1350,7 @@ function IndustryStockCard({ icon, label, subLabel, value }: { icon: ReactNode; 
 
 function IndustryOverviewRail({ items }: { items: Array<{ id: string; name: string; modelCount: number; stock: ModelStock }> }) {
   if (!items.length) {
-    return <p className="rounded-2xl bg-white/70 p-4 text-sm text-[#66565a]">Chưa có ngành hàng để tổng hợp.</p>;
+    return <p className="rounded-2xl bg-white/70 p-4 text-sm text-[#667985]">Chưa có ngành hàng để tổng hợp.</p>;
   }
 
   return (
@@ -1378,7 +1378,7 @@ function StockPill({ stock }: { stock: ModelStock }) {
 
 function industryTabClass(active: boolean) {
   return `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition ${
-    active ? 'border-[#d71920] bg-[#fff5f5] text-[#d71920] shadow-[0_6px_18px_rgba(215,25,32,0.10)]' : 'border-[#e5e5e5] bg-[#fafafa] text-[#333333] hover:border-[#b8cbe1] hover:bg-white'
+    active ? 'border-[#0f766e] bg-[#ecfdf8] text-[#0f766e] shadow-[0_6px_18px_rgba(15,118,110,0.10)]' : 'border-[#e5e5e5] bg-[#fafafa] text-[#333333] hover:border-[#b8cbe1] hover:bg-white'
   }`;
 }
 

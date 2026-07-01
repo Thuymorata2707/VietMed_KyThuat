@@ -43,7 +43,7 @@
 
 .customer-metric {
   background: #ffffff;
-  border: 1px solid #f0d7d9;
+  border: 1px solid #cfe4e2;
   border-radius: 18px;
   box-shadow: 0 10px 26px rgba(120, 20, 28, 0.05);
   display: grid;
@@ -68,13 +68,13 @@
 }
 
 .customer-crud-list {
-  border-color: #f0d7d9;
+  border-color: #cfe4e2;
   border-radius: 22px;
   box-shadow: 0 14px 34px rgba(120, 20, 28, 0.05);
 }
 
 .customer-crud-list .list-toolbar {
-  border-bottom: 1px solid #f4e1e3;
+  border-bottom: 1px solid #dbe9e8;
   padding: 14px;
 }
 
@@ -87,7 +87,7 @@
 .customer-card {
   align-items: stretch;
   background: linear-gradient(135deg, #fffdfd 0%, #ffffff 58%, #f9fbff 100%);
-  border: 1px solid #f0d7d9;
+  border: 1px solid #cfe4e2;
   border-radius: 18px;
   cursor: pointer;
   display: grid;
@@ -103,7 +103,7 @@
 
 .customer-card:hover,
 .customer-card:focus {
-  border-color: #d71920;
+  border-color: #0f766e;
   box-shadow: 0 14px 30px rgba(120, 20, 28, 0.08);
   outline: none;
   transform: translateY(-1px);
@@ -112,7 +112,7 @@
 .customer-card:focus-visible {
   box-shadow:
     0 14px 30px rgba(120, 20, 28, 0.08),
-    0 0 0 3px rgba(215, 25, 32, 0.12);
+    0 0 0 3px rgba(15, 118, 110, 0.12);
 }
 
 .customer-card-main {
@@ -201,9 +201,9 @@
 }
 
 .customer-machine-count {
-  background: #fff7f7;
-  border: 1px solid #f5c7cb;
-  color: #d71920;
+  background: #ecfdf8;
+  border: 1px solid #b7e4dd;
+  color: #0f766e;
   font-variant-numeric: tabular-nums;
   justify-content: center;
   min-width: 42px;
@@ -339,8 +339,8 @@
 .searchable-select:focus-within input,
 .service-kind-select select:focus {
   background-color: #ffffff;
-  border-color: #d71920;
-  box-shadow: 0 0 0 3px rgba(215, 25, 32, 0.12);
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
   transform: translateY(-1px);
 }
 
@@ -413,7 +413,7 @@
 
 .searchable-menu button:hover,
 .searchable-menu button.active {
-  background: #fff5f5;
+  background: #ecfdf8;
 }
 
 .searchable-menu button strong {
@@ -587,7 +587,7 @@
 }
 
 .clickable-row:focus-visible {
-  box-shadow: inset 3px 0 0 #d71920;
+  box-shadow: inset 3px 0 0 #0f766e;
 }
 
 .row-actions {
@@ -599,10 +599,10 @@
 
 .customer-profile-link {
   align-items: center;
-  background: #fff7f7;
-  border: 1px solid #f5c7cb;
+  background: #ecfdf8;
+  border: 1px solid #b7e4dd;
   border-radius: 8px;
-  color: #d71920;
+  color: #0f766e;
   display: inline-flex;
   font-size: 12px;
   font-weight: 700;
@@ -618,7 +618,7 @@
 
 .customer-profile-link:hover {
   background: #ffffff;
-  border-color: #d71920;
+  border-color: #0f766e;
   transform: translateY(-1px);
 }
 
@@ -636,7 +636,7 @@
 
 .customer-quick-modal {
   background: #ffffff;
-  border: 1px solid #f0d7d9;
+  border: 1px solid #cfe4e2;
   border-radius: 24px;
   box-shadow: 0 34px 90px rgba(20, 32, 51, 0.24);
   display: grid;
@@ -649,8 +649,8 @@
 
 .customer-quick-header {
   align-items: flex-start;
-  background: linear-gradient(135deg, #fff8f7 0%, #ffffff 52%, #f7fbff 100%);
-  border-bottom: 1px solid #f4e1e3;
+  background: linear-gradient(135deg, #ecfdf8 0%, #ffffff 52%, #f7fbff 100%);
+  border-bottom: 1px solid #dbe9e8;
   display: flex;
   gap: 18px;
   justify-content: space-between;
@@ -658,7 +658,7 @@
 }
 
 .customer-quick-header span {
-  color: #d71920;
+  color: #0f766e;
   display: block;
   font-size: 11px;
   font-weight: 800;
@@ -696,7 +696,7 @@
 
 .customer-quick-panel {
   background: #fffdfd;
-  border: 1px solid #f0d7d9;
+  border: 1px solid #cfe4e2;
 }
 
 .customer-quick-panel h3 {
@@ -748,8 +748,8 @@
 
 .customer-quick-status {
   align-items: center;
-  background: #fff8f7;
-  border: 1px solid #f0d7d9;
+  background: #ecfdf8;
+  border: 1px solid #cfe4e2;
   border-radius: 14px;
   display: flex;
   flex-wrap: wrap;
@@ -761,7 +761,7 @@
 .customer-quick-actions {
   align-items: center;
   background: #ffffff;
-  border-top: 1px solid #f4e1e3;
+  border-top: 1px solid #dbe9e8;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -797,7 +797,7 @@
 }
 
 .expanded-crud-modal .form-panel-heading span {
-  color: #d71920;
+  color: #0f766e;
   font-size: 11px;
   font-weight: 800;
   text-transform:;
@@ -855,7 +855,7 @@
 .customer-form-page .form-panel-heading {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(250, 250, 250, 0.96)),
-    radial-gradient(circle at top right, rgba(215, 25, 32, 0.08), transparent 36%);
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 36%);
   border-color: #eeeeee;
   border-radius: 10px;
 }
@@ -944,7 +944,7 @@
 }
 
 .crud-form-page .form-panel-heading span {
-  color: #d71920;
+  color: #0f766e;
   font-size: 11px;
   font-weight: 800;
   text-transform:;
@@ -1008,8 +1008,8 @@
 .user-form-page-grid input:focus,
 .user-form-page-grid select:focus,
 .user-form-page-grid textarea:focus {
-  border-color: #d71920;
-  box-shadow: 0 0 0 3px rgba(215, 25, 32, 0.12);
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
 }
 
 @media (max-width: 760px) {

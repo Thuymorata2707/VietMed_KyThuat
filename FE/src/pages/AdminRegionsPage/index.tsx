@@ -180,8 +180,8 @@ export function AdminRegionsPage() {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="overflow-hidden rounded-[22px] border border-[#f0d7d9] bg-white shadow-[0_14px_34px_rgba(120,20,28,0.05)]">
-        <div className="list-toolbar border-b border-[#f4e1e3]">
+      <section className="overflow-hidden rounded-[22px] border border-[#cfe4e2] bg-white shadow-[0_14px_34px_rgba(15,118,110,0.05)]">
+        <div className="list-toolbar border-b border-[#dbe9e8]">
           <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm tên hoặc mã khu vực" value={query} />
           <button className="primary-button compact" onClick={openCreateModal} type="button">
             <Plus size={17} />
@@ -192,26 +192,26 @@ export function AdminRegionsPage() {
         <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredRegions.map((region) => (
             <button
-              className={`group grid min-h-[150px] content-between gap-5 rounded-[18px] border bg-[#fffdfd] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#d71920] hover:shadow-[0_14px_30px_rgba(120,20,28,0.08)] ${
-                selectedRegion?.id === region.id ? 'border-[#d71920] shadow-[0_18px_38px_rgba(120,20,28,0.1)]' : 'border-[#f0d7d9]'
+              className={`group grid min-h-[150px] content-between gap-5 rounded-[18px] border bg-[#fffdfd] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#0f766e] hover:shadow-[0_14px_30px_rgba(15,118,110,0.08)] ${
+                selectedRegion?.id === region.id ? 'border-[#0f766e] shadow-[0_18px_38px_rgba(15,118,110,0.1)]' : 'border-[#cfe4e2]'
               }`}
               key={region.id}
               onClick={() => selectRegion(region)}
               type="button"
             >
               <span className="flex items-start justify-between gap-3">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] bg-[#fff1f3] text-[#d71920]">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] bg-[#ecfdf8] text-[#0f766e]">
                   <MapPinned size={19} />
                 </span>
-                <span className="rounded-full border border-[#f0d7d9] bg-white px-3 py-1 text-xs font-semibold text-[#d71920]">{region.code}</span>
+                <span className="rounded-full border border-[#cfe4e2] bg-white px-3 py-1 text-xs font-semibold text-[#0f766e]">{region.code}</span>
               </span>
               <span className="grid gap-1">
                 <strong className="text-xl font-semibold text-[#182033]">{region.name}</strong>
                 <small className="text-xs font-medium text-[#667085]">Cập nhật {formatDate(region.updatedAt)}</small>
               </span>
-              <span className="inline-flex items-center justify-between gap-3 text-sm font-semibold text-[#d71920]">
+              <span className="inline-flex items-center justify-between gap-3 text-sm font-semibold text-[#0f766e]">
                 Khách hàng trong khu vực
-                <span className="h-px flex-1 bg-[#f0d7d9] transition group-hover:bg-[#d71920]" />
+                <span className="h-px flex-1 bg-[#cfe4e2] transition group-hover:bg-[#0f766e]" />
               </span>
             </button>
           ))}
@@ -233,10 +233,10 @@ export function AdminRegionsPage() {
 
       {selectedRegion ? (
         <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/30 backdrop-blur-[3px]" onClick={closeRegionDetail} role="presentation">
-          <aside aria-modal="true" className="grid h-screen w-[min(92vw,1100px)] max-w-[1100px] grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-l-[24px] border-l border-[#f0d7d9] bg-white p-[18px] shadow-[-18px_0_40px_rgba(20,32,51,0.18)] max-sm:w-screen max-sm:rounded-none max-sm:p-3.5" onClick={(event) => event.stopPropagation()} role="dialog">
-            <div className="flex items-center justify-between gap-3.5 rounded-[18px] border border-[#f0d7d9] bg-gradient-to-br from-[#fff8f7] via-white to-[#f7fbff] p-4 max-sm:flex-col max-sm:items-stretch">
+          <aside aria-modal="true" className="grid h-screen w-[min(92vw,1100px)] max-w-[1100px] grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-l-[24px] border-l border-[#cfe4e2] bg-white p-[18px] shadow-[-18px_0_40px_rgba(20,32,51,0.18)] max-sm:w-screen max-sm:rounded-none max-sm:p-3.5" onClick={(event) => event.stopPropagation()} role="dialog">
+            <div className="flex items-center justify-between gap-3.5 rounded-[18px] border border-[#cfe4e2] bg-gradient-to-br from-[#ecfdf8] via-white to-[#f7fbff] p-4 max-sm:flex-col max-sm:items-stretch">
               <div className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#d71920]">Khách hàng theo khu vực</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#0f766e]">Khách hàng theo khu vực</span>
                 <h2 className="text-2xl font-semibold text-[#182033]">{selectedRegion.name}</h2>
               </div>
               <div className="flex items-center gap-2 max-sm:justify-between">
@@ -251,7 +251,7 @@ export function AdminRegionsPage() {
             </div>
 
             <div className="grid min-h-0 grid-cols-[minmax(260px,360px)_minmax(0,1fr)] gap-3.5 max-sm:grid-cols-1 max-sm:overflow-y-auto">
-              <div className="grid content-start gap-2.5 overflow-y-auto rounded-[18px] border border-[#f0d7d9] bg-[#fffdfd] p-3">
+              <div className="grid content-start gap-2.5 overflow-y-auto rounded-[18px] border border-[#cfe4e2] bg-[#fffdfd] p-3">
                 {loadingCustomers ? (
                   <div className="table-state">
                     <Loader2 className="spin-icon" size={18} />
@@ -268,7 +268,7 @@ export function AdminRegionsPage() {
 
                 {customers.map((customer) => (
                   <button
-                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[14px] border border-[#eeeeee] bg-white p-3 text-left text-[#1f1f1f] transition hover:border-[#f5c7cb] hover:shadow-[inset_3px_0_0_#d71920] ${selectedCustomer?.id === customer.id ? 'border-[#f5c7cb] shadow-[inset_3px_0_0_#d71920]' : ''}`}
+                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[14px] border border-[#eeeeee] bg-white p-3 text-left text-[#1f1f1f] transition hover:border-[#b7e4dd] hover:shadow-[inset_3px_0_0_#0f766e] ${selectedCustomer?.id === customer.id ? 'border-[#b7e4dd] shadow-[inset_3px_0_0_#0f766e]' : ''}`}
                     key={customer.id}
                     onClick={() => selectCustomer(customer)}
                     type="button"
@@ -378,7 +378,7 @@ export function AdminRegionsPage() {
               <label className="grid gap-[7px] font-medium text-[#333333]">
                 Tỉnh/Thành
                 <select
-                  className="min-h-10 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#d71920] focus:shadow-[0_0_0_3px_rgba(215,25,32,0.12)]"
+                  className="min-h-10 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#0f766e] focus:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]"
                   onChange={(event) => {
                     const province = vietnamProvinceOptions.find((item) => item.code === event.target.value);
                     setForm(province ? { name: province.name, code: province.code } : emptyForm);
