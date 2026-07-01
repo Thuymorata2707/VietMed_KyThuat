@@ -372,11 +372,25 @@ function OperationsBoard({
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<BoardItem | null>(null);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedQuery(query.trim()), 280);
     return () => window.clearTimeout(timeout);
   }, [query]);
+
+  useEffect(() => {
+    setSelectedItem(null);
+  }, [kind]);
+
+  useEffect(() => {
+    if (!selectedItem) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setSelectedItem(null);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItem]);
 
   const boardParams = useMemo(() => {
     const params = new URLSearchParams({ limit: '100' });
@@ -435,7 +449,7 @@ function OperationsBoard({
           <PageTitle eyebrow="Hồ sơ phiếu" title={title} description={description} />
         </div>
         <div className="operation-board-actions">
-          <CreateTicketButtons />
+          <CreateTicketButton kind={kind} />
           {role !== 'engineer' ? (
             <Link className="secondary-button" to={reportHref}>
               <BarChart3 size={16} />
@@ -569,11 +583,11 @@ function OperationsBoard({
               <section className="border-b border-[#eeeeee] last:border-b-0" key={group.key}>
                 <div className="flex items-center justify-between bg-[#fbfdff] px-4 py-2.5">
                   <strong className="text-sm text-[#1f1f1f]">{group.label}</strong>
-                  <span className="rounded-md bg-white px-2 py-1 text-xs font-semibold text-[#666666]">{group.items.length} phiếu</span>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#8a6f74]">{group.items.length} phiếu</span>
                 </div>
-                <div className="grid gap-0">
+                <div className="grid gap-2 bg-[#fffefe] p-2.5">
                   {group.items.map((item) => (
-                    <TicketCard item={item} key={`${item.kind}-${item.id}`} />
+                    <TicketCard item={item} key={`${item.kind}-${item.id}`} onView={setSelectedItem} />
                   ))}
                 </div>
               </section>
@@ -581,30 +595,20 @@ function OperationsBoard({
           </div>
         ) : null}
       </section>
+
+      {selectedItem ? <TicketPreviewModal item={selectedItem} onClose={() => setSelectedItem(null)} /> : null}
     </PageFrame>
   );
 }
 
-function CreateTicketButtons() {
-  const links = [
-    { label: 'Lắp đặt', to: '/installations/create?returnTo=/service-tickets' },
-    { label: 'Sửa chữa', to: '/service-tickets/create?kind=repair&returnTo=/service-tickets' },
-    { label: 'Bảo trì', to: '/service-tickets/create?kind=maintenance&returnTo=/service-tickets' },
-  ];
+function CreateTicketButton({ kind }: { kind: BoardKind }) {
+  const ticket = createTicketLink(kind);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#f0d7d9] bg-[#fffafa] p-1">
-      {links.map((item, index) => (
-        <Link
-          className={index === 0 ? 'primary-button compact' : 'secondary-button compact bg-white'}
-          key={item.to}
-          to={item.to}
-        >
-          <Plus size={15} />
-          {item.label}
-        </Link>
-      ))}
-    </div>
+    <Link className="primary-button" to={ticket.to}>
+      <Plus size={16} />
+      {ticket.label}
+    </Link>
   );
 }
 
@@ -617,7 +621,7 @@ function FilterSummary({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TicketCard({ item }: { item: BoardItem }) {
+function TicketCard({ item, onView }: { item: BoardItem; onView: (item: BoardItem) => void }) {
   return (
     <article className={ticketCardClass(item)}>
       <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
@@ -646,18 +650,116 @@ function TicketCard({ item }: { item: BoardItem }) {
         {item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? <Badge tone={reviewTone(item.reviewStatus)}>{reviewLabel(item.reviewStatus)}</Badge> : null}
         <span className="text-[13px] font-semibold text-[#333333]">{item.engineer?.fullName || item.engineer?.email || 'Chưa phân kỹ sư'}</span>
       </div>
-      <Link className="secondary-button justify-center" to={editHref(item)}>
-        Cập nhật
-      </Link>
+      <div className="grid gap-2 min-[520px]:grid-cols-2 min-[960px]:grid-cols-1">
+        <button className="secondary-button justify-center rounded-2xl" onClick={() => onView(item)} type="button">
+          Xem
+        </button>
+        <Link className="primary-button justify-center rounded-2xl" to={editHref(item)}>
+          Cập nhật
+        </Link>
+      </div>
     </article>
   );
 }
 
+function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
+      <section
+        aria-modal="true"
+        className="grid max-h-[92vh] w-full max-w-[860px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[30px] border border-[#f0d7d9] bg-white shadow-[0_30px_90px_rgba(28,39,56,0.28)]"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="relative overflow-hidden border-b border-[#f4e2e4] bg-[#fff7f8] p-5">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(215,25,32,0.12),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,248,0.82))]" />
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="grid min-w-0 gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</span>
+                <Badge tone={statusTone(item.status)}>{displayLabel(item.status)}</Badge>
+                {item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? <Badge tone={reviewTone(item.reviewStatus)}>{reviewLabel(item.reviewStatus)}</Badge> : null}
+              </div>
+              <div>
+                <span className="text-sm font-black text-[#b5121b]">{kindLabel(item.kind)} · {item.code}</span>
+                <h2 className="mt-2 text-[clamp(26px,4vw,42px)] font-black leading-[1.02] tracking-[-0.04em] text-[#1f1f1f]">{item.title}</h2>
+              </div>
+            </div>
+            <button className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#f0d7d9] bg-white text-[#66565a] shadow-[0_8px_18px_rgba(120,20,28,0.08)] hover:border-[#d71920]/35 hover:text-[#d71920]" onClick={onClose} type="button" aria-label="Đóng xem phiếu">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="min-h-0 overflow-y-auto p-5">
+          <div className="grid gap-4 min-[760px]:grid-cols-[minmax(0,1fr)_280px]">
+            <section className="grid gap-3 rounded-[24px] border border-[#f0d7d9] bg-[#fffefe] p-4">
+              <h3 className="text-sm font-black text-[#1f1f1f]">Thông tin phiếu</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <PreviewField label="Loại phiếu" value={kindLabel(item.kind)} />
+                <PreviewField label="Ngày ghi nhận" value={item.date ? formatDate(item.date) : 'Chưa có ngày'} />
+                <PreviewField label="Kỹ sư phụ trách" value={item.engineer?.fullName || item.engineer?.email || 'Chưa phân kỹ sư'} />
+                <PreviewField label="Ngành hàng" value={item.productIndustry || 'Chưa phân ngành'} />
+                <PreviewField label="Nội dung phụ" value={item.secondary || 'Chưa có'} />
+                <PreviewField label="Bảo hành" value={item.warrantyEndDate ? `Đến ${formatDate(item.warrantyEndDate)}` : 'Chưa có thông tin'} />
+              </div>
+            </section>
+
+            <aside className="grid content-start gap-3 rounded-[24px] border border-[#f0d7d9] bg-[#fffafa] p-4">
+              <h3 className="text-sm font-black text-[#1f1f1f]">Tình trạng cần chú ý</h3>
+              <div className="flex flex-wrap gap-2">
+                {alertBadges(item).length ? (
+                  alertBadges(item).map((badge) => <Badge key={badge.label} tone={badge.tone}>{badge.label}</Badge>)
+                ) : (
+                  <Badge tone="good">Không có cảnh báo</Badge>
+                )}
+              </div>
+              <div className="h-px bg-[#f4e2e4]" />
+              <PreviewField label="Trạng thái" value={displayLabel(item.status)} />
+              <PreviewField label="Duyệt admin" value={item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? reviewLabel(item.reviewStatus) : 'Không yêu cầu'} />
+            </aside>
+
+            <section className="grid gap-3 rounded-[24px] border border-[#f0d7d9] bg-white p-4 min-[760px]:col-span-2">
+              <h3 className="text-sm font-black text-[#1f1f1f]">Khách hàng và thiết bị</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <PreviewField label="Khách hàng" value={customerText(item)} />
+                <PreviewField label="Thiết bị" value={machineText(item)} />
+                <PreviewField label="Mã máy" value={item.machine?.machineCode || 'Chưa có'} />
+                <PreviewField label="Model" value={item.machine?.modelName || 'Chưa có'} />
+                <PreviewField label="Serial" value={item.machine?.serialNumber || 'Chưa có'} />
+                <PreviewField label="Tỉnh" value={item.customer?.province || item.machine?.customer?.province || 'Chưa có'} />
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-[#f4e2e4] bg-[#fffafa] p-4">
+          <button className="secondary-button" onClick={onClose} type="button">
+            Đóng
+          </button>
+          <Link className="primary-button" to={editHref(item)}>
+            Cập nhật phiếu
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PreviewField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 rounded-2xl bg-[#fffafa] px-3 py-2.5">
+      <span className="text-[11px] font-black uppercase tracking-[0.08em] text-[#9b7479]">{label}</span>
+      <strong className="min-w-0 break-words text-sm font-bold leading-5 text-[#2b2526]">{value || '-'}</strong>
+    </div>
+  );
+}
+
 function ticketCardClass(item: BoardItem) {
-  const base = 'grid gap-3 border-t px-4 py-4 first:border-t-0 min-[960px]:grid-cols-[42px_minmax(0,1fr)_220px_auto] min-[960px]:items-center';
+  const base = 'grid gap-3 rounded-[22px] border px-4 py-4 shadow-[0_8px_24px_rgba(120,20,28,0.045)] transition hover:-translate-y-px hover:shadow-[0_16px_34px_rgba(120,20,28,0.08)] min-[960px]:grid-cols-[42px_minmax(0,1fr)_220px_118px] min-[960px]:items-center';
   if (urgencyRank(item) >= 70) return `${base} border-[#f5c7cb] bg-[#fffafa]`;
   if (urgencyRank(item) >= 30) return `${base} border-[#efd8a8] bg-[#fffdf8]`;
-  return `${base} border-[#eeeeee] bg-white`;
+  return `${base} border-[#f0d7d9] bg-white`;
 }
 
 function ProductIndustryFilter({ onChange, value }: { onChange: (value: string) => void; value: string }) {
@@ -838,6 +940,12 @@ function editHref(item: BoardItem) {
   if (item.kind === 'installation') return `/installations/${item.id}/update?returnTo=/service-tickets`;
   if (item.kind === 'maintenance') return `/maintenance/${item.id}/update?returnTo=/service-tickets`;
   return `/repairs/${item.id}/update?returnTo=/service-tickets`;
+}
+
+function createTicketLink(kind: BoardKind) {
+  if (kind === 'installations') return { label: 'Tạo phiếu lắp đặt', to: '/installations/create?returnTo=/service-tickets' };
+  if (kind === 'maintenance') return { label: 'Tạo phiếu bảo trì', to: '/service-tickets/create?kind=maintenance&returnTo=/service-tickets' };
+  return { label: 'Tạo phiếu sửa chữa', to: '/service-tickets/create?kind=repair&returnTo=/service-tickets' };
 }
 
 function queueChipClass(active: boolean) {

@@ -91,6 +91,7 @@ export function AdminCrudPage({
   const quickFilters = useMemo(() => buildQuickFilters(config, rows), [config, rows]);
   const isCustomerCrud = isCustomersEndpoint(config.endpoint);
   const customerStats = useMemo(() => buildCustomerStats(rows), [rows]);
+  const tableColumnCount = (isCustomerCrud ? 6 : config.columns.length) + (config.canUpdate !== false || config.canDelete !== false ? 1 : 0);
 
   useEffect(() => {
     if (!pagination) return;
@@ -386,7 +387,7 @@ export function AdminCrudPage({
               ))}
               {loading ? (
                 <tr>
-                  <td colSpan={config.columns.length + (config.canUpdate !== false || config.canDelete !== false ? 1 : 0)}>
+                  <td colSpan={tableColumnCount}>
                     <div className="table-state">
                       <Loader2 className="spin-icon" size={18} />
                       Đang tải dữ liệu...
@@ -396,7 +397,7 @@ export function AdminCrudPage({
               ) : null}
               {!loading && filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={config.columns.length + (config.canUpdate !== false || config.canDelete !== false ? 1 : 0)}>
+                  <td colSpan={tableColumnCount}>
                     <div className="table-state empty-state">
                       <strong>Không có dữ liệu phù hợp</strong>
                       <span>Thử đổi từ khóa tìm kiếm hoặc tạo mới {config.entityLabel}.</span>
@@ -450,7 +451,18 @@ export function AdminCrudPage({
         </div>
       </section>
 
-      {selectedRow ? (
+      {selectedRow && isCustomerCrud ? (
+        <CustomerQuickViewModal
+          canDelete={config.canDelete !== false}
+          canUpdate={config.canUpdate !== false}
+          onClose={() => setSelectedRow(null)}
+          onDelete={() => setDeletingRow(selectedRow)}
+          onEdit={() => startEdit(selectedRow)}
+          row={selectedRow}
+        />
+      ) : null}
+
+      {selectedRow && !isCustomerCrud ? (
         <div className="detail-drawer-backdrop" onClick={() => setSelectedRow(null)} role="presentation">
           <aside aria-modal="true" className="detail-drawer" onClick={(event) => event.stopPropagation()} role="dialog">
             <div className="form-panel-heading">
@@ -960,6 +972,106 @@ function CustomerMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
+function CustomerQuickViewModal({
+  row,
+  canUpdate,
+  canDelete,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  row: TableRow;
+  canUpdate: boolean;
+  canDelete: boolean;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const id = String(readPath(row, 'id') ?? '');
+  const name = formatDisplayValue(readPath(row, 'hospitalName') || readPath(row, 'name'));
+  const code = formatDisplayValue(readPath(row, 'customerCode'));
+  const type = displayLabel(String(readPath(row, 'customerType') ?? ''));
+  const address = [readPath(row, 'address'), readPath(row, 'district'), readPath(row, 'province')]
+    .filter(Boolean)
+    .map((value) => String(value))
+    .join(', ');
+  const phone = formatDisplayValue(readPath(row, 'contactPhone') || readPath(row, 'phone'));
+  const contact = formatDisplayValue(readPath(row, 'contactPerson'));
+  const region = formatDisplayValue(readPath(row, 'region.name'));
+  const engineer = formatDisplayValue(readPath(row, 'primaryEngineer.fullName') || readPath(row, 'primaryEngineer.email'));
+  const machineCount = Number(readPath(row, '_count.machines') ?? 0);
+
+  return (
+    <div className="customer-quick-backdrop" onClick={onClose} role="presentation">
+      <section aria-modal="true" className="customer-quick-modal" onClick={(event) => event.stopPropagation()} role="dialog">
+        <header className="customer-quick-header">
+          <div>
+            <span>Hồ sơ nhanh</span>
+            <h2>{name}</h2>
+            <p>{[code !== '-' ? code : '', type].filter(Boolean).join(' - ') || 'Chưa phân loại'}</p>
+          </div>
+          <button className="icon-button" onClick={onClose} title="Close" type="button">
+            <X size={17} />
+          </button>
+        </header>
+
+        <div className="customer-quick-body">
+          <section className="customer-quick-panel">
+            <h3>Liên hệ</h3>
+            <div className="customer-quick-grid">
+              <CustomerQuickField label="Người liên hệ" value={contact} />
+              <CustomerQuickField label="Số điện thoại" value={phone} />
+              <CustomerQuickField label="Khu vực" value={region} />
+              <CustomerQuickField label="Địa chỉ" value={address || 'Chưa có địa chỉ'} />
+            </div>
+          </section>
+
+          <section className="customer-quick-side">
+            <CustomerQuickField label="Kỹ sư phụ trách" value={engineer === '-' ? 'Chưa gán kỹ sư' : engineer} />
+            <CustomerQuickField label="Số máy" value={`${machineCount} máy`} />
+            <div className="customer-quick-status">
+              <span>Trạng thái</span>
+              {renderStatusBadge(readPath(row, 'status'))}
+            </div>
+          </section>
+        </div>
+
+        <footer className="customer-quick-actions">
+          <button className="secondary-button" onClick={onClose} type="button">
+            Đóng
+          </button>
+          {id ? (
+            <Link className="primary-button" to={`/customers/profile?customerId=${id}`}>
+              Hồ sơ đầy đủ
+            </Link>
+          ) : null}
+          {canUpdate ? (
+            <button className="secondary-button" onClick={onEdit} type="button">
+              <Edit3 size={16} />
+              Edit
+            </button>
+          ) : null}
+          {canDelete ? (
+            <button className="danger-button" onClick={onDelete} type="button">
+              <Trash2 size={16} />
+              Delete
+            </button>
+          ) : null}
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+function CustomerQuickField({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="customer-quick-field">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
 function CustomerTableRow({
   row,
   canUpdate,
@@ -1016,6 +1128,16 @@ function CustomerTableRow({
       {canUpdate || canDelete ? (
         <td className="actions-cell">
           <div className="row-actions">
+            <button
+              className="customer-view-button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onSelect();
+              }}
+              type="button"
+            >
+              Xem
+            </button>
             <Link className="customer-profile-link" onClick={(event) => event.stopPropagation()} to={`/customers/profile?customerId=${String(readPath(row, 'id') ?? '')}`}>
               Hồ sơ
             </Link>

@@ -1,4 +1,4 @@
-import { Boxes, ClipboardCheck, History, Loader2, PackageCheck, RotateCcw, Search, ShoppingCart, Split, Wrench } from 'lucide-react';
+import { Boxes, ClipboardCheck, History, Loader2, PackageCheck, RotateCcw, Search, ShoppingCart, Split, Wrench, X } from 'lucide-react';
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
@@ -74,12 +74,24 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeMove, setActiveMove] = useState<{ action: MovementAction; machine: Machine } | null>(null);
+  const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
   const [movementCustomerId, setMovementCustomerId] = useState('');
   const [movementNote, setMovementNote] = useState('');
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!selectedMachine) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setSelectedMachine(null);
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedMachine]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredMachines = useMemo(() => {
@@ -219,7 +231,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
         <SummaryCard icon={<PackageCheck size={18} />} label="Đã lắp đặt" tone="good" value={stats.installed} />
       </section>
 
-      <div className="rounded-lg border border-[#e5e5e5] bg-white p-1 font-sans">
+      <div className="rounded-[24px] border border-[#f0d7d9] bg-white/90 p-1 font-sans shadow-[0_14px_34px_rgba(120,20,28,0.05)]">
         <div className="grid grid-cols-3 gap-1 max-sm:grid-cols-1">
           <TabButton active={tab === 'stock'} icon={<Boxes size={17} />} label="Tồn kho" onClick={() => updateInventoryState('stock', query, 'ALL')} />
           <TabButton active={tab === 'installed'} icon={<PackageCheck size={17} />} label="Máy đã lắp" onClick={() => updateInventoryState('installed', query, 'ALL')} />
@@ -228,13 +240,13 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       </div>
 
       {tab === 'stock' ? (
-        <section className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <section className="grid gap-3 rounded-[28px] border border-[#f0d7d9] bg-[#fffafa] p-4 shadow-[0_18px_44px_rgba(120,20,28,0.06)]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <span className="text-xs font-semibold text-[#d71920]">Hàng đợi kho</span>
               <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">Chọn nhóm máy cần xử lý</h2>
             </div>
-            <span className="rounded-lg border border-[#eeeeee] bg-[#fafafa] px-3 py-2 text-sm font-medium text-[#333333]">
+            <span className="rounded-[18px] border border-[#f0d7d9] bg-white px-3 py-2 text-sm font-medium text-[#333333]">
               {filteredMachines.length} máy đang hiển thị
             </span>
           </div>
@@ -249,7 +261,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       ) : null}
 
       <div className="flex min-w-0 items-center justify-between gap-3.5 max-sm:flex-col max-sm:items-stretch">
-        <div className="flex min-h-11 max-w-[560px] flex-1 items-center gap-2.5 rounded-lg border border-[#e5e5e5] bg-white px-3 text-[#666666] transition focus-within:-translate-y-px focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] max-sm:max-w-none">
+        <div className="flex min-h-11 max-w-[560px] flex-1 items-center gap-2.5 rounded-[20px] border border-[#f0d7d9] bg-white px-3 text-[#666666] shadow-[0_10px_24px_rgba(120,20,28,0.04)] transition focus-within:-translate-y-px focus-within:border-[#d71920] focus-within:shadow-[0_0_0_3px_rgba(215,25,32,0.12)] max-sm:max-w-none">
           <Search size={18} />
           <input
             className="min-w-0 flex-1 border-0 font-sans text-[#1f1f1f] outline-none"
@@ -284,9 +296,14 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
             canManageInventory={currentRole === 'admin'}
             returnTo={returnToInventory}
             onMove={openMovement}
+            onView={setSelectedMachine}
           />
         </section>
       )}
+
+      {selectedMachine ? (
+        <MachinePreviewModal machine={selectedMachine} onClose={() => setSelectedMachine(null)} returnTo={returnToInventory} />
+      ) : null}
 
       {activeMove ? (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/40 p-5" role="presentation">
@@ -348,10 +365,10 @@ function SummaryCard({
   value: number;
 }) {
   return (
-    <div className="grid gap-2 rounded-lg border border-[#e5e5e5] bg-white p-4 font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <div className="grid gap-2 rounded-[24px] border border-[#f0d7d9] bg-white p-4 font-sans shadow-[0_14px_34px_rgba(120,20,28,0.06)]">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-[#666666]">{label}</span>
-        <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${summaryIconTone[tone]}`}>{icon}</span>
+        <span className={`inline-flex h-9 w-9 items-center justify-center rounded-[14px] ${summaryIconTone[tone]}`}>{icon}</span>
       </div>
       <strong className="text-3xl leading-none text-[#1f1f1f]">{value}</strong>
       {detail ? <span className="text-xs text-[#666666]">{detail}</span> : null}
@@ -362,7 +379,7 @@ function SummaryCard({
 function QueueButton({ active, count, label, onClick }: { active: boolean; count: number; label: string; onClick: () => void }) {
   return (
     <button
-      className={`grid min-h-[76px] rounded-lg border p-3 text-left transition ${
+      className={`grid min-h-[76px] rounded-[20px] border p-3 text-left transition ${
         active
           ? 'border-[#d71920] bg-[#fff5f5] text-[#d71920] shadow-[0_8px_20px_rgba(215,25,32,0.08)]'
           : 'border-[#eeeeee] bg-[#fafafa] text-[#333333] hover:border-[#f5c7cb] hover:bg-white'
@@ -379,7 +396,7 @@ function QueueButton({ active, count, label, onClick }: { active: boolean; count
 function TabButton({ active, icon, label, onClick }: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
   return (
     <button
-      className={`inline-flex min-h-[42px] items-center justify-center gap-2 rounded-md px-3 font-medium transition ${
+      className={`inline-flex min-h-[42px] items-center justify-center gap-2 rounded-[18px] px-3 font-medium transition ${
         active ? 'bg-[#fff8f7] text-[#d71920] shadow-[inset_0_-2px_0_#d71920]' : 'text-[#333333] hover:bg-[#fafafa]'
       }`}
       onClick={onClick}
@@ -398,6 +415,7 @@ function MachineTable({
   canManageInventory,
   returnTo,
   onMove,
+  onView,
 }: {
   loading: boolean;
   machines: Machine[];
@@ -405,9 +423,10 @@ function MachineTable({
   canManageInventory: boolean;
   returnTo: string;
   onMove: (machine: Machine, action: MovementAction) => void;
+  onView: (machine: Machine) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#e5e5e5] bg-white font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <div className="overflow-x-auto rounded-[28px] border border-[#f0d7d9] bg-white font-sans shadow-[0_18px_44px_rgba(120,20,28,0.06)]">
       <table className="w-full min-w-[1040px] border-collapse">
         <thead>
           <tr>
@@ -450,6 +469,9 @@ function MachineTable({
               </td>
               <td className={`${cellClass} min-w-[260px]`}>
                 <div className="flex flex-wrap gap-2">
+                  <button className="secondary-button" onClick={() => onView(machine)} type="button">
+                    Xem
+                  </button>
                   {mode === 'installed' ? (
                     <>
                       {canManageInventory ? (
@@ -526,9 +548,130 @@ function MachineTable({
   );
 }
 
+function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine; onClose: () => void; returnTo: string }) {
+  const canInstall = canInstallFromInventory(machine);
+  const canCreateService = machine.inventoryStatus === 'INSTALLED' || machine.inventoryStatus === 'RETURNED';
+  const title = machine.machineCode || machine.serialNumber || machine.modelName || 'Thiết bị';
+
+  return (
+    <div
+      className="fixed inset-0 z-40 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="presentation"
+    >
+      <section
+        aria-modal="true"
+        className="grid max-h-[92vh] w-full max-w-[880px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[30px] border border-[#f0d7d9] bg-white font-sans shadow-[0_34px_90px_rgba(20,32,51,0.24)]"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-[#f4e1e3] bg-gradient-to-br from-[#fff8f7] via-white to-[#f7fbff] px-5 py-4">
+          <div className="min-w-0">
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#d71920]">Chi tiết máy</span>
+            <h2 className="mt-1 truncate text-2xl font-semibold text-[#182033]">{title}</h2>
+            <p className="mt-1 text-sm text-[#667085]">{machine.name || machine.machineModel?.name || machine.modelName || 'Chưa có tên thiết bị'}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <StatusBadge value={machine.inventoryStatus} />
+            <button
+              aria-label="Đóng xem chi tiết máy"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#f0d7d9] bg-white text-[#344054] transition hover:-translate-y-0.5 hover:border-[#d71920] hover:text-[#d71920]"
+              onClick={onClose}
+              type="button"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </header>
+
+        <div className="overflow-y-auto px-5 py-5">
+          <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+            <div className="grid gap-4">
+              <section className="rounded-[24px] border border-[#f0d7d9] bg-[#fffdfd] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="font-semibold text-[#182033]">Thông tin máy</h3>
+                  {machine.status && machine.status !== 'ACTIVE' ? (
+                    <span className="rounded-full bg-[#fff8ed] px-2.5 py-1 text-xs font-semibold text-[#9b5a17]">{displayLabel(machine.status)}</span>
+                  ) : null}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <PreviewField label="Mã máy" value={machine.machineCode || 'Chưa có mã'} />
+                  <PreviewField label="Serial" value={machine.serialNumber || 'Chưa có serial'} />
+                  <PreviewField label="Model" value={machine.machineModel?.code || machine.modelName || machine.machineModel?.name || 'Chưa có model'} />
+                  <PreviewField label="Tên thiết bị" value={machine.name || machine.machineModel?.name || 'Chưa có tên'} />
+                </div>
+              </section>
+
+              <section className="rounded-[24px] border border-[#e6edf5] bg-[#fbfdff] p-4">
+                <h3 className="mb-3 font-semibold text-[#182033]">Khách hàng & bảo hành</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <PreviewField label="Khách hàng" value={machine.customer?.name || 'Chưa gắn khách hàng'} />
+                  <PreviewField label="Khu vực" value={machine.customer?.province || 'Chưa có khu vực'} />
+                  <PreviewField label="Ngày lắp" value={machine.installDate ? formatValue(machine.installDate) : 'Chưa lắp'} />
+                  <PreviewField label="Hạn bảo hành" value={machine.warrantyEndDate ? formatValue(machine.warrantyEndDate) : 'Chưa có hạn BH'} />
+                </div>
+              </section>
+            </div>
+
+            <aside className="grid content-start gap-4">
+              <section className="rounded-[24px] border border-[#f0d7d9] bg-white p-4 shadow-[0_12px_30px_rgba(120,20,28,0.05)]">
+                <h3 className="font-semibold text-[#182033]">Phụ trách</h3>
+                <div className="mt-3 grid gap-3">
+                  <PreviewField label="Kỹ sư chính" value={machine.primaryEngineer?.fullName || machine.primaryEngineer?.email || 'Chưa phân kỹ sư'} />
+                  <PreviewField label="Phụ kiện" value={`${machine.accessories?.length ?? 0} phụ kiện`} />
+                </div>
+              </section>
+
+              <section className="rounded-[24px] border border-[#f0d7d9] bg-[#fff8f7] p-4">
+                <h3 className="font-semibold text-[#182033]">Gợi ý thao tác</h3>
+                <p className="mt-2 text-sm leading-6 text-[#667085]">
+                  Xem nhanh thông tin trước khi tạo phiếu, tránh chọn nhầm máy hoặc nhầm khách hàng.
+                </p>
+              </section>
+            </aside>
+          </div>
+        </div>
+
+        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-[#f4e1e3] bg-white px-5 py-4">
+          <button className="secondary-button" onClick={onClose} type="button">
+            Đóng
+          </button>
+          {canInstall ? (
+            <Link className="primary-button" to={`/installations/create?machineId=${machine.id}&returnTo=${returnTo}`}>
+              <PackageCheck size={15} />
+              Tạo phiếu lắp đặt
+            </Link>
+          ) : null}
+          {canCreateService ? (
+            <Link className="secondary-button" to={`/service-tickets/create?kind=repair&machineId=${machine.id}&returnTo=${returnTo}`}>
+              <Wrench size={15} />
+              Sửa chữa
+            </Link>
+          ) : null}
+          {machine.inventoryStatus === 'INSTALLED' ? (
+            <Link className="secondary-button" to={`/service-tickets/create?kind=maintenance&machineId=${machine.id}&returnTo=${returnTo}`}>
+              <ClipboardCheck size={15} />
+              Bảo trì
+            </Link>
+          ) : null}
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+function PreviewField({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-[18px] border border-white/70 bg-white px-3 py-2.5 shadow-[0_8px_20px_rgba(20,32,51,0.04)]">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#98a2b3]">{label}</span>
+      <strong className="mt-1 block break-words text-sm font-semibold text-[#202939]">{value}</strong>
+    </div>
+  );
+}
+
 function HistoryTable({ loading, movements }: { loading: boolean; movements: InventoryMovement[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#e5e5e5] bg-white font-sans shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <div className="overflow-x-auto rounded-[28px] border border-[#f0d7d9] bg-white font-sans shadow-[0_18px_44px_rgba(120,20,28,0.06)]">
       <table className="w-full min-w-[980px] border-collapse">
         <thead>
           <tr>

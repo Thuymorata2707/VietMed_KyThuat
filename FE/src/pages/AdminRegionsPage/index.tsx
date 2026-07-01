@@ -180,8 +180,8 @@ export function AdminRegionsPage() {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white">
-        <div className="list-toolbar">
+      <section className="overflow-hidden rounded-[28px] border border-[#f0d7d9] bg-white shadow-[0_18px_44px_rgba(120,20,28,0.06)]">
+        <div className="list-toolbar border-b border-[#f4e1e3]">
           <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm tên hoặc mã khu vực" value={query} />
           <button className="primary-button compact" onClick={openCreateModal} type="button">
             <Plus size={17} />
@@ -189,66 +189,55 @@ export function AdminRegionsPage() {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse">
-            <thead>
-              <tr>
-                <th className="border-b border-[#eeeeee] px-3.5 py-[13px] text-left text-xs font-medium text-[#666666]">Khu vực</th>
-                <th className="border-b border-[#eeeeee] px-3.5 py-[13px] text-left text-xs font-medium text-[#666666]">Mã</th>
-                <th className="border-b border-[#eeeeee] px-3.5 py-[13px] text-left text-xs font-medium text-[#666666]">Ngày tạo</th>
-                <th className="border-b border-[#eeeeee] px-3.5 py-[13px] text-left text-xs font-medium text-[#666666]">Cập nhật</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRegions.map((region) => (
-                <tr
-                  className={`cursor-pointer hover:bg-[#f8fbfd] ${selectedRegion?.id === region.id ? 'bg-[#f8fbfd] shadow-[inset_3px_0_0_#d71920]' : ''}`}
-                  key={region.id}
-                  onClick={() => selectRegion(region)}
-                >
-                  <td className="border-b border-[#eeeeee] px-3.5 py-[13px]">
-                    <div className="flex items-center gap-2 text-[#1f1f1f]">
-                      <MapPinned size={17} />
-                      <strong>{region.name}</strong>
-                    </div>
-                  </td>
-                  <td className="border-b border-[#eeeeee] px-3.5 py-[13px]">{region.code}</td>
-                  <td className="border-b border-[#eeeeee] px-3.5 py-[13px]">{formatDate(region.createdAt)}</td>
-                  <td className="border-b border-[#eeeeee] px-3.5 py-[13px]">{formatDate(region.updatedAt)}</td>
-                </tr>
-              ))}
-              {loading ? (
-                <tr>
-                  <td colSpan={4}>
-                    <div className="table-state">
-                      <Loader2 className="spin-icon" size={18} />
-                      Đang tải khu vực...
-                    </div>
-                  </td>
-                </tr>
-              ) : null}
-              {!loading && filteredRegions.length === 0 ? (
-                <tr>
-                  <td colSpan={4}>
-                    <div className="table-state empty-state">
-                      <strong>Không có khu vực phù hợp</strong>
-                      <span>Thử đổi từ khóa tìm kiếm hoặc tạo khu vực mới.</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+          {filteredRegions.map((region) => (
+            <button
+              className={`group grid min-h-[150px] content-between gap-5 rounded-[24px] border bg-[#fffdfd] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#d71920] hover:shadow-[0_18px_38px_rgba(120,20,28,0.1)] ${
+                selectedRegion?.id === region.id ? 'border-[#d71920] shadow-[0_18px_38px_rgba(120,20,28,0.1)]' : 'border-[#f0d7d9]'
+              }`}
+              key={region.id}
+              onClick={() => selectRegion(region)}
+              type="button"
+            >
+              <span className="flex items-start justify-between gap-3">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] bg-[#fff1f3] text-[#d71920]">
+                  <MapPinned size={19} />
+                </span>
+                <span className="rounded-full border border-[#f0d7d9] bg-white px-3 py-1 text-xs font-semibold text-[#d71920]">{region.code}</span>
+              </span>
+              <span className="grid gap-1">
+                <strong className="text-xl font-semibold text-[#182033]">{region.name}</strong>
+                <small className="text-xs font-medium text-[#667085]">Cập nhật {formatDate(region.updatedAt)}</small>
+              </span>
+              <span className="inline-flex items-center justify-between gap-3 text-sm font-semibold text-[#d71920]">
+                Xem khách hàng
+                <span className="h-px flex-1 bg-[#f0d7d9] transition group-hover:bg-[#d71920]" />
+              </span>
+            </button>
+          ))}
+
+          {loading ? (
+            <div className="col-span-full table-state">
+              <Loader2 className="spin-icon" size={18} />
+              Đang tải khu vực...
+            </div>
+          ) : null}
+          {!loading && filteredRegions.length === 0 ? (
+            <div className="col-span-full table-state empty-state">
+              <strong>Không có khu vực phù hợp</strong>
+              <span>Thử đổi từ khóa tìm kiếm hoặc tạo khu vực mới.</span>
+            </div>
+          ) : null}
         </div>
       </section>
 
       {selectedRegion ? (
-        <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/30" onClick={closeRegionDetail} role="presentation">
-          <aside aria-modal="true" className="grid h-screen w-[min(92vw,1100px)] max-w-[1100px] grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden bg-white p-[18px] shadow-[-18px_0_40px_rgba(20,32,51,0.18)] max-sm:w-screen max-sm:p-3.5" onClick={(event) => event.stopPropagation()} role="dialog">
-            <div className="flex items-center justify-between gap-3.5 max-sm:flex-col max-sm:items-stretch">
+        <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/30 backdrop-blur-[3px]" onClick={closeRegionDetail} role="presentation">
+          <aside aria-modal="true" className="grid h-screen w-[min(92vw,1100px)] max-w-[1100px] grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-l-[30px] border-l border-[#f0d7d9] bg-white p-[18px] shadow-[-18px_0_40px_rgba(20,32,51,0.18)] max-sm:w-screen max-sm:rounded-none max-sm:p-3.5" onClick={(event) => event.stopPropagation()} role="dialog">
+            <div className="flex items-center justify-between gap-3.5 rounded-[24px] border border-[#f0d7d9] bg-gradient-to-br from-[#fff8f7] via-white to-[#f7fbff] p-4 max-sm:flex-col max-sm:items-stretch">
               <div className="grid gap-1">
-                <span className="text-xs leading-snug text-[#666666]">Khách hàng theo khu vực</span>
-                <h2>{selectedRegion.name}</h2>
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#d71920]">Khách hàng theo khu vực</span>
+                <h2 className="text-2xl font-semibold text-[#182033]">{selectedRegion.name}</h2>
               </div>
               <div className="flex items-center gap-2 max-sm:justify-between">
                 <button className="secondary-button compact" disabled={loadingCustomers} onClick={() => void customersQuery.refetch()} type="button">
@@ -262,7 +251,7 @@ export function AdminRegionsPage() {
             </div>
 
             <div className="grid min-h-0 grid-cols-[minmax(260px,360px)_minmax(0,1fr)] gap-3.5 max-sm:grid-cols-1 max-sm:overflow-y-auto">
-              <div className="grid content-start gap-2.5 overflow-y-auto">
+              <div className="grid content-start gap-2.5 overflow-y-auto rounded-[24px] border border-[#f0d7d9] bg-[#fffdfd] p-3">
                 {loadingCustomers ? (
                   <div className="table-state">
                     <Loader2 className="spin-icon" size={18} />
@@ -279,7 +268,7 @@ export function AdminRegionsPage() {
 
                 {customers.map((customer) => (
                   <button
-                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-lg border border-[#eeeeee] bg-white p-3 text-left text-[#1f1f1f] hover:border-[#f5c7cb] hover:shadow-[inset_3px_0_0_#d71920] ${selectedCustomer?.id === customer.id ? 'border-[#f5c7cb] shadow-[inset_3px_0_0_#d71920]' : ''}`}
+                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-[18px] border border-[#eeeeee] bg-white p-3 text-left text-[#1f1f1f] transition hover:border-[#f5c7cb] hover:shadow-[inset_3px_0_0_#d71920] ${selectedCustomer?.id === customer.id ? 'border-[#f5c7cb] shadow-[inset_3px_0_0_#d71920]' : ''}`}
                     key={customer.id}
                     onClick={() => selectCustomer(customer)}
                     type="button"
@@ -297,7 +286,7 @@ export function AdminRegionsPage() {
                 ))}
               </div>
 
-              <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden rounded-lg border border-[#eeeeee] bg-[#f8fbfd] p-3.5">
+              <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden rounded-[24px] border border-[#e6edf5] bg-[#f8fbfd] p-3.5">
                 {loadingCustomerDetail ? (
                   <div className="table-state">
                     <Loader2 className="spin-icon" size={18} />
@@ -323,7 +312,7 @@ export function AdminRegionsPage() {
                     {selectedCustomer.machines?.length ? (
                       <div className="grid content-start gap-2.5 overflow-y-auto">
                         {selectedCustomer.machines.map((machine) => (
-                          <article className="grid min-w-0 gap-3 rounded-lg border border-[#eeeeee] bg-white p-[13px]" key={machine.id}>
+                          <article className="grid min-w-0 gap-3 rounded-[18px] border border-[#eeeeee] bg-white p-[13px]" key={machine.id}>
                             <div className="grid min-w-0 gap-1">
                               <strong className="overflow-hidden text-ellipsis whitespace-nowrap">{machine.machineCode || machine.serialNumber || machine.name || 'Máy chưa có mã'}</strong>
                               <span className="overflow-hidden text-ellipsis whitespace-nowrap text-xs leading-snug text-[#666666]">{[machine.modelName, machine.manufacturer].filter(Boolean).join(' - ') || 'Chưa có model'}</span>
