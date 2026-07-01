@@ -627,7 +627,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
             </div>
           </div>
 
-          <div className="rounded-[22px] border border-[#cfe4e2] bg-[#ecfdf8] p-3 shadow-[0_16px_40px_rgba(15,118,110,0.08)]">
+          <div className="rounded-[22px] border border-[#e8dcc0] bg-[#fff7d6] p-3 shadow-[0_16px_40px_rgba(42,41,38,0.08)]">
             <div className="grid gap-2 sm:grid-cols-2 min-[1320px]:grid-cols-1">
             <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
               Hủy
@@ -799,7 +799,7 @@ function QuickCustomerPanel({
   updateForm: (patch: Partial<QuickCustomerForm>) => void;
 }) {
   return (
-    <div className="mb-4 grid gap-4 rounded-lg border border-[#eeeeee] bg-[#f8fbfd] p-4 md:grid-cols-2">
+    <div className="mb-4 grid gap-4 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-4 md:grid-cols-2">
       <label className={labelClass}>
         Tên khách hàng
         <input className={fieldClass} onChange={(event) => updateForm({ name: event.target.value })} value={form.name} />
@@ -871,7 +871,7 @@ function QuickMachinePanel({
   updateForm: (patch: Partial<QuickMachineForm>) => void;
 }) {
   return (
-    <div className="grid gap-4 rounded-lg border border-[#eeeeee] bg-[#f8fbfd] p-4 md:grid-cols-2">
+    <div className="grid gap-4 rounded-lg border border-[#eeeeee] bg-[#fbf8ec] p-4 md:grid-cols-2">
       <div className="md:col-span-2">
         <span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-xs font-medium text-[#333333]">
           {kind === 'installation' ? 'Tạo máy trong kho' : 'Tạo máy đã lắp'}
@@ -951,18 +951,18 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-const panelClass = 'rounded-[24px] border border-[#cfe4e2] bg-white/95 p-5 shadow-[0_18px_50px_rgba(15,118,110,0.07)] sm:p-6';
-const sidePanelClass = 'rounded-[24px] border border-[#cfe4e2] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(15,118,110,0.06)]';
-const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#0f766e] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(15,118,110,0.24)]';
-const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#0f766e]';
+const panelClass = 'rounded-[24px] border border-[#e8dcc0] bg-white/95 p-5 shadow-[0_18px_50px_rgba(42,41,38,0.07)] sm:p-6';
+const sidePanelClass = 'rounded-[24px] border border-[#e8dcc0] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(42,41,38,0.06)]';
+const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#2a2926] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(42,41,38,0.24)]';
+const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#2a2926]';
 const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
 const sectionDescriptionClass = 'mt-1 text-xs font-medium leading-5 text-[#8a8f99]';
 const labelClass = 'grid min-w-0 content-start gap-2 font-sans text-sm font-semibold leading-snug text-[#333333]';
 const wideLabelClass = `${labelClass} md:col-span-2`;
 const fieldClass =
-  'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 font-sans text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#0f766e] focus:bg-white focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
+  'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 font-sans text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#2a2926] focus:bg-white focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
 const textareaClass =
-  'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 font-sans text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#0f766e] focus:bg-white focus:shadow-[0_0_0_4px_rgba(15,118,110,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
+  'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 font-sans text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#2a2926] focus:bg-white focus:shadow-[0_0_0_4px_rgba(42,41,38,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
 
 function normalizeKind(value: string | null): TicketKind {
   if (value === 'maintenance' || value === 'installation') return value;

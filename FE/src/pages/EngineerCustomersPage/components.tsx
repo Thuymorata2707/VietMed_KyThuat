@@ -38,10 +38,10 @@ export function CustomerDetailView({
 
   return (
     <div className="grid min-w-0 gap-5">
-      <div className="min-w-0 rounded-[26px] border border-[#cfe4e2] bg-white p-5 shadow-[0_18px_50px_rgba(15,118,110,0.06)]">
+      <div className="min-w-0 rounded-[26px] border border-[#e8dcc0] bg-white p-5 shadow-[0_18px_50px_rgba(42,41,38,0.06)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#0f766e]">{customer.customerCode || customer.region?.name || 'Khách hàng'}</span>
+            <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2a2926]">{customer.customerCode || customer.region?.name || 'Khách hàng'}</span>
             <h2 className="mt-1 [overflow-wrap:anywhere] text-2xl font-extrabold text-[#1f1f1f]">{customer.hospitalName || customer.name}</h2>
             <p className="mt-1 [overflow-wrap:anywhere] text-sm font-semibold leading-6 text-[#666666]">{customer.fullAddress || [customer.address, customer.district, customer.province].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}</p>
           </div>
@@ -75,13 +75,13 @@ export function CustomerDetailView({
         ) : openTasks.length ? (
           <div className="grid gap-3 md:grid-cols-2">
             {openTasks.map((task) => (
-              <div className="grid min-w-0 gap-3 rounded-2xl border border-[#cfe4e2] bg-[#f8fbfb] p-3" key={`${task.kind}-${task.id}`}>
+              <div className="grid min-w-0 gap-3 rounded-2xl border border-[#e8dcc0] bg-[#f8fbfb] p-3" key={`${task.kind}-${task.id}`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <span className="text-xs font-semibold text-[#0f766e]">{taskKindLabel(task.kind)}</span>
+                    <span className="text-xs font-semibold text-[#2a2926]">{taskKindLabel(task.kind)}</span>
                     <strong className="mt-1 block [overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{task.title}</strong>
                   </div>
-                  <span className="rounded-lg border border-[#edf0f4] bg-white px-2 py-1 text-[11px] font-bold text-[#555555]">{displayStatus(task.status)}</span>
+                  <span className="rounded-lg border border-[#ebe4d3] bg-white px-2 py-1 text-[11px] font-bold text-[#555555]">{displayStatus(task.status)}</span>
                 </div>
                 <span className="min-w-0 [overflow-wrap:anywhere] text-xs leading-5 text-[#666666]">
                   {[formatDate(task.date), task.machine ? machineTitle(task.machine) : task.machineLabel, task.person].filter(Boolean).join(' - ') || 'Chưa có thông tin máy/kỹ sư'}
@@ -121,14 +121,14 @@ export function CustomerDetailView({
           ) : timeline.length ? (
             <div className="grid gap-3">
               {timeline.map((item) => (
-                <div className="grid min-w-0 grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-2xl border border-[#edf0f4] bg-[#fbfdff] p-3" key={`${item.kind}-${item.id}`}>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#0f766e] shadow-[inset_0_0_0_1px_#eeeeee]">
+                <div className="grid min-w-0 grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-2xl border border-[#ebe4d3] bg-[#fbf8ec] p-3" key={`${item.kind}-${item.id}`}>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#2a2926] shadow-[inset_0_0_0_1px_#eeeeee]">
                     {item.kind === 'repair' ? <Wrench size={16} /> : item.kind === 'maintenance' ? <CalendarClock size={16} /> : item.kind === 'inventory' ? <ClipboardList size={16} /> : <Stethoscope size={16} />}
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <strong className="min-w-0 [overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{item.title}</strong>
-                      <span className="rounded-lg border border-[#edf0f4] bg-white px-2 py-1 text-[11px] font-bold text-[#555555]">{displayStatus(item.status)}</span>
+                      <span className="rounded-lg border border-[#ebe4d3] bg-white px-2 py-1 text-[11px] font-bold text-[#555555]">{displayStatus(item.status)}</span>
                     </div>
                     <span className="mt-1 block [overflow-wrap:anywhere] text-xs text-[#666666]">
                       {[formatDate(item.date), item.machine ? machineTitle(item.machine) : item.machineLabel, item.person].filter(Boolean).join(' - ')}
@@ -151,15 +151,15 @@ export function CustomerDetailView({
         ) : accessories.length || installationAccessories.length ? (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {accessories.map((accessory) => (
-              <div className="grid min-w-0 gap-2 rounded-2xl border border-[#edf0f4] bg-[#fbfdff] p-3" key={accessory.id}>
-                <span className="text-xs font-semibold text-[#0f766e]">{accessory.componentAccessory?.component?.name || accessory.componentAccessory?.name || accessory.code || 'Phụ kiện máy'}</span>
+              <div className="grid min-w-0 gap-2 rounded-2xl border border-[#ebe4d3] bg-[#fbf8ec] p-3" key={accessory.id}>
+                <span className="text-xs font-semibold text-[#2a2926]">{accessory.componentAccessory?.component?.name || accessory.componentAccessory?.name || accessory.code || 'Phụ kiện máy'}</span>
                 <strong className="[overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{accessory.name}</strong>
                 <span className="[overflow-wrap:anywhere] text-xs leading-5 text-[#666666]">{[machineTitle(accessory.machine), accessory.serialNumber ? `S/N ${accessory.serialNumber}` : '', accessory.note || accessory.description].filter(Boolean).join(' - ')}</span>
               </div>
             ))}
             {installationAccessories.map((item) => (
-              <div className="grid min-w-0 gap-2 rounded-2xl border border-[#cfe4e2] bg-[#f8fbfb] p-3" key={item.id}>
-                <span className="text-xs font-semibold text-[#0f766e]">Phụ kiện bàn giao</span>
+              <div className="grid min-w-0 gap-2 rounded-2xl border border-[#e8dcc0] bg-[#f8fbfb] p-3" key={item.id}>
+                <span className="text-xs font-semibold text-[#2a2926]">Phụ kiện bàn giao</span>
                 <strong className="[overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{item.name}</strong>
                 <span className="[overflow-wrap:anywhere] text-xs leading-5 text-[#666666]">{[machineTitle(item.machine), item.code, formatDate(item.installedAt)].filter(Boolean).join(' - ')}</span>
               </div>
@@ -175,13 +175,13 @@ export function CustomerDetailView({
 
 function MachineCard({ customerId, machine, returnTo }: { customerId: string; machine: CustomerMachine; returnTo: string }) {
   return (
-    <article className="grid min-w-0 gap-3 rounded-[22px] border border-[#edf0f4] bg-[#fbfdff] p-4 transition hover:border-[#cfe4e2] hover:bg-[#f8fbfb]">
+    <article className="grid min-w-0 gap-3 rounded-[22px] border border-[#ebe4d3] bg-[#fbf8ec] p-4 transition hover:border-[#e8dcc0] hover:bg-[#f8fbfb]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <strong className="block [overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{machineTitle(machine)}</strong>
           <span className="mt-1 block [overflow-wrap:anywhere] text-xs text-[#666666]">{[categoryLabels[machine.productCategory || ''], machine.manufacturer, machine.serialNumber ? `S/N ${machine.serialNumber}` : ''].filter(Boolean).join(' - ') || 'Chưa đủ thông tin máy'}</span>
         </div>
-        <span className="rounded-lg border border-[#edf0f4] bg-white px-2.5 py-1 text-xs font-bold text-[#333333]">{displayStatus(machine.inventoryStatus || machine.status)}</span>
+        <span className="rounded-lg border border-[#ebe4d3] bg-white px-2.5 py-1 text-xs font-bold text-[#333333]">{displayStatus(machine.inventoryStatus || machine.status)}</span>
       </div>
       <div className="grid gap-2 text-xs text-[#666666] sm:grid-cols-3">
         <span>Lắp đặt: <b className="font-semibold text-[#333333]">{formatDate(machine.installDate) || '-'}</b></span>
@@ -209,7 +209,7 @@ function MachineCard({ customerId, machine, returnTo }: { customerId: string; ma
 export function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
   return (
     <div className="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-[#dbe9e8] bg-[#f8fbfb] p-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#0f766e] shadow-[inset_0_0_0_1px_#cfe4e2]">{icon}</div>
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#2a2926] shadow-[inset_0_0_0_1px_#e8dcc0]">{icon}</div>
       <div>
         <strong className="block text-xl font-extrabold leading-tight text-[#1f1f1f]">{value}</strong>
         <span className="text-xs font-bold text-[#666666]">{label}</span>
@@ -220,8 +220,8 @@ export function Metric({ icon, label, value }: { icon: ReactNode; label: string;
 
 function InfoTile({ icon, label, value, hint }: { icon: ReactNode; label: string; value: string; hint?: string }) {
   return (
-    <div className="grid grid-cols-[38px_minmax(0,1fr)] gap-3 rounded-2xl border border-[#edf0f4] bg-[#fbfdff] p-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#0f766e] shadow-[inset_0_0_0_1px_#eeeeee]">{icon}</div>
+    <div className="grid grid-cols-[38px_minmax(0,1fr)] gap-3 rounded-2xl border border-[#ebe4d3] bg-[#fbf8ec] p-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#2a2926] shadow-[inset_0_0_0_1px_#eeeeee]">{icon}</div>
       <div className="min-w-0">
         <span className="text-xs font-bold text-[#666666]">{label}</span>
         <strong className="block truncate text-sm font-extrabold text-[#1f1f1f]">{value}</strong>
@@ -241,7 +241,7 @@ function PanelTitle({ title, subtitle }: { title: string; subtitle: string }) {
 }
 
 export function EmptyState({ title }: { title: string }) {
-  return <div className="rounded-2xl border border-dashed border-[#cfe4e2] bg-[#f8fbfb] px-4 py-6 text-center text-sm font-bold text-[#666666]">{title}</div>;
+  return <div className="rounded-2xl border border-dashed border-[#e8dcc0] bg-[#f8fbfb] px-4 py-6 text-center text-sm font-bold text-[#666666]">{title}</div>;
 }
 
-const panelClass = 'grid min-w-0 content-start gap-3 rounded-[26px] border border-[#cfe4e2] bg-white p-5 shadow-[0_18px_50px_rgba(15,118,110,0.05)]';
+const panelClass = 'grid min-w-0 content-start gap-3 rounded-[26px] border border-[#e8dcc0] bg-white p-5 shadow-[0_18px_50px_rgba(42,41,38,0.05)]';

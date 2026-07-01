@@ -62,7 +62,7 @@ export function ResourcePage({
       <PageTitle eyebrow="Danh mục vận hành" title={config.title} description={config.description} />
 
       <div className="flex min-w-0 items-center justify-between gap-3.5 max-sm:flex-col max-sm:items-stretch">
-        <div className="flex min-h-11 max-w-[520px] flex-1 items-center gap-2.5 rounded-lg border border-[#e5e5e5] bg-white px-3 text-[#666666] transition focus-within:-translate-y-px focus-within:border-[#0f766e] focus-within:shadow-[0_0_0_3px_rgba(15,118,110,0.12)] max-sm:max-w-none">
+        <div className="flex min-h-11 max-w-[520px] flex-1 items-center gap-2.5 rounded-lg border border-[#e5e5e5] bg-white px-3 text-[#666666] transition focus-within:-translate-y-px focus-within:border-[#2a2926] focus-within:shadow-[0_0_0_3px_rgba(42,41,38,0.12)] max-sm:max-w-none">
           <Search size={18} />
           <input
             className="min-w-0 flex-1 border-0 text-[#1f1f1f] outline-none"
@@ -85,16 +85,16 @@ export function ResourcePage({
           <thead>
             <tr>
               {config.columns.map((column) => (
-                <th className="sticky top-0 z-[1] border-b border-[#eeeeee] bg-[#f8fbfd] px-4 py-3.5 text-left text-xs font-medium text-[#666666]" key={column.key}>{column.label}</th>
+                <th className="sticky top-0 z-[1] border-b border-[#eeeeee] bg-[#fbf8ec] px-4 py-3.5 text-left text-xs font-medium text-[#666666]" key={column.key}>{column.label}</th>
               ))}
-              {getEditHref ? <th className="sticky top-0 z-[1] border-b border-[#eeeeee] bg-[#f8fbfd] px-4 py-3.5 text-right text-xs font-medium text-[#666666]"></th> : null}
+              {getEditHref ? <th className="sticky top-0 z-[1] border-b border-[#eeeeee] bg-[#fbf8ec] px-4 py-3.5 text-right text-xs font-medium text-[#666666]"></th> : null}
             </tr>
           </thead>
           <tbody>
             {!loading && rows.map((row, index) => {
               const editHref = getEditHref?.(row) ?? null;
               return (
-              <tr className="even:bg-[#fcfdff] hover:bg-[#fbfdff]" key={String(row.id ?? index)}>
+              <tr className="even:bg-[#fcfdff] hover:bg-[#fbf8ec]" key={String(row.id ?? index)}>
                 {config.columns.map((column) => (
                   <td className="border-b border-[#eeeeee] px-4 py-3.5 text-left text-[#202939]" key={column.key}>{formatValue(readColumnValue(row, column))}</td>
                 ))}
@@ -128,7 +128,7 @@ export function ResourcePage({
             {!loading && rows.length === 0 ? (
               <tr>
                 <td colSpan={config.columns.length + (getEditHref ? 1 : 0)}>
-                  <div className="grid min-h-[180px] place-items-center content-center justify-center gap-2.5 text-center text-[#666666] [&_svg]:h-[42px] [&_svg]:w-[42px] [&_svg]:rounded-lg [&_svg]:border [&_svg]:border-[#b7e4dd] [&_svg]:bg-[#ecfdf8] [&_svg]:p-2.5 [&_svg]:text-[#0f766e]">
+                  <div className="grid min-h-[180px] place-items-center content-center justify-center gap-2.5 text-center text-[#666666] [&_svg]:h-[42px] [&_svg]:w-[42px] [&_svg]:rounded-lg [&_svg]:border [&_svg]:border-[#eadfbd] [&_svg]:bg-[#fff7d6] [&_svg]:p-2.5 [&_svg]:text-[#2a2926]">
                     {config.icon}
                     <strong className="text-[15px] text-[#1f1f1f]">Chưa có dữ liệu phù hợp</strong>
                     <span className="text-[13px]">Thử đổi từ khóa tìm kiếm hoặc kiểm tra bộ lọc hiện tại.</span>

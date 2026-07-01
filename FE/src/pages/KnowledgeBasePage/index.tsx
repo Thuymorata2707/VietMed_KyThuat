@@ -74,7 +74,7 @@ const categoryMeta: Record<KnowledgeArticleCategory, { label: string; shortLabel
     label: 'Quy trình đóng hàng',
     shortLabel: 'Đóng hàng',
     icon: <Boxes size={18} />,
-    tone: 'bg-[#f7fbff] text-[#155e8a] border-[#cfe7f7]',
+    tone: 'bg-[#fff8df] text-[#155e8a] border-[#cfe7f7]',
   },
   REPAIR: {
     label: 'Quy trình sửa chữa',
@@ -291,11 +291,11 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
 
   return (
     <PageFrame>
-      <section className="relative overflow-hidden rounded-[30px] border border-[#b7e4dd] bg-[#ecfdf8] p-6 shadow-[0_24px_70px_rgba(15,118,110,0.10)] lg:p-8">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_10%,rgba(15,118,110,0.14),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(255,255,255,0.92),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.86),rgba(255,247,248,0.78))]" />
+      <section className="relative overflow-hidden rounded-[30px] border border-[#eadfbd] bg-[#fff7d6] p-6 shadow-[0_24px_70px_rgba(42,41,38,0.10)] lg:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_10%,rgba(42,41,38,0.14),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(255,255,255,0.92),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.86),rgba(255,247,248,0.78))]" />
         <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-end">
           <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#b7e4dd] bg-white px-3 py-1 text-xs font-semibold text-[#0f766e]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#eadfbd] bg-white px-3 py-1 text-xs font-semibold text-[#2a2926]">
               <BookOpenCheck size={15} />
               Kinh nghiệm kỹ thuật
             </span>
@@ -314,7 +314,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
 
       <section className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="grid content-start gap-4 rounded-2xl border border-[#e8edf3] bg-white p-4 shadow-[0_14px_36px_rgba(20,32,51,0.06)] lg:sticky lg:top-4">
-          <label className="flex h-11 items-center gap-2 rounded-xl border border-[#d9e0e8] bg-[#fafafa] px-3 text-[#666666] focus-within:border-[#0f766e] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(15,118,110,0.12)]">
+          <label className="flex h-11 items-center gap-2 rounded-xl border border-[#d8cfba] bg-[#fafafa] px-3 text-[#666666] focus-within:border-[#2a2926] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(42,41,38,0.12)]">
             <Search size={16} />
             <input
               className="min-w-0 flex-1 border-0 bg-transparent text-sm text-[#1f1f1f] outline-none"
@@ -351,7 +351,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-dashed border-[#b7e4dd] bg-[#f8fbfb] p-4 text-sm text-[#666666]">
+          <div className="rounded-2xl border border-dashed border-[#eadfbd] bg-[#f8fbfb] p-4 text-sm text-[#666666]">
             <strong className="block text-[#1f1f1f]">{canApprove ? 'Admin duyệt nội dung' : 'Đóng góp kinh nghiệm'}</strong>
             {canApprove ? 'Admin có thể duyệt Published hoặc đưa bài về Draft/Archived.' : 'Kỹ sư thêm/sửa bài của mình, admin duyệt thì bài mới hiển thị cho mọi người.'}
           </div>
@@ -361,14 +361,14 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
           {error ? <div className="rounded-2xl border border-[#fecdd3] bg-[#fff1f3] p-4 text-sm font-medium text-[#b5121b]">{error}</div> : null}
 
           {loading ? (
-            <div className="rounded-2xl border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm font-semibold text-[#666666]">
+            <div className="rounded-2xl border border-dashed border-[#d7e0eb] bg-[#fbf8ec] p-8 text-center text-sm font-semibold text-[#666666]">
               <Loader2 className="spin-icon mx-auto mb-2" size={20} />
               Đang tải sổ tay kinh nghiệm
             </div>
           ) : null}
 
           {!loading && articles.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#d7e0eb] bg-[#fbfdff] p-8 text-center text-sm text-[#666666]">
+            <div className="rounded-2xl border border-dashed border-[#d7e0eb] bg-[#fbf8ec] p-8 text-center text-sm text-[#666666]">
               Chưa có bài kinh nghiệm phù hợp. {canContribute ? 'Bấm Add Article để tạo bài đầu tiên.' : 'Vui lòng thử từ khóa khác.'}
             </div>
           ) : null}
@@ -396,7 +396,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
       {isFormOpen ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm">
           <form className="grid max-h-[92dvh] w-full max-w-4xl overflow-hidden rounded-[26px] border border-[#e8edf3] bg-white shadow-[0_30px_90px_rgba(20,32,51,0.26)]" onSubmit={handleSubmit}>
-            <div className="flex items-start justify-between gap-4 border-b border-[#edf0f4] p-5">
+            <div className="flex items-start justify-between gap-4 border-b border-[#ebe4d3] p-5">
               <div>
                 <h2 className="text-xl font-semibold text-[#1f1f1f]">{editingArticle ? 'Edit Article' : 'Add Article'}</h2>
                 <p className="mt-1 text-sm text-[#666666]">Mỗi dòng trong Tags, dấu hiệu, quy trình và checklist sẽ thành một mục riêng.</p>
@@ -463,7 +463,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
               </Field>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-[#edf0f4] p-5">
+            <div className="flex justify-end gap-2 border-t border-[#ebe4d3] p-5">
               <button className="secondary-button" onClick={() => setIsFormOpen(false)} type="button">Cancel</button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={16} /> : null}
@@ -479,7 +479,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
 
 function KnowledgeMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-white/80 bg-white/85 p-4 shadow-[0_12px_28px_rgba(15,118,110,0.08)]">
+    <div className="rounded-2xl border border-white/80 bg-white/85 p-4 shadow-[0_12px_28px_rgba(42,41,38,0.08)]">
       <span className="text-xs font-semibold text-[#777777]">{label}</span>
       <strong className="mt-1 block text-2xl font-semibold text-[#1f1f1f]">{value}</strong>
     </div>
@@ -490,7 +490,7 @@ function CategoryButton({ active, count, icon, label, onClick }: { active: boole
   return (
     <button
       className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-3 text-left text-sm font-semibold transition active:translate-y-px ${
-        active ? 'border-[#b7e4dd] bg-[#ecfdf8] text-[#0f766e] shadow-[0_10px_24px_rgba(15,118,110,0.10)]' : 'border-[#eef1f5] bg-white text-[#444444] hover:border-[#b7e4dd] hover:text-[#0f766e]'
+        active ? 'border-[#eadfbd] bg-[#fff7d6] text-[#2a2926] shadow-[0_10px_24px_rgba(42,41,38,0.10)]' : 'border-[#eef1f5] bg-white text-[#444444] hover:border-[#eadfbd] hover:text-[#2a2926]'
       }`}
       onClick={onClick}
       type="button"
@@ -526,7 +526,7 @@ function ArticleCard({
   const meta = categoryMeta[article.category];
   const canEditArticle = canApprove || article.createdBy?.id === currentUserId;
   return (
-    <div className={`grid min-h-[230px] content-between rounded-2xl border bg-white p-4 shadow-[0_10px_28px_rgba(20,32,51,0.05)] transition hover:-translate-y-0.5 hover:border-[#b7e4dd] hover:shadow-[0_18px_42px_rgba(15,118,110,0.10)] ${active ? 'border-[#0f766e] ring-4 ring-[#ecfdf8]' : 'border-[#e8edf3]'}`}>
+    <div className={`grid min-h-[230px] content-between rounded-2xl border bg-white p-4 shadow-[0_10px_28px_rgba(20,32,51,0.05)] transition hover:-translate-y-0.5 hover:border-[#eadfbd] hover:shadow-[0_18px_42px_rgba(42,41,38,0.10)] ${active ? 'border-[#2a2926] ring-4 ring-[#fff7d6]' : 'border-[#e8edf3]'}`}>
       <button className="text-left" onClick={onSelect} type="button">
         <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.tone}`}>
           {meta.icon}
@@ -549,7 +549,7 @@ function ArticleCard({
           </span>
         </div>
         {canEditArticle ? (
-          <div className="flex items-center justify-between gap-2 border-t border-[#edf0f4] pt-3">
+          <div className="flex items-center justify-between gap-2 border-t border-[#ebe4d3] pt-3">
             <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${article.status === 'PUBLISHED' ? 'bg-[#edf9f1] text-[#187044]' : article.status === 'DRAFT' ? 'bg-[#fff7e6] text-[#9a5b00]' : 'bg-[#f1f2f4] text-[#666666]'}`}>
               {statusLabel(article.status)}
             </span>
@@ -569,7 +569,7 @@ function ArticleDetail({ article }: { article: KnowledgeArticle }) {
   const meta = categoryMeta[article.category];
   return (
     <article className="overflow-hidden rounded-[26px] border border-[#e8edf3] bg-white shadow-[0_18px_50px_rgba(20,32,51,0.08)]">
-      <div className="grid gap-4 border-b border-[#edf0f4] bg-[#fbfcfd] p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="grid gap-4 border-b border-[#ebe4d3] bg-[#fbf8ec] p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div>
           <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.tone}`}>
             {meta.icon}
@@ -600,8 +600,8 @@ function ArticleDetail({ article }: { article: KnowledgeArticle }) {
           <SectionBlock icon={<FileText size={18} />} title="Quy trình xử lý">
             <ol className="grid gap-3">
               {safeList(article.steps).map((step, index) => (
-                <li className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-2xl border border-[#edf0f4] bg-white p-3" key={`${step}-${index}`}>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0f766e] text-sm font-semibold text-white">{index + 1}</span>
+                <li className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-2xl border border-[#ebe4d3] bg-white p-3" key={`${step}-${index}`}>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2a2926] text-sm font-semibold text-white">{index + 1}</span>
                   <span className="self-center text-sm leading-6 text-[#444444]">{step}</span>
                 </li>
               ))}
@@ -620,7 +620,7 @@ function ArticleDetail({ article }: { article: KnowledgeArticle }) {
             <ul className="grid gap-2">
               {safeList(article.checklist).map((item) => (
                 <li className="flex gap-2 rounded-xl bg-[#f7f8fa] px-3 py-2 text-sm text-[#555555]" key={item}>
-                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#0f766e]" />
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2a2926]" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -628,8 +628,8 @@ function ArticleDetail({ article }: { article: KnowledgeArticle }) {
           </SectionBlock>
 
           {article.note ? (
-            <div className="rounded-2xl border border-[#b7e4dd] bg-[#ecfdf8] p-4">
-              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#0f766e]">Lưu ý</span>
+            <div className="rounded-2xl border border-[#eadfbd] bg-[#fff7d6] p-4">
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#2a2926]">Lưu ý</span>
               <p className="mt-2 text-sm leading-6 text-[#555555]">{article.note}</p>
             </div>
           ) : null}
@@ -650,9 +650,9 @@ function Field({ children, className = '', label }: { children: ReactNode; class
 
 function SectionBlock({ children, icon, title }: { children: ReactNode; icon: ReactNode; title: string }) {
   return (
-    <section className="rounded-2xl border border-[#edf0f4] bg-white p-4">
+    <section className="rounded-2xl border border-[#ebe4d3] bg-white p-4">
       <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#1f1f1f]">
-        <span className="text-[#0f766e]">{icon}</span>
+        <span className="text-[#2a2926]">{icon}</span>
         {title}
       </h3>
       {children}

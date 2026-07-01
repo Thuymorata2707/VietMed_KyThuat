@@ -8,11 +8,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-[#0f766e] px-[13px] text-white shadow-[0_1px_2px_rgba(15,118,110,0.22)] hover:-translate-y-px hover:bg-[#115e59]',
-        secondary: 'border-[#e5e5e5] bg-white px-[13px] text-[#333333] shadow-[0_1px_2px_rgba(20,32,51,0.05)] hover:-translate-y-px hover:border-[#b7e4dd] hover:bg-[#ecfdf8] hover:text-[#0f766e]',
+        default: 'border-transparent bg-[#2a2926] px-[13px] text-white shadow-[0_1px_2px_rgba(42,41,38,0.22)] hover:-translate-y-px hover:bg-[#171614]',
+        secondary: 'border-[#e5e5e5] bg-white px-[13px] text-[#333333] shadow-[0_1px_2px_rgba(20,32,51,0.05)] hover:-translate-y-px hover:border-[#eadfbd] hover:bg-[#fff7d6] hover:text-[#2a2926]',
         destructive: 'border-transparent bg-[#b5121b] px-[13px] text-white hover:-translate-y-px',
-        ghost: 'border-transparent bg-transparent px-[13px] text-[#333333] hover:bg-[#ecfdf8] hover:text-[#0f766e]',
-        icon: 'h-[34px] min-h-[34px] w-[34px] border-[#e5e5e5] bg-white p-0 text-[#333333] shadow-[0_1px_2px_rgba(20,32,51,0.05)] hover:-translate-y-px hover:border-[#b7e4dd] hover:bg-[#ecfdf8] hover:text-[#0f766e]',
+        ghost: 'border-transparent bg-transparent px-[13px] text-[#333333] hover:bg-[#fff7d6] hover:text-[#2a2926]',
+        icon: 'h-[34px] min-h-[34px] w-[34px] border-[#e5e5e5] bg-white p-0 text-[#333333] shadow-[0_1px_2px_rgba(20,32,51,0.05)] hover:-translate-y-px hover:border-[#eadfbd] hover:bg-[#fff7d6] hover:text-[#2a2926]',
       },
       size: {
         default: '',

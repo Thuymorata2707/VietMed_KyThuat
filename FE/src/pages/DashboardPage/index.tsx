@@ -220,17 +220,17 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
   return (
     <PageFrame>
-      <section className="relative overflow-hidden rounded-[28px] border border-[#b7e4dd] bg-[#ecfdf8] p-5 text-[#1f1f1f] shadow-[0_24px_70px_rgba(15,118,110,0.11)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_12%,rgba(15,118,110,0.15),transparent_30%),radial-gradient(circle_at_86%_6%,rgba(255,255,255,0.96),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,248,0.78))]" />
-        <div className="pointer-events-none absolute -right-16 bottom-[-120px] h-72 w-72 rounded-full border border-[#b7e4dd] bg-white/45" />
+      <section className="relative overflow-hidden rounded-[28px] border border-[#eadfbd] bg-[#fff7d6] p-5 text-[#1f1f1f] shadow-[0_24px_70px_rgba(42,41,38,0.11)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_12%,rgba(42,41,38,0.15),transparent_30%),radial-gradient(circle_at_86%_6%,rgba(255,255,255,0.96),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,248,0.78))]" />
+        <div className="pointer-events-none absolute -right-16 bottom-[-120px] h-72 w-72 rounded-full border border-[#eadfbd] bg-white/45" />
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-          <div className="grid content-between gap-10 rounded-[24px] border border-white/80 bg-white/70 p-6 shadow-[0_18px_44px_rgba(15,118,110,0.08)] backdrop-blur-md max-sm:p-5">
+          <div className="grid content-between gap-10 rounded-[24px] border border-white/80 bg-white/70 p-6 shadow-[0_18px_44px_rgba(42,41,38,0.08)] backdrop-blur-md max-sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="inline-flex rounded-full border border-[#b7e4dd] bg-[#ecfdf8] px-3 py-2 text-[12px] font-semibold text-[#0f766e]">
+              <span className="inline-flex rounded-full border border-[#eadfbd] bg-[#fff7d6] px-3 py-2 text-[12px] font-semibold text-[#2a2926]">
                 {isAdmin ? 'Admin console' : 'Trung tâm kỹ sư'}
               </span>
               <button
-                className="secondary-button border-[#b7e4dd] bg-white/90 text-[#333333]"
+                className="secondary-button border-[#eadfbd] bg-white/90 text-[#333333]"
                 disabled={loading}
                 onClick={() => void dashboardQuery.refetch()}
                 type="button"
@@ -268,13 +268,13 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             </div>
           </div>
 
-          <div className="grid gap-3 rounded-[24px] border border-[#b7e4dd] bg-white/88 p-4 text-[#18212f] shadow-[0_18px_44px_rgba(15,118,110,0.10)]">
-            <div className="flex items-start justify-between gap-3 border-b border-[#e9edf2] pb-3">
+          <div className="grid gap-3 rounded-[24px] border border-[#eadfbd] bg-white/88 p-4 text-[#18212f] shadow-[0_18px_44px_rgba(42,41,38,0.10)]">
+            <div className="flex items-start justify-between gap-3 border-b border-[#ebe4d3] pb-3">
               <div>
-                <span className="text-[12px] font-semibold text-[#647084]">Ưu tiên lúc này</span>
+                <span className="text-[12px] font-semibold text-[#777066]">Ưu tiên lúc này</span>
                 <h2 className="mt-1 text-lg font-semibold text-[#18212f]">Cần nhìn trước</h2>
               </div>
-              <span className="rounded-2xl border border-[#cfe4e2] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[#667985]">
+              <span className="rounded-2xl border border-[#e8dcc0] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[#667985]">
                 {lastUpdatedAt ?? 'Chưa cập nhật'}
               </span>
             </div>
@@ -288,20 +288,20 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
                     to={row.to}
                   >
                     <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-semibold text-[#303a4b]">{row.name}</span>
-                      <span className="mt-0.5 block text-[12px] font-medium text-[#647084]">{row.status}</span>
+                      <span className="block truncate text-[13px] font-semibold text-[#3b3832]">{row.name}</span>
+                      <span className="mt-0.5 block text-[12px] font-medium text-[#777066]">{row.status}</span>
                     </span>
-                    <strong className={row.tone === 'danger' ? 'text-[#115e59]' : row.tone === 'warn' ? 'text-[#996018]' : 'text-[#1b7a4c]'}>
+                    <strong className={row.tone === 'danger' ? 'text-[#171614]' : row.tone === 'warn' ? 'text-[#996018]' : 'text-[#1b7a4c]'}>
                       {loading ? '-' : row.value}
                     </strong>
                   </Link>
                 ))
               ) : (
-                <div className="grid min-h-[188px] place-items-center rounded-[20px] border border-[#cfe4e2] bg-white px-4 text-center">
+                <div className="grid min-h-[188px] place-items-center rounded-[20px] border border-[#e8dcc0] bg-white px-4 text-center">
                   <span>
                     <CheckCircle2 className="mx-auto text-[#1b7a4c]" size={28} />
                     <strong className="mt-3 block text-sm text-[#18212f]">Không có cảnh báo ưu tiên</strong>
-                    <span className="mt-1 block text-[13px] leading-5 text-[#647084]">Các nhóm việc chính đang ở trạng thái ổn định.</span>
+                    <span className="mt-1 block text-[13px] leading-5 text-[#777066]">Các nhóm việc chính đang ở trạng thái ổn định.</span>
                   </span>
                 </div>
               )}
@@ -312,13 +312,13 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="grid gap-4 rounded-[28px] border border-[#cfe4e2] bg-[linear-gradient(145deg,#ffffff_0%,#f8fbfb_100%)] p-4 shadow-[0_18px_46px_rgba(15,118,110,0.07)]">
+      <section className="grid gap-4 rounded-[28px] border border-[#e8dcc0] bg-[linear-gradient(145deg,#ffffff_0%,#f8fbfb_100%)] p-4 shadow-[0_18px_46px_rgba(42,41,38,0.07)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f4e2e4] pb-4">
           <div>
-            <span className="text-[12px] font-semibold text-[#0f766e]">{isAdmin ? 'Toàn hệ thống' : 'Của bạn'}</span>
+            <span className="text-[12px] font-semibold text-[#2a2926]">{isAdmin ? 'Toàn hệ thống' : 'Của bạn'}</span>
             <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-[#1f1f1f]">Nhìn nhanh vận hành</h2>
           </div>
-          <span className="rounded-2xl border border-[#cfe4e2] bg-white/82 px-3 py-2 text-right text-xs font-semibold text-[#667985] shadow-[0_8px_18px_rgba(15,118,110,0.05)]">
+          <span className="rounded-2xl border border-[#e8dcc0] bg-white/82 px-3 py-2 text-right text-xs font-semibold text-[#667985] shadow-[0_8px_18px_rgba(42,41,38,0.05)]">
             {lastUpdatedAt ?? 'Chưa cập nhật'}
           </span>
         </div>
@@ -375,11 +375,11 @@ function PulseTile({
   );
 
   if (!href) {
-    return <div className="rounded-2xl border border-[#b7e4dd] bg-white/82 p-3.5 shadow-[0_10px_24px_rgba(15,118,110,0.08)] backdrop-blur-md">{content}</div>;
+    return <div className="rounded-2xl border border-[#eadfbd] bg-white/82 p-3.5 shadow-[0_10px_24px_rgba(42,41,38,0.08)] backdrop-blur-md">{content}</div>;
   }
 
   return (
-    <Link className="rounded-2xl border border-[#b7e4dd] bg-white/82 p-3.5 shadow-[0_10px_24px_rgba(15,118,110,0.08)] backdrop-blur-md transition hover:-translate-y-px hover:border-[#0f766e] hover:bg-white" rel="noreferrer" target="_blank" to={href}>
+    <Link className="rounded-2xl border border-[#eadfbd] bg-white/82 p-3.5 shadow-[0_10px_24px_rgba(42,41,38,0.08)] backdrop-blur-md transition hover:-translate-y-px hover:border-[#2a2926] hover:bg-white" rel="noreferrer" target="_blank" to={href}>
       {content}
     </Link>
   );
@@ -421,7 +421,7 @@ function VisualSummaryCard({
 
   return (
     <Link
-      className="group rounded-[24px] border border-[#cfe4e2] bg-white/88 p-4 shadow-[0_14px_34px_rgba(15,118,110,0.07)] transition hover:-translate-y-px hover:border-[#0f766e]/35 hover:bg-white hover:shadow-[0_22px_48px_rgba(15,118,110,0.11)]"
+      className="group rounded-[24px] border border-[#e8dcc0] bg-white/88 p-4 shadow-[0_14px_34px_rgba(42,41,38,0.07)] transition hover:-translate-y-px hover:border-[#2a2926]/35 hover:bg-white hover:shadow-[0_22px_48px_rgba(42,41,38,0.11)]"
       rel={href.startsWith('/reports') ? 'noreferrer' : undefined}
       target={href.startsWith('/reports') ? '_blank' : undefined}
       to={href}
@@ -433,7 +433,7 @@ function VisualSummaryCard({
 
 function BoardPanel({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
   return (
-    <section className="grid gap-4 rounded-[24px] border border-[#cfe4e2] bg-white p-5 shadow-[0_8px_24px_rgba(15,118,110,0.05)]">
+    <section className="grid gap-4 rounded-[24px] border border-[#e8dcc0] bg-white p-5 shadow-[0_8px_24px_rgba(42,41,38,0.05)]">
       <div>
         <span className="text-[12px] font-medium text-[#666666]">{eyebrow}</span>
         <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">{title}</h2>
@@ -539,7 +539,7 @@ function QueueBars({ items, loading }: { items: Array<{ label: string; value: nu
 
 function ActionLink({ icon, label, to }: { icon: ReactNode; label: string; to: string }) {
   return (
-    <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[18px] border border-[#cfe4e2] bg-white px-3 text-[14px] font-bold text-[#333333] transition hover:-translate-y-px hover:border-[#0f766e]/35 hover:bg-[#ecfdf8] hover:text-[#0f766e]" to={to}>
+    <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[18px] border border-[#e8dcc0] bg-white px-3 text-[14px] font-bold text-[#333333] transition hover:-translate-y-px hover:border-[#2a2926]/35 hover:bg-[#fff7d6] hover:text-[#2a2926]" to={to}>
       {icon}
       {label}
     </Link>
@@ -550,7 +550,7 @@ function toneClass(tone: Tone) {
   if (tone === 'good') return { panel: 'border-[#b9e8ca] bg-[#eefaf3]', text: 'text-[#177245]', icon: 'text-[#177245]', bar: 'bg-[#177245]', hex: '#177245' };
   if (tone === 'warn') return { panel: 'border-[#efd8a8] bg-[#fff8ed]', text: 'text-[#9b5a17]', icon: 'text-[#9b5a17]', bar: 'bg-[#9b5a17]', hex: '#9b5a17' };
   if (tone === 'danger') return { panel: 'border-[#fecdd3] bg-[#fff1f3]', text: 'text-[#b5121b]', icon: 'text-[#b5121b]', bar: 'bg-[#b5121b]', hex: '#b5121b' };
-  return { panel: 'border-[#b7e4dd] bg-[#ecfdf8]', text: 'text-[#0f766e]', icon: 'text-[#0f766e]', bar: 'bg-[#0f766e]', hex: '#0f766e' };
+  return { panel: 'border-[#eadfbd] bg-[#fff7d6]', text: 'text-[#2a2926]', icon: 'text-[#2a2926]', bar: 'bg-[#2a2926]', hex: '#2a2926' };
 }
 
 function count(source: Record<string, number> | undefined, key: string) {
