@@ -443,7 +443,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       <form className="grid min-w-0 gap-5 font-sans min-[1320px]:grid-cols-[minmax(0,1fr)_380px]" onSubmit={submit}>
         <section className="grid min-w-0 gap-5">
           <div className={panelClass}>
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#dbe9e8] pb-4">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#e4e4e7] pb-4">
               <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
                 <span className={stepBadgeClass}>1</span>
                 <div>
@@ -564,7 +564,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           </div>
 
           <div className={panelClass}>
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#dbe9e8] pb-4">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#e4e4e7] pb-4">
               <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
                 <span className={stepBadgeClass}>2</span>
                 <div>
@@ -951,8 +951,8 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-const panelClass = 'rounded-[24px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_18px_50px_rgba(24,24,27,0.07)] sm:p-6';
-const sidePanelClass = 'rounded-[24px] border border-[#e4e4e7] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(24,24,27,0.06)]';
+const panelClass = 'rounded-[24px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_8px_24px_rgba(24,24,27,0.05)] sm:p-6';
+const sidePanelClass = 'rounded-[24px] border border-[#e4e4e7] bg-[#ffffff] p-5 shadow-[0_8px_24px_rgba(24,24,27,0.04)]';
 const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#18181b] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(24,24,27,0.24)]';
 const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#18181b]';
 const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
@@ -960,9 +960,9 @@ const sectionDescriptionClass = 'mt-1 text-xs font-medium leading-5 text-[#8a8f9
 const labelClass = 'grid min-w-0 content-start gap-2 font-sans text-sm font-semibold leading-snug text-[#333333]';
 const wideLabelClass = `${labelClass} md:col-span-2`;
 const fieldClass =
-  'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 font-sans text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
+  'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#ffffff] px-4 font-sans text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
 const textareaClass =
-  'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 font-sans text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
+  'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#ffffff] px-4 py-3 font-sans text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition placeholder:text-[#9aa6b5] focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)] disabled:cursor-not-allowed disabled:bg-[#fafafa] disabled:text-[#8a8a8a]';
 
 function normalizeKind(value: string | null): TicketKind {
   if (value === 'maintenance' || value === 'installation') return value;

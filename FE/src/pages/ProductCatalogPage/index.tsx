@@ -279,7 +279,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] shadow-[0_24px_70px_rgba(24,24,27,0.10)]">
+      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_12%,rgba(24,24,27,0.13),transparent_28%),radial-gradient(circle_at_92%_20%,rgba(228,228,231,0.52),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.94),rgba(236,253,248,0.82))]" />
         <div className="relative grid gap-5 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid content-between gap-6">
@@ -1025,7 +1025,7 @@ function ModelIndustryGroup({
   const inStock = group.models.reduce((sum, model) => sum + (stockByModel[model.id]?.inStock ?? 0), 0);
 
   return (
-    <section className="overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <section className="overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
         <div>
           <span className="text-[12px] font-semibold text-[#666666]">{group.expertise || 'Ngành hàng'}</span>
@@ -1335,7 +1335,7 @@ function IndustryMachineChart({
 
 function IndustryStockCard({ icon, label, subLabel, value }: { icon: ReactNode; label: string; subLabel: string; value: number }) {
   return (
-    <div className="grid gap-3 rounded-[18px] border border-white/80 bg-white/86 p-4 font-sans shadow-[0_18px_34px_rgba(24,24,27,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(24,24,27,0.12)]">
+    <div className="grid gap-3 rounded-[18px] border border-white/80 bg-white/86 p-4 font-sans shadow-[0_8px_20px_rgba(24,24,27,0.05)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(24,24,27,0.08)]">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold text-[#667985]">{label}</span>
         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f4f5] text-[#18181b]">{icon}</span>

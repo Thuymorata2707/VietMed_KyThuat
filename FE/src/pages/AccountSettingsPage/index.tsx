@@ -68,7 +68,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
 
   return (
     <PageFrame>
-      <section className="relative flex items-stretch justify-between gap-[18px] overflow-hidden rounded-[30px] border border-[#e4e4e7] bg-[#f4f4f5] p-6 text-[#1f1f1f] shadow-[0_24px_70px_rgba(24,24,27,0.10)] max-[760px]:grid">
+      <section className="relative flex items-stretch justify-between gap-[18px] overflow-hidden rounded-[30px] border border-[#e4e4e7] bg-[#f4f4f5] p-6 text-[#1f1f1f] shadow-[0_12px_30px_rgba(24,24,27,0.06)] max-[760px]:grid">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_9%_18%,rgba(24,24,27,0.15),transparent_30%),radial-gradient(circle_at_92%_16%,rgba(255,255,255,0.96),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,247,248,0.78))]" />
         <div className="relative flex min-w-0 items-center gap-[18px] max-[760px]:grid max-[760px]:items-start">
           <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border border-white bg-white text-[28px] font-semibold text-[#18181b] shadow-[0_18px_42px_rgba(24,24,27,0.14)]">
@@ -98,7 +98,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
       {success ? <div className="success-notice">{success}</div> : null}
 
       <form className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-x-4 gap-y-3.5 max-[1120px]:grid-cols-1" onSubmit={handleSubmit}>
-        <aside className="sticky top-[88px] grid gap-[18px] rounded-xl border border-[#e5e5e5] bg-white p-[18px] shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[1120px]:static">
+        <aside className="sticky top-[88px] grid gap-[18px] rounded-xl border border-[#e5e5e5] bg-white p-[18px] shadow-[0_1px_2px_rgba(24,24,27,0.04)] max-[1120px]:static">
           <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3">
             <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[10px] bg-[#f4f4f5] text-[#18181b]">
               <ShieldCheck size={18} />
@@ -137,7 +137,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
           </label>
         </aside>
 
-        <section className="col-start-2 grid gap-0 rounded-xl border border-[#e5e5e5] bg-white p-[18px] shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[1120px]:col-auto">
+        <section className="col-start-2 grid gap-0 rounded-xl border border-[#e5e5e5] bg-white p-[18px] shadow-[0_1px_2px_rgba(24,24,27,0.04)] max-[1120px]:col-auto">
           <div className="grid gap-3">
             <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3 border-b border-[#eeeeee] pb-3">
               <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#fafafa] p-[9px] text-[#18181b]" size={18} />
@@ -265,7 +265,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
           ) : null}
         </section>
 
-        <div className="col-span-full flex items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[760px]:grid max-[760px]:items-stretch">
+        <div className="col-span-full flex items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(24,24,27,0.04)] max-[760px]:grid max-[760px]:items-stretch">
           <span className="text-[#666666]">Thông tin sẽ được cập nhật ngay trên tài khoản hiện tại.</span>
           <button className="primary-button" disabled={saving} type="submit">
             {saving ? <Loader2 className="spin-icon" size={18} /> : <Save size={18} />}

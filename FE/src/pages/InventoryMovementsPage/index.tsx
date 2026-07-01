@@ -240,7 +240,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       </div>
 
       {tab === 'stock' ? (
-        <section className="grid gap-3 rounded-[22px] border border-[#e4e4e7] bg-[#f8fbfb] p-4 shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
+        <section className="grid gap-3 rounded-[22px] border border-[#e4e4e7] bg-[#fafafa] p-4 shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <span className="text-xs font-semibold text-[#18181b]">Hàng đợi kho</span>
@@ -307,7 +307,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
 
       {activeMove ? (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/40 p-5" role="presentation">
-          <form className="grid w-full max-w-[520px] gap-4 rounded-lg border border-[#e5e5e5] bg-white p-5 font-sans shadow-[0_24px_70px_rgba(20,32,51,0.2)]" onSubmit={submitMovement}>
+          <form className="grid w-full max-w-[520px] gap-4 rounded-lg border border-[#e5e5e5] bg-white p-5 font-sans shadow-[0_24px_70px_rgba(24,24,27,0.2)]" onSubmit={submitMovement}>
             <div>
               <span className="text-xs font-medium text-[#18181b]">Phiếu kho</span>
               <h2 className="mt-1 text-xl font-medium text-[#1f1f1f]">{activeMove.action.label}</h2>
@@ -569,11 +569,11 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
     >
       <section
         aria-modal="true"
-        className="grid max-h-[92vh] w-full max-w-[880px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white font-sans shadow-[0_34px_90px_rgba(20,32,51,0.24)]"
+        className="grid max-h-[92vh] w-full max-w-[880px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white font-sans shadow-[0_34px_90px_rgba(24,24,27,0.24)]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-[#dbe9e8] bg-gradient-to-br from-[#f4f4f5] via-white to-[#f4f4f5] px-5 py-4">
+        <header className="flex items-start justify-between gap-4 border-b border-[#e4e4e7] bg-gradient-to-br from-[#f4f4f5] via-white to-[#f4f4f5] px-5 py-4">
           <div className="min-w-0">
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#18181b]">Chi tiết máy</span>
             <h2 className="mt-1 truncate text-2xl font-semibold text-[#182033]">{title}</h2>
@@ -595,7 +595,7 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
         <div className="overflow-y-auto px-5 py-5">
           <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
             <div className="grid gap-4">
-              <section className="rounded-[18px] border border-[#e4e4e7] bg-[#fffdfd] p-4">
+              <section className="rounded-[18px] border border-[#e4e4e7] bg-[#ffffff] p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h3 className="font-semibold text-[#182033]">Thông tin máy</h3>
                   {machine.status && machine.status !== 'ACTIVE' ? (
@@ -640,7 +640,7 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
           </div>
         </div>
 
-        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-[#dbe9e8] bg-white px-5 py-4">
+        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-[#e4e4e7] bg-white px-5 py-4">
           <button className="secondary-button" onClick={onClose} type="button">
             Đóng
           </button>
@@ -670,7 +670,7 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
 
 function PreviewField({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-[14px] border border-white/70 bg-white px-3 py-2.5 shadow-[0_8px_20px_rgba(20,32,51,0.04)]">
+    <div className="rounded-[14px] border border-white/70 bg-white px-3 py-2.5 shadow-[0_8px_20px_rgba(24,24,27,0.04)]">
       <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#98a2b3]">{label}</span>
       <strong className="mt-1 block break-words text-sm font-semibold text-[#202939]">{value}</strong>
     </div>

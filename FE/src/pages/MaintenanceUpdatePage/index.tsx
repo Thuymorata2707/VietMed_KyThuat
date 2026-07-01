@@ -420,7 +420,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                   File
                   <input
                     accept="image/jpeg,image/png,image/webp,application/pdf"
-                    className="w-full min-w-0 rounded-2xl border border-dashed border-[#ded8d8] bg-[#fffefe] px-4 py-3 text-sm font-semibold text-[#333333]"
+                    className="w-full min-w-0 rounded-2xl border border-dashed border-[#ded8d8] bg-[#ffffff] px-4 py-3 text-sm font-semibold text-[#333333]"
                     onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)}
                     type="file"
                   />
@@ -565,13 +565,13 @@ function dateInputValue(value?: string | null) {
   return value ? value.slice(0, 10) : '';
 }
 
-const panelClass = 'rounded-[24px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_18px_50px_rgba(24,24,27,0.07)] sm:p-6';
-const sidePanelClass = 'rounded-[24px] border border-[#e4e4e7] bg-[#fffdfd] p-5 shadow-[0_18px_50px_rgba(24,24,27,0.06)]';
-const sectionHeaderClass = 'mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#dbe9e8] pb-4';
+const panelClass = 'rounded-[24px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_8px_24px_rgba(24,24,27,0.05)] sm:p-6';
+const sidePanelClass = 'rounded-[24px] border border-[#e4e4e7] bg-[#ffffff] p-5 shadow-[0_8px_24px_rgba(24,24,27,0.04)]';
+const sectionHeaderClass = 'mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#e4e4e7] pb-4';
 const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#18181b] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(24,24,27,0.24)]';
 const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#18181b]';
 const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
 const sectionDescriptionClass = 'mt-1 text-xs font-medium leading-5 text-[#8a8f99]';
 const labelClass = 'grid min-w-0 content-start gap-2 text-sm font-semibold text-[#333333]';
-const fieldClass = 'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
-const textareaClass = 'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#fffefe] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]';
+const fieldClass = 'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#ffffff] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
+const textareaClass = 'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#ffffff] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]';

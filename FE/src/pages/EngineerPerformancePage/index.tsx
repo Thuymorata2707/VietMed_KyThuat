@@ -209,7 +209,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
         <div className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_150px_150px_150px_auto]">
           {isAdmin ? (
             <label className="grid gap-1.5 text-sm font-medium text-[#333333]">
@@ -284,7 +284,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
         <MetricCard icon={<BarChart3 size={18} />} label="Máy tác động" value={summary?.totals.machines ?? 0} />
       </section>
 
-      <section className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <section className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
         <PanelHeader
           eyebrow="Chất lượng kỹ thuật"
           title="Rủi ro báo cáo và hoàn tất"
@@ -299,7 +299,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       </section>
 
       <section className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-4 max-[1120px]:grid-cols-1">
-        <div className="rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <div className="rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
           <PanelHeader eyebrow="Cơ cấu công việc" title="Tỷ trọng theo loại việc" subtitle={selectedEngineerName || ''} />
           <div className="mt-4 grid gap-3">
             {workMix.map((item) => (
@@ -317,7 +317,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
           <WorkDonut items={workMix} />
         </div>
 
-        <div className="rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <div className="rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
           <PanelHeader eyebrow="Khách hàng" title="Khách hàng xử lý nhiều nhất" subtitle={`${summary?.totals.customers ?? 0} khách trong khoảng này`} />
           <div className="mt-4 grid gap-2">
             {topCustomers.length ? topCustomers.map((customer) => {
@@ -341,7 +341,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
           <PanelHeader eyebrow="Báo cáo tuần" title="Theo dõi báo cáo đã gửi" subtitle={`${sortedWeeklyReports.length} tuần, ${weeklyRowCount} dòng báo cáo trong khoảng này`} />
           <Link className="primary-button" to={currentWeeklyReportHref}>
@@ -372,7 +372,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
         <div className="border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
           <PanelHeader eyebrow="Timeline" title="Công việc đã hoàn thành" subtitle={`${summary?.activities.length ?? 0} đầu việc`} />
         </div>
@@ -421,7 +421,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
 function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
   return (
-    <div className="grid min-h-[104px] gap-2 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <div className="grid min-h-[104px] gap-2 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-[#666666]">{label}</span>
         <span className="text-[#18181b]">{icon}</span>

@@ -265,7 +265,7 @@ function useTicketPortalOverview() {
 
 function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh: () => void }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] px-5 py-9 shadow-[0_24px_70px_rgba(24,24,27,0.08)] md:px-8 md:py-12">
+    <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] px-5 py-9 shadow-[0_12px_30px_rgba(24,24,27,0.05)] md:px-8 md:py-12">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(24,24,27,0.075)_1px,transparent_1px),linear-gradient(180deg,rgba(24,24,27,0.055)_1px,transparent_1px)] bg-[size:70px_70px]" />
       <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-[#e4e4e7]/38 blur-3xl" />
       <div className="relative grid gap-5 min-[980px]:grid-cols-[minmax(0,1fr)_auto] min-[980px]:items-end">
@@ -296,8 +296,8 @@ function TicketPortalCardButton({ count, item, onSelect }: { count: number; item
   return (
     <button
       className={[
-        'group relative min-h-[218px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white/94 p-5 text-left shadow-[0_18px_42px_rgba(24,24,27,0.08)] transition',
-        isDisabled ? 'cursor-pointer opacity-78 hover:border-[#e4e4e7]' : 'hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_26px_58px_rgba(24,24,27,0.12)]',
+        'group relative min-h-[218px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white/94 p-5 text-left shadow-[0_8px_24px_rgba(24,24,27,0.05)] transition',
+        isDisabled ? 'cursor-pointer opacity-78 hover:border-[#e4e4e7]' : 'hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_14px_34px_rgba(24,24,27,0.08)]',
       ].join(' ')}
       onClick={() => onSelect(item.value)}
       type="button"
@@ -328,7 +328,7 @@ function TicketPortalCardButton({ count, item, onSelect }: { count: number; item
 
 function ReceivingPlaceholder({ onBack }: { onBack: () => void }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-dashed border-[#e4e4e7] bg-[#f8fbfb] p-8 text-center shadow-[0_18px_46px_rgba(24,24,27,0.06)]">
+    <section className="relative overflow-hidden rounded-[28px] border border-dashed border-[#e4e4e7] bg-[#fafafa] p-8 text-center shadow-[0_18px_46px_rgba(24,24,27,0.06)]">
       <div className="mx-auto grid max-w-2xl justify-items-center gap-4">
         <span className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-[#f4f4f5] text-[#18181b]">
           <Archive size={28} />
@@ -463,7 +463,7 @@ function OperationsBoard({
         </div>
       </div>
 
-      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f8fbfb] p-4 shadow-[0_18px_46px_rgba(24,24,27,0.07)]">
+      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#fafafa] p-4 shadow-[0_18px_46px_rgba(24,24,27,0.07)]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_0%,rgba(24,24,27,0.08),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.72),rgba(255,250,250,0.86))]" />
         <div className="relative grid gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -555,7 +555,7 @@ function OperationsBoard({
       {error ? <Notice message={error} /> : null}
 
       <section className="overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white shadow-[0_18px_46px_rgba(24,24,27,0.06)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f4e2e4] bg-[#f8fbfb] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f4e2e4] bg-[#fafafa] px-4 py-3">
           <div>
             <h2 className="text-base font-semibold text-[#1f1f1f]">{queues.find((item) => item.key === queue)?.label}</h2>
             <p className="mt-1 text-sm text-[#666666]">{loading ? 'Đang tải' : `${visibleItems.length} phiếu · ${groupOptions.find((item) => item.value === groupBy)?.label.toLowerCase()}`}</p>
@@ -585,7 +585,7 @@ function OperationsBoard({
                   <strong className="text-sm text-[#1f1f1f]">{group.label}</strong>
                   <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#667985]">{group.items.length} phiếu</span>
                 </div>
-                <div className="grid gap-2 bg-[#fffefe] p-2.5">
+                <div className="grid gap-2 bg-[#ffffff] p-2.5">
                   {group.items.map((item) => (
                     <TicketCard item={item} key={`${item.kind}-${item.id}`} onView={setSelectedItem} />
                   ))}
@@ -674,7 +674,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
       <section
         aria-modal="true"
-        className="grid max-h-[92vh] w-full max-w-[860px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[30px] border border-[#e4e4e7] bg-white shadow-[0_30px_90px_rgba(28,39,56,0.28)]"
+        className="grid max-h-[92vh] w-full max-w-[860px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[30px] border border-[#e4e4e7] bg-white shadow-[0_30px_90px_rgba(24,24,27,0.28)]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
@@ -700,7 +700,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
 
         <div className="min-h-0 overflow-y-auto p-5">
           <div className="grid gap-4 min-[760px]:grid-cols-[minmax(0,1fr)_280px]">
-            <section className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-[#fffefe] p-4">
+            <section className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-[#ffffff] p-4">
               <h3 className="text-sm font-black text-[#1f1f1f]">Thông tin phiếu</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 <PreviewField label="Loại phiếu" value={kindLabel(item.kind)} />
@@ -712,7 +712,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
               </div>
             </section>
 
-            <aside className="grid content-start gap-3 rounded-[24px] border border-[#e4e4e7] bg-[#f8fbfb] p-4">
+            <aside className="grid content-start gap-3 rounded-[24px] border border-[#e4e4e7] bg-[#fafafa] p-4">
               <h3 className="text-sm font-black text-[#1f1f1f]">Tình trạng cần chú ý</h3>
               <div className="flex flex-wrap gap-2">
                 {alertBadges(item).length ? (
@@ -740,7 +740,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-[#f4e2e4] bg-[#f8fbfb] p-4">
+        <div className="flex flex-wrap justify-end gap-2 border-t border-[#f4e2e4] bg-[#fafafa] p-4">
           <button className="secondary-button" onClick={onClose} type="button">
             Đóng
           </button>
@@ -755,7 +755,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
 
 function PreviewField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-1 rounded-2xl bg-[#f8fbfb] px-3 py-2.5">
+    <div className="grid gap-1 rounded-2xl bg-[#fafafa] px-3 py-2.5">
       <span className="text-[11px] font-black uppercase tracking-[0.08em] text-[#9b7479]">{label}</span>
       <strong className="min-w-0 break-words text-sm font-bold leading-5 text-[#2b2526]">{value || '-'}</strong>
     </div>
@@ -764,7 +764,7 @@ function PreviewField({ label, value }: { label: string; value: string }) {
 
 function ticketCardClass(item: BoardItem) {
   const base = 'grid gap-3 rounded-[22px] border px-4 py-4 shadow-[0_8px_24px_rgba(24,24,27,0.045)] transition hover:-translate-y-px hover:shadow-[0_16px_34px_rgba(24,24,27,0.08)] min-[960px]:grid-cols-[42px_minmax(0,1fr)_220px_118px] min-[960px]:items-center';
-  if (urgencyRank(item) >= 70) return `${base} border-[#e4e4e7] bg-[#f8fbfb]`;
+  if (urgencyRank(item) >= 70) return `${base} border-[#e4e4e7] bg-[#fafafa]`;
   if (urgencyRank(item) >= 30) return `${base} border-[#efd8a8] bg-[#fffdf8]`;
   return `${base} border-[#e4e4e7] bg-white`;
 }

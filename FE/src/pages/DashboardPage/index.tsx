@@ -220,7 +220,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
   return (
     <PageFrame>
-      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] p-5 text-[#1f1f1f] shadow-[0_24px_70px_rgba(24,24,27,0.11)]">
+      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] p-5 text-[#1f1f1f] shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_12%,rgba(24,24,27,0.15),transparent_30%),radial-gradient(circle_at_86%_6%,rgba(255,255,255,0.96),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,248,0.78))]" />
         <div className="pointer-events-none absolute -right-16 bottom-[-120px] h-72 w-72 rounded-full border border-[#e4e4e7] bg-white/45" />
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
@@ -283,7 +283,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
               {topPriorityRows.length > 0 ? (
                 topPriorityRows.map((row) => (
                   <Link
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-transparent bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(28,39,56,0.05)] transition hover:-translate-y-px hover:border-[#f1c4c9]"
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-transparent bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(24,24,27,0.05)] transition hover:-translate-y-px hover:border-[#f1c4c9]"
                     key={row.code}
                     to={row.to}
                   >
@@ -312,7 +312,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-[linear-gradient(145deg,#ffffff_0%,#f8fbfb_100%)] p-4 shadow-[0_18px_46px_rgba(24,24,27,0.07)]">
+      <section className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-[linear-gradient(145deg,#ffffff_0%,#fafafa_100%)] p-4 shadow-[0_18px_46px_rgba(24,24,27,0.07)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f4e2e4] pb-4">
           <div>
             <span className="text-[12px] font-semibold text-[#18181b]">{isAdmin ? 'Toàn hệ thống' : 'Của bạn'}</span>
@@ -413,7 +413,7 @@ function VisualSummaryCard({
         {loading ? '-' : value}
       </strong>
       <span className="mt-2 block min-h-5 text-sm font-semibold text-[#667985]">{loading ? 'Đang tải' : hint}</span>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#d7e3e5]">
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#e4e4e7]">
         <span className={`block h-full rounded-full ${style.bar}`} style={{ width: `${loading ? 0 : Math.min(100, Math.max(0, percent))}%` }} />
       </div>
     </>
@@ -421,7 +421,7 @@ function VisualSummaryCard({
 
   return (
     <Link
-      className="group rounded-[24px] border border-[#e4e4e7] bg-white/88 p-4 shadow-[0_14px_34px_rgba(24,24,27,0.07)] transition hover:-translate-y-px hover:border-[#18181b]/35 hover:bg-white hover:shadow-[0_22px_48px_rgba(24,24,27,0.11)]"
+      className="group rounded-[24px] border border-[#e4e4e7] bg-white/88 p-4 shadow-[0_14px_34px_rgba(24,24,27,0.07)] transition hover:-translate-y-px hover:border-[#18181b]/35 hover:bg-white hover:shadow-[0_12px_30px_rgba(24,24,27,0.08)]"
       rel={href.startsWith('/reports') ? 'noreferrer' : undefined}
       target={href.startsWith('/reports') ? '_blank' : undefined}
       to={href}
@@ -460,7 +460,7 @@ function DonutMachineChart({
   let offset = 0;
 
   return (
-    <div className="grid grid-cols-[178px_minmax(0,1fr)] items-center gap-4 rounded-[24px] border border-[#d7e3e5] bg-[#ffffff] p-3 max-sm:grid-cols-1">
+    <div className="grid grid-cols-[178px_minmax(0,1fr)] items-center gap-4 rounded-[24px] border border-[#e4e4e7] bg-[#ffffff] p-3 max-sm:grid-cols-1">
       <div className="relative h-[178px] w-[178px] justify-self-center">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 160 160" role="img" aria-label="Sơ đồ tròn trạng thái đội máy">
           <circle cx="80" cy="80" fill="none" r={radius} stroke="#eeeeee" strokeWidth="18" />
@@ -500,7 +500,7 @@ function DonutMachineChart({
           const style = toneClass(item.tone);
 
           return (
-            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(20,32,51,0.04)]" key={item.label}>
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm shadow-[0_1px_2px_rgba(24,24,27,0.04)]" key={item.label}>
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: style.hex }} />
               <span className="font-semibold text-[#333333]">{item.label}</span>
               <strong className={style.text}>{loading ? '-' : item.value}</strong>

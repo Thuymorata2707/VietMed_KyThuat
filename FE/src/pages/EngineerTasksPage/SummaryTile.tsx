@@ -22,9 +22,9 @@ export function SummaryTile({
         ? 'border-[#efd8a8] bg-[#fffaeb] text-[#9b5a17]'
       : 'border-[#e5e5e5] bg-white text-[#1f1f1f]';
   const className = [
-    'grid min-h-[104px] min-w-0 gap-2 overflow-hidden rounded-lg border p-4 text-left shadow-[0_1px_2px_rgba(20,32,51,0.04)] transition',
+    'grid min-h-[104px] min-w-0 gap-2 overflow-hidden rounded-lg border p-4 text-left shadow-[0_1px_2px_rgba(24,24,27,0.04)] transition',
     toneClass,
-    onClick ? 'hover:-translate-y-[1px] hover:border-[#18181b] hover:shadow-[0_10px_28px_rgba(20,32,51,0.08)]' : '',
+    onClick ? 'hover:-translate-y-[1px] hover:border-[#18181b] hover:shadow-[0_10px_28px_rgba(24,24,27,0.08)]' : '',
     active ? 'ring-2 ring-[#18181b]/15' : '',
   ].join(' ');
   const content = (

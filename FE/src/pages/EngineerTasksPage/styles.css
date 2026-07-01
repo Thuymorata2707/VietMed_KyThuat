@@ -7,7 +7,7 @@
 }
 
 .summary-tile {
-  @apply grid gap-2 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.05)];
+  @apply grid gap-2 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.05)];
 }
 
 .summary-tile span {
@@ -35,11 +35,11 @@
 }
 
 .engineer-workspace-tabs button.active {
-  @apply bg-white text-[#18181b] shadow-[0_1px_3px_rgba(20,32,51,0.08)];
+  @apply bg-white text-[#18181b] shadow-[0_1px_3px_rgba(24,24,27,0.08)];
 }
 
 .engineer-create-panel {
-  @apply grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-[18px] font-sans shadow-[0_1px_2px_rgba(20,32,51,0.05)];
+  @apply grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-[18px] font-sans shadow-[0_1px_2px_rgba(24,24,27,0.05)];
 }
 
 .engineer-create-form {
@@ -88,7 +88,7 @@
   background: #ffffff;
   border: 1px solid #e5e5e5;
   border-radius: 8px;
-  box-shadow: 0 18px 46px rgba(20, 32, 51, 0.16);
+  box-shadow: 0 18px 46px rgba(24, 24, 27, 0.16);
   display: grid;
   gap: 4px;
   left: 0;
@@ -329,7 +329,7 @@
 
 .engineer-business-tabs button.active {
   background: #ffffff;
-  box-shadow: 0 1px 5px rgba(20, 32, 51, 0.08);
+  box-shadow: 0 1px 5px rgba(24, 24, 27, 0.08);
   color: #18181b;
 }
 
@@ -398,7 +398,7 @@
 
 .task-tabs button.active {
   background: #ffffff;
-  box-shadow: 0 1px 4px rgba(20, 32, 51, 0.08);
+  box-shadow: 0 1px 4px rgba(24, 24, 27, 0.08);
   color: #18181b;
 }
 
@@ -465,8 +465,8 @@
   align-items: center;
   background:
     linear-gradient(90deg, rgba(24, 24, 27, 0.08), transparent 38%),
-    #f8fbfb;
-  border-bottom: 1px solid #dbe9e8;
+    #fafafa;
+  border-bottom: 1px solid #e4e4e7;
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -515,7 +515,7 @@
 .engineer-task-row:hover {
   background:
     linear-gradient(90deg, rgba(24, 24, 27, 0.08), transparent 42%),
-    #fffdfd;
+    #ffffff;
 }
 
 .engineer-task-row.danger {
@@ -927,7 +927,7 @@
 }
 
 .task-drawer-backdrop {
-  background: rgba(20, 32, 51, 0.34);
+  background: rgba(24, 24, 27, 0.34);
   display: flex;
   inset: 0;
   justify-content: flex-end;
@@ -937,7 +937,7 @@
 
 .task-drawer {
   background: #ffffff;
-  box-shadow: -24px 0 60px rgba(20, 32, 51, 0.16);
+  box-shadow: -24px 0 60px rgba(24, 24, 27, 0.16);
   display: grid;
   grid-template-rows: auto auto 1fr;
   max-width: min(100%, 520px);

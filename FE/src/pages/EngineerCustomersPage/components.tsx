@@ -38,7 +38,7 @@ export function CustomerDetailView({
 
   return (
     <div className="grid min-w-0 gap-5">
-      <div className="min-w-0 rounded-[26px] border border-[#e4e4e7] bg-white p-5 shadow-[0_18px_50px_rgba(24,24,27,0.06)]">
+      <div className="min-w-0 rounded-[26px] border border-[#e4e4e7] bg-white p-5 shadow-[0_8px_24px_rgba(24,24,27,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#18181b]">{customer.customerCode || customer.region?.name || 'Khách hàng'}</span>
@@ -75,7 +75,7 @@ export function CustomerDetailView({
         ) : openTasks.length ? (
           <div className="grid gap-3 md:grid-cols-2">
             {openTasks.map((task) => (
-              <div className="grid min-w-0 gap-3 rounded-2xl border border-[#e4e4e7] bg-[#f8fbfb] p-3" key={`${task.kind}-${task.id}`}>
+              <div className="grid min-w-0 gap-3 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3" key={`${task.kind}-${task.id}`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <span className="text-xs font-semibold text-[#18181b]">{taskKindLabel(task.kind)}</span>
@@ -158,7 +158,7 @@ export function CustomerDetailView({
               </div>
             ))}
             {installationAccessories.map((item) => (
-              <div className="grid min-w-0 gap-2 rounded-2xl border border-[#e4e4e7] bg-[#f8fbfb] p-3" key={item.id}>
+              <div className="grid min-w-0 gap-2 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3" key={item.id}>
                 <span className="text-xs font-semibold text-[#18181b]">Phụ kiện bàn giao</span>
                 <strong className="[overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{item.name}</strong>
                 <span className="[overflow-wrap:anywhere] text-xs leading-5 text-[#666666]">{[machineTitle(item.machine), item.code, formatDate(item.installedAt)].filter(Boolean).join(' - ')}</span>
@@ -175,7 +175,7 @@ export function CustomerDetailView({
 
 function MachineCard({ customerId, machine, returnTo }: { customerId: string; machine: CustomerMachine; returnTo: string }) {
   return (
-    <article className="grid min-w-0 gap-3 rounded-[22px] border border-[#ededf0] bg-[#fafafa] p-4 transition hover:border-[#e4e4e7] hover:bg-[#f8fbfb]">
+    <article className="grid min-w-0 gap-3 rounded-[22px] border border-[#ededf0] bg-[#fafafa] p-4 transition hover:border-[#e4e4e7] hover:bg-[#fafafa]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <strong className="block [overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{machineTitle(machine)}</strong>
@@ -208,7 +208,7 @@ function MachineCard({ customerId, machine, returnTo }: { customerId: string; ma
 
 export function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
   return (
-    <div className="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-[#dbe9e8] bg-[#f8fbfb] p-3">
+    <div className="grid grid-cols-[42px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3">
       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#18181b] shadow-[inset_0_0_0_1px_#e4e4e7]">{icon}</div>
       <div>
         <strong className="block text-xl font-extrabold leading-tight text-[#1f1f1f]">{value}</strong>
@@ -241,7 +241,7 @@ function PanelTitle({ title, subtitle }: { title: string; subtitle: string }) {
 }
 
 export function EmptyState({ title }: { title: string }) {
-  return <div className="rounded-2xl border border-dashed border-[#e4e4e7] bg-[#f8fbfb] px-4 py-6 text-center text-sm font-bold text-[#666666]">{title}</div>;
+  return <div className="rounded-2xl border border-dashed border-[#e4e4e7] bg-[#fafafa] px-4 py-6 text-center text-sm font-bold text-[#666666]">{title}</div>;
 }
 
 const panelClass = 'grid min-w-0 content-start gap-3 rounded-[26px] border border-[#e4e4e7] bg-white p-5 shadow-[0_18px_50px_rgba(24,24,27,0.05)]';

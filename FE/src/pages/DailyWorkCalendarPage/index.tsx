@@ -309,8 +309,8 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
   return (
     <PageFrame>
-      <section className="relative flex min-w-0 items-end justify-between gap-[18px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f8fbfb] p-6 text-[#1f1f1f] shadow-[0_22px_60px_rgba(24,24,27,0.08)] max-[1180px]:grid max-[1180px]:items-stretch">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(24,24,27,0.12),transparent_30%),radial-gradient(circle_at_86%_8%,rgba(255,214,220,0.55),transparent_28%),linear-gradient(135deg,#f8fbfb,#ffffff_55%,#fafafa)]" />
+      <section className="relative flex min-w-0 items-end justify-between gap-[18px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#fafafa] p-6 text-[#1f1f1f] shadow-[0_12px_30px_rgba(24,24,27,0.05)] max-[1180px]:grid max-[1180px]:items-stretch">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(24,24,27,0.12),transparent_30%),radial-gradient(circle_at_86%_8%,rgba(255,214,220,0.55),transparent_28%),linear-gradient(135deg,#fafafa,#ffffff_55%,#fafafa)]" />
         <div className="relative z-10 min-w-0">
           <span className="relative mb-2 inline-flex items-center gap-2 rounded-xl border border-[#e4e4e7] bg-white/75 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#18181b]"><CalendarDays size={15} /> Lịch kỹ sư</span>
           <h1 className="relative mb-2.5 text-[clamp(30px,4vw,46px)] font-extrabold leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Lịch làm việc của tôi'}</h1>
@@ -343,7 +343,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
       <section className="grid gap-3 md:grid-cols-5">
         {scheduleTypeOptions.map((option) => (
           <button
-            className="grid min-h-[76px] gap-2 rounded-[14px] border border-[#e5e5e5] bg-white p-3 text-left shadow-[0_1px_2px_rgba(20,32,51,0.04)] transition hover:-translate-y-px hover:border-[#b8cbe1]"
+            className="grid min-h-[76px] gap-2 rounded-[14px] border border-[#e5e5e5] bg-white p-3 text-left shadow-[0_1px_2px_rgba(24,24,27,0.04)] transition hover:-translate-y-px hover:border-[#b8cbe1]"
             key={option.label}
             onClick={() => {
               openCreate(new Date());
@@ -359,7 +359,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
         ))}
       </section>
 
-      <section className="min-w-0 overflow-hidden rounded-[14px] border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)] max-[1180px]:overflow-x-auto">
+      <section className="min-w-0 overflow-hidden rounded-[14px] border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)] max-[1180px]:overflow-x-auto">
         <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[#eeeeee] p-4 max-[1180px]:grid max-[1180px]:items-stretch">
           <div className="min-w-0">
             <strong className="block text-xl capitalize text-[#1f1f1f]">{monthLabel(viewDate)}</strong>
@@ -406,7 +406,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                 <div className="grid content-start gap-1">
                   {dayNotes.slice(0, 3).map((note) => (
                     <span
-                      className="grid gap-0.5 overflow-hidden rounded-md border-l-[3px] bg-white px-[7px] py-[5px] text-xs leading-snug text-[#1f1f1f] shadow-[0_1px_3px_rgba(20,32,51,0.08)]"
+                      className="grid gap-0.5 overflow-hidden rounded-md border-l-[3px] bg-white px-[7px] py-[5px] text-xs leading-snug text-[#1f1f1f] shadow-[0_1px_3px_rgba(24,24,27,0.08)]"
                       key={note.id}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -431,7 +431,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
       {selectedDayDate ? (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/30 p-5 backdrop-blur-[3px]" onClick={() => setSelectedDayDate('')} role="presentation">
-          <section aria-modal="true" className="grid w-full max-w-[720px] gap-4 rounded-[14px] border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(20,32,51,0.2)]" onClick={(event) => event.stopPropagation()} role="dialog">
+          <section aria-modal="true" className="grid w-full max-w-[720px] gap-4 rounded-[14px] border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(24,24,27,0.2)]" onClick={(event) => event.stopPropagation()} role="dialog">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="block text-xs font-medium text-[#18181b]">Công việc trong ngày</span>
@@ -495,7 +495,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
       {isModalOpen ? (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/30 p-5 backdrop-blur-[3px]" role="presentation">
-          <section aria-modal="true" className="grid w-full max-w-[720px] gap-[18px] rounded-[14px] border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(20,32,51,0.2)]" role="dialog">
+          <section aria-modal="true" className="grid w-full max-w-[720px] gap-[18px] rounded-[14px] border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(24,24,27,0.2)]" role="dialog">
             <div className="flex items-start justify-between">
               <div>
                 <span className="block text-xs font-medium text-[#18181b]">{editingNote ? 'Edit note' : isAdmin ? 'Add task' : 'Add note'}</span>

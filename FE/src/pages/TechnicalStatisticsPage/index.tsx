@@ -314,7 +314,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
             </Panel>
           </section>
 
-          <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+          <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
             <div className="border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
               <h2 className="text-base font-semibold text-[#1f1f1f]">Bảng hiệu suất kỹ sư</h2>
               <p className="mt-1 text-sm text-[#666666]">Dùng để so sánh khối lượng việc, khách hàng phục vụ và tỷ lệ hoàn tất.</p>
@@ -361,7 +361,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
 
 function StatCard({ hint, icon, label, value }: { hint: string; icon: ReactNode; label: string; value: number | string }) {
   return (
-    <article className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <article className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
       <div className="flex h-[42px] w-[42px] items-center justify-center rounded-lg border border-[#e4e4e7] bg-[#f4f4f5] text-[#18181b]">{icon}</div>
       <div>
         <span className="text-xs font-semibold text-[#666666]">{label}</span>
@@ -374,7 +374,7 @@ function StatCard({ hint, icon, label, value }: { hint: string; icon: ReactNode;
 
 function Panel({ children, subtitle, title }: { children: ReactNode; subtitle: string; title: string }) {
   return (
-    <section className="grid content-start gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <section className="grid content-start gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
       <div>
         <h2 className="text-base font-semibold text-[#1f1f1f]">{title}</h2>
         <p className="mt-1 line-clamp-1 text-xs font-medium text-[#8a8f99]">{subtitle}</p>

@@ -382,7 +382,7 @@ export function AdminWorkAssignmentPage() {
 
   return (
     <PageFrame>
-      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] p-5 shadow-[0_24px_70px_rgba(24,24,27,0.10)] lg:p-6">
+      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] p-5 shadow-[0_12px_30px_rgba(24,24,27,0.06)] lg:p-6">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_7%_12%,rgba(24,24,27,0.14),transparent_30%),radial-gradient(circle_at_92%_18%,rgba(255,255,255,0.94),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,247,248,0.78))]" />
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <PageTitle
@@ -432,7 +432,7 @@ export function AdminWorkAssignmentPage() {
       {success ? <Notice message={success} /> : null}
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="overflow-hidden rounded-[24px] border border-[#e8edf3] bg-white shadow-[0_18px_50px_rgba(20,32,51,0.07)]">
+        <div className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_8px_24px_rgba(24,24,27,0.05)]">
           <div className="grid gap-4 border-b border-[#ededf0] bg-[#fafafa] p-4">
             <div className="grid gap-1">
               <h2 className="text-lg font-semibold text-[#1f1f1f]">{currentFilterLabel}</h2>
@@ -504,7 +504,7 @@ export function AdminWorkAssignmentPage() {
 
             {!loading ? groupedItems.map((group) => (
               <section className="border-b border-[#ededf0] last:border-b-0" key={group.key}>
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#f8fbfb] px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#fafafa] px-4 py-3">
                   <div>
                     <h3 className="text-sm font-semibold text-[#1f1f1f]">{group.title}</h3>
                     <p className="mt-0.5 text-[11px] leading-4 text-[#9aa2ad]">{group.description}</p>
@@ -558,7 +558,7 @@ export function AdminWorkAssignmentPage() {
             </div>
           </div>
 
-          <div className="rounded-[20px] border border-[#e8edf3] bg-white p-4 shadow-[0_10px_26px_rgba(20,32,51,0.05)]">
+          <div className="rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
             <h2 className="text-base font-semibold text-[#1f1f1f]">Luồng nhanh</h2>
             <div className="mt-3 grid gap-2 text-xs font-medium leading-5 text-[#6f7784]">
               <p><strong>1.</strong> Chọn kỹ sư.</p>
@@ -665,7 +665,7 @@ function WorkDispatchRow({
           Assign
         </button>
         {item.reviewStatus === 'PENDING' ? (
-          <div className="col-span-full grid gap-2 rounded-2xl border border-[#e4e4e7] bg-[#f8fbfb] p-3">
+          <div className="col-span-full grid gap-2 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3">
             <QualityReviewChecklist item={item} />
             <textarea
               className="form-input min-h-16"

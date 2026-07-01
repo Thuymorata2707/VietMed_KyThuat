@@ -177,7 +177,7 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
 
   return (
     <PageFrame>
-      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f8fbfb] p-5 shadow-[0_24px_70px_rgba(24,24,27,0.08)] md:p-7">
+      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#fafafa] p-5 shadow-[0_12px_30px_rgba(24,24,27,0.05)] md:p-7">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(24,24,27,0.06)_1px,transparent_1px),linear-gradient(180deg,rgba(24,24,27,0.05)_1px,transparent_1px)] bg-[size:72px_72px]" />
         <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#e4e4e7]/35 blur-3xl" />
         <div className="relative flex flex-wrap items-start justify-between gap-4">
@@ -263,7 +263,7 @@ function CatalogPortalHero({
   totals: { businessLines: number; industries: number; inStock: number; machines: number; models: number };
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] px-5 py-10 text-center shadow-[0_24px_70px_rgba(24,24,27,0.08)] md:px-8 md:py-14">
+    <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] px-5 py-10 text-center shadow-[0_12px_30px_rgba(24,24,27,0.05)] md:px-8 md:py-14">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(24,24,27,0.075)_1px,transparent_1px),linear-gradient(180deg,rgba(24,24,27,0.055)_1px,transparent_1px)] bg-[size:70px_70px]" />
       <div className="pointer-events-none absolute left-10 top-8 h-40 w-40 rounded-full bg-white/70 blur-3xl" />
       <div className="pointer-events-none absolute right-24 top-16 h-28 w-28 rotate-45 rounded-[28px] bg-[#e4e4e7]/34" />
@@ -301,7 +301,7 @@ function IndustryPortalCard({ item }: { item: { id: string; name: string; expert
 
   return (
     <Link
-      className="group relative min-h-[172px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white/92 p-5 shadow-[0_18px_42px_rgba(24,24,27,0.08)] transition hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_26px_58px_rgba(24,24,27,0.12)]"
+      className="group relative min-h-[172px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white/92 p-5 shadow-[0_8px_24px_rgba(24,24,27,0.05)] transition hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_14px_34px_rgba(24,24,27,0.08)]"
       to={`/product-catalog/industries/${item.id}`}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(24,24,27,0.12),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(248,251,251,0.9))]" />
@@ -319,7 +319,7 @@ function IndustryPortalCard({ item }: { item: { id: string; name: string; expert
           <span className="rounded-full border border-[#e4e4e7] bg-white px-2.5 py-1 text-[#333333]">{item.modelCount} model</span>
           <span className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{item.stock.inStock}/{item.stock.total} còn kho</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-[#d7e3e5]">
+        <div className="h-2 overflow-hidden rounded-full bg-[#e4e4e7]">
           <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${Math.max(ratio, item.stock.total ? 8 : 0)}%` }} />
         </div>
         <span className="inline-flex items-center gap-2 text-sm font-black text-[#18181b]">
@@ -335,7 +335,7 @@ function CatalogModelTile({ canAddProduct, catalogSearch, model, stock }: { canA
   const inStock = stock?.inStock ?? 0;
 
   return (
-    <article className="group grid min-h-[176px] grid-cols-[64px_minmax(0,1fr)] gap-4 rounded-[28px] border border-[#e4e4e7] bg-white/94 p-5 shadow-[0_16px_38px_rgba(24,24,27,0.08)] transition hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_24px_52px_rgba(24,24,27,0.11)]">
+    <article className="group grid min-h-[176px] grid-cols-[64px_minmax(0,1fr)] gap-4 rounded-[28px] border border-[#e4e4e7] bg-white/94 p-5 shadow-[0_8px_24px_rgba(24,24,27,0.05)] transition hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_14px_34px_rgba(24,24,27,0.08)]">
       <Link to={`/business-lines/models/${model.id}${catalogSearch}`}>
         <ModelImage large model={model} />
       </Link>
@@ -345,7 +345,7 @@ function CatalogModelTile({ canAddProduct, catalogSearch, model, stock }: { canA
           <span className="mt-1 block line-clamp-2 text-sm font-semibold leading-5 text-[#667985]">{modelDetailLabel(model)}</span>
         </Link>
         <div className="flex flex-wrap gap-2 text-xs font-bold">
-          <span className="rounded-full border border-[#e4e4e7] bg-[#f8fbfb] px-2.5 py-1 text-[#333333]">{model.manufacturer || 'Chưa có hãng'}</span>
+          <span className="rounded-full border border-[#e4e4e7] bg-[#fafafa] px-2.5 py-1 text-[#333333]">{model.manufacturer || 'Chưa có hãng'}</span>
           <span className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{inStock}/{total} kho</span>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -366,7 +366,7 @@ function CatalogModelTile({ canAddProduct, catalogSearch, model, stock }: { canA
 
 function MetricCard({ icon, label, subLabel, value }: { icon: ReactNode; label: string; subLabel: string; value: number }) {
   return (
-    <div className="grid gap-3 rounded-[22px] border border-white/80 bg-white/86 p-4 text-left shadow-[0_18px_34px_rgba(24,24,27,0.08)] backdrop-blur">
+    <div className="grid gap-3 rounded-[22px] border border-white/80 bg-white/86 p-4 text-left shadow-[0_8px_20px_rgba(24,24,27,0.05)] backdrop-blur">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold text-[#667985]">{label}</span>
         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f4f5] text-[#18181b]">{icon}</span>
@@ -379,7 +379,7 @@ function MetricCard({ icon, label, subLabel, value }: { icon: ReactNode; label: 
 
 function CatalogLoading({ label }: { label: string }) {
   return (
-    <div className="rounded-[28px] border border-dashed border-[#e4e4e7] bg-[#f8fbfb] p-8 text-center text-sm font-semibold text-[#666666]">
+    <div className="rounded-[28px] border border-dashed border-[#e4e4e7] bg-[#fafafa] p-8 text-center text-sm font-semibold text-[#666666]">
       <Loader2 className="spin-icon mx-auto mb-2" size={20} />
       {label}
     </div>
@@ -387,7 +387,7 @@ function CatalogLoading({ label }: { label: string }) {
 }
 
 function CatalogEmpty({ label }: { label: string }) {
-  return <div className="rounded-[28px] border border-dashed border-[#e4e4e7] bg-[#f8fbfb] p-8 text-center text-sm text-[#666666]">{label}</div>;
+  return <div className="rounded-[28px] border border-dashed border-[#e4e4e7] bg-[#fafafa] p-8 text-center text-sm text-[#666666]">{label}</div>;
 }
 
 function ModelImage({ model, large = false }: { model?: MachineModel | null; large?: boolean }) {

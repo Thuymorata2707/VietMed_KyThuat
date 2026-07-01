@@ -291,7 +291,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
 
   return (
     <PageFrame>
-      <section className="relative overflow-hidden rounded-[30px] border border-[#e4e4e7] bg-[#f4f4f5] p-6 shadow-[0_24px_70px_rgba(24,24,27,0.10)] lg:p-8">
+      <section className="relative overflow-hidden rounded-[30px] border border-[#e4e4e7] bg-[#f4f4f5] p-6 shadow-[0_12px_30px_rgba(24,24,27,0.06)] lg:p-8">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_10%,rgba(24,24,27,0.14),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(255,255,255,0.92),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.86),rgba(255,247,248,0.78))]" />
         <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-end">
           <div className="max-w-3xl">
@@ -313,7 +313,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="grid content-start gap-4 rounded-2xl border border-[#e8edf3] bg-white p-4 shadow-[0_14px_36px_rgba(20,32,51,0.06)] lg:sticky lg:top-4">
+        <aside className="grid content-start gap-4 rounded-2xl border border-[#e4e4e7] bg-white p-4 shadow-[0_14px_36px_rgba(24,24,27,0.06)] lg:sticky lg:top-4">
           <label className="flex h-11 items-center gap-2 rounded-xl border border-[#d4d4d8] bg-[#fafafa] px-3 text-[#666666] focus-within:border-[#18181b] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]">
             <Search size={16} />
             <input
@@ -351,7 +351,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-dashed border-[#e4e4e7] bg-[#f8fbfb] p-4 text-sm text-[#666666]">
+          <div className="rounded-2xl border border-dashed border-[#e4e4e7] bg-[#fafafa] p-4 text-sm text-[#666666]">
             <strong className="block text-[#1f1f1f]">{canApprove ? 'Admin duyệt nội dung' : 'Đóng góp kinh nghiệm'}</strong>
             {canApprove ? 'Admin có thể duyệt Published hoặc đưa bài về Draft/Archived.' : 'Kỹ sư thêm/sửa bài của mình, admin duyệt thì bài mới hiển thị cho mọi người.'}
           </div>
@@ -395,7 +395,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
 
       {isFormOpen ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm">
-          <form className="grid max-h-[92dvh] w-full max-w-4xl overflow-hidden rounded-[26px] border border-[#e8edf3] bg-white shadow-[0_30px_90px_rgba(20,32,51,0.26)]" onSubmit={handleSubmit}>
+          <form className="grid max-h-[92dvh] w-full max-w-4xl overflow-hidden rounded-[26px] border border-[#e4e4e7] bg-white shadow-[0_30px_90px_rgba(24,24,27,0.26)]" onSubmit={handleSubmit}>
             <div className="flex items-start justify-between gap-4 border-b border-[#ededf0] p-5">
               <div>
                 <h2 className="text-xl font-semibold text-[#1f1f1f]">{editingArticle ? 'Edit Article' : 'Add Article'}</h2>
@@ -526,7 +526,7 @@ function ArticleCard({
   const meta = categoryMeta[article.category];
   const canEditArticle = canApprove || article.createdBy?.id === currentUserId;
   return (
-    <div className={`grid min-h-[230px] content-between rounded-2xl border bg-white p-4 shadow-[0_10px_28px_rgba(20,32,51,0.05)] transition hover:-translate-y-0.5 hover:border-[#e4e4e7] hover:shadow-[0_18px_42px_rgba(24,24,27,0.10)] ${active ? 'border-[#18181b] ring-4 ring-[#f4f4f5]' : 'border-[#e8edf3]'}`}>
+    <div className={`grid min-h-[230px] content-between rounded-2xl border bg-white p-4 shadow-[0_10px_28px_rgba(24,24,27,0.05)] transition hover:-translate-y-0.5 hover:border-[#e4e4e7] hover:shadow-[0_18px_42px_rgba(24,24,27,0.10)] ${active ? 'border-[#18181b] ring-4 ring-[#f4f4f5]' : 'border-[#e4e4e7]'}`}>
       <button className="text-left" onClick={onSelect} type="button">
         <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.tone}`}>
           {meta.icon}
@@ -568,7 +568,7 @@ function ArticleCard({
 function ArticleDetail({ article }: { article: KnowledgeArticle }) {
   const meta = categoryMeta[article.category];
   return (
-    <article className="overflow-hidden rounded-[26px] border border-[#e8edf3] bg-white shadow-[0_18px_50px_rgba(20,32,51,0.08)]">
+    <article className="overflow-hidden rounded-[26px] border border-[#e4e4e7] bg-white shadow-[0_18px_50px_rgba(24,24,27,0.08)]">
       <div className="grid gap-4 border-b border-[#ededf0] bg-[#fafafa] p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div>
           <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.tone}`}>
@@ -578,7 +578,7 @@ function ArticleDetail({ article }: { article: KnowledgeArticle }) {
           <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[#1f1f1f]">{article.title}</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[#666666]">{article.summary}</p>
         </div>
-        <div className="grid content-start gap-2 rounded-2xl border border-[#e8edf3] bg-white p-4 text-sm">
+        <div className="grid content-start gap-2 rounded-2xl border border-[#e4e4e7] bg-white p-4 text-sm">
           <InfoLine label="Model" value={article.modelHint || 'Tất cả model'} />
           <InfoLine label="Nhóm" value={article.ownerTeam || '-'} />
           <InfoLine label="Cập nhật" value={formatDate(article.updatedAt)} />

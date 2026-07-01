@@ -310,7 +310,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="grid min-w-0 gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <section className="grid min-w-0 gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <span className="text-xs font-medium text-[#18181b]">Tuần báo cáo</span>
@@ -387,7 +387,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       </section>
 
       {(report?.reviewNote || canReview) ? (
-        <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <span className="text-xs font-semibold text-[#18181b]">Phản hồi báo cáo</span>
@@ -438,7 +438,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
         </section>
       ) : null}
 
-      <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-[#ffffff] p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+      <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-[#ffffff] p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#f4f4f5] text-[#18181b]">
@@ -477,7 +477,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
         ) : null}
       </section>
 
-      <section className="min-w-0 overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <section className="min-w-0 overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
         {loading ? (
           <div className="grid min-h-36 place-items-center text-[#666666]">
             <span className="inline-flex items-center gap-2">

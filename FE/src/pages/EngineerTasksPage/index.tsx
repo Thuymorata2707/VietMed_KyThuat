@@ -982,7 +982,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <div className="rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
             <div>
               <span className="text-[12px] font-medium text-[#666666]">Ưu tiên hôm nay</span>
@@ -1455,14 +1455,14 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           </form>
         </section>
       ) : (
-        <section className="min-w-0 overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+        <section className="min-w-0 overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
           <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-1 border-b border-[#eeeeee] bg-[#fafafa] p-2" aria-label="Nhóm công việc">
             {businessTabs.map((tab) => (
               <button
                 className={[
                   'flex min-h-12 min-w-0 items-center justify-between gap-2 rounded-lg border-0 px-3 text-left text-sm font-medium transition',
                   businessTab === tab.value
-                    ? 'bg-white text-[#18181b] shadow-[0_1px_5px_rgba(20,32,51,0.08)]'
+                    ? 'bg-white text-[#18181b] shadow-[0_1px_5px_rgba(24,24,27,0.08)]'
                     : 'bg-transparent text-[#333333] hover:bg-white/70',
                 ].join(' ')}
                 key={tab.value}
@@ -1504,7 +1504,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <button
                   className={[
                     'min-h-8 min-w-0 flex-1 rounded-md border-0 px-2 text-xs font-medium leading-tight min-[560px]:flex-none min-[560px]:px-3 min-[560px]:text-sm',
-                    filter === value ? 'bg-white text-[#18181b] shadow-[0_1px_4px_rgba(20,32,51,0.08)]' : 'bg-transparent text-[#333333]',
+                    filter === value ? 'bg-white text-[#18181b] shadow-[0_1px_4px_rgba(24,24,27,0.08)]' : 'bg-transparent text-[#333333]',
                   ].join(' ')}
                   key={value}
                   onClick={() => setFilter(value as TaskFilter)}
@@ -2452,7 +2452,7 @@ function WeeklyReportQuickCard({ loading, report }: { loading: boolean; report: 
   const rowCount = report?.rows?.length ?? 0;
 
   return (
-    <aside className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <aside className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
       <div className="flex items-start justify-between gap-3">
         <div>
         <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#666666]">

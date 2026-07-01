@@ -11,7 +11,7 @@ type AdminShortcutProps = {
 
 export function AdminShortcut({ to, icon, title, detail }: AdminShortcutProps) {
   return (
-    <Link className="group grid min-h-24 grid-cols-[40px_minmax(0,1fr)_18px] items-center gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.05)] transition hover:-translate-y-px hover:border-[#e4e4e7] hover:bg-[#ffffff] hover:shadow-[0_12px_30px_rgba(20,32,51,0.08)]" to={to}>
+    <Link className="group grid min-h-24 grid-cols-[40px_minmax(0,1fr)_18px] items-center gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.05)] transition hover:-translate-y-px hover:border-[#e4e4e7] hover:bg-[#ffffff] hover:shadow-[0_12px_30px_rgba(24,24,27,0.08)]" to={to}>
       <div className="metric-icon">{icon}</div>
       <div>
         <strong className="block text-sm text-[#1f1f1f]">{title}</strong>

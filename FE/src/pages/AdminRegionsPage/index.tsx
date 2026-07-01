@@ -181,7 +181,7 @@ export function AdminRegionsPage() {
       {success ? <div className="success-notice">{success}</div> : null}
 
       <section className="overflow-hidden rounded-[22px] border border-[#e4e4e7] bg-white shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
-        <div className="list-toolbar border-b border-[#dbe9e8]">
+        <div className="list-toolbar border-b border-[#e4e4e7]">
           <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm tên hoặc mã khu vực" value={query} />
           <button className="primary-button compact" onClick={openCreateModal} type="button">
             <Plus size={17} />
@@ -192,7 +192,7 @@ export function AdminRegionsPage() {
         <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredRegions.map((region) => (
             <button
-              className={`group grid min-h-[150px] content-between gap-5 rounded-[18px] border bg-[#fffdfd] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#18181b] hover:shadow-[0_14px_30px_rgba(24,24,27,0.08)] ${
+              className={`group grid min-h-[150px] content-between gap-5 rounded-[18px] border bg-[#ffffff] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#18181b] hover:shadow-[0_14px_30px_rgba(24,24,27,0.08)] ${
                 selectedRegion?.id === region.id ? 'border-[#18181b] shadow-[0_18px_38px_rgba(24,24,27,0.1)]' : 'border-[#e4e4e7]'
               }`}
               key={region.id}
@@ -233,7 +233,7 @@ export function AdminRegionsPage() {
 
       {selectedRegion ? (
         <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/30 backdrop-blur-[3px]" onClick={closeRegionDetail} role="presentation">
-          <aside aria-modal="true" className="grid h-screen w-[min(92vw,1100px)] max-w-[1100px] grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-l-[24px] border-l border-[#e4e4e7] bg-white p-[18px] shadow-[-18px_0_40px_rgba(20,32,51,0.18)] max-sm:w-screen max-sm:rounded-none max-sm:p-3.5" onClick={(event) => event.stopPropagation()} role="dialog">
+          <aside aria-modal="true" className="grid h-screen w-[min(92vw,1100px)] max-w-[1100px] grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-l-[24px] border-l border-[#e4e4e7] bg-white p-[18px] shadow-[-18px_0_40px_rgba(24,24,27,0.18)] max-sm:w-screen max-sm:rounded-none max-sm:p-3.5" onClick={(event) => event.stopPropagation()} role="dialog">
             <div className="flex items-center justify-between gap-3.5 rounded-[18px] border border-[#e4e4e7] bg-gradient-to-br from-[#f4f4f5] via-white to-[#f4f4f5] p-4 max-sm:flex-col max-sm:items-stretch">
               <div className="grid gap-1">
                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#18181b]">Khách hàng theo khu vực</span>
@@ -251,7 +251,7 @@ export function AdminRegionsPage() {
             </div>
 
             <div className="grid min-h-0 grid-cols-[minmax(260px,360px)_minmax(0,1fr)] gap-3.5 max-sm:grid-cols-1 max-sm:overflow-y-auto">
-              <div className="grid content-start gap-2.5 overflow-y-auto rounded-[18px] border border-[#e4e4e7] bg-[#fffdfd] p-3">
+              <div className="grid content-start gap-2.5 overflow-y-auto rounded-[18px] border border-[#e4e4e7] bg-[#ffffff] p-3">
                 {loadingCustomers ? (
                   <div className="table-state">
                     <Loader2 className="spin-icon" size={18} />

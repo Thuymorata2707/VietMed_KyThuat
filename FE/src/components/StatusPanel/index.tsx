@@ -7,7 +7,7 @@ type StatusPanelProps = {
 
 export function StatusPanel({ title, items }: StatusPanelProps) {
   return (
-    <article className="rounded-lg border border-[#e5e5e5] bg-white p-[18px] shadow-[0_1px_2px_rgba(20,32,51,0.04)] transition hover:-translate-y-px hover:border-[#d7e0eb] hover:shadow-[0_12px_30px_rgba(20,32,51,0.06)]">
+    <article className="rounded-lg border border-[#e5e5e5] bg-white p-[18px] shadow-[0_1px_2px_rgba(24,24,27,0.04)] transition hover:-translate-y-px hover:border-[#d7e0eb] hover:shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
       <div className="flex items-center gap-2.5">
         <Activity className="text-[#18181b]" size={19} />
         <h2 className="text-lg font-medium">{title}</h2>

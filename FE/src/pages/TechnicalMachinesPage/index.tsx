@@ -662,7 +662,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           </div>
         </div>
 
-        <div className="grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-3 shadow-[0_10px_28px_rgba(20,32,51,0.05)]">
+        <div className="grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-3 shadow-[0_10px_28px_rgba(24,24,27,0.05)]">
           <div className="grid gap-3 min-[1120px]:grid-cols-[minmax(240px,320px)_minmax(260px,1fr)_180px_150px_auto]">
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Ngành hàng
@@ -732,7 +732,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           </div>
         </div>
 
-        <section className="overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_12px_34px_rgba(20,32,51,0.06)]">
+        <section className="overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_12px_34px_rgba(24,24,27,0.06)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
             <div>
               <h2 className="text-base font-semibold text-[#1f1f1f]">Danh sách máy</h2>
@@ -809,7 +809,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
       {editingMachine && !machineId ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 p-5" role="presentation">
-          <form className="grid max-h-[calc(100vh-40px)] w-full max-w-[920px] gap-4 overflow-y-auto rounded-lg border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(20,32,51,0.22)]" onSubmit={handleSaveMachine}>
+          <form className="grid max-h-[calc(100vh-40px)] w-full max-w-[920px] gap-4 overflow-y-auto rounded-lg border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(24,24,27,0.22)]" onSubmit={handleSaveMachine}>
             <div className="flex items-start justify-between gap-3 border-b border-[#eeeeee] pb-3">
               <div>
                 <span className="text-[12px] font-medium text-[#666666]">Chuẩn hóa hồ sơ máy</span>
@@ -1022,7 +1022,7 @@ function MachineDetailPanel({
 
   return (
     <aside className="grid min-w-0 gap-4 self-start">
-      <div className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <div className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
         <div className="mb-5 flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-2xl font-medium leading-tight text-[#1f1f1f]">Thông tin máy</h2>
@@ -1095,7 +1095,7 @@ function MachineDetailPanel({
         </div>
       </div>
 
-      <div className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+      <div className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
         <div className="mb-5 flex min-w-0 items-start justify-between gap-3">
           <h2 className="text-2xl font-medium leading-tight text-[#1f1f1f]">Khách hàng đã lắp máy</h2>
           {latestInstallation?.code ? <span className="rounded-full bg-[#fafafa] px-3 py-1 text-sm font-semibold text-[#666666]">{latestInstallation.code}</span> : null}
@@ -1185,7 +1185,7 @@ function MachineLifecycleTimeline({ events }: { events: MachineLifecycleEvent[] 
   const latestEvents = events.slice(0, 12);
 
   return (
-    <section className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <section className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <span className="text-[12px] font-semibold text-[#666666]">Vòng đời thiết bị</span>
@@ -1240,7 +1240,7 @@ function TimelineBox({
   title: string;
 }) {
   return (
-    <section className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <section className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
       <h3 className="text-base font-medium text-[#1f1f1f]">{title}</h3>
       <div className="mt-3 grid gap-2">
         {items.length ? items.map((item) => (
@@ -1259,7 +1259,7 @@ function TimelineBox({
 
 function MachineListActionPanel({ canEdit, machine }: { canEdit: boolean; machine: DashboardMachine | null }) {
   return (
-    <aside className="grid min-w-0 gap-4 self-start rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <aside className="grid min-w-0 gap-4 self-start rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
       <div>
         <span className="text-[12px] font-medium text-[#666666]">Thao tác hồ sơ</span>
         <h2 className="mt-1 text-2xl font-medium leading-tight text-[#1f1f1f]">Mở trang riêng để xem hoặc sửa</h2>
@@ -1303,7 +1303,7 @@ function MachineSummaryCard({ label, tone = 'neutral', value }: { label: string;
   }[tone];
 
   return (
-    <div className="grid gap-2 rounded-lg border border-[#d8e0ea] bg-white p-4 shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
+    <div className="grid gap-2 rounded-lg border border-[#d8e0ea] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
       <span className="text-sm font-medium text-[#666666]">{label}</span>
       <div className="flex items-end justify-between gap-3">
         <strong className="text-3xl font-semibold leading-none text-[#1f1f1f]">{value}</strong>
@@ -1329,7 +1329,7 @@ function MachineIndustryBarChart({
   const maxCount = Math.max(1, ...items.map((item) => item.count));
 
   return (
-    <section className="grid min-h-[300px] gap-5 rounded-lg border border-[#d8e0ea] bg-white p-5 shadow-[0_12px_34px_rgba(20,32,51,0.06)]">
+    <section className="grid min-h-[300px] gap-5 rounded-lg border border-[#d8e0ea] bg-white p-5 shadow-[0_12px_34px_rgba(24,24,27,0.06)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <span className="text-[12px] font-semibold text-[#666666]">Biểu đồ ngành hàng</span>
@@ -1635,7 +1635,7 @@ function MachineEditForm({
   }
 
   return (
-    <form className="grid gap-5 rounded-lg border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(20,32,51,0.04)]" onSubmit={onSave}>
+    <form className="grid gap-5 rounded-lg border border-[#e5e5e5] bg-white p-5 shadow-[0_1px_2px_rgba(24,24,27,0.04)]" onSubmit={onSave}>
       <div className="flex items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
         <div>
           <span className="text-[12px] font-medium text-[#666666]">Chuẩn hóa hồ sơ máy</span>

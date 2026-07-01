@@ -38,8 +38,8 @@
   --radius-sm: 8px;
   --radius-md: 8px;
   --shadow-sm: 0 1px 2px rgba(24, 24, 27, 0.06), 0 1px 0 rgba(255, 255, 255, 0.72) inset;
-  --shadow-panel: 0 18px 44px rgba(24, 24, 27, 0.08);
-  --shadow-hover: 0 18px 42px rgba(24, 24, 27, 0.12);
+  --shadow-panel: 0 10px 28px rgba(24, 24, 27, 0.05);
+  --shadow-hover: 0 12px 30px rgba(24, 24, 27, 0.08);
   --focus-ring: 0 0 0 3px rgba(24, 24, 27, 0.12);
   --shadow-modal: 0 28px 80px rgba(24, 24, 27, 0.24);
   color: var(--color-text);
@@ -182,7 +182,7 @@ p {
 }
 
 .icon-button {
-  @apply h-[34px] w-[34px] rounded-lg border bg-white shadow-[0_1px_2px_rgba(20,32,51,0.05)];
+  @apply h-[34px] w-[34px] rounded-lg border bg-white shadow-[0_1px_2px_rgba(24,24,27,0.05)];
   border-color: var(--color-border);
   color: var(--color-muted-strong);
 }
@@ -217,7 +217,7 @@ p {
 }
 
 .secondary-button {
-  @apply border bg-white shadow-[0_1px_2px_rgba(20,32,51,0.05)];
+  @apply border bg-white shadow-[0_1px_2px_rgba(24,24,27,0.05)];
   border-color: var(--color-border);
   color: var(--color-muted-strong);
 }
@@ -238,7 +238,7 @@ p {
 }
 
 .surface-card {
-  @apply rounded-lg border bg-white shadow-[0_1px_2px_rgba(20,32,51,0.05)];
+  @apply rounded-lg border bg-white shadow-[0_1px_2px_rgba(24,24,27,0.05)];
   border-color: var(--color-border);
   box-shadow: var(--shadow-sm);
 }
@@ -363,7 +363,7 @@ p {
 
 .crud-modal-backdrop {
   align-items: center;
-  background: rgba(20, 32, 51, 0.42);
+  background: rgba(24, 24, 27, 0.42);
   display: flex;
   inset: 0;
   justify-content: center;
@@ -660,34 +660,33 @@ p {
 
 .user-metrics-grid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .user-metric-card {
   align-items: center;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(246, 250, 249, 0.9));
+  background: #ffffff;
   border: 1px solid var(--color-border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-sm);
+  border-radius: 12px;
+  box-shadow: none;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
-  padding: 14px;
+  padding: 12px;
 }
 
 .user-metric-icon {
   align-items: center;
   background: var(--color-accent-soft);
   border: 1px solid var(--color-accent-border);
-  border-radius: 12px;
+  border-radius: 10px;
   color: var(--color-accent);
   display: inline-flex;
   flex: 0 0 auto;
-  height: 40px;
+  height: 36px;
   justify-content: center;
-  width: 40px;
+  width: 36px;
 }
 
 .user-metric-card div {
@@ -699,12 +698,13 @@ p {
 .user-metric-card span:not(.user-metric-icon) {
   color: var(--color-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .user-metric-card strong {
   color: var(--color-text);
-  font-size: 28px;
+  font-size: 24px;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -715,10 +715,10 @@ p {
 }
 
 .user-directory-panel {
-  background: rgba(255, 255, 255, 0.9);
+  background: #ffffff;
   border: 1px solid var(--color-border);
-  border-radius: 16px;
-  box-shadow: var(--shadow-panel);
+  border-radius: 14px;
+  box-shadow: none;
   display: grid;
   gap: 0;
   min-width: 0;
@@ -730,19 +730,19 @@ p {
   border-bottom: 1px solid var(--color-border-soft);
   display: flex;
   gap: 12px;
-  padding: 14px;
+  padding: 12px;
 }
 
 .user-search-field {
   align-items: center;
   background: #ffffff;
   border: 1px solid var(--color-field-border);
-  border-radius: 12px;
+  border-radius: 10px;
   color: var(--color-muted);
   display: flex;
   flex: 1;
   gap: 10px;
-  min-height: 44px;
+  min-height: 42px;
   min-width: 0;
   padding: 0 13px;
   transition:
@@ -754,7 +754,6 @@ p {
 .user-search-field:focus-within {
   border-color: var(--color-brand);
   box-shadow: var(--focus-ring);
-  transform: translateY(-1px);
 }
 
 .user-search-field input {
@@ -763,33 +762,32 @@ p {
   color: var(--color-text);
   flex: 1;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   min-width: 0;
   outline: 0;
 }
 
 .user-search-field input::placeholder {
-  color: #8aa0aa;
-  font-weight: 500;
+  color: #a1a1aa;
+  font-weight: 400;
 }
 
 .user-card-list {
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 8px;
+  padding: 12px;
 }
 
 .user-card {
   align-items: center;
-  background:
-    linear-gradient(135deg, #ffffff, #f8fbfb);
+  background: #ffffff;
   border: 1px solid var(--color-border-soft);
-  border-radius: 14px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.74) inset;
+  border-radius: 12px;
+  box-shadow: none;
   display: grid;
   gap: 14px;
   grid-template-columns: minmax(280px, 1.3fr) minmax(360px, 1.7fr) auto;
-  padding: 14px;
+  padding: 12px;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -797,9 +795,8 @@ p {
 }
 
 .user-card:hover {
-  border-color: var(--color-accent-border);
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-1px);
+  background: #fafafa;
+  border-color: var(--color-border);
 }
 
 .user-card-main {
@@ -820,7 +817,7 @@ p {
 .user-card-title-row h2 {
   color: var(--color-text);
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -830,7 +827,7 @@ p {
 .user-card-main p {
   color: var(--color-muted);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   margin-top: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -843,13 +840,13 @@ p {
   display: flex;
   flex-wrap: wrap;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   gap: 7px;
   margin-top: 9px;
 }
 
 .user-card-chips > span {
-  background: #f7fafb;
+  background: #fafafa;
   border: 1px solid var(--color-border-soft);
   border-radius: 999px;
   max-width: 100%;
@@ -878,7 +875,7 @@ p {
   border-radius: 999px;
   display: inline-flex;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   gap: 6px;
   line-height: 1;
   padding: 6px 8px;
@@ -926,14 +923,14 @@ p {
 .user-card-details dt {
   color: var(--color-muted);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 4px;
 }
 
 .user-card-details dd {
   color: var(--color-text);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 650;
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -948,19 +945,18 @@ p {
 
 .user-photo {
   align-items: center;
-  background:
-    linear-gradient(135deg, #f4f4f5, #f8fbfb);
+  background: #f4f4f5;
   border: 1px solid var(--color-brand-border);
-  border-radius: 13px;
+  border-radius: 11px;
   color: var(--color-brand-dark);
   display: inline-flex;
   flex: 0 0 auto;
   font-size: 12px;
-  font-weight: 800;
-  height: 48px;
+  font-weight: 700;
+  height: 44px;
   justify-content: center;
   overflow: hidden;
-  width: 48px;
+  width: 44px;
 }
 
 .operation-board-actions {

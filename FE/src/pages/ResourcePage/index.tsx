@@ -80,7 +80,7 @@ export function ResourcePage({
 
       {error ? <Notice message={error} /> : null}
 
-      <div className="overflow-x-auto rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)] transition hover:border-[#d7e0eb] hover:shadow-[0_12px_30px_rgba(20,32,51,0.06)]">
+      <div className="overflow-x-auto rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)] transition hover:border-[#d7e0eb] hover:shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
         <table className="w-full min-w-[760px] border-collapse">
           <thead>
             <tr>

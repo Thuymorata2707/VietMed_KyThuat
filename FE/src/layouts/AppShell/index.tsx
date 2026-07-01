@@ -179,12 +179,12 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
 
   return (
     <div className={`app-shell grid min-h-screen w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
-      <aside className={`app-sidebar flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#e4e4e7] px-4 py-5 shadow-[1px_0_0_rgba(28,39,56,0.03)] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-5 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-5 max-[980px]:gap-4'}`}>
+      <aside className={`app-sidebar flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#e4e4e7] px-4 py-5 shadow-[1px_0_0_rgba(24,24,27,0.03)] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-5 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-5 max-[980px]:gap-4'}`}>
         <div className={`flex min-w-0 items-center gap-2.5 ${isSidebarCollapsed ? 'grid justify-items-center' : 'justify-between'} max-[980px]:flex max-[980px]:justify-between`}>
           <Brand compact={isSidebarCollapsed} />
           <button
             aria-label={isSidebarCollapsed ? 'Mở rộng thanh menu' : 'Thu gọn thanh menu'}
-            className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#333333] shadow-[0_1px_2px_rgba(20,32,51,0.05)] hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b] max-[980px]:hidden"
+            className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#333333] shadow-[0_1px_2px_rgba(24,24,27,0.05)] hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b] max-[980px]:hidden"
             onClick={() => setIsSidebarCollapsed((current) => !current)}
             title={isSidebarCollapsed ? 'Mở rộng' : 'Thu gọn'}
             type="button"
@@ -202,8 +202,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                   const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
                   return (
                     <Link
-                      className={`relative flex min-h-[42px] items-center rounded-lg text-[14px] font-medium text-[#71717a] transition hover:bg-white hover:text-[#18181b] max-[980px]:shrink-0 max-[980px]:gap-2.5 max-[980px]:px-3 ${
-                        isActive ? 'bg-[#fff3f4] text-[#18212f] shadow-[inset_0_0_0_1px_rgba(241,196,201,0.95),0_8px_22px_rgba(24,24,27,0.06)] before:absolute before:left-0 before:h-[18px] before:w-[3px] before:rounded-full before:bg-[#18181b]' : ''
+                      className={`relative flex min-h-[42px] items-center rounded-lg text-[14px] font-medium text-[#71717a] transition hover:bg-[#f4f4f5] hover:text-[#18181b] max-[980px]:shrink-0 max-[980px]:gap-2.5 max-[980px]:px-3 ${
+                        isActive ? 'bg-[#f4f4f5] text-[#18181b] shadow-[inset_0_0_0_1px_rgba(228,228,231,0.95),0_8px_22px_rgba(24,24,27,0.05)] before:absolute before:left-0 before:h-[18px] before:w-[3px] before:rounded-full before:bg-[#18181b]' : ''
                       } ${isSidebarCollapsed ? 'h-[42px] w-[42px] justify-center gap-0 px-0 max-[980px]:w-auto max-[980px]:justify-start max-[980px]:px-3' : 'gap-2.5 px-3'}`}
                       key={item.path}
                       title={item.label}
@@ -242,7 +242,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           </div>
           <div className="flex items-center gap-2.5 max-sm:w-full max-sm:flex-wrap">
             <Link
-              className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg bg-[#18212f] px-3.5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(28,39,56,0.14)] transition hover:-translate-y-px hover:bg-[#18181b]"
+              className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg bg-[#18212f] px-3.5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(24,24,27,0.14)] transition hover:-translate-y-px hover:bg-[#18181b]"
               to="/service-tickets/create"
             >
               <Plus size={16} />
@@ -255,7 +255,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             <div className="relative" ref={notificationRef}>
               <button
                 aria-label="Thông báo"
-                className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#333333] shadow-[0_1px_2px_rgba(20,32,51,0.05)] hover:-translate-y-px hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b]"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#333333] shadow-[0_1px_2px_rgba(24,24,27,0.05)] hover:-translate-y-px hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b]"
                 onClick={() => setIsNotificationOpen((value) => !value)}
                 title="Thông báo"
                 type="button"
@@ -268,7 +268,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 ) : null}
               </button>
               {isNotificationOpen ? (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-30 grid w-[360px] max-w-[calc(100vw-32px)] gap-2 rounded-lg border border-[#e5e5e5] bg-white p-3 shadow-[0_18px_46px_rgba(20,32,51,0.16)]">
+                <div className="absolute right-0 top-[calc(100%+8px)] z-30 grid w-[360px] max-w-[calc(100vw-32px)] gap-2 rounded-lg border border-[#e5e5e5] bg-white p-3 shadow-[0_18px_46px_rgba(24,24,27,0.16)]">
                   <div className="flex items-center justify-between gap-3 border-b border-[#eeeeee] pb-2">
                     <strong className="text-sm text-[#1f1f1f]">Thông báo</strong>
                     <button className="text-xs font-medium text-[#18181b]" onClick={markAllNotificationsRead} type="button">
@@ -298,7 +298,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
               ) : null}
             </div>
             <Link
-              className="inline-flex h-[38px] w-[38px] items-center justify-center overflow-hidden rounded-lg border border-[#e5e5e5] bg-white text-[#1f1f1f] shadow-[0_1px_2px_rgba(20,32,51,0.05)] hover:-translate-y-px hover:border-[#e4e4e7]"
+              className="inline-flex h-[38px] w-[38px] items-center justify-center overflow-hidden rounded-lg border border-[#e5e5e5] bg-white text-[#1f1f1f] shadow-[0_1px_2px_rgba(24,24,27,0.05)] hover:-translate-y-px hover:border-[#e4e4e7]"
               title="Tài khoản"
               to="/account-settings"
             >
@@ -717,7 +717,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
 function RouteLoadingState() {
   return (
     <div className="grid min-h-[320px] place-items-center px-4">
-      <div className="grid justify-items-center gap-3 rounded-lg border border-[#e5e5e5] bg-white px-6 py-5 text-sm font-medium text-[#666666] shadow-[0_8px_24px_rgba(20,32,51,0.06)]">
+      <div className="grid justify-items-center gap-3 rounded-lg border border-[#e5e5e5] bg-white px-6 py-5 text-sm font-medium text-[#666666] shadow-[0_8px_24px_rgba(24,24,27,0.06)]">
         <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#e4e4e7] border-t-[#18181b]" />
         <span>Đang mở màn hình...</span>
       </div>

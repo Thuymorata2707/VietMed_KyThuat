@@ -9,10 +9,10 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'border-transparent bg-[#18181b] px-[13px] text-white shadow-[0_1px_2px_rgba(24,24,27,0.22)] hover:-translate-y-px hover:bg-[#09090b]',
-        secondary: 'border-[#e5e5e5] bg-white px-[13px] text-[#333333] shadow-[0_1px_2px_rgba(20,32,51,0.05)] hover:-translate-y-px hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b]',
+        secondary: 'border-[#e5e5e5] bg-white px-[13px] text-[#333333] shadow-[0_1px_2px_rgba(24,24,27,0.05)] hover:-translate-y-px hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b]',
         destructive: 'border-transparent bg-[#b5121b] px-[13px] text-white hover:-translate-y-px',
         ghost: 'border-transparent bg-transparent px-[13px] text-[#333333] hover:bg-[#f4f4f5] hover:text-[#18181b]',
-        icon: 'h-[34px] min-h-[34px] w-[34px] border-[#e5e5e5] bg-white p-0 text-[#333333] shadow-[0_1px_2px_rgba(20,32,51,0.05)] hover:-translate-y-px hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b]',
+        icon: 'h-[34px] min-h-[34px] w-[34px] border-[#e5e5e5] bg-white p-0 text-[#333333] shadow-[0_1px_2px_rgba(24,24,27,0.05)] hover:-translate-y-px hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b]',
       },
       size: {
         default: '',
