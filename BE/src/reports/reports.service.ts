@@ -39,6 +39,19 @@ type InstallationDetailRow = {
   serialNumber: string;
 };
 
+type EngineerFilterOption = {
+  id: string;
+  email: string;
+  fullName: string | null;
+  region: {
+    id: string;
+    name: string;
+  } | null;
+  engineerProfile: {
+    expertiseGroup: string | null;
+  } | null;
+};
+
 type WorkReportRow = {
   id: string;
   code: string;
@@ -103,68 +116,71 @@ export class ReportsService {
       ],
     };
 
-    const installations = await this.prisma.machineInstallation.findMany({
-      where,
-      orderBy: { installedAt: 'desc' },
-      select: {
-        id: true,
-        code: true,
-        status: true,
-        reviewStatus: true,
-        installedAt: true,
-        installedById: true,
-        installedBy: {
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
+    const [installations, engineers] = await Promise.all([
+      this.prisma.machineInstallation.findMany({
+        where,
+        orderBy: { installedAt: 'desc' },
+        select: {
+          id: true,
+          code: true,
+          status: true,
+          reviewStatus: true,
+          installedAt: true,
+          installedById: true,
+          installedBy: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+            },
           },
-        },
-        customerId: true,
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            shortName: true,
-            province: true,
-            region: {
-              select: {
-                id: true,
-                name: true,
+          customerId: true,
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              province: true,
+              region: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          plannedMachineModelId: true,
+          plannedModelName: true,
+          plannedMachineModel: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true,
+              code: true,
+            },
+          },
+          machineId: true,
+          machine: {
+            select: {
+              id: true,
+              machineCode: true,
+              serialNumber: true,
+              modelName: true,
+              machineModelId: true,
+              machineModel: {
+                select: {
+                  id: true,
+                  name: true,
+                  displayName: true,
+                  code: true,
+                },
               },
             },
           },
         },
-        plannedMachineModelId: true,
-        plannedModelName: true,
-        plannedMachineModel: {
-          select: {
-            id: true,
-            name: true,
-            displayName: true,
-            code: true,
-          },
-        },
-        machineId: true,
-        machine: {
-          select: {
-            id: true,
-            machineCode: true,
-            serialNumber: true,
-            modelName: true,
-            machineModelId: true,
-            machineModel: {
-              select: {
-                id: true,
-                name: true,
-                displayName: true,
-                code: true,
-              },
-            },
-          },
-        },
-      },
-    });
+      }),
+      this.findEngineerFilterOptions(),
+    ]);
 
     const rows: InstallationDetailRow[] = installations.map((item) => ({
       id: item.id,
@@ -200,6 +216,7 @@ export class ReportsService {
       filters: {
         from: this.formatDateInput(period.start),
         to: this.formatDateInput(new Date(period.end.getTime() - 1)),
+        engineers,
       },
       summary: {
         totalInstallations: installations.length,
@@ -342,6 +359,47 @@ export class ReportsService {
       machines,
       workRows,
     };
+  }
+
+  private findEngineerFilterOptions(): Promise<EngineerFilterOption[]> {
+    return this.prisma.user.findMany({
+      where: {
+        status: 'ACTIVE',
+        OR: [
+          {
+            role: {
+              name: {
+                equals: 'engineer',
+              },
+            },
+          },
+          {
+            engineerProfile: {
+              isNot: null,
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        region: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        engineerProfile: {
+          select: {
+            expertiseGroup: true,
+          },
+        },
+      },
+      orderBy: {
+        fullName: 'asc',
+      },
+    });
   }
 
   async getModelReport(

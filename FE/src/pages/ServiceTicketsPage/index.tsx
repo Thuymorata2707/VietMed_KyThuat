@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, Loader2, Plus, RefreshCw, Search, Stethoscope, Wrench } from 'lucide-react';
+import { Archive, ArrowLeft, ArrowRight, BarChart3, ChevronDown, ClipboardCheck, Filter, Loader2, Plus, RefreshCw, Search, Stethoscope, Wrench, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
@@ -13,7 +13,7 @@ import { displayLabel } from '../../utils/displayLabels';
 
 type ServiceTicketKind = 'repairs' | 'maintenance';
 type BoardKind = ServiceTicketKind | 'installations';
-type TicketScope = BoardKind | 'all';
+type TicketScope = BoardKind | 'receiving';
 type QueueKey = 'action' | 'active' | 'review' | 'closed' | 'all';
 type GroupByKey = 'date' | 'engineer' | 'industry' | 'customer';
 
@@ -124,11 +124,55 @@ type BoardItem = {
   urgency?: string | null;
 };
 
-const serviceTicketOptions: Array<{ label: string; value: TicketScope }> = [
-  { label: 'Tất cả phiếu', value: 'all' },
-  { label: 'Sửa chữa', value: 'repairs' },
-  { label: 'Bảo trì', value: 'maintenance' },
-  { label: 'Lắp đặt', value: 'installations' },
+type TicketPortalCard = {
+  actionLabel: string;
+  countKey: TicketScope;
+  description: string;
+  disabled?: boolean;
+  icon: ReactNode;
+  label: string;
+  meta: string;
+  value: TicketScope;
+};
+
+const serviceTicketOptions: TicketPortalCard[] = [
+  {
+    actionLabel: 'Mở phiếu sửa chữa',
+    countKey: 'repairs',
+    description: 'Tổng hợp lỗi máy, bảo hành, chờ linh kiện và kết quả sửa chữa.',
+    icon: <Wrench size={23} />,
+    label: 'Sửa chữa',
+    meta: 'Lỗi máy, bảo hành',
+    value: 'repairs',
+  },
+  {
+    actionLabel: 'Mở phiếu bảo trì',
+    countKey: 'maintenance',
+    description: 'Theo dõi lịch định kỳ, quá hạn, lịch hẹn lại và nghiệm thu bảo trì.',
+    icon: <ClipboardCheck size={23} />,
+    label: 'Bảo trì',
+    meta: 'Lịch định kỳ',
+    value: 'maintenance',
+  },
+  {
+    actionLabel: 'Mở phiếu lắp đặt',
+    countKey: 'installations',
+    description: 'Quản lý bàn giao, bảo hành thiết bị và phiếu lắp đặt theo khách hàng.',
+    icon: <Stethoscope size={23} />,
+    label: 'Lắp đặt',
+    meta: 'Bàn giao, bảo hành',
+    value: 'installations',
+  },
+  {
+    actionLabel: 'Để trống',
+    countKey: 'receiving',
+    description: 'Giữ chỗ cho nghiệp vụ nhận thiết bị. Chưa ghi nhận dữ liệu ở phiên bản này.',
+    disabled: true,
+    icon: <Archive size={23} />,
+    label: 'Phiếu nhận thiết bị',
+    meta: 'Sẽ bổ sung sau',
+    value: 'receiving',
+  },
 ];
 
 const queues: Array<{ key: QueueKey; label: string }> = [
@@ -147,26 +191,41 @@ const groupOptions: Array<{ label: string; value: GroupByKey }> = [
 ];
 
 export function ServiceTicketsPage({ user }: { user: ApiUser }) {
-  const [kind, setKind] = useState<TicketScope>('all');
+  const [selectedKind, setSelectedKind] = useState<TicketScope | ''>('');
+  const overviewQuery = useTicketPortalOverview();
+  const overviewCounts = overviewQuery.data ?? { installations: 0, maintenance: 0, receiving: 0, repairs: 0 };
+  const loading = overviewQuery.isLoading || overviewQuery.isFetching;
+  const error = overviewQuery.error instanceof Error ? overviewQuery.error.message : '';
+
+  if (!selectedKind) {
+    return (
+      <PageFrame>
+        <TicketPortalHero loading={loading} onRefresh={() => void overviewQuery.refetch()} />
+        {error ? <Notice message={error} /> : null}
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {serviceTicketOptions.map((item) => (
+            <TicketPortalCardButton count={overviewCounts[item.countKey]} item={item} key={item.value} onSelect={setSelectedKind} />
+          ))}
+        </section>
+      </PageFrame>
+    );
+  }
+
+  if (selectedKind === 'receiving') {
+    return (
+      <PageFrame>
+        <ReceivingPlaceholder onBack={() => setSelectedKind('')} />
+      </PageFrame>
+    );
+  }
 
   return (
     <OperationsBoard
-      description="Tra cứu lắp đặt, sửa chữa, bảo trì và bảo hành theo khách hàng, model hoặc S/N."
-      kind={kind}
-      kindSelector={
-        <label className="operation-filter-field operation-filter-field--compact">
-          <span>Phạm vi</span>
-          <select onChange={(event) => setKind(event.target.value as TicketScope)} value={kind}>
-            {serviceTicketOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      }
-      reportHref={kind === 'all' ? '/reports?view=details' : `/technical-statistics?workType=${kind === 'maintenance' ? 'maintenance' : kind === 'installations' ? 'installation' : 'repair'}&returnTo=/service-tickets`}
-      title="Tổng hợp phiếu"
+      description={ticketScopeDescription(selectedKind)}
+      kind={selectedKind}
+      onBack={() => setSelectedKind('')}
+      reportHref={`/technical-statistics?workType=${selectedKind === 'maintenance' ? 'maintenance' : selectedKind === 'installations' ? 'installation' : 'repair'}&returnTo=/service-tickets`}
+      title={`Tổng hợp phiếu ${ticketScopeLabel(selectedKind).toLowerCase()}`}
       user={user}
     />
   );
@@ -184,17 +243,123 @@ export function InstallationsPage({ user }: { user: ApiUser }) {
   );
 }
 
+function useTicketPortalOverview() {
+  return useQuery({
+    queryKey: queryKeys.serviceTickets.board('portal', 'overview'),
+    queryFn: async () => {
+      const [repairsResult, maintenanceResult, installationsResult] = await Promise.all([
+        apiFetch<Paginated<ServiceRow> | ServiceRow[]>('/repairs?limit=100'),
+        apiFetch<Paginated<ServiceRow> | ServiceRow[]>('/maintenance?limit=100'),
+        apiFetch<Paginated<InstallationRow> | InstallationRow[]>('/installations?limit=100'),
+      ]);
+
+      return {
+        installations: listCount(installationsResult),
+        maintenance: listCount(maintenanceResult),
+        receiving: 0,
+        repairs: listCount(repairsResult),
+      } satisfies Record<TicketScope, number>;
+    },
+  });
+}
+
+function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh: () => void }) {
+  return (
+    <section className="relative overflow-hidden rounded-[28px] border border-[#f0d7d9] bg-[#fff7f8] px-5 py-9 shadow-[0_24px_70px_rgba(120,20,28,0.08)] md:px-8 md:py-12">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(215,25,32,0.075)_1px,transparent_1px),linear-gradient(180deg,rgba(120,20,28,0.055)_1px,transparent_1px)] bg-[size:70px_70px]" />
+      <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-[#f5c7cb]/38 blur-3xl" />
+      <div className="relative grid gap-5 min-[980px]:grid-cols-[minmax(0,1fr)_auto] min-[980px]:items-end">
+        <div>
+          <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#f0d7d9] bg-white/84 px-4 text-sm font-bold text-[#b5121b] shadow-[0_10px_28px_rgba(120,20,28,0.08)]">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#d71920]" />
+            Trung tâm phiếu kỹ thuật
+          </span>
+          <h1 className="mt-5 max-w-[760px] text-[clamp(38px,6vw,76px)] font-black leading-[0.96] tracking-[-0.055em] text-[#1f1f1f]">
+            Tổng hợp phiếu
+          </h1>
+          <p className="mt-4 max-w-2xl text-[15px] font-semibold leading-7 text-[#66565a]">
+            Chọn loại phiếu trước, sau đó mới xem danh sách và bộ lọc riêng. Cách này giúp nghiệp vụ sửa chữa, bảo trì và lắp đặt không bị lẫn vào nhau.
+          </p>
+        </div>
+        <button className="secondary-button bg-white/86" disabled={loading} onClick={onRefresh} type="button">
+          {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
+          Làm mới
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function TicketPortalCardButton({ count, item, onSelect }: { count: number; item: TicketPortalCard; onSelect: (value: TicketScope) => void }) {
+  const isDisabled = Boolean(item.disabled);
+
+  return (
+    <button
+      className={[
+        'group relative min-h-[218px] overflow-hidden rounded-[28px] border border-[#f0d7d9] bg-white/94 p-5 text-left shadow-[0_18px_42px_rgba(120,20,28,0.08)] transition',
+        isDisabled ? 'cursor-pointer opacity-78 hover:border-[#f0d7d9]' : 'hover:-translate-y-1 hover:border-[#d71920]/35 hover:shadow-[0_26px_58px_rgba(120,20,28,0.12)]',
+      ].join(' ')}
+      onClick={() => onSelect(item.value)}
+      type="button"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(215,25,32,0.12),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(255,250,250,0.9))]" />
+      <div className="relative grid h-full gap-5">
+        <div className="flex items-start justify-between gap-4">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#d71920,#f36b72)] text-white shadow-[0_16px_34px_rgba(215,25,32,0.24)]">
+            {item.icon}
+          </span>
+          <span className="rounded-full border border-[#f0d7d9] bg-white px-3 py-1 text-xs font-black text-[#66565a]">
+            {count} phiếu
+          </span>
+        </div>
+        <div className="grid gap-2">
+          <span className="text-sm font-black text-[#b5121b]">{item.meta}</span>
+          <strong className="block text-2xl font-black tracking-[-0.03em] text-[#1f1f1f]">{item.label}</strong>
+          <span className="text-sm font-semibold leading-6 text-[#66565a]">{item.description}</span>
+        </div>
+        <span className="mt-auto inline-flex items-center gap-2 text-sm font-black text-[#b5121b]">
+          {item.actionLabel}
+          <ArrowRight className={isDisabled ? '' : 'transition group-hover:translate-x-1'} size={16} />
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function ReceivingPlaceholder({ onBack }: { onBack: () => void }) {
+  return (
+    <section className="relative overflow-hidden rounded-[28px] border border-dashed border-[#f0d7d9] bg-[#fffafa] p-8 text-center shadow-[0_18px_46px_rgba(120,20,28,0.06)]">
+      <div className="mx-auto grid max-w-2xl justify-items-center gap-4">
+        <span className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-[#fff1f3] text-[#b5121b]">
+          <Archive size={28} />
+        </span>
+        <div>
+          <span className="text-sm font-black text-[#b5121b]">Để trống nghiệp vụ</span>
+          <h1 className="mt-2 text-[clamp(30px,5vw,52px)] font-black tracking-[-0.045em] text-[#1f1f1f]">Phiếu nhận thiết bị</h1>
+          <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-7 text-[#66565a]">
+            Mục này đã được đặt chỗ trong luồng tổng hợp. Khi chốt nghiệp vụ nhận thiết bị, mình sẽ nối form, danh sách và báo cáo vào đúng vị trí này.
+          </p>
+        </div>
+        <button className="secondary-button" onClick={onBack} type="button">
+          <ArrowLeft size={16} />
+          Quay lại loại phiếu
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function OperationsBoard({
   description,
   kind,
-  kindSelector,
+  onBack,
   reportHref,
   title,
   user,
 }: {
   description: string;
-  kind: TicketScope;
-  kindSelector?: ReactNode;
+  kind: BoardKind;
+  onBack?: () => void;
   reportHref: string;
   title: string;
   user: ApiUser;
@@ -206,6 +371,7 @@ function OperationsBoard({
   const [groupBy, setGroupBy] = useState<GroupByKey>('date');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedQuery(query.trim()), 280);
@@ -222,7 +388,7 @@ function OperationsBoard({
   const boardQuery = useQuery({
     queryKey: queryKeys.serviceTickets.board(kind, `${boardParams}&engineer=${engineerId}`),
     queryFn: async () => {
-      const scopes: BoardKind[] = kind === 'all' ? ['repairs', 'maintenance', 'installations'] : [kind];
+      const scopes: BoardKind[] = [kind];
       const responses = await Promise.all(
         scopes.map(async (scope) => {
           const endpoint = scope === 'installations' ? '/installations' : scope === 'maintenance' ? '/maintenance' : '/repairs';
@@ -253,13 +419,22 @@ function OperationsBoard({
   const counts = useMemo(() => buildQueueCounts(items), [items]);
   const visibleItems = useMemo(() => filterByQueue(items, queue).sort(compareBoardItemsByDateDesc), [items, queue]);
   const groupedItems = useMemo(() => groupItems(visibleItems, groupBy), [groupBy, visibleItems]);
+  const activeFilterCount = [productIndustryId, engineerId, groupBy !== 'date' ? groupBy : ''].filter(Boolean).length;
+  const selectedEngineer = engineers.find((engineer) => engineer.id === engineerId);
 
   return (
     <PageFrame>
       <div className="grid gap-4 min-[900px]:flex min-[900px]:items-start min-[900px]:justify-between">
-        <PageTitle eyebrow="Hồ sơ phiếu" title={title} description={description} />
+        <div className="grid gap-3">
+          {onBack ? (
+            <button className="secondary-button w-fit" onClick={onBack} type="button">
+              <ArrowLeft size={16} />
+              Chọn loại phiếu
+            </button>
+          ) : null}
+          <PageTitle eyebrow="Hồ sơ phiếu" title={title} description={description} />
+        </div>
         <div className="operation-board-actions">
-          {kindSelector}
           <CreateTicketButtons />
           {role !== 'engineer' ? (
             <Link className="secondary-button" to={reportHref}>
@@ -274,57 +449,99 @@ function OperationsBoard({
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-5">
-        {queues.map((item) => (
-          <button className={queueCardClass(queue === item.key)} key={item.key} onClick={() => setQueue(item.key)} type="button">
-            <span>{item.label}</span>
-            <strong>{counts[item.key]}</strong>
-          </button>
-        ))}
-      </div>
-
-      <section className="operation-filter-panel">
-        <div className="grid gap-2 min-[900px]:grid-cols-[minmax(260px,1fr)_220px_220px_180px]">
-          <label className="operation-search-field">
-            <span>Tìm kiếm</span>
-            <div>
-              <Search size={16} />
-              <input
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Tìm mã phiếu, máy, khách hàng, serial"
-                value={query}
-              />
+      <section className="relative overflow-hidden rounded-[28px] border border-[#f0d7d9] bg-[#fffafa] p-4 shadow-[0_18px_46px_rgba(120,20,28,0.07)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_0%,rgba(215,25,32,0.08),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.72),rgba(255,250,250,0.86))]" />
+        <div className="relative grid gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+              {queues.map((item) => (
+                <button className={queueChipClass(queue === item.key)} key={item.key} onClick={() => setQueue(item.key)} type="button">
+                  <span>{item.label}</span>
+                  <strong>{counts[item.key]}</strong>
+                </button>
+              ))}
             </div>
-          </label>
-          <ProductIndustryFilter onChange={setProductIndustryId} value={productIndustryId} />
-          <label className="operation-filter-field">
-            <span>Kỹ sư</span>
-            <select onChange={(event) => setEngineerId(event.target.value)} value={engineerId}>
-              <option value="">Tất cả kỹ sư</option>
-              {engineers.map((engineer) => (
-                <option key={engineer.id} value={engineer.id}>
-                  {engineer.fullName || engineer.email}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="operation-filter-field">
-            <span>Nhóm theo</span>
-            <select onChange={(event) => setGroupBy(event.target.value as GroupByKey)} value={groupBy}>
-              {groupOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            <button className={filterToggleClass(filtersOpen || activeFilterCount > 0)} onClick={() => setFiltersOpen((current) => !current)} type="button">
+              <Filter size={16} />
+              Bộ lọc
+              {activeFilterCount > 0 ? <strong>{activeFilterCount}</strong> : null}
+              <ChevronDown className={filtersOpen ? 'rotate-180 transition' : 'transition'} size={16} />
+            </button>
+          </div>
+
+          <div className="grid gap-3 min-[980px]:grid-cols-[minmax(280px,1fr)_auto] min-[980px]:items-center">
+            <label className="grid min-w-0 gap-1.5">
+              <span className="text-xs font-bold text-[#7a6367]">Tìm nhanh</span>
+              <div className="flex min-h-12 items-center gap-3 rounded-[20px] border border-[#f0d7d9] bg-white px-4 text-[#66565a] shadow-[0_12px_28px_rgba(120,20,28,0.06)] focus-within:border-[#d71920] focus-within:shadow-[0_0_0_4px_rgba(215,25,32,0.12)]">
+                <Search size={17} />
+                <input
+                  className="min-w-0 flex-1 border-0 bg-transparent text-sm font-semibold text-[#1f1f1f] outline-none placeholder:text-[#9b8a8d]"
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Mã phiếu, khách hàng, model, serial..."
+                  value={query}
+                />
+                {query ? (
+                  <button className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#8a6f74] hover:bg-[#fff1f3] hover:text-[#d71920]" onClick={() => setQuery('')} type="button" aria-label="Xóa tìm kiếm">
+                    <X size={15} />
+                  </button>
+                ) : null}
+              </div>
+            </label>
+
+            <div className="flex flex-wrap gap-2 text-xs font-bold text-[#66565a]">
+              <FilterSummary label="Nhóm" value={groupOptions.find((option) => option.value === groupBy)?.label || 'Theo ngày'} />
+              {selectedEngineer ? <FilterSummary label="Kỹ sư" value={selectedEngineer.fullName || selectedEngineer.email} /> : null}
+              {productIndustryId ? <FilterSummary label="Ngành hàng" value="Đang lọc" /> : null}
+            </div>
+          </div>
+
+          {filtersOpen ? (
+            <div className="grid gap-3 rounded-[24px] border border-[#f0d7d9] bg-white/86 p-3 shadow-[0_10px_28px_rgba(120,20,28,0.06)] min-[900px]:grid-cols-[minmax(210px,1fr)_minmax(210px,1fr)_180px_auto] min-[900px]:items-end">
+              <ProductIndustryFilter onChange={setProductIndustryId} value={productIndustryId} />
+              <label className="operation-filter-field">
+                <span>Kỹ sư</span>
+                <select onChange={(event) => setEngineerId(event.target.value)} value={engineerId}>
+                  <option value="">Tất cả kỹ sư</option>
+                  {engineers.map((engineer) => (
+                    <option key={engineer.id} value={engineer.id}>
+                      {engineer.fullName || engineer.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="operation-filter-field">
+                <span>Nhóm theo</span>
+                <select onChange={(event) => setGroupBy(event.target.value as GroupByKey)} value={groupBy}>
+                  {groupOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="secondary-button min-h-[42px] rounded-2xl"
+                disabled={!activeFilterCount && !query}
+                onClick={() => {
+                  setProductIndustryId('');
+                  setEngineerId('');
+                  setGroupBy('date');
+                  setQuery('');
+                }}
+                type="button"
+              >
+                <X size={15} />
+                Xóa lọc
+              </button>
+            </div>
+          ) : null}
         </div>
       </section>
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(20,32,51,0.04)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
+      <section className="overflow-hidden rounded-[28px] border border-[#f0d7d9] bg-white shadow-[0_18px_46px_rgba(120,20,28,0.06)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f4e2e4] bg-[#fffafa] px-4 py-3">
           <div>
             <h2 className="text-base font-semibold text-[#1f1f1f]">{queues.find((item) => item.key === queue)?.label}</h2>
             <p className="mt-1 text-sm text-[#666666]">{loading ? 'Đang tải' : `${visibleItems.length} phiếu · ${groupOptions.find((item) => item.value === groupBy)?.label.toLowerCase()}`}</p>
@@ -388,6 +605,15 @@ function CreateTicketButtons() {
         </Link>
       ))}
     </div>
+  );
+}
+
+function FilterSummary({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border border-[#f0d7d9] bg-white/82 px-3 text-[#66565a] shadow-[0_6px_14px_rgba(120,20,28,0.04)]">
+      <span className="text-[#9b7479]">{label}</span>
+      <strong className="max-w-[220px] truncate text-[#333333]">{value}</strong>
+    </span>
   );
 }
 
@@ -614,10 +840,21 @@ function editHref(item: BoardItem) {
   return `/repairs/${item.id}/update?returnTo=/service-tickets`;
 }
 
-function queueCardClass(active: boolean) {
+function queueChipClass(active: boolean) {
   return [
-    'grid min-h-[92px] gap-2 rounded-lg border p-4 text-left transition hover:-translate-y-px hover:border-[#d71920] hover:shadow-[0_10px_28px_rgba(20,32,51,0.08)]',
-    active ? 'border-[#d71920] bg-[#fff7f7] shadow-[0_10px_28px_rgba(215,25,32,0.08)]' : 'border-[#e5e5e5] bg-white',
+    'inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 text-sm font-bold transition hover:-translate-y-px hover:border-[#d71920]/35 hover:bg-white',
+    active
+      ? 'border-[#d71920] bg-white text-[#b5121b] shadow-[0_10px_24px_rgba(215,25,32,0.10)]'
+      : 'border-[#f0d7d9] bg-white/64 text-[#66565a]',
+  ].join(' ');
+}
+
+function filterToggleClass(active: boolean) {
+  return [
+    'inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 text-sm font-bold transition hover:-translate-y-px',
+    active
+      ? 'border-[#d71920] bg-white text-[#b5121b] shadow-[0_10px_24px_rgba(215,25,32,0.10)]'
+      : 'border-[#f0d7d9] bg-white/70 text-[#66565a] hover:border-[#d71920]/35 hover:bg-white',
   ].join(' ');
 }
 
@@ -711,4 +948,20 @@ function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN');
+}
+
+function listCount<T>(result: Paginated<T> | T[]) {
+  return Array.isArray(result) ? result.length : result.meta?.total ?? result.data?.length ?? 0;
+}
+
+function ticketScopeLabel(kind: BoardKind) {
+  if (kind === 'maintenance') return 'Bảo trì';
+  if (kind === 'installations') return 'Lắp đặt';
+  return 'Sửa chữa';
+}
+
+function ticketScopeDescription(kind: BoardKind) {
+  if (kind === 'maintenance') return 'Tổng hợp riêng các phiếu bảo trì: lịch hẹn, quá hạn, kỹ sư phụ trách và kết quả nghiệm thu.';
+  if (kind === 'installations') return 'Tổng hợp riêng các phiếu lắp đặt: bàn giao, bảo hành, khách hàng và thiết bị đã lắp.';
+  return 'Tổng hợp riêng các phiếu sửa chữa: lỗi máy, bảo hành, chờ linh kiện và kết quả xử lý.';
 }

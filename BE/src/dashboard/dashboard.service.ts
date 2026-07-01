@@ -295,11 +295,20 @@ export class DashboardService {
         this.prisma.user.findMany({
           where: {
             status: 'ACTIVE',
-            role: {
-              name: {
-                equals: 'engineer',
+            OR: [
+              {
+                role: {
+                  name: {
+                    equals: 'engineer',
+                  },
+                },
               },
-            },
+              {
+                engineerProfile: {
+                  isNot: null,
+                },
+              },
+            ],
           },
           select: {
             id: true,

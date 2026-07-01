@@ -20,6 +20,19 @@ type InstallationReportGroup = {
   lastInstalledAt: string | null;
 };
 
+type EngineerFilterOption = {
+  id: string;
+  email: string;
+  fullName?: string | null;
+  region?: {
+    id: string;
+    name: string;
+  } | null;
+  engineerProfile?: {
+    expertiseGroup?: string | null;
+  } | null;
+};
+
 type InstallationReportRow = {
   id: string;
   code: string;
@@ -90,6 +103,7 @@ type InstallationReport = {
   filters: {
     from: string;
     to: string;
+    engineers?: EngineerFilterOption[];
   };
   summary: {
     totalInstallations: number;
@@ -227,6 +241,7 @@ export function ReportsPage() {
   });
   const report = reportQuery.data;
   const optionsReport = optionsQuery.data ?? report;
+  const engineerDirectory = optionsReport?.filters.engineers ?? [];
   const filterOptions = useMemo(
     () =>
       buildDependentFilterOptions(optionsReport?.rows ?? [], {
@@ -234,8 +249,8 @@ export function ReportsPage() {
         customerId: draftCustomerId,
         modelKey: draftModelKey,
         province: draftProvince,
-      }),
-    [draftCustomerId, draftEngineerId, draftModelKey, draftProvince, optionsReport?.rows],
+      }, engineerDirectory),
+    [draftCustomerId, draftEngineerId, draftModelKey, draftProvince, engineerDirectory, optionsReport?.rows],
   );
   const selectedFilterLabels = useMemo(
     () =>
@@ -244,8 +259,8 @@ export function ReportsPage() {
         customerId: filterCustomerId,
         modelKey: filterModelKey,
         province: filterProvince,
-      }),
-    [filterCustomerId, filterEngineerId, filterModelKey, filterProvince, optionsReport?.rows],
+      }, engineerDirectory),
+    [engineerDirectory, filterCustomerId, filterEngineerId, filterModelKey, filterProvince, optionsReport?.rows],
   );
   const detailLoading = engineerReportQuery.isFetching || modelReportQuery.isFetching;
   const loading = reportQuery.isLoading || reportQuery.isFetching || detailLoading;
@@ -1241,9 +1256,13 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : '';
 }
 
-function buildDependentFilterOptions(rows: InstallationReportRow[], filters: ReportFilterState) {
+function buildDependentFilterOptions(rows: InstallationReportRow[], filters: ReportFilterState, engineers: EngineerFilterOption[] = []) {
+  const shouldShowAllEngineers = !filters.customerId && !filters.modelKey && !filters.province;
   return {
-    engineers: buildOptions(rows, 'engineer', filters),
+    engineers: mergeEngineerOptions(buildOptions(rows, 'engineer', filters), engineers, {
+      includeAll: shouldShowAllEngineers,
+      selectedEngineerId: filters.engineerId,
+    }),
     customers: buildOptions(rows, 'customer', filters),
     models: buildOptions(rows, 'model', filters),
     provinces: buildOptions(rows, 'province', filters),
@@ -1302,9 +1321,34 @@ function optionLabel(option: ReportFilterOption) {
   return `${option.label} (${option.count})`;
 }
 
-function resolveSelectedFilterLabels(rows: InstallationReportRow[], filters: ReportFilterState): Record<FilterKey, string> {
+function mergeEngineerOptions(
+  rowOptions: ReportFilterOption[],
+  engineers: EngineerFilterOption[],
+  mergeOptions: { includeAll: boolean; selectedEngineerId?: string } = { includeAll: true },
+): ReportFilterOption[] {
+  const nextOptions = new Map(rowOptions.map((option) => [option.id, option]));
+
+  for (const engineer of engineers) {
+    if (!engineer.id || nextOptions.has(engineer.id)) continue;
+    if (!mergeOptions.includeAll && engineer.id !== mergeOptions.selectedEngineerId) continue;
+    nextOptions.set(engineer.id, {
+      id: engineer.id,
+      label: [engineer.fullName || engineer.email, engineer.region?.name].filter(Boolean).join(' - '),
+      count: 0,
+    });
+  }
+
+  return [...nextOptions.values()].sort((first, second) => {
+    if (second.count !== first.count) return second.count - first.count;
+    return first.label.localeCompare(second.label, 'vi');
+  });
+}
+
+function resolveSelectedFilterLabels(rows: InstallationReportRow[], filters: ReportFilterState, engineers: EngineerFilterOption[] = []): Record<FilterKey, string> {
   const allOptions = {
-    engineer: buildOptions(rows, 'engineer', { engineerId: '', customerId: '', modelKey: '', province: '' }),
+    engineer: mergeEngineerOptions(buildOptions(rows, 'engineer', { engineerId: '', customerId: '', modelKey: '', province: '' }), engineers, {
+      includeAll: true,
+    }),
     customer: buildOptions(rows, 'customer', { engineerId: '', customerId: '', modelKey: '', province: '' }),
     model: buildOptions(rows, 'model', { engineerId: '', customerId: '', modelKey: '', province: '' }),
     province: buildOptions(rows, 'province', { engineerId: '', customerId: '', modelKey: '', province: '' }),
