@@ -589,7 +589,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
               machineModelId: model.id,
               serialNumber: row.serialNumber,
               machineCode: row.machineCode,
-              name: row.name,
+              name: row.name || modelShortLabel(model),
               manufacturingDate: currentForm.manufacturingDate,
               warehouseImportDate: currentForm.warehouseImportDate,
               inventoryStatus: 'IN_STOCK',
@@ -785,6 +785,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                 <ProductMachineRowsEditor
                   accessoryMode={supportsEndoscopyChecklist ? 'endoscopy' : supportsProbes ? 'probe' : 'generic'}
                   defaultAccessoriesText={form.accessoriesText}
+                  defaultMachineName={selectedModel ? modelShortLabel(selectedModel) : ''}
                   onChange={(value) => updateField('machineRows', value)}
                   value={form.machineRows}
                 />
@@ -890,16 +891,18 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 function ProductMachineRowsEditor({
   accessoryMode,
   defaultAccessoriesText,
+  defaultMachineName,
   value,
   onChange,
 }: {
   accessoryMode: 'probe' | 'endoscopy' | 'generic';
   defaultAccessoriesText: string;
+  defaultMachineName: string;
   value: string;
   onChange: (value: string) => void;
 }) {
   const rows = parseProductMachineRowsForEditor(value);
-  const makeEmptyRow = (): ProductMachineRow => ({ serialNumber: '', machineCode: '', name: '', accessoriesText: defaultAccessoriesText });
+  const makeEmptyRow = (): ProductMachineRow => ({ serialNumber: '', machineCode: '', name: defaultMachineName, accessoriesText: defaultAccessoriesText });
   const editableRows = rows.length ? rows : [makeEmptyRow()];
 
   function setRows(nextRows: ProductMachineRow[]) {
@@ -920,7 +923,9 @@ function ProductMachineRowsEditor({
   }
 
   function pasteBulk(rawValue: string) {
-    const pastedRows = parseProductMachineRowsForEditor(rawValue).filter((row) => row.serialNumber || row.machineCode || row.name);
+    const pastedRows = parseProductMachineRowsForEditor(rawValue)
+      .filter((row) => row.serialNumber || row.machineCode || row.name)
+      .map((row) => ({ ...row, name: row.name || defaultMachineName, accessoriesText: row.accessoriesText || defaultAccessoriesText }));
     if (!pastedRows.length) return;
     const activeRows = editableRows.filter((row) => row.serialNumber || row.machineCode || row.name);
     setRows([...activeRows, ...pastedRows]);
