@@ -897,7 +897,7 @@
 
 .task-action:hover,
 .task-primary:hover {
-  background: #b5121b;
+  background: #2563eb;
 }
 
 .task-secondary:hover {
@@ -924,56 +924,6 @@
 
 .task-state.empty strong {
   color: #1f1f1f;
-}
-
-.task-drawer-backdrop {
-  background: rgba(24, 24, 27, 0.34);
-  display: flex;
-  inset: 0;
-  justify-content: flex-end;
-  position: fixed;
-  z-index: 20;
-}
-
-.task-drawer {
-  background: #ffffff;
-  box-shadow: -24px 0 60px rgba(24, 24, 27, 0.16);
-  display: grid;
-  grid-template-rows: auto auto 1fr;
-  max-width: min(100%, 520px);
-  overflow-y: auto;
-  padding: 24px;
-  width: 520px;
-  font-family: var(--font-sans);
-}
-
-.task-drawer-heading {
-  align-items: flex-start;
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-}
-
-.task-drawer-heading span {
-  color: #18181b;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform:;
-}
-
-.task-drawer-heading h2 {
-  color: #1f1f1f;
-  font-size: 22px;
-  margin-top: 4px;
-}
-
-.task-close {
-  background: #f4f7fb;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  color: #333333;
-  height: 34px;
-  width: 34px;
 }
 
 .task-detail-grid {
@@ -1003,13 +953,7 @@
 
 .task-info-block,
 .task-readonly-note {
-  background: #fafafa;
-  border: 1px solid #eeeeee;
-  border-radius: 8px;
-  display: grid;
-  gap: 10px;
-  margin-top: 16px;
-  padding: 14px;
+  @apply mt-4 grid gap-2.5 rounded-[14px] border border-[#e4e4e7] bg-[#fafafa]/80 p-3.5;
 }
 
 .task-info-block h3 {
@@ -1033,11 +977,7 @@
 }
 
 .task-repair-detail-grid div {
-  background: #ffffff;
-  border: 1px solid #eeeeee;
-  border-radius: 8px;
-  min-width: 0;
-  padding: 10px;
+  @apply min-w-0 rounded-xl border border-[#eeeeee] bg-white p-2.5;
 }
 
 .task-repair-detail-grid dt {
@@ -1095,185 +1035,25 @@
   line-height: 1.5;
 }
 
-.task-update-form {
-  align-content: start;
-  display: grid;
-  gap: 14px;
-  margin-top: 22px;
-}
-
-.task-update-form label,
-.task-upload-form label {
-  color: #333333;
-  display: grid;
-  font-weight: 600;
-  gap: 7px;
-}
-
-.task-update-form input,
-.task-update-form select,
-.task-update-form textarea,
-.task-upload-form input,
-.task-upload-form select,
-.task-upload-form textarea {
-  background: #ffffff;
-  border: 1px solid #d6d6d6;
-  border-radius: 8px;
-  color: #1f1f1f;
-  min-height: 42px;
-  outline: none;
-  padding: 0 12px;
-}
-
-.task-update-form textarea,
-.task-upload-form textarea {
-  min-height: 112px;
-  padding: 10px 12px;
-  resize: vertical;
-}
-
-.task-update-form input:focus,
-.task-update-form select:focus,
-.task-update-form textarea:focus,
-.task-upload-form input:focus,
-.task-upload-form select:focus,
-.task-upload-form textarea:focus {
-  border-color: #18181b;
-  box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.12);
-}
-
-.task-drawer-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
-
-.task-attachment-panel {
-  border-top: 1px solid #eeeeee;
-  display: grid;
-  gap: 14px;
-  margin-top: 22px;
-  padding-top: 20px;
-}
-
 .task-section-heading {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
+  @apply flex items-center justify-between;
 }
 
 .task-section-heading span {
-  color: #18181b;
-  font-size: 12px;
-  font-weight: 700;
+  @apply text-[12px] font-bold text-[#18181b];
   text-transform:;
 }
 
 .task-section-heading h3 {
-  color: #1f1f1f;
-  font-size: 17px;
-  margin-top: 3px;
+  @apply mt-[3px] text-[17px] text-[#1f1f1f];
 }
 
 .task-section-heading strong {
-  align-items: center;
-  background: #f4f4f5;
-  border: 1px solid #e4e4e7;
-  border-radius: 999px;
-  color: #18181b;
-  display: inline-flex;
-  height: 30px;
-  justify-content: center;
-  min-width: 30px;
-  padding: 0 8px;
-}
-
-.task-attachment-list {
-  display: grid;
-  gap: 10px;
-}
-
-.task-attachment-state {
-  align-items: center;
-  background: #fafafa;
-  border: 1px dashed #d6d6d6;
-  border-radius: 8px;
-  color: #666666;
-  display: flex;
-  gap: 8px;
-  min-height: 58px;
-  padding: 14px;
-}
-
-.task-attachment-state.empty {
-  display: block;
-  text-align: center;
-}
-
-.task-attachment-item {
-  align-items: center;
-  background: #ffffff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  padding: 12px;
-}
-
-.task-attachment-item div {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.task-attachment-item span {
-  color: #18181b;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.task-attachment-item strong {
-  color: #1f1f1f;
-  overflow-wrap: anywhere;
-}
-
-.task-attachment-item small {
-  color: #666666;
-  overflow-wrap: anywhere;
+  @apply inline-flex h-[30px] min-w-[30px] items-center justify-center rounded-full border border-[#e4e4e7] bg-[#f4f4f5] px-2 text-[#18181b];
 }
 
 .icon-button {
-  height: 36px;
-  min-height: 36px;
-  padding: 0;
-  width: 36px;
-}
-
-.task-upload-form {
-  background: #fafafa;
-  border: 1px solid #eeeeee;
-  border-radius: 8px;
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-}
-
-.task-file-field input {
-  align-items: center;
-  display: flex;
-  padding: 8px 10px;
-}
-
-.upload-button {
-  gap: 8px;
-  justify-self: end;
-}
-
-.upload-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.68;
+  @apply h-9 min-h-9 w-9 p-0;
 }
 
 @media (max-width: 1180px) {

@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarDays, Download, FileText, FileUp, Loader2, Plus, Search, X } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock3, Download, FileText, FileUp, Loader2, MapPin, PhoneCall, Plus, Search, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
@@ -201,6 +201,10 @@ const businessTabs: Array<{ value: BusinessTab; label: string }> = [
   { value: 'calendar', label: 'Lịch công việc' },
 ];
 
+const drawerFieldClass = 'grid gap-[7px] font-semibold text-[#333333]';
+const drawerInputClass = 'min-h-[42px] rounded-xl border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]';
+const drawerTextareaClass = `${drawerInputClass} min-h-28 resize-y py-2.5`;
+
 export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [tasks, setTasks] = useState<EngineerTask[]>([]);
   const [dailyWorkNotes, setDailyWorkNotes] = useState<DailyWorkNote[]>([]);
@@ -329,6 +333,13 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       })
       .slice(0, 5);
   }, [tasks]);
+
+  const todayDailyWorkNotes = useMemo(() => {
+    const todayKey = toDateInput(new Date());
+    return dailyWorkNotes
+      .filter((note) => note.workDate?.slice(0, 10) === todayKey)
+      .sort((left, right) => (left.startTime || '99:99').localeCompare(right.startTime || '99:99'));
+  }, [dailyWorkNotes]);
 
   async function loadTasks() {
     setLoading(true);
@@ -926,7 +937,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       <PageTitle
         eyebrow="Kỹ sư"
         title="Việc của tôi"
-        description="Theo dõi lắp đặt, sửa chữa, bảo trì và cập nhật tiến độ công việc được giao."
+        description="Việc được giao, lịch hôm nay và cập nhật kết quả."
       />
 
       {error ? <Notice message={error} /> : null}
@@ -981,27 +992,18 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         />
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
-            <div>
-              <span className="text-[12px] font-medium text-[#666666]">Ưu tiên hôm nay</span>
-              <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Việc cần mở trước</h2>
-            </div>
-            <button className="secondary-button" onClick={openCreateRequest} type="button">
-              <Plus size={16} />
-              Tạo phiếu mới
-            </button>
-          </div>
-          <div className="grid divide-y divide-[#eeeeee]">
-            {priorityTasks.length ? priorityTasks.map((task) => (
-              <PriorityTaskRow key={`${task.kind}-${task.id}`} task={task} />
-            )) : (
-              <div className="px-4 py-5 text-sm text-[#666666]">Không có việc quá hạn, việc hôm nay hoặc phiếu thiếu hồ sơ máy.</div>
-            )}
-          </div>
+      <section className="grid grid-cols-1 gap-4 min-[1180px]:grid-cols-[minmax(0,1fr)_340px]">
+        <TodayCommandCenter
+          onCreate={openCreateRequest}
+          onFilter={focusTaskList}
+          onOpen={openTask}
+          stats={taskStats}
+          tasks={priorityTasks}
+        />
+        <div className="grid gap-3.5">
+          <TodayDailyWorkCard loading={loadingDailyWork} notes={todayDailyWorkNotes} />
+          <WeeklyReportQuickCard loading={loadingWeeklyReport} report={weeklyReport} />
         </div>
-        <WeeklyReportQuickCard loading={loadingWeeklyReport} report={weeklyReport} />
       </section>
 
       {workspaceTab === 'create' ? (
@@ -1638,16 +1640,36 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       )}
 
       {selectedTask ? (
-        <div className="task-drawer-backdrop" onClick={() => setSelectedTask(null)} role="presentation">
-          <aside aria-modal="true" className="task-drawer" onClick={(event) => event.stopPropagation()} role="dialog">
-            <div className="task-drawer-heading">
+        <div className="fixed inset-0 z-20 flex justify-end bg-[rgba(24,24,27,0.34)]" onClick={() => setSelectedTask(null)} role="presentation">
+          <aside
+            aria-modal="true"
+            className="grid w-[680px] max-w-full grid-rows-[auto_auto_auto_1fr] overflow-y-auto bg-[radial-gradient(circle_at_20%_0%,rgba(37,99,235,0.08),transparent_30%),#ffffff] p-6 font-sans shadow-[-24px_0_60px_rgba(15,23,42,0.16)]"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <span>{taskKindLabel(selectedTask.kind)}</span>
-                <h2>{taskTitle(selectedTask)}</h2>
+                <span className="text-[12px] font-bold text-[#18181b]">{taskKindLabel(selectedTask.kind)}</span>
+                <h2 className="mt-1 text-[clamp(22px,2.4vw,30px)] leading-[1.12] tracking-[-0.04em] text-[#1f1f1f] [text-wrap:balance]">{taskTitle(selectedTask)}</h2>
               </div>
-              <button className="task-close" onClick={() => setSelectedTask(null)} title="Đóng" type="button">
+              <button className="task-close h-[34px] w-[34px] rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] text-[#333333]" onClick={() => setSelectedTask(null)} title="Đóng" type="button">
                 <X size={16} />
               </button>
+            </div>
+
+            <div className="mt-[18px] grid grid-cols-3 gap-2.5 rounded-2xl border border-[#dbeafe] bg-[linear-gradient(135deg,rgba(239,246,255,0.94),rgba(240,253,244,0.78)),#ffffff] p-3 max-[760px]:grid-cols-1">
+              <div className="grid min-w-0 gap-1 rounded-xl border border-[rgba(191,219,254,0.72)] bg-white/75 p-2.5">
+                <span className="text-[11px] font-extrabold text-[#64748b]">Thiết bị</span>
+                <strong className="text-[14px] leading-tight text-[#18181b] [overflow-wrap:anywhere]">{taskPrimaryMachineName(selectedTask)}</strong>
+              </div>
+              <div className="grid min-w-0 gap-1 rounded-xl border border-[rgba(191,219,254,0.72)] bg-white/75 p-2.5">
+                <span className="text-[11px] font-extrabold text-[#64748b]">Ngày hẹn</span>
+                <strong className="text-[14px] leading-tight text-[#18181b] [overflow-wrap:anywhere]">{taskDate(selectedTask)}</strong>
+              </div>
+              <div className="grid min-w-0 gap-1 rounded-xl border border-[rgba(191,219,254,0.72)] bg-white/75 p-2.5">
+                <span className="text-[11px] font-extrabold text-[#64748b]">Bước tiếp theo</span>
+                <strong className="text-[14px] leading-tight text-[#18181b] [overflow-wrap:anywhere]">{taskActionLabel(selectedTask)}</strong>
+              </div>
             </div>
 
             <dl className="task-detail-grid">
@@ -1865,37 +1887,38 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ) : null}
 
             {selectedTask.kind === 'installation' ? (
-              <form className="task-update-form" onSubmit={handleSubmit}>
-                <label>
-                  Trạng thái
-                  <select disabled onChange={(event) => setStatus(event.target.value)} required value={status}>
-                    {installationStatusOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
+              <section className="mt-5 grid gap-3.5 rounded-[18px] border border-[#bfdbfe] bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_42px_rgba(37,99,235,0.08)]">
+                <div className="flex items-start justify-between max-[760px]:flex-col max-[760px]:gap-2.5">
+                  <div>
+                    <span className="text-[12px] font-bold text-[#18181b]">Kỹ sư cập nhật</span>
+                    <h3 className="mt-[3px] text-[17px] text-[#1f1f1f]">{taskUpdatePanelTitle(selectedTask)}</h3>
+                  </div>
+                  <em className="max-w-[210px] rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-[7px] text-right text-[12px] not-italic font-extrabold text-[#1d4ed8] max-[760px]:max-w-none max-[760px]:text-left">{taskActionLabel(selectedTask)}</em>
+                </div>
+                <form className="grid content-start gap-3.5" onSubmit={handleSubmit}>
+                <StatusActionPicker onChange={setStatus} task={selectedTask} value={status} />
+                <label className={drawerFieldClass}>
                   Ngày lắp đặt
-                  <input onChange={(event) => setInstallationDate(event.target.value)} type="date" value={installationDate} />
+                  <input className={drawerInputClass} onChange={(event) => setInstallationDate(event.target.value)} type="date" value={installationDate} />
                 </label>
-                <label>
+                <label className={drawerFieldClass}>
                   Ghi chú lắp đặt
-                  <textarea onChange={(event) => setResultNote(event.target.value)} value={resultNote} />
+                  <textarea className={drawerTextareaClass} onChange={(event) => setResultNote(event.target.value)} value={resultNote} />
                 </label>
-                <label>
+                <label className={drawerFieldClass}>
                   Kết thúc bảo hành
                   <input
+                    className={drawerInputClass}
                     onChange={(event) => updateInstallationEditForm({ warrantyEndDate: event.target.value })}
                     required
                     type="date"
                     value={installationEditForm.warrantyEndDate}
                   />
                 </label>
-                <label className="create-wide-field">
+                <label className={`create-wide-field ${drawerFieldClass}`}>
                   Ghi chú bảo hành
                   <textarea
+                    className={drawerTextareaClass}
                     onChange={(event) => updateInstallationEditForm({ description: event.target.value })}
                     value={installationEditForm.description}
                   />
@@ -1908,81 +1931,82 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   updateForm={updateInstallationEditForm}
                   user={user}
                 />
-                <div className="task-drawer-actions">
+                <div className="col-span-full mt-2 flex justify-end gap-2.5">
                   <button className="task-secondary" onClick={() => setSelectedTask(null)} type="button">
-                    Cancel
+                    Đóng
                   </button>
                   <button className="task-primary" disabled={saving} type="submit">
-                    {saving ? 'Saving' : 'Save'}
+                    {saving ? 'Đang lưu' : 'Lưu cập nhật'}
                   </button>
                 </div>
               </form>
+              </section>
             ) : (
-              <form className="task-update-form" onSubmit={handleSubmit}>
-              <label>
-                Trạng thái mới
-                <select onChange={(event) => setStatus(event.target.value)} required value={status}>
-                  {(selectedTask.kind === 'repair' ? repairStatusOptions : maintenanceStatusOptions).map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
+              <section className="mt-5 grid gap-3.5 rounded-[18px] border border-[#bfdbfe] bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_42px_rgba(37,99,235,0.08)]">
+                <div className="flex items-start justify-between max-[760px]:flex-col max-[760px]:gap-2.5">
+                  <div>
+                    <span className="text-[12px] font-bold text-[#18181b]">Kỹ sư cập nhật</span>
+                    <h3 className="mt-[3px] text-[17px] text-[#1f1f1f]">{taskUpdatePanelTitle(selectedTask)}</h3>
+                  </div>
+                  <em className="max-w-[210px] rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-[7px] text-right text-[12px] not-italic font-extrabold text-[#1d4ed8] max-[760px]:max-w-none max-[760px]:text-left">{taskActionLabel(selectedTask)}</em>
+                </div>
+                <form className="grid grid-cols-2 content-start gap-3.5 max-[760px]:grid-cols-1" onSubmit={handleSubmit}>
+              <StatusActionPicker onChange={setStatus} task={selectedTask} value={status} />
+              <label className={`col-span-full ${drawerFieldClass}`}>
                 Kết quả/Ghi chú kỹ thuật
-                <textarea onChange={(event) => setResultNote(event.target.value)} value={resultNote} />
+                <textarea className={drawerTextareaClass} onChange={(event) => setResultNote(event.target.value)} value={resultNote} />
               </label>
               {selectedTask.kind === 'repair' ? (
-                <label>
+                <label className={`col-span-full ${drawerFieldClass}`}>
                   Phản hồi khách hàng
-                  <textarea onChange={(event) => setCustomerFeedback(event.target.value)} value={customerFeedback} />
+                  <textarea className={drawerTextareaClass} onChange={(event) => setCustomerFeedback(event.target.value)} value={customerFeedback} />
                 </label>
               ) : (
-                <label>
+                <label className={drawerFieldClass}>
                   Lịch bảo trì tiếp theo
-                  <input onChange={(event) => setNextDueDate(event.target.value)} type="date" value={nextDueDate} />
+                  <input className={drawerInputClass} onChange={(event) => setNextDueDate(event.target.value)} type="date" value={nextDueDate} />
                 </label>
               )}
-              <div className="task-drawer-actions">
+              <div className="col-span-full mt-2 flex justify-end gap-2.5">
                 <button className="task-secondary" onClick={() => setSelectedTask(null)} type="button">
-                  Cancel
+                  Đóng
                 </button>
                 <button className="task-primary" disabled={saving} type="submit">
-                  {saving ? 'Saving' : 'Save'}
+                  {saving ? 'Đang lưu' : 'Lưu cập nhật'}
                 </button>
               </div>
             </form>
+              </section>
             )}
 
-            <section className="task-attachment-panel">
-              <div className="task-section-heading">
+            <section className="mt-[22px] grid gap-3.5 rounded-[18px] border border-[#e4e4e7] bg-white p-4">
+              <div className="flex items-center justify-between">
                 <div>
-                  <span>Tài liệu hiện trường</span>
-                  <h3>Ảnh và biên bản</h3>
+                  <span className="text-[12px] font-bold text-[#18181b]">Tài liệu hiện trường</span>
+                  <h3 className="mt-[3px] text-[17px] text-[#1f1f1f]">Ảnh và biên bản</h3>
                 </div>
-                <strong>{attachments.length}</strong>
+                <strong className="inline-flex h-[30px] min-w-[30px] items-center justify-center rounded-full border border-[#e4e4e7] bg-[#f4f4f5] px-2 text-[#18181b]">{attachments.length}</strong>
               </div>
 
-              <div className="task-attachment-list">
+              <div className="grid gap-2.5">
                 {loadingAttachments ? (
-                  <div className="task-attachment-state">
+                  <div className="flex min-h-[58px] items-center gap-2 rounded-lg border border-dashed border-[#d6d6d6] bg-[#fafafa] p-3.5 text-[#666666]">
                     <Loader2 className="spin-icon" size={16} />
                     Đang tải tài liệu...
                   </div>
                 ) : null}
 
                 {!loadingAttachments && attachments.length === 0 ? (
-                  <div className="task-attachment-state empty">Chưa có ảnh hoặc tài liệu nào cho phiếu này.</div>
+                  <div className="block min-h-[58px] rounded-lg border border-dashed border-[#d6d6d6] bg-[#fafafa] p-3.5 text-center text-[#666666]">Chưa có ảnh hoặc tài liệu nào cho phiếu này.</div>
                 ) : null}
 
                 {!loadingAttachments &&
                   attachments.map((attachment) => (
-                    <article className="task-attachment-item" key={attachment.id}>
-                      <div>
-                        <span>{attachmentTypeLabel(attachment.type)}</span>
-                        <strong>{attachment.title || attachment.originalName}</strong>
-                        <small>
+                    <article className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#e5e5e5] bg-white p-3" key={attachment.id}>
+                      <div className="grid min-w-0 gap-1">
+                        <span className="text-[12px] font-bold text-[#18181b]">{attachmentTypeLabel(attachment.type)}</span>
+                        <strong className="text-[#1f1f1f] [overflow-wrap:anywhere]">{attachment.title || attachment.originalName}</strong>
+                        <small className="text-[#666666] [overflow-wrap:anywhere]">
                           {attachment.originalName} · {formatFileSize(attachment.size)}
                         </small>
                       </div>
@@ -1993,10 +2017,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   ))}
               </div>
 
-              <form className="task-upload-form" onSubmit={handleAttachmentUpload}>
-                <label>
+              <form className="grid grid-cols-2 gap-3 rounded-[14px] border border-[#e4e4e7] bg-[#f8fafc] p-3.5 max-[760px]:grid-cols-1" onSubmit={handleAttachmentUpload}>
+                <label className={drawerFieldClass}>
                   Loại tài liệu
-                  <select onChange={(event) => setAttachmentType(event.target.value as AttachmentType)} value={attachmentType}>
+                  <select className={drawerInputClass} onChange={(event) => setAttachmentType(event.target.value as AttachmentType)} value={attachmentType}>
                     {attachmentOptionsByKind[selectedTask.kind].map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -2004,25 +2028,26 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     ))}
                   </select>
                 </label>
-                <label>
+                <label className={drawerFieldClass}>
                   Tên hiển thị
-                  <input onChange={(event) => setAttachmentTitle(event.target.value)} placeholder="VD: Ảnh serial trước sửa chữa" value={attachmentTitle} />
+                  <input className={drawerInputClass} onChange={(event) => setAttachmentTitle(event.target.value)} placeholder="VD: Ảnh serial trước sửa chữa" value={attachmentTitle} />
                 </label>
-                <label>
+                <label className={`col-span-full ${drawerFieldClass}`}>
                   Ghi chú
-                  <textarea onChange={(event) => setAttachmentDescription(event.target.value)} placeholder="Ghi chú ngắn cho file nếu cần" value={attachmentDescription} />
+                  <textarea className={drawerTextareaClass} onChange={(event) => setAttachmentDescription(event.target.value)} placeholder="Ghi chú ngắn cho file nếu cần" value={attachmentDescription} />
                 </label>
-                <label className="task-file-field">
+                <label className={`col-span-full ${drawerFieldClass}`}>
                   File ảnh/PDF
                   <input
                     accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className={`${drawerInputClass} flex items-center px-2.5 py-2`}
                     key={fileInputKey}
                     onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)}
                     required
                     type="file"
                   />
                 </label>
-                <button className="task-primary upload-button" disabled={uploadingAttachment || !attachmentFile} type="submit">
+                <button className="task-primary justify-self-end gap-2 disabled:cursor-not-allowed disabled:opacity-70" disabled={uploadingAttachment || !attachmentFile} type="submit">
                   <FileUp size={16} />
                   {uploadingAttachment ? 'Đang tải lên' : 'Tải lên phiếu'}
                 </button>
@@ -2487,59 +2512,226 @@ function WeeklyReportQuickCard({ loading, report }: { loading: boolean; report: 
   );
 }
 
-function PriorityTaskRow({ task }: { task: EngineerTask }) {
-  const href =
-    task.kind === 'installation'
-      ? `/installations/${task.id}/update?returnTo=/my-tasks`
-      : task.kind === 'repair'
-        ? `/repairs/${task.id}/update?returnTo=/my-tasks`
-        : `/maintenance/${task.id}/update?returnTo=/my-tasks`;
-  const reason = isOverdueTask(task)
-    ? 'Quá hạn'
-    : task.reviewStatus === 'NEEDS_REVISION'
-      ? 'Cần bổ sung'
-    : task.reviewStatus === 'PENDING'
-      ? 'Chờ admin xác nhận'
-    : needsMachineProfile(task)
-      ? 'Cần tạo hồ sơ máy'
-      : isTodayTask(task)
-        ? 'Hôm nay'
-        : 'Cần xử lý';
+function TodayCommandCenter({
+  onCreate,
+  onFilter,
+  onOpen,
+  stats,
+  tasks,
+}: {
+  onCreate: () => void;
+  onFilter: (filter: TaskFilter) => void;
+  onOpen: (task: EngineerTask) => void;
+  stats: {
+    overdue: number;
+    revision: number;
+    missingMachine: number;
+    today: number;
+  };
+  tasks: EngineerTask[];
+}) {
+  return (
+    <section className="grid gap-3.5 rounded-[18px] border border-[#dbeafe] bg-[radial-gradient(circle_at_8%_12%,rgba(37,99,235,0.11),transparent_32%),linear-gradient(135deg,#ffffff_0%,#f7fbff_48%,#f4fbf8_100%)] p-4 shadow-[0_18px_50px_rgba(37,99,235,0.08)]">
+      <div className="flex items-start justify-between gap-3.5">
+        <div>
+          <span className="block text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#2563eb]">Bảng việc hôm nay</span>
+          <h2 className="mt-1.5 text-[clamp(22px,3vw,34px)] font-[760] leading-[1.08] tracking-[-0.04em] text-[#18181b] [text-wrap:balance]">Mở app là biết việc cần làm trước.</h2>
+        </div>
+        <button className="secondary-button flex-none" onClick={onCreate} type="button">
+          <Plus size={16} />
+          Tạo phiếu
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5 min-[1180px]:grid-cols-4" aria-label="Bộ lọc nhanh">
+        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#fecdd3] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('revision')} type="button">
+          <span className="text-[12px] font-bold text-[#52525b]">Cần bổ sung</span>
+          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.revision}</strong>
+        </button>
+        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#fecdd3] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('overdue')} type="button">
+          <span className="text-[12px] font-bold text-[#52525b]">Quá hạn</span>
+          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.overdue}</strong>
+        </button>
+        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[rgba(191,219,254,0.88)] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('today')} type="button">
+          <span className="text-[12px] font-bold text-[#52525b]">Hôm nay</span>
+          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.today}</strong>
+        </button>
+        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#cdeedb] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('action')} type="button">
+          <span className="text-[12px] font-bold text-[#52525b]">Thiếu hồ sơ máy</span>
+          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.missingMachine}</strong>
+        </button>
+      </div>
+
+      <div className="grid gap-2.5">
+        {tasks.length ? (
+          tasks.map((task) => (
+            <PriorityTaskCard key={`${task.kind}-${task.id}`} onOpen={onOpen} task={task} />
+          ))
+        ) : (
+          <div className="grid min-h-32 place-items-center gap-1 rounded-2xl border border-dashed border-[#bfdbfe] bg-white/70 p-[18px] text-center text-[#52525b]">
+            <strong className="text-[#18181b]">Không có việc gấp.</strong>
+            <span>Các phiếu quá hạn, phiếu hôm nay hoặc phiếu cần bổ sung sẽ hiện ở đây.</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function TodayDailyWorkCard({ loading, notes }: { loading: boolean; notes: DailyWorkNote[] }) {
+  return (
+    <aside className="grid gap-3 rounded-[18px] border border-[#e4e4e7] bg-white p-3.5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+      <div className="flex items-start justify-between">
+        <span className="inline-flex items-center gap-1.5 text-[12px] font-extrabold text-[#52525b]">
+          <Clock3 size={14} />
+          Lịch hôm nay
+        </span>
+        <strong className="min-w-8 rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 text-center text-[#1d4ed8]">{loading ? '-' : notes.length}</strong>
+      </div>
+      <div className="grid gap-2">
+        {loading ? <div className="text-[12px] text-[#71717a]">Đang tải lịch...</div> : null}
+        {!loading && notes.length === 0 ? <div className="text-[12px] text-[#71717a]">Hôm nay chưa có lịch riêng.</div> : null}
+        {!loading
+          ? notes.slice(0, 4).map((note) => (
+              <article className="grid gap-[3px] border-l-[3px] border-[#60a5fa] pl-2.5" key={note.id}>
+                <span className="text-[12px] text-[#71717a]">{formatDailyWorkTime(note)}</span>
+                <strong className="text-[14px] leading-[1.35] text-[#18181b]">{note.title}</strong>
+              </article>
+            ))
+          : null}
+      </div>
+      <Link className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-[#2563eb] no-underline" to="/daily-work">
+        Mở lịch công tác
+        <ArrowRight size={14} />
+      </Link>
+    </aside>
+  );
+}
+
+function PriorityTaskCard({ onOpen, task }: { onOpen: (task: EngineerTask) => void; task: EngineerTask }) {
+  const actionHref = taskUpdateHref(task);
+  const attention = taskAttention(task);
+  const phone = taskContactPhone(task);
+  const location = taskLocation(task);
+  const model = task.machine?.modelName || taskModelText(task) || 'Chưa có model';
+  const serial = task.machine?.serialNumber || taskSerialText(task) || task.machine?.machineCode || '';
+  const customer = taskCustomer(task) || 'Chưa có khách hàng';
 
   return (
-    <Link className="grid min-w-0 gap-3 px-4 py-3 transition hover:bg-[#fafafa] min-[760px]:grid-cols-[minmax(0,1fr)_auto] min-[760px]:items-center" to={href}>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#666666]">
+    <article className={priorityTaskCardClass(attention.tone)}>
+      <button className="grid min-w-0 cursor-pointer gap-2 border-0 bg-transparent p-0 text-left text-inherit" onClick={() => onOpen(task)} type="button">
+        <div className="flex flex-wrap items-center gap-2 text-[12px] text-[#71717a]">
           <span>{taskKindLabel(task.kind)}</span>
           <span>{task.code}</span>
-          <span className={reason === 'Quá hạn' || reason === 'Cần bổ sung' ? 'font-medium text-[#b5121b]' : reason === 'Cần tạo hồ sơ máy' || reason === 'Chờ admin xác nhận' ? 'font-medium text-[#9b5a17]' : 'font-medium text-[#333333]'}>
-            {reason}
-          </span>
+          <strong className={priorityTaskHeadlineClass(attention.tone)}>{taskActionLabel(task)}</strong>
         </div>
-        <strong className="mt-1 block truncate text-[15px] font-medium text-[#1f1f1f]">{taskTitle(task)}</strong>
-        <span className="mt-1 block truncate text-[13px] text-[#666666]">
-          {[task.machine?.machineCode || taskSerialText(task) || 'Chưa có mã máy', task.machine?.modelName || taskModelText(task) || 'Chưa có model', taskCustomer(task) || 'Chưa có khách hàng'].join(' - ')}
-        </span>
+        <h3 className="text-[17px] font-[760] leading-[1.25] tracking-[-0.02em] text-[#18181b]">{taskTitle(task)}</h3>
+        <div className="flex flex-wrap items-center gap-2 text-[12px] text-[#71717a]">
+          <span className="max-w-full overflow-hidden truncate rounded-full bg-[#f4f4f5] px-2 py-[5px] text-[#3f3f46]">{model}</span>
+          <span className="max-w-full overflow-hidden truncate rounded-full bg-[#f4f4f5] px-2 py-[5px] text-[#3f3f46]">{customer}</span>
+          {serial ? <span className="max-w-full overflow-hidden truncate rounded-full bg-[#f4f4f5] px-2 py-[5px] text-[#3f3f46]">S/N {serial}</span> : null}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-[#71717a]">
+          <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
+          {location ? (
+            <small className="inline-flex min-w-0 items-center gap-1 text-[#71717a]">
+              <MapPin size={13} />
+              {location}
+            </small>
+          ) : null}
+        </div>
+      </button>
+
+      <div className="grid items-center gap-2.5">
+        <span className={`engineer-next-step ${attention.tone}`}>{attention.label}</span>
+        <div className="flex flex-wrap gap-2">
+          {phone ? (
+            <a className="task-secondary icon-button" href={`tel:${phone}`} title={`Gọi ${phone}`}>
+              <PhoneCall size={15} />
+            </a>
+          ) : null}
+          <button className="task-secondary" onClick={() => onOpen(task)} type="button">
+            Xem phiếu
+          </button>
+          {actionHref ? (
+            <Link className="task-action" to={actionHref}>
+              Cập nhật
+              <ArrowRight size={15} />
+            </Link>
+          ) : null}
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2 min-[760px]:justify-end">
-        <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
-        <span className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-2.5 text-xs font-semibold text-[#333333]">
-          Cập nhật
-          <ArrowRight size={14} />
-        </span>
+    </article>
+  );
+}
+
+function StatusActionPicker({
+  onChange,
+  task,
+  value,
+}: {
+  onChange: (status: string) => void;
+  task: EngineerTask;
+  value: string;
+}) {
+  const actions = statusActionOptions(task);
+
+  return (
+    <div className="col-span-full grid gap-3 rounded-2xl border border-[#e4e4e7] bg-white/80 p-3">
+      <div className="flex items-center justify-between gap-2.5">
+        <span className="text-[12px] font-extrabold text-[#52525b]">Chọn bước xử lý</span>
+        <strong className="rounded-full border border-[#e4e4e7] bg-[#f4f4f5] px-2.5 py-1.5 text-[12px] text-[#18181b]">{statusLabel(value)}</strong>
       </div>
-    </Link>
+      <div className="grid grid-cols-2 gap-2.5 max-[760px]:grid-cols-1">
+        {actions.map((action) => (
+          <button
+            className={statusActionCardClass(action.tone, action.value === value)}
+            key={action.value}
+            onClick={() => onChange(action.value)}
+            type="button"
+          >
+            <strong className="text-[14px] leading-[1.2]">{action.label}</strong>
+            <span className="text-[12px] leading-[1.4] text-[#71717a]">{action.description}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
 function taskAttention(task: EngineerTask): { label: string; tone: 'danger' | 'good' | 'neutral' | 'warn' } {
   if (task.reviewStatus === 'NEEDS_REVISION') return { label: 'Bổ sung theo phản hồi admin', tone: 'danger' };
-  if (needsMachineProfile(task)) return { label: 'Tạo hoặc bổ sung hồ sơ máy', tone: 'warn' };
   if (isOverdueTask(task)) return { label: 'Quá hạn, xử lý trước', tone: 'danger' };
+  if (needsMachineProfile(task)) return { label: 'Tạo hoặc bổ sung hồ sơ máy', tone: 'warn' };
   if (isTodayTask(task)) return { label: 'Việc hôm nay', tone: 'warn' };
   if (task.reviewStatus === 'PENDING') return { label: 'Đã gửi, chờ admin duyệt', tone: 'good' };
   if (['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status)) return { label: 'Đã hoàn tất', tone: 'neutral' };
   return { label: 'Cập nhật kết quả hiện trường', tone: 'neutral' };
+}
+
+function priorityTaskCardClass(tone: 'danger' | 'good' | 'neutral' | 'warn') {
+  return [
+    'grid gap-3 rounded-2xl border bg-white/85 p-3 transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_16px_34px_rgba(37,99,235,0.1)] min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(210px,0.36fr)] min-[1180px]:items-center',
+    tone === 'danger' ? 'border-[#fecdd3]' : '',
+    tone === 'warn' ? 'border-[#fed7aa]' : '',
+    tone === 'good' ? 'border-[#bbf7d0]' : '',
+    tone === 'neutral' ? 'border-[#e4e4e7]' : '',
+  ].filter(Boolean).join(' ');
+}
+
+function priorityTaskHeadlineClass(tone: 'danger' | 'good' | 'neutral' | 'warn') {
+  if (tone === 'danger') return 'font-extrabold text-[#b91c1c]';
+  if (tone === 'warn') return 'font-extrabold text-[#b45309]';
+  return 'font-extrabold text-[#2563eb]';
+}
+
+function statusActionCardClass(tone: string, active: boolean) {
+  const base = 'grid min-h-[86px] cursor-pointer gap-[5px] rounded-[14px] border bg-white p-3 text-left text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#bfdbfe] hover:shadow-[0_12px_28px_rgba(37,99,235,0.1)]';
+  if (!active) return `${base} border-[#e4e4e7]`;
+  if (tone === 'good') return `${base} border-[#86efac] shadow-[0_0_0_3px_rgba(34,197,94,0.13)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#16a34a] before:content-['']`;
+  if (tone === 'warn') return `${base} border-[#fed7aa] shadow-[0_0_0_3px_rgba(245,158,11,0.13)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#d97706] before:content-['']`;
+  if (tone === 'danger') return `${base} border-[#fecdd3] shadow-[0_0_0_3px_rgba(244,63,94,0.12)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#e11d48] before:content-['']`;
+  return `${base} border-[#2563eb] shadow-[0_0_0_3px_rgba(37,99,235,0.12)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#2563eb] before:content-['']`;
 }
 
 function taskUpdateHref(task: EngineerTask) {
@@ -2547,6 +2739,91 @@ function taskUpdateHref(task: EngineerTask) {
   if (task.kind === 'repair') return `/repairs/${task.id}/update?returnTo=/my-tasks`;
   if (task.kind === 'maintenance') return `/maintenance/${task.id}/update?returnTo=/my-tasks`;
   return '';
+}
+
+function taskPrimaryMachineName(task: EngineerTask) {
+  if (task.kind === 'installation') {
+    return (
+      task.installedDeviceItems?.[0]?.itemName ||
+      task.plannedMachineModel?.displayName ||
+      task.plannedMachineModel?.name ||
+      task.plannedModelName ||
+      task.machine?.modelName ||
+      'Chưa có tên thiết bị'
+    );
+  }
+
+  return task.deviceName || task.machine?.modelName || task.modelName || 'Chưa có tên thiết bị';
+}
+
+function taskUpdatePanelTitle(task: EngineerTask) {
+  if (task.kind === 'installation') return 'Hoàn thiện bàn giao và bảo hành';
+  if (task.kind === 'maintenance') return 'Ghi nhận kết quả bảo trì';
+  return 'Ghi nhận kết quả sửa chữa';
+}
+
+function statusActionOptions(task: EngineerTask) {
+  if (task.kind === 'installation') {
+    return installationStatusOptions.map((option) => ({
+      ...option,
+      label:
+        option.value === 'INSTALLED'
+          ? 'Đã bàn giao'
+          : option.value === 'PENDING'
+            ? 'Giữ chờ duyệt'
+            : 'Hủy phiếu',
+      description:
+        option.value === 'INSTALLED'
+          ? 'Hoàn tất thông tin bàn giao, bảo hành và gửi admin kiểm tra.'
+          : option.value === 'PENDING'
+            ? 'Giữ phiếu ở trạng thái chờ nếu chưa đủ thông tin.'
+            : 'Dùng khi phiếu không còn thực hiện.',
+      tone: option.value === 'INSTALLED' ? 'good' : option.value === 'CANCELLED' ? 'danger' : 'warn',
+    }));
+  }
+
+  const sourceOptions = task.kind === 'repair' ? repairStatusOptions : maintenanceStatusOptions;
+  return sourceOptions.map((option) => ({
+    ...option,
+    label: statusActionTitle(task.kind, option.value),
+    description: statusActionDescription(task.kind, option.value),
+    tone: statusActionTone(option.value),
+  }));
+}
+
+function statusActionTitle(kind: TaskKind, value: string) {
+  if (value === 'IN_PROGRESS') return kind === 'maintenance' ? 'Bắt đầu bảo trì' : 'Bắt đầu xử lý';
+  if (value === 'WAITING_PARTS') return 'Chờ linh kiện';
+  if (value === 'COMPLETED') return 'Hoàn thành';
+  if (value === 'CANCELLED') return 'Hủy phiếu';
+  return statusLabel(value);
+}
+
+function statusActionDescription(kind: TaskKind, value: string) {
+  if (value === 'IN_PROGRESS') {
+    return kind === 'maintenance' ? 'Đánh dấu phiếu đang được bảo trì tại hiện trường.' : 'Đánh dấu máy đang được kiểm tra hoặc sửa chữa.';
+  }
+  if (value === 'WAITING_PARTS') return 'Tạm dừng vì cần vật tư, linh kiện hoặc xác nhận thêm.';
+  if (value === 'COMPLETED') return 'Nhập kết quả đầy đủ rồi gửi admin kiểm tra.';
+  if (value === 'CANCELLED') return 'Dùng khi phiếu không tiếp tục thực hiện.';
+  return 'Cập nhật trạng thái phiếu.';
+}
+
+function statusActionTone(value: string) {
+  if (value === 'COMPLETED' || value === 'INSTALLED') return 'good';
+  if (value === 'CANCELLED') return 'danger';
+  if (value === 'WAITING_PARTS' || value === 'PENDING') return 'warn';
+  return 'neutral';
+}
+
+function taskContactPhone(task: EngineerTask) {
+  if (task.kind === 'installation') return task.receiverPhone || '';
+  return task.contactPhone || '';
+}
+
+function taskLocation(task: EngineerTask) {
+  if (task.kind === 'installation') return task.receiverInstallAddress || task.customer?.province || task.machine?.customer?.province || '';
+  return task.address || task.machine?.customer?.province || '';
 }
 
 function taskPriorityScore(task: EngineerTask) {
