@@ -126,10 +126,16 @@ type MachineDetail = MachineItem & {
 
 type ProductForm = {
   machineModelId: string;
-  machineCode: string;
-  serialNumber: string;
+  machineRows: string;
+  manufacturingDate: string;
   warehouseImportDate: string;
   accessoriesText: string;
+};
+
+type ProductMachineRow = {
+  serialNumber: string;
+  machineCode: string;
+  name: string;
 };
 
 type ProductCatalogOverview = {
@@ -549,6 +555,8 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
   );
   const supportsProbes = isUltrasoundMachineModel(selectedModel);
   const supportsEndoscopyChecklist = isEndoscopyMachineModel(selectedModel);
+  const machineRows = useMemo(() => parseProductMachineRows(form.machineRows), [form.machineRows]);
+  const duplicatedSerial = useMemo(() => findDuplicatedSerial(machineRows), [machineRows]);
 
   useEffect(() => {
     if (!modelsQuery.data) return;
@@ -569,28 +577,36 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
   const createMachineMutation = useMutation({
     mutationFn: async ({ currentForm, model }: { currentForm: ProductForm; model: MachineModel }) => {
-      await apiFetch('/machines', {
-        method: 'POST',
-        body: JSON.stringify(
-          compactPayload({
-            machineModelId: model.id,
-            serialNumber: currentForm.serialNumber.trim(),
-            machineCode: currentForm.machineCode.trim(),
-            warehouseImportDate: currentForm.warehouseImportDate,
-            inventoryStatus: 'IN_STOCK',
-            status: 'ACTIVE',
-            accessories: parseTemplateAccessoryLines(currentForm.accessoriesText, model),
-          }),
-        ),
-      });
-      return model;
+      const rows = parseProductMachineRows(currentForm.machineRows);
+      const accessories = parseTemplateAccessoryLines(currentForm.accessoriesText, model);
+
+      for (const row of rows) {
+        await apiFetch('/machines', {
+          method: 'POST',
+          body: JSON.stringify(
+            compactPayload({
+              machineModelId: model.id,
+              serialNumber: row.serialNumber,
+              machineCode: row.machineCode,
+              name: row.name,
+              manufacturingDate: currentForm.manufacturingDate,
+              warehouseImportDate: currentForm.warehouseImportDate,
+              inventoryStatus: 'IN_STOCK',
+              status: 'ACTIVE',
+              accessories,
+            }),
+          ),
+        });
+      }
+
+      return { count: rows.length, model };
     },
-    onSuccess: async (model) => {
-      setSuccess('Đã thêm sản phẩm vào kho.');
+    onSuccess: async ({ count, model }) => {
+      setSuccess(count > 1 ? `Đã thêm ${count} máy vào kho.` : 'Đã thêm sản phẩm vào kho.');
       setForm((current) => ({
         ...current,
-        machineCode: '',
-        serialNumber: '',
+        machineRows: '',
+        manufacturingDate: '',
         warehouseImportDate: new Date().toISOString().slice(0, 10),
         accessoriesText: buildTemplateAccessoriesText(model),
       }));
@@ -645,6 +661,17 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
       return;
     }
 
+    const rows = machineRows;
+    if (!rows.length) {
+      setFormError('Vui lòng nhập ít nhất một serial máy.');
+      return;
+    }
+
+    if (duplicatedSerial) {
+      setFormError(`Serial ${duplicatedSerial} đang bị nhập trùng trong danh sách.`);
+      return;
+    }
+
     setFormError('');
     setSuccess('');
 
@@ -657,32 +684,60 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
   return (
     <PageFrame>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageTitle
-          eyebrow="Sản phẩm & Thiết bị"
-          title="Add Product"
-          description="Chọn model, nhập serial và phụ kiện."
-        />
-        <button className="secondary-button" onClick={() => navigate('/product-catalog')} type="button">
-          <ArrowLeft size={17} />
-          Back
-        </button>
+      <div className="overflow-hidden rounded-[26px] border border-[#dbe6f3] bg-[radial-gradient(circle_at_top_left,rgba(186,230,253,0.42),transparent_32%),linear-gradient(135deg,#f8fbff_0%,#eef6ff_54%,#f9fafb_100%)] p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:p-7">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2563eb]">Sản phẩm & Thiết bị</span>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#172033] md:text-5xl">Nhập máy vào kho</h1>
+            <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-[#64748b] md:text-base">
+              Chọn model, dán danh sách serial theo từng dòng rồi lưu một lần cho cả lô.
+            </p>
+          </div>
+          <button className="secondary-button bg-white/80" onClick={() => navigate('/product-catalog')} type="button">
+            <ArrowLeft size={17} />
+            Back
+          </button>
+        </div>
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_12px_28px_rgba(37,99,235,0.08)]">
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Model</span>
+            <strong className="mt-2 block truncate text-xl text-[#172033]">{selectedModel ? modelShortLabel(selectedModel) : 'Chưa chọn'}</strong>
+          </div>
+          <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_12px_28px_rgba(37,99,235,0.08)]">
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Số máy</span>
+            <strong className="mt-2 block text-3xl font-semibold tabular-nums text-[#172033]">{machineRows.length}</strong>
+          </div>
+          <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_12px_28px_rgba(37,99,235,0.08)]">
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Trạng thái</span>
+            <strong className="mt-2 inline-flex rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-3 py-1 text-sm font-semibold text-[#1d4ed8]">
+              Sẵn sàng nhập kho
+            </strong>
+          </div>
+        </div>
       </div>
 
-      {error ? <Notice message={error} /> : null}
-      {success ? <div className="success-notice">{success}</div> : null}
+      <div className="mt-5">
+        {error ? <Notice message={error} /> : null}
+        {success ? <div className="success-notice">{success}</div> : null}
+      </div>
 
-      <form className="grid min-w-0 gap-4 min-[1320px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
-        <section className="grid min-w-0 gap-4">
-          <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-            <div className="mb-4">
-              <h2 className="text-lg font-medium text-[#1f1f1f]">Thông tin sản phẩm</h2>
+      <form className="mt-5 grid min-w-0 gap-5 min-[1180px]:grid-cols-[minmax(0,1fr)_380px]" onSubmit={submit}>
+        <section className="grid min-w-0 gap-5">
+          <div className="rounded-[22px] border border-[#dbe6f3] bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-2xl bg-[#eff6ff] text-[#2563eb]">
+                <Layers3 size={19} />
+              </span>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Bước 1</span>
+                <h2 className="text-xl font-semibold tracking-[-0.02em] text-[#172033]">Chọn đúng model</h2>
+              </div>
             </div>
             <div className="grid min-w-0 gap-4 md:grid-cols-2">
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
                 Sản phẩm
                 <select
-                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
+                  className="h-12 min-w-0 rounded-2xl border border-[#cbd5e1] bg-white px-4 text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
                   disabled={loading}
                   onChange={(event) => selectProduct(event.target.value)}
                   required
@@ -696,7 +751,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                   ))}
                 </select>
               </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
                 Model
                 <ModelSearchSelect
                   disabled={loading}
@@ -705,59 +760,72 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                   value={form.machineModelId}
                 />
               </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
-                Hãng sản xuất
-                <input className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none" readOnly value={selectedModel?.manufacturer ?? ''} />
-              </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
-                Xuất xứ
-                <input
-                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none"
-                  readOnly
-                  value={selectedModel ? modelOrigin(selectedModel) : ''}
-                />
-              </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333] md:col-span-2">
-                Ghi chú sản phẩm / quy cách
-                <textarea
-                  className="min-h-24 min-w-0 rounded-lg border border-[#d6d6d6] bg-[#fafafa] px-3 py-2 text-[#1f1f1f] outline-none"
-                  readOnly
-                  value={selectedModel ? productNoteText(selectedModel) : ''}
-                />
-              </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
-                Serial Number
-                <input
-                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
-                  onChange={(event) => updateField('serialNumber', event.target.value)}
-                  required
-                  value={form.serialNumber}
-                />
-              </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
-                Mã máy nội bộ (tự sinh nếu để trống)
-                <input
-                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
-                  onChange={(event) => updateField('machineCode', event.target.value)}
-                  placeholder="VD: XCUBE50-001"
-                  value={form.machineCode}
-                />
-              </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
-                Ngày nhập kho
-                <input
-                  className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
-                  onChange={(event) => updateField('warehouseImportDate', event.target.value)}
-                  type="date"
-                  value={form.warehouseImportDate}
-                />
-              </label>
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-            <div className="mb-4">
-              <h2 className="text-lg font-medium text-[#1f1f1f]">Phụ kiện đi kèm</h2>
+          <div className="rounded-[22px] border border-[#dbe6f3] bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-2xl bg-[#ecfeff] text-[#0891b2]">
+                  <Boxes size={19} />
+                </span>
+                <div>
+                  <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Bước 2</span>
+                  <h2 className="text-xl font-semibold tracking-[-0.02em] text-[#172033]">Dán danh sách máy</h2>
+                </div>
+              </div>
+              <span className="rounded-full bg-[#f8fafc] px-3 py-1 text-xs font-semibold text-[#64748b]">
+                {machineRows.length} dòng hợp lệ
+              </span>
+            </div>
+            <div className="grid min-w-0 gap-4">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+                Danh sách máy
+                <textarea
+                  className="min-h-44 min-w-0 rounded-2xl border border-[#cbd5e1] bg-[#fbfdff] px-4 py-3 font-mono text-sm leading-6 text-[#172033] outline-none transition placeholder:font-sans placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:bg-white focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                  onChange={(event) => updateField('machineRows', event.target.value)}
+                  placeholder={'AF3-2605-00012 | MAY-00012\nAF3-2605-00013\nAF3-2605-00014 | MAY-00014 | Máy demo phòng xét nghiệm'}
+                  required
+                  value={form.machineRows}
+                />
+              </label>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+                  Ngày sản xuất
+                  <input
+                    className="h-12 min-w-0 rounded-2xl border border-[#cbd5e1] bg-white px-4 text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                    onChange={(event) => updateField('manufacturingDate', event.target.value)}
+                    type="date"
+                    value={form.manufacturingDate}
+                  />
+                </label>
+                <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+                  Ngày nhập kho
+                  <input
+                    className="h-12 min-w-0 rounded-2xl border border-[#cbd5e1] bg-white px-4 text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                    onChange={(event) => updateField('warehouseImportDate', event.target.value)}
+                    type="date"
+                    value={form.warehouseImportDate}
+                  />
+                </label>
+              </div>
+              {duplicatedSerial ? (
+                <div className="rounded-2xl border border-[#fed7aa] bg-[#fff7ed] px-4 py-3 text-sm font-semibold text-[#c2410c]">
+                  Serial {duplicatedSerial} đang bị nhập trùng.
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-[22px] border border-[#dbe6f3] bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-2xl bg-[#f0fdf4] text-[#16a34a]">
+                <PackagePlus size={19} />
+              </span>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Bước 3</span>
+                <h2 className="text-xl font-semibold tracking-[-0.02em] text-[#172033]">Phụ kiện đi kèm</h2>
+              </div>
             </div>
             {supportsProbes || supportsEndoscopyChecklist ? (
               <MachineAccessoryEditor
@@ -766,12 +834,12 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                 value={form.accessoriesText}
               />
             ) : (
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#333333]">
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
                 S/N phụ kiện
                 <textarea
-                  className="min-h-36 min-w-0 rounded-lg border border-[#d6d6d6] px-3 py-2 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
+                  className="min-h-32 min-w-0 rounded-2xl border border-[#cbd5e1] px-4 py-3 text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
                   onChange={(event) => updateField('accessoriesText', event.target.value)}
-                  placeholder={'Mỗi dòng: Phụ kiện | Serial Number\nVí dụ:\nBộ dây nguồn | ACC-001\nCáp kết nối | ACC-002'}
+                  placeholder={'Bộ dây nguồn | ACC-001\nCáp kết nối | ACC-002'}
                   value={formatMachineAccessoriesText(form.accessoriesText)}
                 />
               </label>
@@ -779,26 +847,56 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
           </div>
         </section>
 
-        <aside className="grid min-w-0 gap-4 self-start">
-          <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-            <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Product Image</h2>
-            <div className="grid min-h-48 place-items-center rounded-lg border border-dashed border-[#d6d6d6] bg-[#fafafa] p-4 text-center text-sm text-[#666666]">
+        <aside className="grid min-w-0 gap-5 self-start min-[1180px]:sticky min-[1180px]:top-5">
+          <div className="rounded-[24px] border border-[#dbe6f3] bg-white p-5 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
+            <div className="grid min-h-44 place-items-center rounded-[20px] bg-[#f8fbff] p-4 text-center">
               <ModelImage large model={selectedModel ?? undefined} />
-              <span className="mt-3 block">{selectedModel?.businessLine?.name ?? 'Chọn model để xem hình nhóm sản phẩm'}</span>
+            </div>
+            <div className="mt-5">
+              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Thông tin model</span>
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#172033]">{selectedModel ? modelShortLabel(selectedModel) : 'Chưa chọn model'}</h2>
+              <div className="mt-4 grid gap-2 text-sm text-[#475569]">
+                <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f8fafc] px-3 py-2">
+                  <span>Hãng</span>
+                  <strong className="text-right text-[#172033]">{selectedModel?.manufacturer || '-'}</strong>
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f8fafc] px-3 py-2">
+                  <span>Xuất xứ</span>
+                  <strong className="text-right text-[#172033]">{selectedModel ? modelOrigin(selectedModel) || '-' : '-'}</strong>
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f8fafc] px-3 py-2">
+                  <span>Kho</span>
+                  <strong className="rounded-full border border-[#bbf7d0] bg-[#f0fdf4] px-2.5 py-1 text-xs text-[#15803d]">In stock</strong>
+                </div>
+              </div>
+              {selectedModel && productNoteText(selectedModel) ? (
+                <p className="mt-4 rounded-2xl bg-[#f8fafc] p-3 text-sm leading-6 text-[#64748b]">{productNoteText(selectedModel)}</p>
+              ) : null}
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#e5e5e5] bg-white p-5">
-            <h2 className="mb-4 text-lg font-medium text-[#1f1f1f]">Stock</h2>
-            <div className="grid gap-3 text-sm text-[#333333]">
-              <div className="flex items-center justify-between gap-3">
-                <span>Availability Status</span>
-                <strong className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-xs text-[#177245]">In Stock</strong>
+          <div className="rounded-[24px] border border-[#dbe6f3] bg-white p-5 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Preview</span>
+                <h2 className="mt-1 text-lg font-semibold text-[#172033]">Máy sẽ tạo</h2>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <span>Model</span>
-                <strong>{selectedModel ? modelShortLabel(selectedModel) : 'Chưa chọn'}</strong>
-              </div>
+              <strong className="text-3xl font-semibold tabular-nums text-[#172033]">{machineRows.length}</strong>
+            </div>
+            <div className="mt-4 grid gap-2">
+              {machineRows.length ? (
+                machineRows.slice(0, 4).map((row, index) => (
+                  <div className="rounded-2xl border border-[#e2e8f0] bg-[#fbfdff] px-3 py-2" key={`${row.serialNumber}-${index}`}>
+                    <strong className="block truncate text-sm text-[#172033]">{row.serialNumber}</strong>
+                    <span className="mt-0.5 block truncate text-xs font-medium text-[#64748b]">{row.machineCode || 'Tự sinh mã máy'}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4 text-sm font-medium leading-6 text-[#64748b]">
+                  Dán serial ở ô bên trái, preview sẽ hiện tại đây.
+                </div>
+              )}
+              {machineRows.length > 4 ? <span className="text-xs font-semibold text-[#64748b]">+{machineRows.length - 4} máy khác</span> : null}
             </div>
           </div>
 
@@ -806,9 +904,9 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             <button className="secondary-button" onClick={() => navigate('/product-catalog')} type="button">
               Cancel
             </button>
-            <button className="primary-button" disabled={saving || loading || !canAddProduct} type="submit">
+            <button className="primary-button" disabled={saving || loading || !canAddProduct || !machineRows.length || Boolean(duplicatedSerial)} type="submit">
               {saving ? <Loader2 className="spin-icon" size={17} /> : <PackagePlus size={17} />}
-              {saving ? 'Saving' : 'Save Product'}
+              {saving ? 'Saving' : machineRows.length > 1 ? `Save ${machineRows.length} Products` : 'Save Product'}
             </button>
           </div>
         </aside>
@@ -1555,11 +1653,37 @@ function productNoteText(model: MachineModel) {
 function emptyProductForm(machineModelId: string): ProductForm {
   return {
     machineModelId,
-    machineCode: '',
-    serialNumber: '',
+    machineRows: '',
+    manufacturingDate: '',
     warehouseImportDate: new Date().toISOString().slice(0, 10),
     accessoriesText: '',
   };
+}
+
+function parseProductMachineRows(value: string): ProductMachineRow[] {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [serialNumber = '', machineCode = '', name = ''] = line.split(/[|\t]/).map((part) => part.trim());
+      return {
+        serialNumber,
+        machineCode,
+        name,
+      };
+    })
+    .filter((row) => row.serialNumber);
+}
+
+function findDuplicatedSerial(rows: ProductMachineRow[]) {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const key = row.serialNumber.toLowerCase();
+    if (seen.has(key)) return row.serialNumber;
+    seen.add(key);
+  }
+  return '';
 }
 
 function flattenTemplateAccessories(model: MachineModel) {

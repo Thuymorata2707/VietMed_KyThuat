@@ -44,6 +44,8 @@ type DashboardMachine = {
   inventoryStatus?: string | null;
   dataStatus?: string | null;
   createdSource?: string | null;
+  manufacturingDate?: string | null;
+  warehouseImportDate?: string | null;
   installDate?: string | null;
   warrantyStartDate?: string | null;
   warrantyEndDate?: string | null;
@@ -162,10 +164,23 @@ type EditMachineForm = {
   status: string;
   inventoryStatus: string;
   customerId: string;
+  manufacturingDate: string;
+  warehouseImportDate: string;
   installDate: string;
   warrantyStartDate: string;
   warrantyEndDate: string;
   accessories: EditMachineAccessoryForm[];
+};
+
+type BulkMachineForm = {
+  machineModelId: string;
+  modelName: string;
+  manufacturer: string;
+  productCategory: string;
+  inventoryStatus: string;
+  manufacturingDate: string;
+  warehouseImportDate: string;
+  serialRows: string;
 };
 
 type EditMachineAccessoryForm = {
@@ -244,6 +259,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   const [loadingMachineDetail, setLoadingMachineDetail] = useState(false);
   const [editingMachine, setEditingMachine] = useState<DashboardMachine | null>(null);
   const [editForm, setEditForm] = useState<EditMachineForm>(() => emptyEditMachineForm());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkForm, setBulkForm] = useState<BulkMachineForm>(() => emptyBulkMachineForm());
   const [templateAccessories, setTemplateAccessories] = useState<TemplateAccessory[]>([]);
   const [loadingAccessoryTemplates, setLoadingAccessoryTemplates] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -432,6 +449,27 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     void loadAccessoryTemplates(machineModelId);
   }
 
+  function openBulkCreate() {
+    setBulkForm(emptyBulkMachineForm());
+    setBulkOpen(true);
+    setError('');
+    setSuccess('');
+  }
+
+  function updateBulkForm(patch: Partial<BulkMachineForm>) {
+    setBulkForm((current) => ({ ...current, ...patch }));
+  }
+
+  function selectBulkMachineModel(machineModelId: string) {
+    const model = machineModels.find((item) => item.id === machineModelId);
+    updateBulkForm({
+      machineModelId,
+      modelName: model?.name || model?.displayName || model?.code || bulkForm.modelName,
+      manufacturer: model?.manufacturer || bulkForm.manufacturer,
+      productCategory: model?.productCategory || model?.businessLine?.productCategory || bulkForm.productCategory,
+    });
+  }
+
   function addAccessoryForm() {
     setEditForm((current) => ({
       ...current,
@@ -533,6 +571,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           status: editForm.status,
           inventoryStatus: editForm.inventoryStatus,
           customerId: editForm.customerId || null,
+          manufacturingDate: editForm.manufacturingDate || null,
+          warehouseImportDate: editForm.warehouseImportDate || null,
           installDate: editForm.installDate || null,
           warrantyStartDate: editForm.warrantyStartDate || null,
           warrantyEndDate: editForm.warrantyEndDate || null,
@@ -558,6 +598,56 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không lưu được thông tin máy.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleBulkCreateMachines(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const rows = parseBulkMachineRows(bulkForm.serialRows);
+
+    if (!rows.length) {
+      setError('Vui lòng nhập ít nhất 1 serial máy.');
+      return;
+    }
+
+    if (!bulkForm.machineModelId && !bulkForm.modelName.trim()) {
+      setError('Vui lòng chọn model hoặc nhập tên model cho lô máy.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      for (const row of rows) {
+        await apiFetch('/machines', {
+          method: 'POST',
+          body: JSON.stringify({
+            machineCode: row.machineCode || undefined,
+            serialNumber: row.serialNumber,
+            machineModelId: bulkForm.machineModelId || undefined,
+            name: row.name || bulkForm.modelName.trim() || undefined,
+            modelName: bulkForm.modelName.trim() || undefined,
+            manufacturer: bulkForm.manufacturer.trim() || undefined,
+            productCategory: bulkForm.productCategory,
+            inventoryStatus: bulkForm.inventoryStatus,
+            manufacturingDate: bulkForm.manufacturingDate || undefined,
+            warehouseImportDate: bulkForm.warehouseImportDate || undefined,
+            status: 'ACTIVE',
+            dataStatus: 'VERIFIED',
+          }),
+        });
+      }
+
+      setSuccess(`Đã tạo ${rows.length} máy trong lô.`);
+      setBulkOpen(false);
+      setBulkForm(emptyBulkMachineForm());
+      await loadTechnicalMachines();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không tạo được lô máy.');
     } finally {
       setSaving(false);
     }
@@ -663,6 +753,18 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         </div>
 
         <div className="grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-3 shadow-[0_10px_28px_rgba(24,24,27,0.05)]">
+          {currentRole === 'admin' ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-3 py-2">
+              <div>
+                <strong className="block text-sm text-[#18181b]">Nhập máy theo lô</strong>
+                <span className="text-xs font-medium text-[#64748b]">Dán nhiều serial, hệ thống sẽ tạo nhiều hồ sơ máy cùng model.</span>
+              </div>
+              <button className="primary-button bg-[#2563eb] hover:bg-[#1d4ed8]" onClick={openBulkCreate} type="button">
+                <Plus size={17} />
+                Nhập lô máy
+              </button>
+            </div>
+          ) : null}
           <div className="grid gap-3 min-[1120px]:grid-cols-[minmax(240px,320px)_minmax(260px,1fr)_180px_150px_auto]">
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Ngành hàng
@@ -872,6 +974,14 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                   ))}
                 </select>
               </label>
+              <label className={editLabelClass}>
+                Ngày sản xuất
+                <input className={editFieldClass} onChange={(event) => updateEditForm({ manufacturingDate: event.target.value })} type="date" value={editForm.manufacturingDate} />
+              </label>
+              <label className={editLabelClass}>
+                Ngày nhập kho
+                <input className={editFieldClass} onChange={(event) => updateEditForm({ warehouseImportDate: event.target.value })} type="date" value={editForm.warehouseImportDate} />
+              </label>
               <label className={`${editLabelClass} md:col-span-2`}>
                 Khách hàng
                 <select className={editFieldClass} onChange={(event) => updateEditForm({ customerId: event.target.value })} value={editForm.customerId}>
@@ -984,6 +1094,89 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           </form>
         </div>
       ) : null}
+
+      {bulkOpen ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 p-5" role="presentation">
+          <form className="grid max-h-[calc(100vh-40px)] w-full max-w-[900px] gap-4 overflow-y-auto rounded-2xl border border-[#dbeafe] bg-white p-5 shadow-[0_24px_70px_rgba(24,24,27,0.22)]" onSubmit={handleBulkCreateMachines}>
+            <div className="flex items-start justify-between gap-3 border-b border-[#eeeeee] pb-3">
+              <div>
+                <span className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#2563eb]">Nhập lô máy</span>
+                <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#18181b]">Tạo nhiều hồ sơ máy cùng lúc</h2>
+                <p className="mt-1 text-sm text-[#64748b]">Mỗi dòng là Serial, hoặc Serial | Mã máy | Tên máy.</p>
+              </div>
+              <button className="icon-button" onClick={() => setBulkOpen(false)} title="Đóng" type="button">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className={`${editLabelClass} md:col-span-2`}>
+                Model cố định cho cả lô
+                <select className={editFieldClass} onChange={(event) => selectBulkMachineModel(event.target.value)} required value={bulkForm.machineModelId}>
+                  <option value="">Chọn model trong danh mục</option>
+                  {machineModels.map((model) => (
+                    <option key={model.id} value={model.id}>{modelOptionText(model)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={editLabelClass}>
+                Tên model hiển thị
+                <input className={editFieldClass} onChange={(event) => updateBulkForm({ modelName: event.target.value })} required value={bulkForm.modelName} />
+              </label>
+              <label className={editLabelClass}>
+                Hãng
+                <input className={editFieldClass} onChange={(event) => updateBulkForm({ manufacturer: event.target.value })} value={bulkForm.manufacturer} />
+              </label>
+              <label className={editLabelClass}>
+                Loại thiết bị
+                <select className={editFieldClass} onChange={(event) => updateBulkForm({ productCategory: event.target.value })} value={bulkForm.productCategory}>
+                  {['ULTRASOUND', 'LAB_TESTING', 'BIOCHEMISTRY', 'IMMUNOLOGY', 'HEMATOLOGY', 'X_RAY', 'ENDOSCOPY', 'OTHER'].map((value) => (
+                    <option key={value} value={value}>{displayLabel(value)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={editLabelClass}>
+                Trạng thái kho
+                <select className={editFieldClass} onChange={(event) => updateBulkForm({ inventoryStatus: event.target.value })} value={bulkForm.inventoryStatus}>
+                  {['IN_STOCK', 'RESERVED'].map((value) => (
+                    <option key={value} value={value}>{displayLabel(value)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={editLabelClass}>
+                Ngày sản xuất
+                <input className={editFieldClass} onChange={(event) => updateBulkForm({ manufacturingDate: event.target.value })} type="date" value={bulkForm.manufacturingDate} />
+              </label>
+              <label className={editLabelClass}>
+                Ngày nhập kho
+                <input className={editFieldClass} onChange={(event) => updateBulkForm({ warehouseImportDate: event.target.value })} type="date" value={bulkForm.warehouseImportDate} />
+              </label>
+              <label className={`${editLabelClass} md:col-span-2`}>
+                Danh sách serial
+                <textarea
+                  className={`${editFieldClass} min-h-[220px] py-3 font-mono text-sm`}
+                  onChange={(event) => updateBulkForm({ serialRows: event.target.value })}
+                  placeholder={'AF3-2605-00012\nAF3-2605-00013 | AIRF13C-002 | Máy lọc không khí chuẩn\nAF3-2605-00014'}
+                  required
+                  value={bulkForm.serialRows}
+                />
+              </label>
+            </div>
+
+            <div className="rounded-xl border border-[#dbeafe] bg-[#eff6ff] px-3 py-2 text-sm font-medium text-[#1d4ed8]">
+              Số máy sẽ tạo: {parseBulkMachineRows(bulkForm.serialRows).length}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
+              <button className="secondary-button" disabled={saving} onClick={() => setBulkOpen(false)} type="button">Đóng</button>
+              <button className="primary-button bg-[#2563eb] hover:bg-[#1d4ed8]" disabled={saving} type="submit">
+                {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
+                {saving ? 'Đang tạo' : 'Tạo lô máy'}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </PageFrame>
   );
 }
@@ -1056,6 +1249,8 @@ function MachineDetailPanel({
           <InfoItem label="Tên máy" value={machine.name || machine.modelName} />
           <InfoItem label="Hãng" value={machine.manufacturer} />
           <InfoItem label="Loại thiết bị" value={displayProductCategory(machine.productCategory)} />
+          <InfoItem label="Ngày sản xuất" value={formatDashboardDate(machine.manufacturingDate)} />
+          <InfoItem label="Ngày nhập kho" value={formatDashboardDate(machine.warehouseImportDate)} />
           <InfoItem label="Ngày lắp" value={formatDashboardDate(machine.installDate)} />
           <InfoItem label="Hết bảo hành" value={formatDashboardDate(warrantyEndDate)} />
           <InfoItem label="Kỹ sư lắp đặt" value={machine.installedBy?.fullName} />
@@ -1706,6 +1901,14 @@ function MachineEditForm({
             ))}
           </select>
         </label>
+        <label className={editLabelClass}>
+          Ngày sản xuất
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ manufacturingDate: event.target.value })} type="date" value={editForm.manufacturingDate} />
+        </label>
+        <label className={editLabelClass}>
+          Ngày nhập kho
+          <input className={editFieldClass} onChange={(event) => onUpdateForm({ warehouseImportDate: event.target.value })} type="date" value={editForm.warehouseImportDate} />
+        </label>
         <label className={`${editLabelClass} md:col-span-2`}>
           Khách hàng
           <select className={editFieldClass} onChange={(event) => onUpdateForm({ customerId: event.target.value })} value={editForm.customerId}>
@@ -1982,6 +2185,8 @@ function emptyEditMachineForm(): EditMachineForm {
     status: 'ACTIVE',
     inventoryStatus: 'IN_STOCK',
     customerId: '',
+    manufacturingDate: '',
+    warehouseImportDate: '',
     installDate: '',
     warrantyStartDate: '',
     warrantyEndDate: '',
@@ -2001,6 +2206,8 @@ function buildEditMachineForm(machine: DashboardMachine): EditMachineForm {
     status: machine.status || 'ACTIVE',
     inventoryStatus: machine.inventoryStatus || 'IN_STOCK',
     customerId: machine.customer?.id || '',
+    manufacturingDate: toDateInput(machine.manufacturingDate),
+    warehouseImportDate: toDateInput(machine.warehouseImportDate),
     installDate: toDateInput(machine.installDate),
     warrantyStartDate: toDateInput(machine.warrantyStartDate),
     warrantyEndDate: toDateInput(machine.warrantyEndDate),
@@ -2015,6 +2222,35 @@ function buildEditMachineForm(machine: DashboardMachine): EditMachineForm {
       note: accessory.note || '',
     })),
   };
+}
+
+function emptyBulkMachineForm(): BulkMachineForm {
+  return {
+    machineModelId: '',
+    modelName: '',
+    manufacturer: '',
+    productCategory: 'OTHER',
+    inventoryStatus: 'IN_STOCK',
+    manufacturingDate: '',
+    warehouseImportDate: toDateInput(new Date().toISOString()),
+    serialRows: '',
+  };
+}
+
+function parseBulkMachineRows(value: string) {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [serialNumber = '', machineCode = '', name = ''] = line.split('|').map((part) => part.trim());
+      return {
+        serialNumber,
+        machineCode,
+        name,
+      };
+    })
+    .filter((row) => row.serialNumber);
 }
 
 function emptyEditAccessoryForm(): EditMachineAccessoryForm {

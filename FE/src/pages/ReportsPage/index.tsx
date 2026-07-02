@@ -471,7 +471,7 @@ export function ReportsPage() {
             <button
               className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-bold transition ${
                 activeView === tab.key
-                  ? 'border-[#e4e4e7] bg-[#fff1f3] text-[#b5121b] shadow-[0_10px_24px_rgba(24,24,27,0.08)]'
+                  ? 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8] shadow-[0_10px_24px_rgba(37,99,235,0.10)]'
                   : 'border-[#ded8d8] bg-white text-[#666666] hover:border-[#e4e4e7] hover:text-[#18181b]'
               }`}
               key={tab.key}
