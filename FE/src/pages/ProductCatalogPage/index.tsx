@@ -136,6 +136,7 @@ type ProductMachineRow = {
   serialNumber: string;
   machineCode: string;
   name: string;
+  accessoriesText: string;
 };
 
 type ProductCatalogOverview = {
@@ -578,9 +579,9 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
   const createMachineMutation = useMutation({
     mutationFn: async ({ currentForm, model }: { currentForm: ProductForm; model: MachineModel }) => {
       const rows = parseProductMachineRows(currentForm.machineRows);
-      const accessories = parseTemplateAccessoryLines(currentForm.accessoriesText, model);
 
       for (const row of rows) {
+        const accessories = parseTemplateAccessoryLines(row.accessoriesText || currentForm.accessoriesText, model);
         await apiFetch('/machines', {
           method: 'POST',
           body: JSON.stringify(
@@ -684,13 +685,13 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
   return (
     <PageFrame>
-      <div className="overflow-hidden rounded-[26px] border border-[#dbe6f3] bg-[radial-gradient(circle_at_top_left,rgba(186,230,253,0.42),transparent_32%),linear-gradient(135deg,#f8fbff_0%,#eef6ff_54%,#f9fafb_100%)] p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:p-7">
+      <div className="overflow-hidden rounded-[22px] border border-[#dbe6f3] bg-[radial-gradient(circle_at_top_left,rgba(186,230,253,0.38),transparent_30%),linear-gradient(135deg,#f8fbff_0%,#eef6ff_54%,#f9fafb_100%)] p-4 shadow-[0_14px_34px_rgba(15,23,42,0.07)] md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2563eb]">Sản phẩm & Thiết bị</span>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#172033] md:text-5xl">Nhập máy vào kho</h1>
-            <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-[#64748b] md:text-base">
-              Chọn model, dán danh sách serial theo từng dòng rồi lưu một lần cho cả lô.
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#172033] md:text-4xl">Nhập máy vào kho</h1>
+            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-[#64748b]">
+              Chọn model, nhập serial và phụ kiện theo từng máy.
             </p>
           </div>
           <button className="secondary-button bg-white/80" onClick={() => navigate('/product-catalog')} type="button">
@@ -698,16 +699,16 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             Back
           </button>
         </div>
-        <div className="mt-6 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_12px_28px_rgba(37,99,235,0.08)]">
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_10px_22px_rgba(37,99,235,0.07)]">
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Model</span>
             <strong className="mt-2 block truncate text-xl text-[#172033]">{selectedModel ? modelShortLabel(selectedModel) : 'Chưa chọn'}</strong>
           </div>
-          <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_12px_28px_rgba(37,99,235,0.08)]">
+          <div className="rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_10px_22px_rgba(37,99,235,0.07)]">
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Số máy</span>
             <strong className="mt-2 block text-3xl font-semibold tabular-nums text-[#172033]">{machineRows.length}</strong>
           </div>
-          <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_12px_28px_rgba(37,99,235,0.08)]">
+          <div className="rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_10px_22px_rgba(37,99,235,0.07)]">
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Trạng thái</span>
             <strong className="mt-2 inline-flex rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-3 py-1 text-sm font-semibold text-[#1d4ed8]">
               Sẵn sàng nhập kho
@@ -716,15 +717,15 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
         </div>
       </div>
 
-      <div className="mt-5">
+      <div>
         {error ? <Notice message={error} /> : null}
         {success ? <div className="success-notice">{success}</div> : null}
       </div>
 
-      <form className="mt-5 grid min-w-0 gap-5 min-[1180px]:grid-cols-[minmax(0,1fr)_380px]" onSubmit={submit}>
-        <section className="grid min-w-0 gap-5">
-          <div className="rounded-[22px] border border-[#dbe6f3] bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-            <div className="mb-5 flex items-center gap-3">
+      <form className="grid min-w-0 gap-4 min-[1180px]:grid-cols-[minmax(0,1fr)_360px]" onSubmit={submit}>
+        <section className="grid min-w-0 gap-4">
+          <div className="rounded-[20px] border border-[#dbe6f3] bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+            <div className="mb-4 flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-2xl bg-[#eff6ff] text-[#2563eb]">
                 <Layers3 size={19} />
               </span>
@@ -763,15 +764,15 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             </div>
           </div>
 
-          <div className="rounded-[22px] border border-[#dbe6f3] bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div className="rounded-[20px] border border-[#dbe6f3] bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <span className="grid size-10 place-items-center rounded-2xl bg-[#ecfeff] text-[#0891b2]">
                   <Boxes size={19} />
                 </span>
                 <div>
                   <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Bước 2</span>
-                  <h2 className="text-xl font-semibold tracking-[-0.02em] text-[#172033]">Dán danh sách máy</h2>
+                  <h2 className="text-xl font-semibold tracking-[-0.02em] text-[#172033]">Nhập máy & phụ kiện</h2>
                 </div>
               </div>
               <span className="rounded-full bg-[#f8fafc] px-3 py-1 text-xs font-semibold text-[#64748b]">
@@ -781,7 +782,12 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             <div className="grid min-w-0 gap-4">
               <div className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
                 <span>Danh sách máy</span>
-                <ProductMachineRowsEditor onChange={(value) => updateField('machineRows', value)} value={form.machineRows} />
+                <ProductMachineRowsEditor
+                  accessoryMode={supportsEndoscopyChecklist ? 'endoscopy' : supportsProbes ? 'probe' : 'generic'}
+                  defaultAccessoriesText={form.accessoriesText}
+                  onChange={(value) => updateField('machineRows', value)}
+                  value={form.machineRows}
+                />
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
@@ -811,38 +817,10 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             </div>
           </div>
 
-          <div className="rounded-[22px] border border-[#dbe6f3] bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
-            <div className="mb-5 flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-2xl bg-[#f0fdf4] text-[#16a34a]">
-                <PackagePlus size={19} />
-              </span>
-              <div>
-                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Bước 3</span>
-                <h2 className="text-xl font-semibold tracking-[-0.02em] text-[#172033]">Phụ kiện đi kèm</h2>
-              </div>
-            </div>
-            {supportsProbes || supportsEndoscopyChecklist ? (
-              <MachineAccessoryEditor
-                mode={supportsEndoscopyChecklist ? 'endoscopy' : 'probe'}
-                onChange={(value) => updateField('accessoriesText', value)}
-                value={form.accessoriesText}
-              />
-            ) : (
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
-                S/N phụ kiện
-                <textarea
-                  className="min-h-32 min-w-0 rounded-2xl border border-[#cbd5e1] px-4 py-3 text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-                  onChange={(event) => updateField('accessoriesText', event.target.value)}
-                  placeholder={'Bộ dây nguồn | ACC-001\nCáp kết nối | ACC-002'}
-                  value={formatMachineAccessoriesText(form.accessoriesText)}
-                />
-              </label>
-            )}
-          </div>
         </section>
 
-        <aside className="grid min-w-0 gap-5 self-start min-[1180px]:sticky min-[1180px]:top-5">
-          <div className="rounded-[24px] border border-[#dbe6f3] bg-white p-5 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
+        <aside className="grid min-w-0 gap-4 self-start min-[1180px]:sticky min-[1180px]:top-4">
+          <div className="rounded-[22px] border border-[#dbe6f3] bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.07)]">
             <div className="grid min-h-44 place-items-center rounded-[20px] bg-[#f8fbff] p-4 text-center">
               <ModelImage large model={selectedModel ?? undefined} />
             </div>
@@ -909,9 +887,20 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
   );
 }
 
-function ProductMachineRowsEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function ProductMachineRowsEditor({
+  accessoryMode,
+  defaultAccessoriesText,
+  value,
+  onChange,
+}: {
+  accessoryMode: 'probe' | 'endoscopy' | 'generic';
+  defaultAccessoriesText: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
   const rows = parseProductMachineRowsForEditor(value);
-  const editableRows = rows.length ? rows : [{ serialNumber: '', machineCode: '', name: '' }];
+  const makeEmptyRow = (): ProductMachineRow => ({ serialNumber: '', machineCode: '', name: '', accessoriesText: defaultAccessoriesText });
+  const editableRows = rows.length ? rows : [makeEmptyRow()];
 
   function setRows(nextRows: ProductMachineRow[]) {
     onChange(serializeProductMachineRows(nextRows));
@@ -922,12 +911,12 @@ function ProductMachineRowsEditor({ value, onChange }: { value: string; onChange
   }
 
   function addRow() {
-    setRows([...editableRows, { serialNumber: '', machineCode: '', name: '' }]);
+    setRows([...editableRows, makeEmptyRow()]);
   }
 
   function removeRow(index: number) {
     const nextRows = editableRows.filter((_, rowIndex) => rowIndex !== index);
-    setRows(nextRows.length ? nextRows : [{ serialNumber: '', machineCode: '', name: '' }]);
+    setRows(nextRows.length ? nextRows : [makeEmptyRow()]);
   }
 
   function pasteBulk(rawValue: string) {
@@ -938,7 +927,7 @@ function ProductMachineRowsEditor({ value, onChange }: { value: string; onChange
   }
 
   return (
-    <div className="grid gap-3 rounded-[20px] border border-[#dbe6f3] bg-[#f8fbff] p-3">
+    <div className="grid gap-3 rounded-[18px] border border-[#dbe6f3] bg-[#f8fbff] p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Nhập từng máy</span>
         <button className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-3 text-sm font-semibold text-[#172033] shadow-[0_8px_18px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-[#93c5fd] hover:text-[#1d4ed8]" onClick={addRow} type="button">
@@ -949,43 +938,64 @@ function ProductMachineRowsEditor({ value, onChange }: { value: string; onChange
 
       <div className="grid gap-3">
         {editableRows.map((row, index) => (
-          <div className="grid gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] lg:grid-cols-[minmax(170px,1fr)_minmax(150px,0.8fr)_minmax(170px,1fr)_auto]" key={`${row.serialNumber}-${index}`}>
-            <label className="grid gap-2 text-sm font-semibold text-[#334155]">
-              Serial
-              <input
-                className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-                onChange={(event) => updateRow(index, { serialNumber: event.target.value })}
-                placeholder="AF3-2605-00012"
-                value={row.serialNumber}
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-semibold text-[#334155]">
-              Mã máy
-              <input
-                className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-                onChange={(event) => updateRow(index, { machineCode: event.target.value })}
-                placeholder="Tự sinh nếu trống"
-                value={row.machineCode}
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-semibold text-[#334155]">
-              Tên máy / ghi chú
-              <input
-                className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-                onChange={(event) => updateRow(index, { name: event.target.value })}
-                placeholder="Có thể bỏ trống"
-                value={row.name}
-              />
-            </label>
-            <button
-              className="grid size-11 place-items-center self-end rounded-xl border border-[#fee2e2] bg-[#fff7f7] text-[#dc2626] transition hover:-translate-y-0.5 hover:bg-[#fee2e2]"
-              disabled={editableRows.length === 1 && !row.serialNumber && !row.machineCode && !row.name}
-              onClick={() => removeRow(index)}
-              title="Xóa máy"
-              type="button"
-            >
-              <Trash2 size={16} />
-            </button>
+          <div className="grid gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-3 shadow-[0_8px_20px_rgba(15,23,42,0.035)]" key={index}>
+            <div className="grid gap-3 lg:grid-cols-[minmax(170px,1fr)_minmax(150px,0.8fr)_minmax(170px,1fr)_auto]">
+              <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+                Serial
+                <input
+                  className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                  onChange={(event) => updateRow(index, { serialNumber: event.target.value })}
+                  placeholder="AF3-2605-00012"
+                  value={row.serialNumber}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+                Mã máy
+                <input
+                  className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                  onChange={(event) => updateRow(index, { machineCode: event.target.value })}
+                  placeholder="Tự sinh nếu trống"
+                  value={row.machineCode}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+                Tên máy / ghi chú
+                <input
+                  className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                  onChange={(event) => updateRow(index, { name: event.target.value })}
+                  placeholder="Có thể bỏ trống"
+                  value={row.name}
+                />
+              </label>
+              <button
+                className="grid size-11 place-items-center self-end rounded-xl border border-[#fee2e2] bg-[#fff7f7] text-[#dc2626] transition hover:-translate-y-0.5 hover:bg-[#fee2e2]"
+                disabled={editableRows.length === 1 && !row.serialNumber && !row.machineCode && !row.name}
+                onClick={() => removeRow(index)}
+                title="Xóa máy"
+                type="button"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-[#e2e8f0] bg-[#fbfdff] p-3">
+              <span className="mb-3 block text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Phụ kiện của máy này</span>
+              {accessoryMode === 'generic' ? (
+                <textarea
+                  className="min-h-24 w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2 text-sm text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                  onChange={(event) => updateRow(index, { accessoriesText: event.target.value })}
+                  placeholder={'Bộ dây nguồn | ACC-001\nCáp kết nối | ACC-002'}
+                  value={formatMachineAccessoriesText(row.accessoriesText)}
+                />
+              ) : (
+                <MachineAccessoryEditor
+                  compact
+                  mode={accessoryMode}
+                  onChange={(nextAccessories) => updateRow(index, { accessoriesText: nextAccessories })}
+                  value={row.accessoriesText || defaultAccessoriesText}
+                />
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -1765,6 +1775,7 @@ function parseProductMachineRowsForEditor(value: string): ProductMachineRow[] {
         serialNumber: String(row?.serialNumber ?? '').trim(),
         machineCode: String(row?.machineCode ?? '').trim(),
         name: String(row?.name ?? '').trim(),
+        accessoriesText: String(row?.accessoriesText ?? ''),
       }));
     }
   } catch {
@@ -1779,6 +1790,7 @@ function parseProductMachineRowsForEditor(value: string): ProductMachineRow[] {
         serialNumber,
         machineCode,
         name,
+        accessoriesText: '',
       };
     });
 }
@@ -1788,9 +1800,10 @@ function serializeProductMachineRows(rows: ProductMachineRow[]) {
     serialNumber: row.serialNumber.trim(),
     machineCode: row.machineCode.trim(),
     name: row.name.trim(),
+    accessoriesText: row.accessoriesText,
   }));
 
-  return normalizedRows.some((row) => row.serialNumber || row.machineCode || row.name) ? JSON.stringify(normalizedRows) : '';
+  return normalizedRows.some((row) => row.serialNumber || row.machineCode || row.name || row.accessoriesText) ? JSON.stringify(normalizedRows) : '';
 }
 
 function findDuplicatedSerial(rows: ProductMachineRow[]) {
