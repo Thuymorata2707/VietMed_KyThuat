@@ -1,4 +1,4 @@
-import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Save, Search } from 'lucide-react';
+import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, FocusEvent, FormEvent, ReactNode } from 'react';
@@ -779,16 +779,10 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
               </span>
             </div>
             <div className="grid min-w-0 gap-4">
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
-                Danh sách máy
-                <textarea
-                  className="min-h-44 min-w-0 rounded-2xl border border-[#cbd5e1] bg-[#fbfdff] px-4 py-3 font-mono text-sm leading-6 text-[#172033] outline-none transition placeholder:font-sans placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:bg-white focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-                  onChange={(event) => updateField('machineRows', event.target.value)}
-                  placeholder={'AF3-2605-00012 | MAY-00012\nAF3-2605-00013\nAF3-2605-00014 | MAY-00014 | Máy demo phòng xét nghiệm'}
-                  required
-                  value={form.machineRows}
-                />
-              </label>
+              <div className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+                <span>Danh sách máy</span>
+                <ProductMachineRowsEditor onChange={(value) => updateField('machineRows', value)} value={form.machineRows} />
+              </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
                   Ngày sản xuất
@@ -912,6 +906,103 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
         </aside>
       </form>
     </PageFrame>
+  );
+}
+
+function ProductMachineRowsEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const rows = parseProductMachineRowsForEditor(value);
+  const editableRows = rows.length ? rows : [{ serialNumber: '', machineCode: '', name: '' }];
+
+  function setRows(nextRows: ProductMachineRow[]) {
+    onChange(serializeProductMachineRows(nextRows));
+  }
+
+  function updateRow(index: number, patch: Partial<ProductMachineRow>) {
+    setRows(editableRows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
+  }
+
+  function addRow() {
+    setRows([...editableRows, { serialNumber: '', machineCode: '', name: '' }]);
+  }
+
+  function removeRow(index: number) {
+    const nextRows = editableRows.filter((_, rowIndex) => rowIndex !== index);
+    setRows(nextRows.length ? nextRows : [{ serialNumber: '', machineCode: '', name: '' }]);
+  }
+
+  function pasteBulk(rawValue: string) {
+    const pastedRows = parseProductMachineRowsForEditor(rawValue).filter((row) => row.serialNumber || row.machineCode || row.name);
+    if (!pastedRows.length) return;
+    const activeRows = editableRows.filter((row) => row.serialNumber || row.machineCode || row.name);
+    setRows([...activeRows, ...pastedRows]);
+  }
+
+  return (
+    <div className="grid gap-3 rounded-[20px] border border-[#dbe6f3] bg-[#f8fbff] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Nhập từng máy</span>
+        <button className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-3 text-sm font-semibold text-[#172033] shadow-[0_8px_18px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-[#93c5fd] hover:text-[#1d4ed8]" onClick={addRow} type="button">
+          <Plus size={15} />
+          Thêm máy
+        </button>
+      </div>
+
+      <div className="grid gap-3">
+        {editableRows.map((row, index) => (
+          <div className="grid gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] lg:grid-cols-[minmax(170px,1fr)_minmax(150px,0.8fr)_minmax(170px,1fr)_auto]" key={`${row.serialNumber}-${index}`}>
+            <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+              Serial
+              <input
+                className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                onChange={(event) => updateRow(index, { serialNumber: event.target.value })}
+                placeholder="AF3-2605-00012"
+                value={row.serialNumber}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+              Mã máy
+              <input
+                className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                onChange={(event) => updateRow(index, { machineCode: event.target.value })}
+                placeholder="Tự sinh nếu trống"
+                value={row.machineCode}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+              Tên máy / ghi chú
+              <input
+                className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                onChange={(event) => updateRow(index, { name: event.target.value })}
+                placeholder="Có thể bỏ trống"
+                value={row.name}
+              />
+            </label>
+            <button
+              className="grid size-11 place-items-center self-end rounded-xl border border-[#fee2e2] bg-[#fff7f7] text-[#dc2626] transition hover:-translate-y-0.5 hover:bg-[#fee2e2]"
+              disabled={editableRows.length === 1 && !row.serialNumber && !row.machineCode && !row.name}
+              onClick={() => removeRow(index)}
+              title="Xóa máy"
+              type="button"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <details className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-3 py-2">
+        <summary className="cursor-pointer text-sm font-semibold text-[#475569]">Dán nhanh nhiều dòng</summary>
+        <textarea
+          className="mt-3 min-h-28 w-full rounded-xl border border-[#cbd5e1] bg-[#fbfdff] px-3 py-2 font-mono text-sm leading-6 text-[#172033] outline-none transition placeholder:font-sans placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+          onBlur={(event) => {
+            pasteBulk(event.target.value);
+            event.currentTarget.value = '';
+          }}
+          placeholder={'Mỗi dòng: Serial | Mã máy | Tên máy\nAF3-2605-00012 | MAY-00012\nAF3-2605-00013'}
+        />
+        <span className="mt-2 block text-xs font-medium leading-5 text-[#64748b]">Dán xong bấm ra ngoài ô này, hệ thống sẽ tự tách thành từng dòng máy.</span>
+      </details>
+    </div>
   );
 }
 
@@ -1661,10 +1752,27 @@ function emptyProductForm(machineModelId: string): ProductForm {
 }
 
 function parseProductMachineRows(value: string): ProductMachineRow[] {
+  return parseProductMachineRowsForEditor(value).filter((row) => row.serialNumber);
+}
+
+function parseProductMachineRowsForEditor(value: string): ProductMachineRow[] {
+  if (!value.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(value) as ProductMachineRow[];
+    if (Array.isArray(parsed)) {
+      return parsed.map((row) => ({
+        serialNumber: String(row?.serialNumber ?? '').trim(),
+        machineCode: String(row?.machineCode ?? '').trim(),
+        name: String(row?.name ?? '').trim(),
+      }));
+    }
+  } catch {
+    // Fall back to the legacy pasted text format below.
+  }
+
   return value
     .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
     .map((line) => {
       const [serialNumber = '', machineCode = '', name = ''] = line.split(/[|\t]/).map((part) => part.trim());
       return {
@@ -1672,8 +1780,17 @@ function parseProductMachineRows(value: string): ProductMachineRow[] {
         machineCode,
         name,
       };
-    })
-    .filter((row) => row.serialNumber);
+    });
+}
+
+function serializeProductMachineRows(rows: ProductMachineRow[]) {
+  const normalizedRows = rows.map((row) => ({
+    serialNumber: row.serialNumber.trim(),
+    machineCode: row.machineCode.trim(),
+    name: row.name.trim(),
+  }));
+
+  return normalizedRows.some((row) => row.serialNumber || row.machineCode || row.name) ? JSON.stringify(normalizedRows) : '';
 }
 
 function findDuplicatedSerial(rows: ProductMachineRow[]) {
