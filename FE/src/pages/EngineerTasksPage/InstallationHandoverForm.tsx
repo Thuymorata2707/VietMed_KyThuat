@@ -3,6 +3,7 @@ import type { CreateTicketForm, InstallationDeviceItem } from './types';
 
 type InstallationHandoverFormProps = {
   form: CreateTicketForm;
+  machineModels: MachineModelOption[];
   user: ApiUser;
   updateForm: (patch: Partial<CreateTicketForm>) => void;
   updateDeviceItem: (index: number, patch: Partial<InstallationDeviceItem>) => void;
@@ -10,9 +11,18 @@ type InstallationHandoverFormProps = {
   removeDeviceItem: (index: number) => void;
 };
 
+type MachineModelOption = {
+  id: string;
+  code?: string | null;
+  name?: string | null;
+  displayName?: string | null;
+  manufacturer?: string | null;
+};
+
 export function InstallationHandoverForm({
   addDeviceItem,
   form,
+  machineModels,
   removeDeviceItem,
   updateDeviceItem,
   updateForm,
@@ -70,7 +80,23 @@ export function InstallationHandoverForm({
             </label>
             <label>
               Model
-              <input onChange={(event) => updateDeviceItem(index, { model: event.target.value })} value={item.model} />
+              <select
+                onChange={(event) => {
+                  const model = machineModels.find((option) => option.id === event.target.value);
+                  updateDeviceItem(index, {
+                    itemName: model?.displayName || model?.name || model?.code || item.itemName,
+                    model: model?.code || model?.displayName || model?.name || '',
+                  });
+                }}
+                value={modelIdByName(machineModels, item.model)}
+              >
+                <option value="">Chọn model</option>
+                {machineModels.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {machineModelLabel(model)}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               S/N
@@ -127,4 +153,14 @@ export function InstallationHandoverForm({
       ) : null}
     </>
   );
+}
+
+function machineModelLabel(model: MachineModelOption) {
+  return [model.code, model.displayName || model.name, model.manufacturer].filter(Boolean).join(' - ');
+}
+
+function modelIdByName(models: MachineModelOption[], value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return '';
+  return models.find((model) => [model.code, model.displayName, model.name].filter(Boolean).some((item) => String(item).trim().toLowerCase() === normalized))?.id || '';
 }

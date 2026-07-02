@@ -1,7 +1,7 @@
 import { ArrowLeft, Download, Loader2, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
+import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -30,8 +30,17 @@ type MaintenanceForm = {
   address: string;
   contactPhone: string;
   deviceName: string;
+  machineModelId: string;
   modelName: string;
   serialNumber: string;
+};
+
+type MachineModelOption = {
+  id: string;
+  code?: string | null;
+  name?: string | null;
+  displayName?: string | null;
+  manufacturer?: string | null;
 };
 
 export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
@@ -46,6 +55,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
   const [success, setSuccess] = useState('');
   const [detail, setDetail] = useState<MaintenanceTask | null>(null);
   const [engineers, setEngineers] = useState<EngineerOption[]>([]);
+  const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
   const [form, setForm] = useState<MaintenanceForm>(() => emptyForm());
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
@@ -70,6 +80,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
       const maintenance = await apiFetch<MaintenanceTask>(`/maintenance/${id}`);
       setDetail(maintenance);
       setForm(buildForm(maintenance));
+      await loadMachineModels();
       if (isAdmin) {
         await loadEngineers();
       }
@@ -91,6 +102,15 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
       setEngineers(response.data);
     } catch {
       setEngineers([]);
+    }
+  }
+
+  async function loadMachineModels() {
+    try {
+      const result = await apiFetchAllPages<MachineModelOption>('/machine-models');
+      setMachineModels(result);
+    } catch {
+      setMachineModels([]);
     }
   }
 
@@ -290,12 +310,26 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                   <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
                 </label>
                 <label className={labelClass}>
-                  Tên thiết bị
-                  <input className={fieldClass} onChange={(event) => updateForm({ deviceName: event.target.value })} value={form.deviceName} />
-                </label>
-                <label className={labelClass}>
-                  Model
-                  <input className={fieldClass} onChange={(event) => updateForm({ modelName: event.target.value })} value={form.modelName} />
+                  Model / tên thiết bị
+                  <select
+                    className={fieldClass}
+                    onChange={(event) => {
+                      const model = machineModels.find((item) => item.id === event.target.value);
+                      updateForm({
+                        machineModelId: event.target.value,
+                        modelName: model?.name || model?.displayName || model?.code || '',
+                        deviceName: model?.displayName || model?.name || model?.code || '',
+                      });
+                    }}
+                    value={form.machineModelId || modelIdByName(machineModels, form.modelName)}
+                  >
+                    <option value="">Chọn model</option>
+                    {machineModels.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {machineModelLabel(model)}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className={`${labelClass} md:col-span-2`}>
                   Checklist
@@ -464,6 +498,7 @@ function emptyForm(): MaintenanceForm {
     address: '',
     contactPhone: '',
     deviceName: '',
+    machineModelId: '',
     modelName: '',
     serialNumber: '',
   };
@@ -483,6 +518,7 @@ function buildForm(maintenance: MaintenanceTask): MaintenanceForm {
     address: maintenance.address || '',
     contactPhone: maintenance.contactPhone || '',
     deviceName: maintenance.deviceName || maintenance.machine?.modelName || '',
+    machineModelId: '',
     modelName: maintenance.modelName || maintenance.machine?.modelName || '',
     serialNumber: maintenance.serialNumber || maintenance.machine?.serialNumber || '',
   };
@@ -563,6 +599,16 @@ function splitLines(value: string) {
 
 function dateInputValue(value?: string | null) {
   return value ? value.slice(0, 10) : '';
+}
+
+function machineModelLabel(model: MachineModelOption) {
+  return [model.code, model.displayName || model.name, model.manufacturer].filter(Boolean).join(' - ');
+}
+
+function modelIdByName(models: MachineModelOption[], value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return '';
+  return models.find((model) => [model.name, model.displayName, model.code].filter(Boolean).some((item) => String(item).trim().toLowerCase() === normalized))?.id || '';
 }
 
 const panelClass = 'rounded-[24px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_8px_24px_rgba(24,24,27,0.05)] sm:p-6';

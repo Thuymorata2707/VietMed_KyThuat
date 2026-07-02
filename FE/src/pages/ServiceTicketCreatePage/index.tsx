@@ -252,8 +252,8 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       const serialNumber = quickMachineForm.serialNumber.trim();
       const modelName = quickMachineForm.modelName.trim() || selectedModel?.name || selectedModel?.code || '';
 
-      if (!serialNumber || !modelName) {
-        throw new Error('Vui lòng nhập Serial và chọn model hoặc nhập tên model tạm.');
+      if (!serialNumber || !selectedModel || !modelName) {
+        throw new Error('Vui lòng nhập Serial và chọn model chuẩn.');
       }
 
       return apiFetch<MachineOption>('/machines', {
@@ -261,7 +261,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         body: JSON.stringify({
           serialNumber,
           machineModelId: selectedModel?.id,
-          modelName: selectedModel ? undefined : modelName,
+          modelName: undefined,
           name: quickMachineForm.name.trim() || selectedModel?.displayName || modelName,
           customerId: quickMachineForm.customerId || form.customerId || undefined,
           inventoryStatus: kind === 'installation' ? 'IN_STOCK' : 'INSTALLED',
@@ -556,7 +556,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
               {kind === 'repair' ? (
                 <RepairFields form={form} updateForm={updateForm} />
               ) : kind === 'maintenance' ? (
-                <MaintenanceFields form={form} updateForm={updateForm} />
+                <MaintenanceFields form={form} models={visibleMachineModels} updateForm={updateForm} />
               ) : (
                 <InstallationFields form={form} updateForm={updateForm} />
               )}
@@ -699,7 +699,7 @@ function RepairFields({ form, updateForm }: { form: TicketForm; updateForm: (pat
   );
 }
 
-function MaintenanceFields({ form, updateForm }: { form: TicketForm; updateForm: (patch: Partial<TicketForm>) => void }) {
+function MaintenanceFields({ form, models, updateForm }: { form: TicketForm; models: MachineModelOption[]; updateForm: (patch: Partial<TicketForm>) => void }) {
   return (
     <>
       <label className={labelClass}>
@@ -736,14 +736,7 @@ function MaintenanceFields({ form, updateForm }: { form: TicketForm; updateForm:
         Địa chỉ
         <input className={fieldClass} onChange={(event) => updateForm({ address: event.target.value })} value={form.address} />
       </label>
-      <label className={labelClass}>
-        Tên thiết bị
-        <input className={fieldClass} onChange={(event) => updateForm({ deviceName: event.target.value })} value={form.deviceName} />
-      </label>
-      <label className={labelClass}>
-        Model
-        <input className={fieldClass} onChange={(event) => updateForm({ modelName: event.target.value })} value={form.modelName} />
-      </label>
+      <ModelDeviceSelect form={form} models={models} updateForm={updateForm} />
       <label className={labelClass}>
         S/N
         <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
@@ -755,6 +748,35 @@ function MaintenanceFields({ form, updateForm }: { form: TicketForm; updateForm:
       <label className={wideLabelClass}>
         Ghi chú
         <textarea className={textareaClass} onChange={(event) => updateForm({ description: event.target.value })} value={form.description} />
+      </label>
+    </>
+  );
+}
+
+function ModelDeviceSelect({ form, models, updateForm }: { form: TicketForm; models: MachineModelOption[]; updateForm: (patch: Partial<TicketForm>) => void }) {
+  return (
+    <>
+      <label className={labelClass}>
+        Model / tên thiết bị
+        <select
+          className={fieldClass}
+          onChange={(event) => {
+            const model = models.find((item) => item.id === event.target.value);
+            updateForm({
+              machineModelId: event.target.value,
+              modelName: model?.name || model?.displayName || model?.code || '',
+              deviceName: model?.displayName || model?.name || model?.code || '',
+            });
+          }}
+          value={form.machineModelId}
+        >
+          <option value="">Chọn model</option>
+          {models.map((model) => (
+            <option key={model.id} value={model.id}>
+              {modelLabel(model)}
+            </option>
+          ))}
+        </select>
       </label>
     </>
   );
@@ -885,13 +907,13 @@ function QuickMachinePanel({
             const model = models.find((item) => item.id === event.target.value);
             updateForm({
               machineModelId: event.target.value,
-              modelName: model?.name || model?.code || form.modelName,
-              name: form.name || model?.displayName || model?.name || '',
+              modelName: model?.name || model?.code || '',
+              name: model?.displayName || model?.name || model?.code || '',
             });
           }}
           value={form.machineModelId}
         >
-          <option value="">Chọn model chuẩn hoặc nhập model tạm bên dưới</option>
+          <option value="">Chọn model chuẩn</option>
           {models.map((model) => (
             <option key={model.id} value={model.id}>
               {[model.code, model.name, model.manufacturer].filter(Boolean).join(' - ')}
@@ -902,14 +924,6 @@ function QuickMachinePanel({
       <label className={labelClass}>
         Serial Number
         <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
-      </label>
-      <label className={labelClass}>
-        Model/Tên máy tạm
-        <input className={fieldClass} onChange={(event) => updateForm({ modelName: event.target.value })} value={form.modelName} />
-      </label>
-      <label className={labelClass}>
-        Tên thiết bị
-        <input className={fieldClass} onChange={(event) => updateForm({ name: event.target.value })} value={form.name} />
       </label>
       <label className={labelClass}>
         Khách hàng

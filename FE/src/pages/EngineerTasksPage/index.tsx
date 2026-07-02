@@ -579,7 +579,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       ...current,
       machineModelId,
       modelName: model?.name || current.modelName,
-      name: current.name || model?.displayName || model?.name || '',
+      name: model?.displayName || model?.name || model?.code || '',
     }));
   }
 
@@ -601,8 +601,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     const customerId = quickMachineForm.customerId || createForm.customerId;
     const inventoryStatus = createForm.kind === 'installation' ? 'IN_STOCK' : 'INSTALLED';
 
-    if (!serialNumber || !modelName) {
-      setError('Vui lòng nhập Serial và Model/Tên thiết bị để tạo thiết bị nhanh.');
+    if (!serialNumber || !selectedModel || !modelName) {
+      setError('Vui lòng nhập Serial và chọn model chuẩn để tạo thiết bị nhanh.');
       return;
     }
 
@@ -622,7 +622,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         body: JSON.stringify({
           serialNumber,
           machineModelId: selectedModel?.id,
-          modelName: selectedModel ? undefined : modelName,
+          modelName: undefined,
           name: name || modelName,
           customerId: customerId || undefined,
           primaryEngineerId: isEngineerUser(user) ? user.id : undefined,
@@ -1134,18 +1134,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     value={quickMachineForm.serialNumber}
                   />
                 </label>
-                <label>
-                  Model/Tên máy tạm
-                  <input
-                    disabled={Boolean(quickMachineForm.machineModelId)}
-                    onChange={(event) => updateQuickMachineForm({ modelName: event.target.value })}
-                    value={quickMachineForm.modelName}
-                  />
-                </label>
-                <label>
-                  Tên thiết bị
-                  <input onChange={(event) => updateQuickMachineForm({ name: event.target.value })} value={quickMachineForm.name} />
-                </label>
                 <AsyncEntityPicker<PickerCustomer>
                   disabled={loadingCreateOptions}
                   endpoint="/customers?limit=20"
@@ -1311,14 +1299,13 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   <input onChange={(event) => updateCreateForm({ address: event.target.value })} value={createForm.address} />
                 </label>
                 <div className="create-form-section">Thông tin thiết bị</div>
-                <label>
-                  Tên thiết bị
-                  <input onChange={(event) => updateCreateForm({ deviceName: event.target.value })} value={createForm.deviceName} />
-                </label>
-                <label>
-                  Model
-                  <input onChange={(event) => updateCreateForm({ modelName: event.target.value })} value={createForm.modelName} />
-                </label>
+                <CreateModelDevicePicker
+                  loading={loadingCreateOptions}
+                  machineModelOptions={machineModelOptions}
+                  onChange={updateCreateForm}
+                  user={user}
+                  value={createForm.machineModelId}
+                />
                 <label>
                   S/N
                   <input onChange={(event) => updateCreateForm({ serialNumber: event.target.value })} value={createForm.serialNumber} />
@@ -1388,14 +1375,13 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   <input onChange={(event) => updateCreateForm({ address: event.target.value })} value={createForm.address} />
                 </label>
                 <div className="create-form-section">Thông tin thiết bị</div>
-                <label>
-                  Tên thiết bị
-                  <input onChange={(event) => updateCreateForm({ deviceName: event.target.value })} value={createForm.deviceName} />
-                </label>
-                <label>
-                  Model
-                  <input onChange={(event) => updateCreateForm({ modelName: event.target.value })} value={createForm.modelName} />
-                </label>
+                <CreateModelDevicePicker
+                  loading={loadingCreateOptions}
+                  machineModelOptions={machineModelOptions}
+                  onChange={updateCreateForm}
+                  user={user}
+                  value={createForm.machineModelId}
+                />
                 <label>
                   S/N
                   <input onChange={(event) => updateCreateForm({ serialNumber: event.target.value })} value={createForm.serialNumber} />
@@ -1420,6 +1406,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <InstallationHandoverForm
                   addDeviceItem={addInstallationDeviceItem}
                   form={createForm}
+                  machineModels={machineModelOptions}
                   removeDeviceItem={removeInstallationDeviceItem}
                   updateDeviceItem={updateInstallationDeviceItem}
                   updateForm={updateCreateForm}
@@ -1926,6 +1913,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <InstallationHandoverForm
                   addDeviceItem={addInstallationEditDeviceItem}
                   form={installationEditForm}
+                  machineModels={machineModelOptions}
                   removeDeviceItem={removeInstallationEditDeviceItem}
                   updateDeviceItem={updateInstallationEditDeviceItem}
                   updateForm={updateInstallationEditForm}
@@ -2151,6 +2139,51 @@ function EngineerTaskRow({ onOpen, task }: { onOpen: (task: EngineerTask) => voi
         )}
       </div>
     </article>
+  );
+}
+
+function CreateModelDevicePicker({
+  loading,
+  machineModelOptions,
+  onChange,
+  user,
+  value,
+}: {
+  loading: boolean;
+  machineModelOptions: QuickMachineModel[];
+  onChange: (patch: Partial<CreateTicketForm>) => void;
+  user: ApiUser;
+  value: string;
+}) {
+  return (
+    <div className="machine-picker">
+      <AsyncEntityPicker<QuickMachineModel>
+        className="engineer-picker"
+        disabled={loading}
+        endpoint="/machine-models?limit=100"
+        formatOption={(model) => ({
+          label: quickModelLabel(model),
+          row: model,
+          value: model.id,
+        })}
+        initialOptions={machineModelOptions.map((model) => ({
+          label: quickModelLabel(model),
+          row: model,
+          value: model.id,
+        }))}
+        label="Model / tên thiết bị"
+        onChange={(nextValue, model) => {
+          onChange({
+            machineModelId: nextValue,
+            modelName: model?.name || model?.displayName || model?.code || '',
+            deviceName: model?.displayName || model?.name || model?.code || '',
+          });
+        }}
+        placeholder="Tìm model, tên máy hoặc hãng"
+        rowFilter={(model) => canEngineerSeeModel(user, model)}
+        value={value}
+      />
+    </div>
   );
 }
 
