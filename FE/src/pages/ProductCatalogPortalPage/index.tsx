@@ -221,12 +221,13 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
       {loading ? <CatalogLoading label="Đang tải model" /> : null}
       {!loading && visibleModels.length === 0 ? <CatalogEmpty label="Không có model phù hợp." /> : null}
 
-      {!loading ? (
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visibleModels.map((model) => (
-            <CatalogModelTile canAddProduct={canAddProduct} catalogSearch={catalogSearch} key={model.id} model={model} stock={stockByModel[model.id]} />
-          ))}
-        </section>
+      {!loading && visibleModels.length ? (
+        <CatalogModelTable
+          canAddProduct={canAddProduct}
+          catalogSearch={catalogSearch}
+          models={visibleModels}
+          stockByModel={stockByModel}
+        />
       ) : null}
     </PageFrame>
   );
@@ -330,25 +331,87 @@ function IndustryPortalCard({ item }: { item: { id: string; name: string; expert
   );
 }
 
-function CatalogModelTile({ canAddProduct, catalogSearch, model, stock }: { canAddProduct: boolean; catalogSearch: string; model: MachineModel; stock?: ModelStock }) {
+function CatalogModelTable({
+  canAddProduct,
+  catalogSearch,
+  models,
+  stockByModel,
+}: {
+  canAddProduct: boolean;
+  catalogSearch: string;
+  models: MachineModel[];
+  stockByModel: Record<string, ModelStock>;
+}) {
+  return (
+    <section className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e4e7] bg-[#fafafa] px-4 py-3">
+        <div>
+          <span className="text-xs font-black uppercase tracking-[0.12em] text-[#667985]">Danh sách model</span>
+          <h2 className="mt-1 text-lg font-black tracking-[-0.02em] text-[#1f1f1f]">Model theo ngành hàng</h2>
+        </div>
+        <span className="rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-black text-[#333333]">
+          {models.length} model
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[980px] border-collapse text-left">
+          <thead className="bg-white text-xs font-black uppercase tracking-[0.08em] text-[#667985]">
+            <tr className="border-b border-[#e4e4e7]">
+              <th className="px-4 py-3">Model</th>
+              <th className="px-4 py-3">Tên sản phẩm</th>
+              <th className="px-4 py-3">Dòng sản phẩm</th>
+              <th className="px-4 py-3">Hãng</th>
+              <th className="px-4 py-3">Xuất xứ</th>
+              <th className="px-4 py-3">Kho</th>
+              <th className="px-4 py-3 text-right">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {models.map((model) => (
+              <CatalogModelRow
+                canAddProduct={canAddProduct}
+                catalogSearch={catalogSearch}
+                key={model.id}
+                model={model}
+                stock={stockByModel[model.id]}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function CatalogModelRow({ canAddProduct, catalogSearch, model, stock }: { canAddProduct: boolean; catalogSearch: string; model: MachineModel; stock?: ModelStock }) {
   const total = stock?.total ?? 0;
   const inStock = stock?.inStock ?? 0;
 
   return (
-    <article className="group grid min-h-[176px] grid-cols-[64px_minmax(0,1fr)] gap-4 rounded-[28px] border border-[#e4e4e7] bg-white/94 p-5 shadow-[0_8px_24px_rgba(24,24,27,0.05)] transition hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_14px_34px_rgba(24,24,27,0.08)]">
-      <Link to={`/business-lines/models/${model.id}${catalogSearch}`}>
-        <ModelImage large model={model} />
-      </Link>
-      <div className="grid min-w-0 gap-3">
-        <Link className="min-w-0" to={`/business-lines/models/${model.id}${catalogSearch}`}>
-          <strong className="block truncate text-xl font-black text-[#1f1f1f]">{modelShortLabel(model)}</strong>
-          <span className="mt-1 block line-clamp-2 text-sm font-semibold leading-5 text-[#667985]">{modelDetailLabel(model)}</span>
+    <tr className="border-b border-[#eeeeee] transition last:border-b-0 hover:bg-[#fafafa]">
+      <td className="px-4 py-4">
+        <Link className="flex min-w-0 items-center gap-3" to={`/business-lines/models/${model.id}${catalogSearch}`}>
+          <ModelImage model={model} />
+          <strong className="min-w-0 truncate text-base font-black text-[#1f1f1f]">{modelShortLabel(model)}</strong>
         </Link>
+      </td>
+      <td className="px-4 py-4">
+        <span className="block max-w-[360px] truncate text-sm font-semibold text-[#333333]">{modelProductName(model)}</span>
+        <span className="mt-1 block max-w-[360px] truncate text-xs font-medium text-[#667985]">{modelDetailLabel(model)}</span>
+      </td>
+      <td className="px-4 py-4 text-sm">
+        <span className="block font-semibold text-[#333333]">{model.businessLine?.name || 'Chưa có dòng'}</span>
+        <span className="mt-1 block text-xs font-medium text-[#667985]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</span>
+      </td>
+      <td className="px-4 py-4 text-sm font-semibold text-[#333333]">{model.manufacturer || 'Chưa có hãng'}</td>
+      <td className="px-4 py-4 text-sm font-semibold text-[#333333]">{modelOrigin(model) || '-'}</td>
+      <td className="px-4 py-4">
         <div className="flex flex-wrap gap-2 text-xs font-bold">
-          <span className="rounded-full border border-[#e4e4e7] bg-[#fafafa] px-2.5 py-1 text-[#333333]">{model.manufacturer || 'Chưa có hãng'}</span>
           <span className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{inStock}/{total} kho</span>
         </div>
-        <div className="flex flex-wrap gap-2">
+      </td>
+      <td className="px-4 py-4">
+        <div className="flex justify-end gap-2">
           <Link className="secondary-button compact bg-white" to={`/business-lines/models/${model.id}${catalogSearch}`}>
             Chi tiết
           </Link>
@@ -359,8 +422,8 @@ function CatalogModelTile({ canAddProduct, catalogSearch, model, stock }: { canA
             </Link>
           ) : null}
         </div>
-      </div>
-    </article>
+      </td>
+    </tr>
   );
 }
 
@@ -480,8 +543,19 @@ function modelDetailLabel(model: MachineModel) {
   return [model.name, model.productLine, modelOrigin(model), model.businessLine?.name].filter(Boolean).join(' - ') || 'Chưa có mô tả model';
 }
 
+function modelProductName(model: MachineModel) {
+  const baseName = model.name || model.displayName || model.code;
+  const modelName = modelShortLabel(model);
+  return baseName?.toLowerCase().includes(modelName.toLowerCase()) ? baseName : `${baseName} ${modelName}`.trim();
+}
+
 function modelOrigin(model: MachineModel) {
   return model.countryOfOrigin || model.businessLine?.countryOfOrigin || '';
+}
+
+function productCategoryLabel(value?: string | null) {
+  if (!value) return 'Chưa phân loại';
+  return value;
 }
 
 function buildCatalogSearch(industryId: string, query: string) {

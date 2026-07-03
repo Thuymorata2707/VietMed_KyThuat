@@ -265,7 +265,6 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           : current,
       );
       setForm((current) => ({ ...current, customerId: customer.id }));
-      setQuickMachineForm((current) => ({ ...current, customerId: customer.id }));
       setQuickCustomerForm(emptyQuickCustomerForm(user));
       setShowQuickCustomer(false);
       setSuccess('Đã tạo khách hàng và chọn vào phiếu.');
@@ -289,7 +288,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           machineModelId: selectedModel?.id,
           modelName: undefined,
           name: quickMachineForm.name.trim() || selectedModel?.displayName || modelName,
-          customerId: quickMachineForm.customerId || form.customerId || undefined,
+          customerId: kind === 'installation' ? undefined : form.customerId || undefined,
           inventoryStatus: kind === 'installation' ? 'IN_STOCK' : 'INSTALLED',
           status: 'ACTIVE',
           dataStatus: 'PENDING_REVIEW',
@@ -306,7 +305,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       setForm((current) => ({
         ...current,
         machineId: machine.id,
-        customerId: current.customerId || quickMachineForm.customerId || machine.customer?.id || '',
+        customerId: current.customerId || machine.customer?.id || '',
         deviceName: current.deviceName || machine.name || quickMachineForm.modelName,
         modelName: current.modelName || machine.modelName || quickMachineForm.modelName,
         serialNumber: current.serialNumber || machine.serialNumber || quickMachineForm.serialNumber,
@@ -641,7 +640,8 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
             {showQuickMachine ? (
               <QuickMachinePanel
                 creating={creatingMachine}
-                customers={customers}
+                customerName={customerNameForSummary(undefined, customers, form.customerId)}
+                hasTicketCustomer={Boolean(form.customerId)}
                 form={quickMachineForm}
                 kind={kind}
                 models={visibleMachineModels}
@@ -972,8 +972,9 @@ function QuickCustomerPanel({
 
 function QuickMachinePanel({
   creating,
-  customers,
+  customerName,
   form,
+  hasTicketCustomer,
   kind,
   models,
   onCreate,
@@ -984,8 +985,9 @@ function QuickMachinePanel({
 }: {
   accessoryMode: 'probe' | 'endoscopy' | null;
   creating: boolean;
-  customers: CustomerOption[];
+  customerName: string;
   form: QuickMachineForm;
+  hasTicketCustomer: boolean;
   kind: TicketKind;
   models: MachineModelOption[];
   onCreate: () => void;
@@ -1029,17 +1031,15 @@ function QuickMachinePanel({
             Serial Number
             <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
           </label>
-          <label className={labelClass}>
-            Khách hàng
-            <select className={fieldClass} onChange={(event) => updateForm({ customerId: event.target.value })} value={form.customerId}>
-              <option value="">Không chọn</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customerLabel(customer)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className={`${labelClass} rounded-2xl border border-[#dbe6f3] bg-white px-3 py-2.5`}>
+            Khách hàng của phiếu
+            <strong className="mt-1 block min-h-10 rounded-xl bg-[#f8fafc] px-3 py-2 text-sm text-[#172033]">
+              {hasTicketCustomer ? customerName : 'Chưa chọn khách hàng'}
+            </strong>
+            <span className="mt-1 text-xs font-semibold text-[#64748b]">
+              {kind === 'installation' ? 'Máy sẽ gắn khách hàng sau khi duyệt lắp đặt.' : 'Thiết bị dùng theo khách hàng đã chọn trên phiếu.'}
+            </span>
+          </div>
           <div className="md:col-span-2">
             {supportsAccessories ? (
               <MachineAccessoryEditor compact mode={accessoryMode ?? 'probe'} onChange={(value) => updateForm({ accessoriesText: value })} value={form.accessoriesText} />
