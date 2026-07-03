@@ -1,5 +1,4 @@
 import { ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import type { EngineerTask } from '../types';
 import {
   reviewStatusLabel,
@@ -17,7 +16,6 @@ import {
   taskModelText,
   taskSerialText,
   taskTitle,
-  taskUpdateHref,
 } from '../utils';
 
 type EngineerTaskRowProps = {
@@ -26,7 +24,6 @@ type EngineerTaskRowProps = {
 };
 
 export function EngineerTaskRow({ onOpen, task }: EngineerTaskRowProps) {
-  const actionHref = taskUpdateHref(task);
   const attention = taskAttention(task);
   const machine = task.machine?.machineCode || task.machine?.serialNumber || taskSerialText(task) || 'Chưa có mã máy';
   const model = task.machine?.modelName || taskModelText(task) || 'Chưa có model';
@@ -65,17 +62,10 @@ export function EngineerTaskRow({ onOpen, task }: EngineerTaskRowProps) {
 
       <div className="engineer-task-row__action">
         <span className={`engineer-next-step ${attention.tone}`}>{attention.label}</span>
-        {actionHref ? (
-          <Link className="task-action" to={actionHref}>
-            Nhập kết quả
-            <ArrowRight size={15} />
-          </Link>
-        ) : (
-          <button className="task-action" onClick={() => onOpen(task)} type="button">
-            Nhập kết quả
-            <ArrowRight size={15} />
-          </button>
-        )}
+        <button className="task-action" onClick={() => onOpen(task)} type="button">
+          Nhập kết quả
+          <ArrowRight size={15} />
+        </button>
       </div>
     </article>
   );

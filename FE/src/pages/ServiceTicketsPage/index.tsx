@@ -10,6 +10,7 @@ import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
 import { displayLabel } from '../../utils/displayLabels';
+import { isTechnicalUser, technicalUserName } from '../../utils/technicalUsers';
 
 type ServiceTicketKind = 'repairs' | 'maintenance';
 type BoardKind = ServiceTicketKind | 'installations';
@@ -27,6 +28,10 @@ type EngineerOption = {
   id: string;
   email: string;
   fullName?: string | null;
+  engineerProfile?: unknown;
+  role?: { name?: string | null } | null;
+  roleName?: string | null;
+  status?: string | null;
 };
 
 type MachineSummary = {
@@ -78,6 +83,11 @@ type InstallationRow = {
   installedAt?: string | null;
   reviewStatus?: string | null;
   installedBy?: EngineerOption | null;
+  installedDeviceItems?: Array<{
+    itemName?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+  }> | null;
   machine?: MachineSummary | null;
   customer?: {
     name?: string | null;
@@ -272,13 +282,13 @@ function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh:
         <div>
           <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#e4e4e7] bg-white/84 px-4 text-sm font-bold text-[#18181b] shadow-[0_10px_28px_rgba(24,24,27,0.08)]">
             <span className="h-2.5 w-2.5 rounded-full bg-[#18181b]" />
-            Trung tâm phiếu kỹ thuật
+            Kho phiếu kỹ thuật
           </span>
           <h1 className="mt-5 max-w-[760px] text-[clamp(38px,6vw,76px)] font-black leading-[0.96] tracking-[-0.055em] text-[#1f1f1f]">
             Tổng hợp phiếu
           </h1>
           <p className="mt-4 max-w-2xl text-[15px] font-semibold leading-7 text-[#667985]">
-            Chọn loại phiếu trước, sau đó mới xem danh sách và bộ lọc riêng. Cách này giúp nghiệp vụ sửa chữa, bảo trì và lắp đặt không bị lẫn vào nhau.
+            Chọn đúng loại phiếu để tạo mới hoặc tra cứu lịch sử. Admin xử lý phân công và duyệt kết quả ở màn Điều phối & duyệt.
           </p>
         </div>
         <button className="secondary-button bg-white/86" disabled={loading} onClick={onRefresh} type="button">
@@ -418,8 +428,9 @@ function OperationsBoard({
   const engineersQuery = useQuery({
     queryKey: queryKeys.serviceTickets.engineers,
     queryFn: async () => {
-      const result = await apiFetch<Paginated<EngineerOption> | EngineerOption[]>('/users?limit=100&roleName=engineer&status=ACTIVE');
-      return Array.isArray(result) ? result : result.data ?? [];
+      const result = await apiFetch<Paginated<EngineerOption> | EngineerOption[]>('/users?limit=100&status=ACTIVE');
+      const users = Array.isArray(result) ? result : result.data ?? [];
+      return users.filter(isTechnicalUser);
     },
   });
 
@@ -504,7 +515,7 @@ function OperationsBoard({
 
             <div className="flex flex-wrap gap-2 text-xs font-bold text-[#667985]">
               <FilterSummary label="Nhóm" value={groupOptions.find((option) => option.value === groupBy)?.label || 'Theo ngày'} />
-              {selectedEngineer ? <FilterSummary label="Kỹ sư" value={selectedEngineer.fullName || selectedEngineer.email} /> : null}
+              {selectedEngineer ? <FilterSummary label="Kỹ sư" value={technicalUserName(selectedEngineer)} /> : null}
               {productIndustryId ? <FilterSummary label="Ngành hàng" value="Đang lọc" /> : null}
             </div>
           </div>
@@ -518,7 +529,7 @@ function OperationsBoard({
                   <option value="">Tất cả kỹ sư</option>
                   {engineers.map((engineer) => (
                     <option key={engineer.id} value={engineer.id}>
-                      {engineer.fullName || engineer.email}
+                      {technicalUserName(engineer)}
                     </option>
                   ))}
                 </select>
@@ -658,7 +669,7 @@ function TicketCard({ item, onView }: { item: BoardItem; onView: (item: BoardIte
       <div className="grid justify-items-start gap-2">
         <Badge tone={statusTone(item.status)}>{displayLabel(item.status)}</Badge>
         {item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? <Badge tone={reviewTone(item.reviewStatus)}>{reviewLabel(item.reviewStatus)}</Badge> : null}
-        <span className="text-[13px] font-semibold text-[#333333]">{item.engineer?.fullName || item.engineer?.email || 'Chưa phân kỹ sư'}</span>
+        <span className="text-[13px] font-semibold text-[#333333]">{item.engineer ? technicalUserName(item.engineer) : 'Chưa phân kỹ sư'}</span>
       </div>
       <div className="grid gap-2" onClick={(event) => event.stopPropagation()}>
         <Link className="primary-button justify-center rounded-2xl" to={editHref(item)}>
@@ -705,7 +716,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
               <div className="grid gap-3 sm:grid-cols-2">
                 <PreviewField label="Loại phiếu" value={kindLabel(item.kind)} />
                 <PreviewField label="Ngày ghi nhận" value={item.date ? formatDate(item.date) : 'Chưa có ngày'} />
-                <PreviewField label="Kỹ sư phụ trách" value={item.engineer?.fullName || item.engineer?.email || 'Chưa phân kỹ sư'} />
+                <PreviewField label="Kỹ sư phụ trách" value={item.engineer ? technicalUserName(item.engineer) : 'Chưa phân kỹ sư'} />
                 <PreviewField label="Ngành hàng" value={item.productIndustry || 'Chưa phân ngành'} />
                 <PreviewField label="Nội dung phụ" value={item.secondary || 'Chưa có'} />
                 <PreviewField label="Bảo hành" value={item.warrantyEndDate ? `Đến ${formatDate(item.warrantyEndDate)}` : 'Chưa có thông tin'} />
@@ -802,7 +813,7 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
     return {
       id: item.id,
       code: item.code || item.id,
-      title: `Lắp đặt ${machine?.machineCode || machine?.serialNumber || item.plannedMachineModel?.displayName || item.plannedMachineModel?.name || item.plannedModelName || item.code || ''}`.trim(),
+      title: installationTitle(item),
       kind: 'installation',
       status: item.status || 'PENDING',
       reviewStatus: item.reviewStatus,
@@ -873,7 +884,7 @@ function groupItems(items: BoardItem[], groupBy: GroupByKey) {
 
 function groupKey(item: BoardItem, groupBy: GroupByKey) {
   if (groupBy === 'date') return item.date ? safeDateKey(item.date) : '__missing__';
-  if (groupBy === 'engineer') return item.engineer?.fullName || item.engineer?.email || '__missing__';
+  if (groupBy === 'engineer') return item.engineer ? technicalUserName(item.engineer) : '__missing__';
   if (groupBy === 'industry') return item.productIndustry || '__missing__';
   return customerText(item) === 'Chưa có khách hàng' ? '__missing__' : customerText(item);
 }
@@ -906,6 +917,23 @@ function compareItemDateDesc(left: BoardItem, right: BoardItem) {
 
 function compareBoardItemsByDateDesc(left: BoardItem, right: BoardItem) {
   return compareItemDateDesc(left, right) || urgencyRank(right) - urgencyRank(left) || left.code.localeCompare(right.code);
+}
+
+function installationTitle(item: InstallationRow) {
+  const deviceItems = item.installedDeviceItems?.filter((device) => device.itemName || device.model || device.serialNumber) ?? [];
+  const firstDevice = deviceItems[0];
+  const primaryName =
+    firstDevice?.itemName ||
+    item.machine?.modelName ||
+    item.plannedMachineModel?.displayName ||
+    item.plannedMachineModel?.name ||
+    item.plannedModelName ||
+    item.machine?.machineCode ||
+    item.machine?.serialNumber ||
+    item.code ||
+    '';
+  const extraCount = Math.max(0, deviceItems.length - 1);
+  return `Lắp đặt ${primaryName}${extraCount ? ` + ${extraCount} thiết bị` : ''}`.trim();
 }
 
 function isAction(item: BoardItem) {

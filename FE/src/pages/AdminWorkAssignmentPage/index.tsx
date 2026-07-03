@@ -7,6 +7,7 @@ import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { checklistForCategory } from '../../config/medicalDeviceChecklists';
 import { queryKeys } from '../../lib/queryKeys';
+import { isTechnicalUser, technicalUserName } from '../../utils/technicalUsers';
 
 type WorkKind = 'repair' | 'maintenance' | 'installation';
 type WorkFilter = 'action' | 'unassigned' | 'review' | 'active' | 'all';
@@ -65,6 +66,11 @@ type InstallationAssignment = {
     name?: string | null;
     displayName?: string | null;
   } | null;
+  installedDeviceItems?: Array<{
+    itemName?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+  }> | null;
   machine?: WorkMachine | null;
   customer?: {
     name?: string | null;
@@ -121,7 +127,7 @@ export function AdminWorkAssignmentPage() {
     queryKey: queryKeys.workAssignments.dashboard(debouncedQuery),
     queryFn: async (): Promise<WorkAssignmentsData> => {
       const [userResult, repairResult, maintenanceResult, installationResult] = await Promise.all([
-        apiFetch<Paginated<ApiUser> | ApiUser[]>('/users?limit=100&roleName=engineer'),
+        apiFetch<Paginated<ApiUser> | ApiUser[]>('/users?limit=100&status=ACTIVE'),
         apiFetch<Paginated<RepairAssignment> | RepairAssignment[]>(withQueryParams('/repairs?limit=100', { search: debouncedQuery })),
         apiFetch<Paginated<MaintenanceAssignment> | MaintenanceAssignment[]>(withQueryParams('/maintenance?limit=100', { search: debouncedQuery })),
         apiFetch<Paginated<InstallationAssignment> | InstallationAssignment[]>(withQueryParams('/installations?limit=100', { search: debouncedQuery })),
@@ -132,10 +138,7 @@ export function AdminWorkAssignmentPage() {
       const nextInstallations = unpack(installationResult);
 
       return {
-        engineers: unpack(userResult).filter((user) => {
-          const roleName = (user.role?.name ?? user.roleName ?? '').toLowerCase();
-          return roleName === 'engineer' && user.status !== 'INACTIVE';
-        }),
+        engineers: unpack(userResult).filter(isTechnicalUser),
         repairs: nextRepairs,
         maintenances: nextMaintenances,
         installations: nextInstallations,
@@ -247,7 +250,7 @@ export function AdminWorkAssignmentPage() {
         id: item.id,
         kind: 'installation' as const,
         code: item.code,
-        title: `Lắp đặt ${item.machine?.machineCode ?? item.machine?.serialNumber ?? item.machine?.modelName ?? item.plannedMachineModel?.name ?? item.plannedModelName ?? item.code}`,
+        title: installationTitle(item),
         status: item.status,
         date: item.installedAt,
         engineer: item.installedBy,
@@ -368,7 +371,7 @@ export function AdminWorkAssignmentPage() {
       id: item.id,
       kind: 'installation',
       code: item.code,
-      title: `Lắp đặt ${item.machine?.machineCode ?? item.machine?.serialNumber ?? item.machine?.modelName ?? item.plannedMachineModel?.name ?? item.plannedModelName ?? item.code}`,
+      title: installationTitle(item),
       status: item.status,
       date: item.installedAt,
       engineer: item.installedBy,
@@ -387,8 +390,8 @@ export function AdminWorkAssignmentPage() {
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <PageTitle
             eyebrow="Điều phối kỹ thuật"
-            title="Bảng điều phối đội kỹ sư"
-            description="Phân kỹ sư, theo dõi việc mở và duyệt báo cáo."
+            title="Điều phối & duyệt"
+            description="Phân người phụ trách, duyệt kết quả kỹ sư gửi về và trả lại khi hồ sơ cần bổ sung."
         />
           <button
             className="secondary-button bg-white/90"
@@ -480,7 +483,7 @@ export function AdminWorkAssignmentPage() {
                 <option value="">Tất cả kỹ sư</option>
                 <option value="__unassigned">Chưa phân kỹ sư</option>
                 {engineers.map((engineer) => (
-                  <option key={engineer.id} value={engineer.id}>{engineer.fullName || engineer.email}</option>
+                  <option key={engineer.id} value={engineer.id}>{technicalUserName(engineer)}</option>
                 ))}
               </select>
             </div>
@@ -651,7 +654,7 @@ function WorkDispatchRow({
           <option value="">Chọn kỹ sư</option>
           {engineers.map((engineer) => (
             <option key={engineer.id} value={engineer.id}>
-              {engineer.fullName || engineer.email}
+              {technicalUserName(engineer)}
             </option>
           ))}
         </select>
@@ -804,7 +807,7 @@ function buildEngineerLoads(engineers: ApiUser[], items: WorkItem[]) {
       const relatedItems = items.filter((item) => item.engineer?.id === engineer.id);
       return {
         id: engineer.id,
-        name: engineer.fullName || engineer.email,
+        name: technicalUserName(engineer),
         total: relatedItems.length,
         active: relatedItems.filter((item) => !isClosed(item.status)).length,
         review: relatedItems.filter((item) => item.reviewStatus === 'PENDING').length,
@@ -905,6 +908,22 @@ function buildAssignmentMap(repairs: RepairAssignment[], maintenances: Maintenan
   });
 
   return map;
+}
+
+function installationTitle(item: InstallationAssignment) {
+  const deviceItems = item.installedDeviceItems?.filter((device) => device.itemName || device.model || device.serialNumber) ?? [];
+  const firstDevice = deviceItems[0];
+  const primaryName =
+    firstDevice?.itemName ||
+    item.machine?.modelName ||
+    item.plannedMachineModel?.displayName ||
+    item.plannedMachineModel?.name ||
+    item.plannedModelName ||
+    item.machine?.machineCode ||
+    item.machine?.serialNumber ||
+    item.code;
+  const extraCount = Math.max(0, deviceItems.length - 1);
+  return `Lắp đặt ${primaryName}${extraCount ? ` + ${extraCount} thiết bị` : ''}`;
 }
 
 function kindLabel(kind: WorkKind) {

@@ -148,7 +148,7 @@ export function taskDateValue(task: EngineerTask) {
 }
 
 export function taskTitle(task: EngineerTask) {
-  if (task.kind === 'installation') return `Lắp đặt ${task.machine?.modelName || task.plannedMachineModel?.name || task.plannedModelName || task.machine?.machineCode || task.code}`;
+  if (task.kind === 'installation') return `Lắp đặt ${installationPrimaryName(task)}${installationExtraCount(task) ? ` + ${installationExtraCount(task)} thiết bị` : ''}`;
   return task.title;
 }
 
@@ -519,17 +519,28 @@ export function taskUpdateHref(task: EngineerTask) {
 
 export function taskPrimaryMachineName(task: EngineerTask) {
   if (task.kind === 'installation') {
-    return (
-      task.installedDeviceItems?.[0]?.itemName ||
-      task.plannedMachineModel?.displayName ||
-      task.plannedMachineModel?.name ||
-      task.plannedModelName ||
-      task.machine?.modelName ||
-      'Chưa có tên thiết bị'
-    );
+    return installationPrimaryName(task);
   }
 
   return task.deviceName || task.machine?.modelName || task.modelName || 'Chưa có tên thiết bị';
+}
+
+function installationPrimaryName(task: InstallationTask) {
+  return (
+    task.installedDeviceItems?.find((item) => item.itemName || item.model || item.serialNumber)?.itemName ||
+    task.plannedMachineModel?.displayName ||
+    task.plannedMachineModel?.name ||
+    task.plannedModelName ||
+    task.machine?.modelName ||
+    task.machine?.machineCode ||
+    task.code ||
+    'Chưa có tên thiết bị'
+  );
+}
+
+function installationExtraCount(task: InstallationTask) {
+  const deviceCount = task.installedDeviceItems?.filter((item) => item.itemName || item.model || item.serialNumber).length ?? 0;
+  return Math.max(0, deviceCount - 1);
 }
 
 export function taskContactPhone(task: EngineerTask) {

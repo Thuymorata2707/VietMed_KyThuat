@@ -15,6 +15,7 @@ import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { queryKeys } from '../../lib/queryKeys';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 import { machineDisplayName, machineModelName, machineModelOptionLabel, machineProductName } from '../../utils/machineDisplayName';
+import { isTechnicalUser } from '../../utils/technicalUsers';
 
 type TicketKind = 'repair' | 'maintenance' | 'installation';
 type TicketScope = 'installation' | 'service';
@@ -36,6 +37,10 @@ type EngineerOption = {
   id: string;
   fullName?: string | null;
   email: string;
+  engineerProfile?: unknown;
+  role?: { name?: string | null } | null;
+  roleName?: string | null;
+  status?: string | null;
 };
 type MachineModelOption = {
   id: string;
@@ -176,13 +181,13 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       }
 
       const [engineersResult, regionsResult] = await Promise.all([
-        apiFetch<Paginated<EngineerOption>>('/users?limit=100&roleName=engineer'),
+        apiFetch<Paginated<EngineerOption>>('/users?limit=100&status=ACTIVE'),
         apiFetch<Paginated<Region> | Region[]>('/regions?limit=100'),
       ]);
 
       return {
         customers: customersResult.data,
-        engineers: engineersResult.data,
+        engineers: engineersResult.data.filter(isTechnicalUser),
         machineModels: modelsResult,
         regions: unpackList(regionsResult),
       };
@@ -213,6 +218,10 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   );
   const visibleMachineModels = useMemo(() => machineModels.filter((model) => canEngineerUseModel(user, model)), [machineModels, user]);
   const selectedMachine = useMemo(() => visibleMachines.find((machine) => machine.id === form.machineId), [form.machineId, visibleMachines]);
+  const installationDeviceSummary = useMemo(
+    () => buildInstallationDeviceSummary(form.installedDeviceItems, visibleMachineModels),
+    [form.installedDeviceItems, visibleMachineModels],
+  );
   const selectedModel = useMemo(
     () => visibleMachineModels.find((model) => model.id === quickMachineForm.machineModelId),
     [quickMachineForm.machineModelId, visibleMachineModels],
@@ -301,6 +310,10 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         deviceName: current.deviceName || machine.name || quickMachineForm.modelName,
         modelName: current.modelName || machine.modelName || quickMachineForm.modelName,
         serialNumber: current.serialNumber || machine.serialNumber || quickMachineForm.serialNumber,
+        installedDeviceItems:
+          kind === 'installation'
+            ? syncPrimaryInstallationItem(current.installedDeviceItems, machine)
+            : current.installedDeviceItems,
       }));
       setQuickMachineForm(emptyQuickMachineForm());
       setShowQuickMachine(false);
@@ -422,6 +435,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       customerId: machine?.customer?.id || form.customerId,
       deviceName: machine?.name || form.deviceName,
       modelName: machine?.modelName || form.modelName,
+      machineModelId: machine?.machineModel?.id || '',
       serialNumber: machine?.serialNumber || form.serialNumber,
     });
   }
@@ -573,7 +587,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
               </label>
 
               {kind === 'repair' ? (
-                <RepairFields form={form} updateForm={updateForm} />
+                <RepairFields form={form} models={visibleMachineModels} updateForm={updateForm} />
               ) : kind === 'maintenance' ? (
                 <MaintenanceFields form={form} models={visibleMachineModels} updateForm={updateForm} />
               ) : (
@@ -647,7 +661,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
             <h2 className={`${sectionTitleClass} mb-4`}>Tóm tắt</h2>
             <div className="grid gap-3 text-sm text-[#333333]">
               <SummaryRow label="Loại phiếu" value={ticketKindLabel(kind)} />
-              <SummaryRow label="Thiết bị" value={selectedMachine ? machineLabel(selectedMachine) : 'Chưa chọn'} />
+              <SummaryRow label="Thiết bị" value={kind === 'installation' ? installationDeviceSummary.summary || 'Chưa chọn' : selectedMachine ? machineLabel(selectedMachine) : 'Chưa chọn'} />
               <SummaryRow label="Khách hàng" value={customerNameForSummary(selectedMachine, customers, form.customerId)} />
               <SummaryRow label="Kỹ sư" value={engineers.find((engineer) => engineer.id === form.engineerId)?.fullName || 'Chưa phân công'} />
             </div>
@@ -670,7 +684,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   );
 }
 
-function RepairFields({ form, updateForm }: { form: TicketForm; updateForm: (patch: Partial<TicketForm>) => void }) {
+function RepairFields({ form, models, updateForm }: { form: TicketForm; models: MachineModelOption[]; updateForm: (patch: Partial<TicketForm>) => void }) {
   return (
     <>
       <label className={labelClass}>
@@ -705,6 +719,11 @@ function RepairFields({ form, updateForm }: { form: TicketForm; updateForm: (pat
       <label className={wideLabelClass}>
         Địa chỉ
         <input className={fieldClass} onChange={(event) => updateForm({ address: event.target.value })} value={form.address} />
+      </label>
+      <ModelDeviceSelect form={form} models={models} updateForm={updateForm} />
+      <label className={labelClass}>
+        S/N
+        <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
       </label>
       <label className={wideLabelClass}>
         Mô tả lỗi
@@ -777,6 +796,7 @@ function ModelDeviceSelect({ form, models, updateForm }: { form: TicketForm; mod
       models={models}
       onChange={(modelId, model) => {
         updateForm({
+          machineId: '',
           machineModelId: modelId,
           modelName: model?.name || model?.displayName || model?.code || '',
           deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
@@ -980,49 +1000,67 @@ function QuickMachinePanel({
           {kind === 'installation' ? 'Thêm thiết bị mới' : 'Thêm thiết bị khách đang dùng'}
         </span>
       </div>
-      <ModelGridSelect
-        className="min-w-0 md:col-span-2"
-        models={models}
-        onChange={(modelId, model) => {
-          updateForm({
-            machineModelId: modelId,
-            modelName: model?.name || model?.code || '',
-            name: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
-          });
-        }}
-        value={form.machineModelId}
-      />
-      <label className={labelClass}>
-        Serial Number
-        <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
-      </label>
-      <label className={labelClass}>
-        Khách hàng
-        <select className={fieldClass} onChange={(event) => updateForm({ customerId: event.target.value })} value={form.customerId}>
-          <option value="">Không chọn</option>
-          {customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customerLabel(customer)}
+      <label className={`${labelClass} md:col-span-2`}>
+        Model
+        <select
+          className={fieldClass}
+          onChange={(event) => {
+            const model = models.find((item) => item.id === event.target.value);
+            updateForm({
+              machineModelId: event.target.value,
+              modelName: model?.name || model?.code || '',
+              name: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
+            });
+          }}
+          value={form.machineModelId}
+        >
+          <option value="">Chọn model</option>
+          {models.map((model) => (
+            <option key={model.id} value={model.id}>
+              {modelLabel(model)}
             </option>
           ))}
         </select>
       </label>
-      <div className="md:col-span-2">
-        {supportsAccessories ? (
-          <MachineAccessoryEditor compact mode={accessoryMode ?? 'probe'} onChange={(value) => updateForm({ accessoriesText: value })} value={form.accessoriesText} />
-        ) : (
+      {selectedModel ? (
+        <>
+          <ModelInfoFields className="md:col-span-2" model={selectedModel} />
           <label className={labelClass}>
-            Phụ kiện đi kèm
-            <textarea className={textareaClass} onChange={(event) => updateForm({ accessoriesText: event.target.value })} placeholder="Mỗi dòng: Phụ kiện | S/N" value={form.accessoriesText} />
+            Serial Number
+            <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
           </label>
-        )}
-      </div>
-      <div className="md:col-span-2">
-        <button className="primary-button" disabled={creating} onClick={onCreate} type="button">
-          {creating ? 'Đang tạo thiết bị' : 'Tạo thiết bị và chọn'}
-        </button>
-      </div>
-      {selectedModel ? <input readOnly className="hidden" value={selectedModel.id} /> : null}
+          <label className={labelClass}>
+            Khách hàng
+            <select className={fieldClass} onChange={(event) => updateForm({ customerId: event.target.value })} value={form.customerId}>
+              <option value="">Không chọn</option>
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customerLabel(customer)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="md:col-span-2">
+            {supportsAccessories ? (
+              <MachineAccessoryEditor compact mode={accessoryMode ?? 'probe'} onChange={(value) => updateForm({ accessoriesText: value })} value={form.accessoriesText} />
+            ) : (
+              <label className={labelClass}>
+                Phụ kiện đi kèm
+                <textarea className={textareaClass} onChange={(event) => updateForm({ accessoriesText: event.target.value })} placeholder="Mỗi dòng: Phụ kiện | S/N" value={form.accessoriesText} />
+              </label>
+            )}
+          </div>
+          <div className="md:col-span-2">
+            <button className="primary-button" disabled={creating} onClick={onCreate} type="button">
+              {creating ? 'Đang tạo thiết bị' : 'Tạo thiết bị và chọn'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="md:col-span-2 rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-4 py-5 text-sm font-semibold text-[#64748b]">
+          Chọn model trước, hệ thống sẽ hiện thông tin model và các trường nhập thiết bị.
+        </div>
+      )}
     </div>
   );
 }
@@ -1067,19 +1105,13 @@ function ModelGridSelect({
       <ModelInfoFields model={selectedModel} />
 
       <div className="min-w-0 overflow-hidden rounded-2xl border border-[#dbe6f3] bg-white">
-        <div className="grid grid-cols-[120px_minmax(0,1fr)_120px_120px] gap-3 border-b border-[#e2e8f0] bg-[#f8fbff] px-3 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[#64748b] max-[860px]:hidden">
-          <span>Model</span>
-          <span>Tên sản phẩm</span>
-          <span>Hãng</span>
-          <span>Xuất xứ</span>
-        </div>
         <div className="max-h-[260px] overflow-auto">
           {filteredModels.map((model) => {
             const active = model.id === value;
             return (
               <button
                 className={[
-                  'grid w-full min-w-0 gap-2 border-b border-[#eef2f7] px-3 py-3 text-left transition last:border-b-0 min-[861px]:grid-cols-[120px_minmax(0,1fr)_120px_120px] min-[861px]:items-center',
+                  'flex w-full min-w-0 items-center justify-between gap-3 border-b border-[#eef2f7] px-3 py-3 text-left transition last:border-b-0',
                   active ? 'bg-[#eff6ff]' : 'bg-white hover:bg-[#f8fafc]',
                 ].filter(Boolean).join(' ')}
                 key={model.id}
@@ -1087,9 +1119,7 @@ function ModelGridSelect({
                 type="button"
               >
                 <strong className="min-w-0 truncate text-sm text-[#172033]">{model.code || model.displayName || model.name}</strong>
-                <span className="min-w-0 truncate text-sm font-semibold text-[#334155]">{machineProductName(model) || machineDisplayName(model) || model.name}</span>
-                <span className="min-w-0 truncate text-sm text-[#64748b]">{model.manufacturer || '-'}</span>
-                <span className="min-w-0 truncate text-sm text-[#64748b]">{modelOrigin(model) || '-'}</span>
+                {active ? <span className="shrink-0 rounded-full bg-[#dbeafe] px-2 py-1 text-xs font-bold text-[#1d4ed8]">Đã chọn</span> : null}
               </button>
             );
           })}
@@ -1248,6 +1278,7 @@ async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineMo
 
   const primaryItem = form.installedDeviceItems.find((item) => item.itemName.trim() || item.model.trim());
   const primaryModel = primaryItem ? visibleMachineModels.find((model) => modelIdByName(visibleMachineModels, primaryItem.model) === model.id) : undefined;
+  const deviceSummary = buildInstallationDeviceSummary(form.installedDeviceItems, visibleMachineModels);
 
   return apiFetch('/installations', {
     method: 'POST',
@@ -1255,8 +1286,8 @@ async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineMo
       machineId: form.machineId || undefined,
       machineModelId: primaryModel?.id || form.machineModelId || undefined,
       plannedModelName:
+        deviceSummary.primaryName ||
         machineProductName(primaryModel) ||
-        primaryItem?.itemName.trim() ||
         visibleMachineModels.find((model) => model.id === form.machineModelId)?.name ||
         form.modelName.trim() ||
         undefined,
@@ -1282,6 +1313,53 @@ function normalizeInstallationDeviceItems(items: InstallationDeviceItem[]) {
       warrantyPeriod: item.warrantyPeriod.trim() || undefined,
     }))
     .filter((item) => item.itemName);
+}
+
+function buildInstallationDeviceSummary(items: InstallationDeviceItem[], models: MachineModelOption[]) {
+  const devices = items
+    .map((item) => {
+      const model = models.find((candidate) => candidate.id === modelIdByName(models, item.model));
+      const modelName = model ? modelLabel(model) : item.model.trim();
+      const productName = item.itemName.trim() || machineProductName(model);
+      const displayName = productName || modelName;
+
+      return {
+        name: displayName,
+        serialNumber: item.serialNumber.trim(),
+      };
+    })
+    .filter((item) => item.name || item.serialNumber);
+
+  const primary = devices[0];
+  const primaryName = primary?.name || '';
+  const primarySummary = [primaryName, primary?.serialNumber ? `S/N ${primary.serialNumber}` : ''].filter(Boolean).join(' - ');
+  const extraCount = Math.max(0, devices.length - 1);
+
+  return {
+    primaryName,
+    summary: extraCount ? `${primarySummary || primaryName} + ${extraCount} thiết bị khác` : primarySummary || primaryName,
+  };
+}
+
+function syncPrimaryInstallationItem(items: InstallationDeviceItem[], machine: MachineOption) {
+  const itemName = machine.machineModel
+    ? machineProductName(machine.machineModel) || machine.name || machine.modelName || ''
+    : machine.name || machine.modelName || '';
+
+  const nextItem: InstallationDeviceItem = {
+    itemName,
+    model: machine.machineModel ? machineModelName(machine.machineModel) : machine.modelName || '',
+    serialNumber: machine.serialNumber || '',
+    manufactureDate: '',
+    quantity: 1,
+    warrantyPeriod: '',
+  };
+
+  if (!items.length) return [nextItem];
+
+  const [first, ...rest] = items;
+  const firstIsEmpty = !first.itemName.trim() && !first.model.trim() && !first.serialNumber.trim();
+  return [firstIsEmpty ? nextItem : first, ...rest];
 }
 
 function splitLines(value: string) {

@@ -205,8 +205,6 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     });
   }, [models, query, role, selectedIndustryId, userExpertise]);
 
-  const visibleModelGroups = useMemo(() => groupModelsByIndustry(visibleModels), [visibleModels]);
-
   const stockByIndustry = useMemo(() => {
     const next: Record<string, ModelStock> = {};
 
@@ -363,15 +361,14 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
           </div>
         ) : null}
 
-        {!loading && visibleModelGroups.map((group) => (
-          <ModelIndustryGroup
+        {!loading && visibleModels.length ? (
+          <ProductModelTable
             canAddProduct={canAddProduct}
             catalogSearch={catalogSearch}
-            group={group}
-            key={group.id}
+            models={visibleModels}
             stockByModel={stockByModel}
           />
-        ))}
+        ) : null}
       </section>
 
     </PageFrame>
@@ -1010,6 +1007,54 @@ function ProductMachineRowsEditor({
   );
 }
 
+function ProductModelTable({
+  canAddProduct,
+  catalogSearch,
+  models,
+  stockByModel,
+}: {
+  canAddProduct: boolean;
+  catalogSearch: string;
+  models: MachineModel[];
+  stockByModel: Record<string, ModelStock>;
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#d8e0ea] bg-white shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e4e7] bg-[#f8fafc] px-4 py-3">
+        <div>
+          <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#64748b]">Model máy</span>
+          <h3 className="mt-1 text-lg font-semibold text-[#172033]">Danh sách model</h3>
+        </div>
+        <span className="rounded-full border border-[#dbe6f3] bg-white px-3 py-1 text-xs font-bold text-[#334155]">{models.length} model</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-[920px] w-full border-collapse text-left">
+          <thead className="bg-white text-xs font-bold uppercase tracking-[0.08em] text-[#64748b]">
+            <tr className="border-b border-[#e4e4e7]">
+              <th className="px-4 py-3">Model</th>
+              <th className="px-4 py-3">Sản phẩm</th>
+              <th className="px-4 py-3">Hãng</th>
+              <th className="px-4 py-3">Kho</th>
+              <th className="px-4 py-3 text-right">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {models.map((model) => (
+              <ModelRow
+                canAddProduct={canAddProduct}
+                catalogSearch={catalogSearch}
+                key={model.id}
+                model={model}
+                stock={stockByModel[model.id]}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function ModelRow({
   canAddProduct,
   catalogSearch,
@@ -1187,7 +1232,6 @@ function ModelSearchSelect({
                   type="button"
                 >
                   <strong>{modelShortLabel(model)}</strong>
-                  <span className="text-xs text-[#666666]">{modelDetailLabel(model)}</span>
                 </button>
               );
             })}

@@ -1605,7 +1605,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               </button>
             </div>
 
-            <div className="mt-[18px] grid grid-cols-3 gap-2.5 rounded-2xl border border-[#dbeafe] bg-[linear-gradient(135deg,rgba(239,246,255,0.94),rgba(240,253,244,0.78)),#ffffff] p-3 max-[760px]:grid-cols-1">
+            <div className="mt-[18px] grid grid-cols-2 gap-2.5 rounded-2xl border border-[#dbeafe] bg-[linear-gradient(135deg,rgba(239,246,255,0.94),rgba(240,253,244,0.78)),#ffffff] p-3 max-[760px]:grid-cols-1">
               <div className="grid min-w-0 gap-1 rounded-xl border border-[rgba(191,219,254,0.72)] bg-white/75 p-2.5">
                 <span className="text-[11px] font-extrabold text-[#64748b]">Thiết bị</span>
                 <strong className="text-[14px] leading-tight text-[#18181b] [overflow-wrap:anywhere]">{taskPrimaryMachineName(selectedTask)}</strong>
@@ -1613,10 +1613,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               <div className="grid min-w-0 gap-1 rounded-xl border border-[rgba(191,219,254,0.72)] bg-white/75 p-2.5">
                 <span className="text-[11px] font-extrabold text-[#64748b]">Ngày hẹn</span>
                 <strong className="text-[14px] leading-tight text-[#18181b] [overflow-wrap:anywhere]">{taskDate(selectedTask)}</strong>
-              </div>
-              <div className="grid min-w-0 gap-1 rounded-xl border border-[rgba(191,219,254,0.72)] bg-white/75 p-2.5">
-                <span className="text-[11px] font-extrabold text-[#64748b]">Bước tiếp theo</span>
-                <strong className="text-[14px] leading-tight text-[#18181b] [overflow-wrap:anywhere]">{taskActionLabel(selectedTask)}</strong>
               </div>
             </div>
 
@@ -1841,7 +1837,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     <span className="text-[12px] font-bold text-[#18181b]">Kỹ sư cập nhật</span>
                     <h3 className="mt-[3px] text-[17px] text-[#1f1f1f]">{taskUpdatePanelTitle(selectedTask)}</h3>
                   </div>
-                  <em className="max-w-[210px] rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-[7px] text-right text-[12px] not-italic font-extrabold text-[#1d4ed8] max-[760px]:max-w-none max-[760px]:text-left">{taskActionLabel(selectedTask)}</em>
                 </div>
                 <form className="grid content-start gap-3.5" onSubmit={handleSubmit}>
                 <StatusActionPicker onChange={setStatus} task={selectedTask} value={status} />
@@ -1885,7 +1880,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     <span className="text-[12px] font-bold text-[#18181b]">Kỹ sư cập nhật</span>
                     <h3 className="mt-[3px] text-[17px] text-[#1f1f1f]">{taskUpdatePanelTitle(selectedTask)}</h3>
                   </div>
-                  <em className="max-w-[210px] rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-[7px] text-right text-[12px] not-italic font-extrabold text-[#1d4ed8] max-[760px]:max-w-none max-[760px]:text-left">{taskActionLabel(selectedTask)}</em>
                 </div>
                 <form className="grid grid-cols-2 content-start gap-3.5 max-[760px]:grid-cols-1" onSubmit={handleSubmit}>
               <StatusActionPicker onChange={setStatus} task={selectedTask} value={status} />
@@ -1928,10 +1922,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     <Loader2 className="spin-icon" size={16} />
                     Đang tải tài liệu...
                   </div>
-                ) : null}
-
-                {!loadingAttachments && attachments.length === 0 ? (
-                  <div className="block min-h-[58px] rounded-lg border border-dashed border-[#d6d6d6] bg-[#fafafa] p-3.5 text-center text-[#666666]">Chưa có ảnh hoặc tài liệu nào cho phiếu này.</div>
                 ) : null}
 
                 {!loadingAttachments &&

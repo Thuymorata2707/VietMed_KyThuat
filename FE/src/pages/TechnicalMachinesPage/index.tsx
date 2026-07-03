@@ -2163,12 +2163,7 @@ function displayProductCategory(value?: string | null) {
 }
 
 function modelOptionText(model: MachineModelOption) {
-  return [
-    model.code,
-    model.displayName || model.name,
-    model.businessLine?.name,
-    model.businessLine?.productIndustry?.name,
-  ].filter(Boolean).join(' - ');
+  return model.code || model.displayName || model.name || 'Model';
 }
 
 function formatDashboardDate(value?: string | null) {
