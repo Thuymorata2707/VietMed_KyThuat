@@ -61,16 +61,7 @@ export function machineProductName(model?: ProductNamingModel | null) {
 }
 
 export function machineModelOptionLabel(model?: ProductNamingModel | null) {
-  if (!model) return '';
-
-  return [
-    machineModelName(model),
-    machineProductName(model),
-    model.manufacturer,
-    model.countryOfOrigin || model.businessLine?.countryOfOrigin,
-  ]
-    .filter(Boolean)
-    .join(' | ');
+  return machineModelName(model);
 }
 
 function categoryLabel(value?: string | null) {

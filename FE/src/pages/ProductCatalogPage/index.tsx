@@ -7,6 +7,7 @@ import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { DateInput } from '../../components/DateInput';
+import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -764,6 +765,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                   value={form.machineModelId}
                 />
               </label>
+              <ModelInfoFields className="md:col-span-2" model={selectedModel} />
             </div>
           </div>
 

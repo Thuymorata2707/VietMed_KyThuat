@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { Notice } from '../../components/Notice';
+import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { RoleName } from '../../auth/roles';
@@ -200,10 +201,12 @@ type MachineModelDetail = {
   name?: string | null;
   displayName?: string | null;
   manufacturer?: string | null;
+  countryOfOrigin?: string | null;
   productCategory?: string | null;
   productLine?: string | null;
   businessLine?: {
     name?: string | null;
+    countryOfOrigin?: string | null;
     productCategory?: string | null;
     productIndustry?: {
       name?: string | null;
@@ -1119,6 +1122,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                   ))}
                 </select>
               </label>
+              <ModelInfoFields className="md:col-span-2" model={machineModels.find((model) => model.id === bulkForm.machineModelId)} />
               <label className={editLabelClass}>
                 Tên model hiển thị
                 <input className={editFieldClass} onChange={(event) => updateBulkForm({ modelName: event.target.value })} required value={bulkForm.modelName} />
@@ -1858,6 +1862,7 @@ function MachineEditForm({
             ))}
           </select>
         </label>
+        <ModelInfoFields className="md:col-span-2" model={machineModels.find((model) => model.id === editForm.machineModelId)} />
         <label className={editLabelClass}>
           Tên thiết bị
           <input className={editFieldClass} onChange={(event) => onUpdateForm({ name: event.target.value })} value={editForm.name} />

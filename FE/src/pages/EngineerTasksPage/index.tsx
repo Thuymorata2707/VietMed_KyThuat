@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
 import { DateInput } from '../../components/DateInput';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { Notice } from '../../components/Notice';
@@ -1039,6 +1040,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   rowFilter={(model) => canEngineerSeeModel(user, model)}
                   value={createForm.machineModelId}
                 />
+                <ModelInfoFields model={machineModelOptions.find((model) => model.id === createForm.machineModelId)} />
               </div>
             ) : (
               <div className="machine-picker">
@@ -1100,6 +1102,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   rowFilter={(model) => canEngineerSeeModel(user, model)}
                   value={quickMachineForm.machineModelId}
                 />
+                <ModelInfoFields model={selectedQuickModel} />
                 <label>
                   Serial
                   <input

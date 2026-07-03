@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { DateInput } from '../../components/DateInput';
+import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -517,32 +518,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 </label>
               ) : null}
 
-              {kind === 'installation' ? (
-                <label className={wideLabelClass}>
-                  Model dự kiến
-                  <select
-                    className={fieldClass}
-                    disabled={loading}
-                    onChange={(event) => {
-                      const model = visibleMachineModels.find((item) => item.id === event.target.value);
-                      updateForm({
-                        machineModelId: event.target.value,
-                        modelName: model?.name || model?.displayName || '',
-                        deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
-                      });
-                    }}
-                    required
-                    value={form.machineModelId}
-                  >
-                    <option value="">Chọn model cần lắp</option>
-                    {visibleMachineModels.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {modelLabel(model)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : (
+              {kind !== 'installation' ? (
                 <label className={wideLabelClass}>
                   Thiết bị có sẵn
                   <select className={fieldClass} disabled={loading} onChange={(event) => selectMachine(event.target.value)} value={form.machineId}>
@@ -554,7 +530,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                     ))}
                   </select>
                 </label>
-              )}
+              ) : null}
 
               {kind !== 'installation' ? (
                 <label className={labelClass}>
@@ -834,8 +810,8 @@ function InstallationFields({
       <div className="md:col-span-2">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-bold text-[#172033]">Thiết bị lắp đặt</h3>
-            <p className="mt-1 text-xs font-medium text-[#64748b]">Một phiếu có thể gồm nhiều model, nhiều serial.</p>
+            <h3 className="text-base font-bold text-[#172033]">Danh sách thiết bị</h3>
+            <p className="mt-1 text-xs font-medium text-[#64748b]">Thêm các thiết bị được bàn giao trong cùng biên bản.</p>
           </div>
           <button className="secondary-button compact" onClick={addDeviceItem} type="button">
             Thêm dòng
@@ -845,7 +821,7 @@ function InstallationFields({
           {form.installedDeviceItems.map((item, index) => (
             <div className="rounded-[18px] border border-[#dbe6f3] bg-[#fbfdff] p-3" key={index}>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <strong className="text-sm text-[#172033]">Máy {index + 1}</strong>
+                <strong className="text-sm text-[#172033]">Thiết bị {index + 1}</strong>
                 <button className="secondary-button compact" onClick={() => removeDeviceItem(index)} type="button">
                   Xóa
                 </button>
@@ -869,6 +845,7 @@ function InstallationFields({
                         });
                       }
                     }}
+                    required={index === 0}
                     value={modelIdByName(models, item.model)}
                   >
                     <option value="">Chọn model</option>
@@ -881,7 +858,7 @@ function InstallationFields({
                 </label>
                 <label className={labelClass}>
                   Tên sản phẩm
-                  <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} value={item.itemName} />
+                  <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required={index === 0} value={item.itemName} />
                 </label>
                 <label className={labelClass}>
                   S/N
@@ -925,7 +902,7 @@ function QuickCustomerPanel({
   updateForm: (patch: Partial<QuickCustomerForm>) => void;
 }) {
   return (
-    <div className="mb-4 grid gap-4 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-4 md:grid-cols-2">
+    <div className="mb-4 grid min-w-0 gap-4 rounded-[20px] border border-[#dbe6f3] bg-[#fbfdff] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)] md:grid-cols-2">
       <label className={labelClass}>
         Tên khách hàng
         <input className={fieldClass} onChange={(event) => updateForm({ name: event.target.value })} value={form.name} />
@@ -997,14 +974,14 @@ function QuickMachinePanel({
   updateForm: (patch: Partial<QuickMachineForm>) => void;
 }) {
   return (
-    <div className="grid gap-4 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-4 md:grid-cols-2">
+    <div className="grid min-w-0 gap-4 overflow-hidden rounded-[20px] border border-[#dbe6f3] bg-[#fbfdff] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)] md:grid-cols-2">
       <div className="md:col-span-2">
-        <span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-xs font-medium text-[#333333]">
-          {kind === 'installation' ? 'Tạo máy trong kho' : 'Tạo máy đã lắp'}
+        <span className="rounded-full border border-[#c7d2fe] bg-white px-2.5 py-1 text-xs font-bold text-[#334155]">
+          {kind === 'installation' ? 'Thêm thiết bị mới' : 'Thêm thiết bị khách đang dùng'}
         </span>
       </div>
       <ModelGridSelect
-        className="md:col-span-2"
+        className="min-w-0 md:col-span-2"
         models={models}
         onChange={(modelId, model) => {
           updateForm({
@@ -1075,7 +1052,7 @@ function ModelGridSelect({
   }, [models, query]);
 
   return (
-    <div className={`grid min-w-0 gap-2 ${className}`}>
+    <div className={`grid min-w-0 gap-2 overflow-hidden ${className}`}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <label className="grid min-w-[240px] flex-1 gap-2 text-sm font-semibold text-[#333333]">
           Model / tên thiết bị
@@ -1086,15 +1063,11 @@ function ModelGridSelect({
             value={query}
           />
         </label>
-        {selectedModel ? (
-          <div className="rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2 text-xs font-bold text-[#1d4ed8]">
-            Đã chọn: {modelLabel(selectedModel)}
-          </div>
-        ) : null}
       </div>
+      <ModelInfoFields model={selectedModel} />
 
-      <div className="overflow-hidden rounded-2xl border border-[#dbe6f3] bg-white">
-        <div className="grid grid-cols-[150px_minmax(220px,1fr)_150px_170px] gap-3 border-b border-[#e2e8f0] bg-[#f8fbff] px-3 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[#64748b] max-[860px]:hidden">
+      <div className="min-w-0 overflow-hidden rounded-2xl border border-[#dbe6f3] bg-white">
+        <div className="grid grid-cols-[120px_minmax(0,1fr)_120px_120px] gap-3 border-b border-[#e2e8f0] bg-[#f8fbff] px-3 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[#64748b] max-[860px]:hidden">
           <span>Model</span>
           <span>Tên sản phẩm</span>
           <span>Hãng</span>
@@ -1106,17 +1079,17 @@ function ModelGridSelect({
             return (
               <button
                 className={[
-                  'grid w-full gap-2 border-b border-[#eef2f7] px-3 py-3 text-left transition last:border-b-0 min-[861px]:grid-cols-[150px_minmax(220px,1fr)_150px_170px] min-[861px]:items-center',
+                  'grid w-full min-w-0 gap-2 border-b border-[#eef2f7] px-3 py-3 text-left transition last:border-b-0 min-[861px]:grid-cols-[120px_minmax(0,1fr)_120px_120px] min-[861px]:items-center',
                   active ? 'bg-[#eff6ff]' : 'bg-white hover:bg-[#f8fafc]',
                 ].filter(Boolean).join(' ')}
                 key={model.id}
                 onClick={() => onChange(model.id, model)}
                 type="button"
               >
-                <strong className="text-sm text-[#172033]">{model.code || model.displayName || model.name}</strong>
-                <span className="text-sm font-semibold text-[#334155]">{machineProductName(model) || machineDisplayName(model) || model.name}</span>
-                <span className="text-sm text-[#64748b]">{model.manufacturer || '-'}</span>
-                <span className="text-sm text-[#64748b]">{modelOrigin(model) || '-'}</span>
+                <strong className="min-w-0 truncate text-sm text-[#172033]">{model.code || model.displayName || model.name}</strong>
+                <span className="min-w-0 truncate text-sm font-semibold text-[#334155]">{machineProductName(model) || machineDisplayName(model) || model.name}</span>
+                <span className="min-w-0 truncate text-sm text-[#64748b]">{model.manufacturer || '-'}</span>
+                <span className="min-w-0 truncate text-sm text-[#64748b]">{modelOrigin(model) || '-'}</span>
               </button>
             );
           })}
@@ -1273,12 +1246,20 @@ async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineMo
     });
   }
 
+  const primaryItem = form.installedDeviceItems.find((item) => item.itemName.trim() || item.model.trim());
+  const primaryModel = primaryItem ? visibleMachineModels.find((model) => modelIdByName(visibleMachineModels, primaryItem.model) === model.id) : undefined;
+
   return apiFetch('/installations', {
     method: 'POST',
     body: JSON.stringify({
       machineId: form.machineId || undefined,
-      machineModelId: form.machineModelId || undefined,
-      plannedModelName: visibleMachineModels.find((model) => model.id === form.machineModelId)?.name || form.modelName.trim() || undefined,
+      machineModelId: primaryModel?.id || form.machineModelId || undefined,
+      plannedModelName:
+        machineProductName(primaryModel) ||
+        primaryItem?.itemName.trim() ||
+        visibleMachineModels.find((model) => model.id === form.machineModelId)?.name ||
+        form.modelName.trim() ||
+        undefined,
       customerId: form.customerId,
       installedById: form.engineerId,
       installedAt: form.scheduledDate,
@@ -1362,7 +1343,11 @@ function modelOrigin(model: MachineModelOption) {
 function modelIdByName(models: MachineModelOption[], value: string) {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return '';
-  return models.find((model) => [model.code, model.displayName, model.name].filter(Boolean).some((item) => String(item).trim().toLowerCase() === normalized))?.id || '';
+  return models.find((model) =>
+    [model.code, model.displayName, model.name, machineModelOptionLabel(model)]
+      .filter(Boolean)
+      .some((item) => String(item).trim().toLowerCase() === normalized),
+  )?.id || '';
 }
 
 function customerNameForSummary(machine: MachineOption | undefined, customers: CustomerOption[], customerId: string) {

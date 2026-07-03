@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { DateInput } from '../../components/DateInput';
+import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { Notice } from '../../components/Notice';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
@@ -404,7 +405,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   <div>
                     <span className={eyebrowClass}>Danh mục thiết bị</span>
                     <h2 className={sectionTitleClass}>Thiết bị lắp đặt</h2>
-                    <p className={sectionDescriptionClass}>Dữ liệu này sẽ lên bảng trong file Word.</p>
+                    <p className={sectionDescriptionClass}>Các thiết bị được bàn giao trong cùng biên bản.</p>
                   </div>
                 </div>
                 <button className="secondary-button" onClick={addDeviceItem} type="button">
@@ -415,7 +416,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 {form.installedDeviceItems.map((item, index) => (
                   <div className="rounded-[20px] border border-[#e4e4e7] bg-[#ffffff] p-4" key={index}>
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <strong className="text-sm text-[#1f1f1f]">Dòng thiết bị {index + 1}</strong>
+                      <strong className="text-sm text-[#1f1f1f]">Thiết bị {index + 1}</strong>
                       <button className="secondary-button compact" onClick={() => removeDeviceItem(index)} type="button">
                         Xóa dòng
                       </button>
@@ -446,6 +447,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                         Tên sản phẩm
                         <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required value={item.itemName} />
                       </label>
+                      <ModelInfoFields className="md:col-span-3" model={machineModels.find((model) => model.id === modelIdByName(machineModels, item.model))} />
                       <label className={labelClass}>
                         S/N
                         <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} />
@@ -651,7 +653,11 @@ function machineModelLabel(model: MachineModelOption) {
 function modelIdByName(models: MachineModelOption[], value: string) {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return '';
-  return models.find((model) => [model.code, model.displayName, model.name].filter(Boolean).some((item) => String(item).trim().toLowerCase() === normalized))?.id || '';
+  return models.find((model) =>
+    [model.code, model.displayName, model.name, machineModelOptionLabel(model)]
+      .filter(Boolean)
+      .some((item) => String(item).trim().toLowerCase() === normalized),
+  )?.id || '';
 }
 
 function safeFileName(value: string) {

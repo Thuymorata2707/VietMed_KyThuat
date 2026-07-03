@@ -1,4 +1,5 @@
 import type { ApiUser } from '../../../api';
+import { ModelInfoFields } from '../../../components/ModelInfoFields';
 import { machineDisplayName, machineProductName } from '../../../utils/machineDisplayName';
 import type { CreateTicketForm, QuickMachineModel } from '../types';
 import { canEngineerSeeModel, quickModelLabel } from '../utils';
@@ -19,6 +20,8 @@ export function CreateModelDevicePicker({
   user,
   value,
 }: CreateModelDevicePickerProps) {
+  const selectedModel = machineModelOptions.find((model) => model.id === value);
+
   return (
     <div className="machine-picker">
       <AsyncEntityPicker<QuickMachineModel>
@@ -47,6 +50,7 @@ export function CreateModelDevicePicker({
         rowFilter={(model) => canEngineerSeeModel(user, model)}
         value={value}
       />
+      <ModelInfoFields model={selectedModel} />
     </div>
   );
 }

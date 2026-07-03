@@ -11,6 +11,11 @@ type DateInputProps = {
 };
 
 const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const months = Array.from({ length: 12 }, (_, index) => ({
+  label: `Tháng ${index + 1}`,
+  value: index,
+}));
+const years = Array.from({ length: 101 }, (_, index) => 1970 + index);
 
 export function DateInput({ className = '', disabled, label, onChange, required, value }: DateInputProps) {
   const [open, setOpen] = useState(false);
@@ -36,11 +41,14 @@ export function DateInput({ className = '', disabled, label, onChange, required,
   }, [open]);
 
   const calendarDays = useMemo(() => buildCalendarDays(viewDate), [viewDate]);
-  const monthTitle = viewDate.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
 
   function selectDate(date: Date) {
     onChange(toDateInput(date));
     setOpen(false);
+  }
+
+  function updateViewDate(patch: { month?: number; year?: number }) {
+    setViewDate((current) => new Date(patch.year ?? current.getFullYear(), patch.month ?? current.getMonth(), 1));
   }
 
   return (
@@ -65,7 +73,30 @@ export function DateInput({ className = '', disabled, label, onChange, required,
             <button className="grid size-9 place-items-center rounded-xl text-[#475569] transition hover:bg-white hover:text-[#172033]" onClick={() => setViewDate(addMonths(viewDate, -1))} type="button">
               <ChevronLeft size={17} />
             </button>
-            <strong className="text-sm font-semibold capitalize text-[#172033]">{monthTitle}</strong>
+            <div className="grid grid-cols-[118px_92px] gap-2">
+              <select
+                className="h-9 rounded-xl border border-[#dbe6f3] bg-white px-2 text-xs font-bold text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]"
+                onChange={(event) => updateViewDate({ month: Number(event.target.value) })}
+                value={viewDate.getMonth()}
+              >
+                {months.map((month) => (
+                  <option key={month.value} value={month.value}>
+                    {month.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="h-9 rounded-xl border border-[#dbe6f3] bg-white px-2 text-xs font-bold text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]"
+                onChange={(event) => updateViewDate({ year: Number(event.target.value) })}
+                value={viewDate.getFullYear()}
+              >
+                {years.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button className="grid size-9 place-items-center rounded-xl text-[#475569] transition hover:bg-white hover:text-[#172033]" onClick={() => setViewDate(addMonths(viewDate, 1))} type="button">
               <ChevronRight size={17} />
             </button>

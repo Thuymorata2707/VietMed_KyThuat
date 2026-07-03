@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
+import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { checklistForCategory } from '../../config/medicalDeviceChecklists';
@@ -333,6 +334,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                     ))}
                   </select>
                 </label>
+                <ModelInfoFields className="md:col-span-2" model={machineModels.find((model) => model.id === (form.machineModelId || modelIdByName(machineModels, form.modelName)))} />
                 <label className={`${labelClass} md:col-span-2`}>
                   Kiểm tra tình trạng thiết bị
                   <textarea className={textareaClass} onChange={(event) => updateForm({ conditionAssessment: event.target.value })} value={form.conditionAssessment} />

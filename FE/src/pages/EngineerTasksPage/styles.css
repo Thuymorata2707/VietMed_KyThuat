@@ -243,6 +243,17 @@
   padding: 14px;
 }
 
+.installation-device-heading {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 800;
+  grid-column: 1 / -1;
+}
+
+.installation-model-info {
+  grid-column: 1 / -1;
+}
+
 .installation-device-row label {
   grid-column: span 2;
 }

@@ -1,5 +1,6 @@
 import type { ApiUser } from '../../api';
 import { DateInput } from '../../components/DateInput';
+import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { machineModelName, machineModelOptionLabel, machineProductName } from '../../utils/machineDisplayName';
 import type { CreateTicketForm, InstallationDeviceItem } from './types';
 
@@ -79,10 +80,11 @@ export function InstallationHandoverForm({
         <input onChange={(event) => updateForm({ receiverPhone: event.target.value })} value={form.receiverPhone} />
       </label>
 
-      <div className="create-form-section">Thiết bị bàn giao</div>
+      <div className="create-form-section">Máy lắp đặt</div>
       <div className="installation-device-list">
         {form.installedDeviceItems.map((item, index) => (
           <div className="installation-device-row" key={index}>
+            <div className="installation-device-heading">Thiết bị {index + 1}</div>
             <label>
               Model
               <select
@@ -93,6 +95,7 @@ export function InstallationHandoverForm({
                     model: machineModelName(model),
                   });
                 }}
+                required={index === 0}
                 value={modelIdByName(machineModels, item.model)}
               >
                 <option value="">Chọn model</option>
@@ -105,8 +108,9 @@ export function InstallationHandoverForm({
             </label>
             <label>
               Tên sản phẩm
-              <input onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required value={item.itemName} />
+              <input onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required={index === 0} value={item.itemName} />
             </label>
+            <ModelInfoFields className="installation-model-info" model={machineModels.find((model) => model.id === modelIdByName(machineModels, item.model))} />
             <label>
               S/N
               <input onChange={(event) => updateDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} />
@@ -164,5 +168,9 @@ function machineModelLabel(model: MachineModelOption) {
 function modelIdByName(models: MachineModelOption[], value: string) {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return '';
-  return models.find((model) => [model.code, model.displayName, model.name].filter(Boolean).some((item) => String(item).trim().toLowerCase() === normalized))?.id || '';
+  return models.find((model) =>
+    [model.code, model.displayName, model.name, machineModelOptionLabel(model)]
+      .filter(Boolean)
+      .some((item) => String(item).trim().toLowerCase() === normalized),
+  )?.id || '';
 }

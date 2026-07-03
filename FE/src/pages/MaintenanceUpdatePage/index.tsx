@@ -5,6 +5,7 @@ import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken
 import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { DateInput } from '../../components/DateInput';
+import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { appendChecklistLines, checklistForCategory } from '../../config/medicalDeviceChecklists';
@@ -337,6 +338,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                     ))}
                   </select>
                 </label>
+                <ModelInfoFields className="md:col-span-2" model={machineModels.find((model) => model.id === (form.machineModelId || modelIdByName(machineModels, form.modelName)))} />
                 <label className={`${labelClass} md:col-span-2`}>
                   Checklist
                   <textarea className={textareaClass} onChange={(event) => updateForm({ checklistText: event.target.value })} placeholder="Mỗi dòng là một hạng mục kiểm tra" value={form.checklistText} />
