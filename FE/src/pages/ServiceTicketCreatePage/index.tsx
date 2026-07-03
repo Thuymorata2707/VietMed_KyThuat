@@ -13,7 +13,7 @@ import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { queryKeys } from '../../lib/queryKeys';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
-import { machineDisplayName } from '../../utils/machineDisplayName';
+import { machineDisplayName, machineModelName, machineModelOptionLabel, machineProductName } from '../../utils/machineDisplayName';
 
 type TicketKind = 'repair' | 'maintenance' | 'installation';
 type TicketScope = 'installation' | 'service';
@@ -42,9 +42,11 @@ type MachineModelOption = {
   name: string;
   displayName?: string | null;
   manufacturer?: string | null;
+  countryOfOrigin?: string | null;
   productCategory?: string | null;
   businessLine?: {
     name?: string | null;
+    countryOfOrigin?: string | null;
     productCategory?: string | null;
     expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
     productIndustry?: {
@@ -96,6 +98,16 @@ type TicketForm = {
   warrantyEndDate: string;
   warrantyStartDate: string;
   warrantyStatus: string;
+  installedDeviceItems: InstallationDeviceItem[];
+};
+
+type InstallationDeviceItem = {
+  itemName: string;
+  model: string;
+  serialNumber: string;
+  manufactureDate: string;
+  quantity: number;
+  warrantyPeriod: string;
 };
 
 type QuickCustomerForm = {
@@ -356,6 +368,32 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     setForm((current) => ({ ...current, ...patch }));
   }
 
+  function updateInstallationDeviceItem(index: number, patch: Partial<InstallationDeviceItem>) {
+    setForm((current) => ({
+      ...current,
+      installedDeviceItems: current.installedDeviceItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item,
+      ),
+    }));
+  }
+
+  function addInstallationDeviceItem() {
+    setForm((current) => ({
+      ...current,
+      installedDeviceItems: [...current.installedDeviceItems, emptyInstallationDeviceItem()],
+    }));
+  }
+
+  function removeInstallationDeviceItem(index: number) {
+    setForm((current) => ({
+      ...current,
+      installedDeviceItems:
+        current.installedDeviceItems.length === 1
+          ? [emptyInstallationDeviceItem()]
+          : current.installedDeviceItems.filter((_, itemIndex) => itemIndex !== index),
+    }));
+  }
+
   function selectMachine(machineId: string) {
     const machine = machines.find((item) => item.id === machineId);
     applyMachine(machine, machineId);
@@ -490,7 +528,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                       updateForm({
                         machineModelId: event.target.value,
                         modelName: model?.name || model?.displayName || '',
-                        deviceName: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
+                        deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
                       });
                     }}
                     required
@@ -563,7 +601,14 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
               ) : kind === 'maintenance' ? (
                 <MaintenanceFields form={form} models={visibleMachineModels} updateForm={updateForm} />
               ) : (
-                <InstallationFields form={form} updateForm={updateForm} />
+                <InstallationFields
+                  addDeviceItem={addInstallationDeviceItem}
+                  form={form}
+                  models={visibleMachineModels}
+                  removeDeviceItem={removeInstallationDeviceItem}
+                  updateDeviceItem={updateInstallationDeviceItem}
+                  updateForm={updateForm}
+                />
               )}
             </div>
           </div>
@@ -751,39 +796,111 @@ function MaintenanceFields({ form, models, updateForm }: { form: TicketForm; mod
 
 function ModelDeviceSelect({ form, models, updateForm }: { form: TicketForm; models: MachineModelOption[]; updateForm: (patch: Partial<TicketForm>) => void }) {
   return (
-    <>
-      <label className={labelClass}>
-        Model / tên thiết bị
-        <select
-          className={fieldClass}
-          onChange={(event) => {
-            const model = models.find((item) => item.id === event.target.value);
-            updateForm({
-              machineModelId: event.target.value,
-              modelName: model?.name || model?.displayName || model?.code || '',
-              deviceName: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
-            });
-          }}
-          value={form.machineModelId}
-        >
-          <option value="">Chọn model</option>
-          {models.map((model) => (
-            <option key={model.id} value={model.id}>
-              {modelLabel(model)}
-            </option>
-          ))}
-        </select>
-      </label>
-    </>
+    <ModelGridSelect
+      className="md:col-span-2"
+      models={models}
+      onChange={(modelId, model) => {
+        updateForm({
+          machineModelId: modelId,
+          modelName: model?.name || model?.displayName || model?.code || '',
+          deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
+        });
+      }}
+      value={form.machineModelId}
+    />
   );
 }
 
-function InstallationFields({ form, updateForm }: { form: TicketForm; updateForm: (patch: Partial<TicketForm>) => void }) {
+function InstallationFields({
+  addDeviceItem,
+  form,
+  models,
+  removeDeviceItem,
+  updateDeviceItem,
+  updateForm,
+}: {
+  addDeviceItem: () => void;
+  form: TicketForm;
+  models: MachineModelOption[];
+  removeDeviceItem: (index: number) => void;
+  updateDeviceItem: (index: number, patch: Partial<InstallationDeviceItem>) => void;
+  updateForm: (patch: Partial<TicketForm>) => void;
+}) {
   return (
     <>
       <DateInput className={labelClass} label="Ngày lắp đặt" onChange={(value) => updateForm({ scheduledDate: value, warrantyStartDate: value })} required value={form.scheduledDate} />
       <DateInput className={labelClass} label="Bắt đầu bảo hành" onChange={(value) => updateForm({ warrantyStartDate: value })} value={form.warrantyStartDate} />
       <DateInput className={labelClass} label="Kết thúc bảo hành" onChange={(value) => updateForm({ warrantyEndDate: value })} required value={form.warrantyEndDate} />
+      <div className="md:col-span-2">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold text-[#172033]">Thiết bị lắp đặt</h3>
+            <p className="mt-1 text-xs font-medium text-[#64748b]">Một phiếu có thể gồm nhiều model, nhiều serial.</p>
+          </div>
+          <button className="secondary-button compact" onClick={addDeviceItem} type="button">
+            Thêm dòng
+          </button>
+        </div>
+        <div className="grid gap-3">
+          {form.installedDeviceItems.map((item, index) => (
+            <div className="rounded-[18px] border border-[#dbe6f3] bg-[#fbfdff] p-3" key={index}>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <strong className="text-sm text-[#172033]">Máy {index + 1}</strong>
+                <button className="secondary-button compact" onClick={() => removeDeviceItem(index)} type="button">
+                  Xóa
+                </button>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <label className={labelClass}>
+                  Model
+                  <select
+                    className={fieldClass}
+                    onChange={(event) => {
+                      const model = models.find((option) => option.id === event.target.value);
+                      updateDeviceItem(index, {
+                        itemName: machineProductName(model) || item.itemName,
+                        model: machineModelName(model),
+                      });
+                      if (index === 0) {
+                        updateForm({
+                          machineModelId: event.target.value,
+                          modelName: model?.name || model?.displayName || model?.code || '',
+                          deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
+                        });
+                      }
+                    }}
+                    value={modelIdByName(models, item.model)}
+                  >
+                    <option value="">Chọn model</option>
+                    {models.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {modelLabel(model)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={labelClass}>
+                  Tên sản phẩm
+                  <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} value={item.itemName} />
+                </label>
+                <label className={labelClass}>
+                  S/N
+                  <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} />
+                </label>
+                <DateInput className={labelClass} label="NSX" onChange={(value) => updateDeviceItem(index, { manufactureDate: value })} value={item.manufactureDate} />
+                <label className={labelClass}>
+                  Số lượng
+                  <input className={fieldClass} min={1} onChange={(event) => updateDeviceItem(index, { quantity: Number(event.target.value) || 1 })} type="number" value={item.quantity} />
+                </label>
+                <label className={labelClass}>
+                  Bảo hành
+                  <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { warrantyPeriod: event.target.value })} placeholder="VD: 12 tháng" value={item.warrantyPeriod} />
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
       <label className={wideLabelClass}>
         Ghi chú lắp đặt
         <textarea className={textareaClass} onChange={(event) => updateForm({ description: event.target.value })} value={form.description} />
@@ -886,28 +1003,18 @@ function QuickMachinePanel({
           {kind === 'installation' ? 'Tạo máy trong kho' : 'Tạo máy đã lắp'}
         </span>
       </div>
-      <label className={wideLabelClass}>
-        Model sản phẩm
-        <select
-          className={fieldClass}
-          onChange={(event) => {
-            const model = models.find((item) => item.id === event.target.value);
-            updateForm({
-              machineModelId: event.target.value,
-              modelName: model?.name || model?.code || '',
-              name: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
-            });
-          }}
-          value={form.machineModelId}
-        >
-          <option value="">Chọn model chuẩn</option>
-          {models.map((model) => (
-            <option key={model.id} value={model.id}>
-              {[model.code, model.name, model.manufacturer].filter(Boolean).join(' - ')}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ModelGridSelect
+        className="md:col-span-2"
+        models={models}
+        onChange={(modelId, model) => {
+          updateForm({
+            machineModelId: modelId,
+            modelName: model?.name || model?.code || '',
+            name: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
+          });
+        }}
+        value={form.machineModelId}
+      />
       <label className={labelClass}>
         Serial Number
         <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
@@ -939,6 +1046,87 @@ function QuickMachinePanel({
         </button>
       </div>
       {selectedModel ? <input readOnly className="hidden" value={selectedModel.id} /> : null}
+    </div>
+  );
+}
+
+function ModelGridSelect({
+  className = '',
+  models,
+  onChange,
+  value,
+}: {
+  className?: string;
+  models: MachineModelOption[];
+  onChange: (modelId: string, model?: MachineModelOption) => void;
+  value: string;
+}) {
+  const [query, setQuery] = useState('');
+  const selectedModel = models.find((model) => model.id === value);
+  const filteredModels = useMemo(() => {
+    const keyword = query.trim().toLowerCase();
+    if (!keyword) return models;
+
+    return models.filter((model) =>
+      [model.code, model.name, model.displayName, model.manufacturer, model.businessLine?.name, model.businessLine?.productIndustry?.name]
+        .filter(Boolean)
+        .some((item) => String(item).toLowerCase().includes(keyword)),
+    );
+  }, [models, query]);
+
+  return (
+    <div className={`grid min-w-0 gap-2 ${className}`}>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <label className="grid min-w-[240px] flex-1 gap-2 text-sm font-semibold text-[#333333]">
+          Model / tên thiết bị
+          <input
+            className={fieldClass}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Tìm model, hãng, ngành hàng"
+            value={query}
+          />
+        </label>
+        {selectedModel ? (
+          <div className="rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2 text-xs font-bold text-[#1d4ed8]">
+            Đã chọn: {modelLabel(selectedModel)}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-[#dbe6f3] bg-white">
+        <div className="grid grid-cols-[150px_minmax(220px,1fr)_150px_170px] gap-3 border-b border-[#e2e8f0] bg-[#f8fbff] px-3 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[#64748b] max-[860px]:hidden">
+          <span>Model</span>
+          <span>Tên sản phẩm</span>
+          <span>Hãng</span>
+          <span>Xuất xứ</span>
+        </div>
+        <div className="max-h-[260px] overflow-auto">
+          {filteredModels.map((model) => {
+            const active = model.id === value;
+            return (
+              <button
+                className={[
+                  'grid w-full gap-2 border-b border-[#eef2f7] px-3 py-3 text-left transition last:border-b-0 min-[861px]:grid-cols-[150px_minmax(220px,1fr)_150px_170px] min-[861px]:items-center',
+                  active ? 'bg-[#eff6ff]' : 'bg-white hover:bg-[#f8fafc]',
+                ].filter(Boolean).join(' ')}
+                key={model.id}
+                onClick={() => onChange(model.id, model)}
+                type="button"
+              >
+                <strong className="text-sm text-[#172033]">{model.code || model.displayName || model.name}</strong>
+                <span className="text-sm font-semibold text-[#334155]">{machineProductName(model) || machineDisplayName(model) || model.name}</span>
+                <span className="text-sm text-[#64748b]">{model.manufacturer || '-'}</span>
+                <span className="text-sm text-[#64748b]">{modelOrigin(model) || '-'}</span>
+              </button>
+            );
+          })}
+          {!filteredModels.length ? (
+            <div className="p-5 text-center text-sm font-semibold text-[#64748b]">
+              Không có model phù hợp.
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -998,6 +1186,18 @@ function emptyTicketForm(user: ApiUser, kind: TicketKind): TicketForm {
     warrantyEndDate: '',
     warrantyStartDate: kind === 'installation' ? date : '',
     warrantyStatus: 'IN_WARRANTY',
+    installedDeviceItems: [emptyInstallationDeviceItem()],
+  };
+}
+
+function emptyInstallationDeviceItem(): InstallationDeviceItem {
+  return {
+    itemName: '',
+    model: '',
+    serialNumber: '',
+    manufactureDate: '',
+    quantity: 1,
+    warrantyPeriod: '',
   };
 }
 
@@ -1085,8 +1285,22 @@ async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineMo
       warrantyStartDate: form.warrantyStartDate || form.scheduledDate,
       warrantyEndDate: form.warrantyEndDate,
       note: form.description.trim() || undefined,
+      installedDeviceItems: normalizeInstallationDeviceItems(form.installedDeviceItems),
     }),
   });
+}
+
+function normalizeInstallationDeviceItems(items: InstallationDeviceItem[]) {
+  return items
+    .map((item) => ({
+      itemName: item.itemName.trim(),
+      model: item.model.trim() || undefined,
+      serialNumber: item.serialNumber.trim() || undefined,
+      manufactureDate: item.manufactureDate || undefined,
+      quantity: Number(item.quantity) || 1,
+      warrantyPeriod: item.warrantyPeriod.trim() || undefined,
+    }))
+    .filter((item) => item.itemName);
 }
 
 function splitLines(value: string) {
@@ -1118,11 +1332,9 @@ function canEngineerUseMachine(user: ApiUser, machine: MachineOption) {
 }
 
 function canEngineerUseModel(user: ApiUser, model: MachineModelOption) {
-  const expertiseGroup = user.engineerProfile?.expertiseGroup;
-  if (getRoleName(user) !== 'engineer' || !expertiseGroup) return true;
-
-  const modelGroup = model.businessLine?.productIndustry?.expertiseGroup ?? model.businessLine?.expertiseGroup;
-  return !modelGroup || modelGroup === expertiseGroup;
+  void user;
+  void model;
+  return true;
 }
 
 function ticketKindLabel(kind: TicketKind) {
@@ -1140,7 +1352,17 @@ function machineLabel(machine: MachineOption) {
 }
 
 function modelLabel(model: MachineModelOption) {
-  return [model.code, model.displayName || model.name, model.manufacturer].filter(Boolean).join(' - ');
+  return machineModelOptionLabel(model) || model.code || model.displayName || model.name;
+}
+
+function modelOrigin(model: MachineModelOption) {
+  return model.countryOfOrigin || model.businessLine?.countryOfOrigin || '';
+}
+
+function modelIdByName(models: MachineModelOption[], value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return '';
+  return models.find((model) => [model.code, model.displayName, model.name].filter(Boolean).some((item) => String(item).trim().toLowerCase() === normalized))?.id || '';
 }
 
 function customerNameForSummary(machine: MachineOption | undefined, customers: CustomerOption[], customerId: string) {

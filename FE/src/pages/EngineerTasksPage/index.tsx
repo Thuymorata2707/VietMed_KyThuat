@@ -10,7 +10,7 @@ import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
-import { machineDisplayName } from '../../utils/machineDisplayName';
+import { machineDisplayName, machineProductName } from '../../utils/machineDisplayName';
 import { AsyncEntityPicker, type PickerOption } from './components/AsyncEntityPicker';
 import { CreateModelDevicePicker } from './components/CreateModelDevicePicker';
 import { EngineerTaskRow } from './components/EngineerTaskRow';
@@ -558,7 +558,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       ...current,
       machineModelId,
       modelName: model?.name || current.modelName,
-      name: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
+      name: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
     }));
   }
 
@@ -1031,7 +1031,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     updateCreateForm({
                       machineModelId: value,
                       modelName: model?.name || model?.displayName || '',
-                      deviceName: machineDisplayName(model) || model?.displayName || model?.name || '',
+                      deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || '',
                     });
                   }}
                   placeholder="VD: X-CUBE 50, X-CUBE 70..."

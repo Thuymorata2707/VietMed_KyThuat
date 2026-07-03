@@ -7,7 +7,7 @@ import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { checklistForCategory } from '../../config/medicalDeviceChecklists';
-import { machineDisplayName } from '../../utils/machineDisplayName';
+import { machineDisplayName, machineModelOptionLabel, machineProductName } from '../../utils/machineDisplayName';
 import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
 import type { AttachmentType, RepairTask, TaskAttachment } from '../EngineerTasksPage/types';
 import { attachmentTypeLabel, formatFileSize, statusLabel } from '../EngineerTasksPage/utils';
@@ -42,9 +42,11 @@ type MachineModelOption = {
   name?: string | null;
   displayName?: string | null;
   manufacturer?: string | null;
+  countryOfOrigin?: string | null;
   productCategory?: string | null;
   businessLine?: {
     name?: string | null;
+    countryOfOrigin?: string | null;
     productCategory?: string | null;
     productIndustry?: {
       name?: string | null;
@@ -318,7 +320,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                       updateForm({
                         machineModelId: event.target.value,
                         modelName: model?.name || model?.displayName || model?.code || '',
-                        deviceName: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
+                        deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
                       });
                     }}
                     value={form.machineModelId || modelIdByName(machineModels, form.modelName)}
@@ -622,7 +624,7 @@ function appendTextBlock(current: string, block: string) {
 }
 
 function machineModelLabel(model: MachineModelOption) {
-  return [model.code, model.displayName || model.name, model.manufacturer].filter(Boolean).join(' - ');
+  return machineModelOptionLabel(model) || model.code || model.displayName || model.name || 'Model';
 }
 
 function modelIdByName(models: MachineModelOption[], value: string) {

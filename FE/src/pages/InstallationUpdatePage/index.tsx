@@ -1,8 +1,9 @@
 import { ArrowLeft, Download, Loader2, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
+import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
 import { getRoleName } from '../../auth/roles';
+import { DateInput } from '../../components/DateInput';
 import { Notice } from '../../components/Notice';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
@@ -10,6 +11,7 @@ import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
+import { machineModelName, machineModelOptionLabel, machineProductName } from '../../utils/machineDisplayName';
 import type { CreateTicketForm, InstallationDeviceItem, InstallationTask } from '../EngineerTasksPage/types';
 import { emptyCreateTicketForm, emptyInstallationDeviceItem, normalizeInstallationDeviceItems } from '../EngineerTasksPage/utils';
 
@@ -17,6 +19,24 @@ type EngineerOption = {
   id: string;
   fullName?: string | null;
   email: string;
+};
+
+type MachineModelOption = {
+  id: string;
+  code?: string | null;
+  name?: string | null;
+  displayName?: string | null;
+  manufacturer?: string | null;
+  countryOfOrigin?: string | null;
+  productCategory?: string | null;
+  businessLine?: {
+    name?: string | null;
+    countryOfOrigin?: string | null;
+    productCategory?: string | null;
+    productIndustry?: {
+      name?: string | null;
+    } | null;
+  } | null;
 };
 
 const statusOptions = [
@@ -45,6 +65,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   const [machineAccessoriesText, setMachineAccessoriesText] = useState('');
   const [installedById, setInstalledById] = useState('');
   const [engineers, setEngineers] = useState<EngineerOption[]>([]);
+  const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
   const [form, setForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm('installation'));
   const isAdmin = role === 'admin';
   const accessoryMode: 'probe' | 'endoscopy' | null = isEndoscopyMachineModel({
@@ -82,6 +103,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
       setMachineAccessoriesText('');
       setInstalledById(installation.installedBy?.id || '');
       setForm(buildForm(installation));
+      await loadMachineModels();
       if (isAdmin) {
         await loadEngineers();
       }
@@ -102,6 +124,15 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
       setEngineers(response.data);
     } catch {
       setEngineers([]);
+    }
+  }
+
+  async function loadMachineModels() {
+    try {
+      const result = await apiFetchAllPages<MachineModelOption>('/machine-models');
+      setMachineModels(result);
+    } catch {
+      setMachineModels([]);
     }
   }
 
@@ -248,18 +279,9 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 </div>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
-                <label className="grid gap-2 text-sm font-semibold text-[#333333]">
-                  Ngày lắp đặt
-                  <input className={fieldClass} onChange={(event) => setInstalledAt(event.target.value)} required type="date" value={installedAt} />
-                </label>
-                <label className="grid gap-2 text-sm font-semibold text-[#333333]">
-                  Bắt đầu bảo hành
-                  <input className={fieldClass} onChange={(event) => updateForm({ workDate: event.target.value })} type="date" value={form.workDate} />
-                </label>
-                <label className="grid gap-2 text-sm font-semibold text-[#333333]">
-                  Kết thúc bảo hành
-                  <input className={fieldClass} onChange={(event) => updateForm({ warrantyEndDate: event.target.value })} required type="date" value={form.warrantyEndDate} />
-                </label>
+                <DateInput className="grid gap-2 text-sm font-semibold text-[#333333]" label="Ngày lắp đặt" onChange={setInstalledAt} value={installedAt} />
+                <DateInput className="grid gap-2 text-sm font-semibold text-[#333333]" label="Bắt đầu bảo hành" onChange={(value) => updateForm({ workDate: value })} value={form.workDate} />
+                <DateInput className="grid gap-2 text-sm font-semibold text-[#333333]" label="Kết thúc bảo hành" onChange={(value) => updateForm({ warrantyEndDate: value })} value={form.warrantyEndDate} />
                 <label className="grid gap-2 text-sm font-semibold text-[#333333] md:col-span-2">
                   Ghi chú lắp đặt
                   <textarea className={textareaClass} onChange={(event) => setNote(event.target.value)} value={note} />
@@ -298,10 +320,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   Phương tiện đi
                   <input className={fieldClass} onChange={(event) => updateForm({ handoverVehicle: event.target.value })} value={form.handoverVehicle} />
                 </label>
-                <label className={labelClass}>
-                  Ngày đi
-                  <input className={fieldClass} onChange={(event) => updateForm({ handoverDepartureDate: event.target.value })} type="date" value={form.handoverDepartureDate} />
-                </label>
+                <DateInput className={labelClass} label="Ngày đi" onChange={(value) => updateForm({ handoverDepartureDate: value })} value={form.handoverDepartureDate} />
               </div>
             </div>
 
@@ -403,21 +422,35 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                     </div>
                     <div className="grid gap-4 md:grid-cols-3">
                       <label className={labelClass}>
-                        Tên hàng
-                        <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required value={item.itemName} />
+                        Model
+                        <select
+                          className={fieldClass}
+                          onChange={(event) => {
+                            const model = machineModels.find((option) => option.id === event.target.value);
+                            updateDeviceItem(index, {
+                              itemName: machineProductName(model) || item.itemName,
+                              model: machineModelName(model),
+                            });
+                          }}
+                          value={modelIdByName(machineModels, item.model)}
+                        >
+                          <option value="">Chọn model</option>
+                          {machineModels.map((model) => (
+                            <option key={model.id} value={model.id}>
+                              {machineModelLabel(model)}
+                            </option>
+                          ))}
+                        </select>
                       </label>
                       <label className={labelClass}>
-                        Model
-                        <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { model: event.target.value })} value={item.model} />
+                        Tên sản phẩm
+                        <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required value={item.itemName} />
                       </label>
                       <label className={labelClass}>
                         S/N
                         <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} />
                       </label>
-                      <label className={labelClass}>
-                        NSX
-                        <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { manufactureDate: event.target.value })} type="date" value={item.manufactureDate} />
-                      </label>
+                      <DateInput className={labelClass} label="NSX" onChange={(value) => updateDeviceItem(index, { manufactureDate: value })} value={item.manufactureDate} />
                       <label className={labelClass}>
                         Số lượng
                         <input className={fieldClass} min={1} onChange={(event) => updateDeviceItem(index, { quantity: Number(event.target.value) || 1 })} type="number" value={item.quantity} />
@@ -609,6 +642,16 @@ function buildForm(task: InstallationTask): CreateTicketForm {
 
 function dateInputValue(value?: string | null) {
   return value ? value.slice(0, 10) : '';
+}
+
+function machineModelLabel(model: MachineModelOption) {
+  return machineModelOptionLabel(model) || machineModelName(model) || 'Model';
+}
+
+function modelIdByName(models: MachineModelOption[], value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return '';
+  return models.find((model) => [model.code, model.displayName, model.name].filter(Boolean).some((item) => String(item).trim().toLowerCase() === normalized))?.id || '';
 }
 
 function safeFileName(value: string) {

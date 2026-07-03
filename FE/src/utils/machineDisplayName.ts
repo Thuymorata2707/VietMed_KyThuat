@@ -2,9 +2,12 @@ type ProductNamingModel = {
   code?: string | null;
   name?: string | null;
   displayName?: string | null;
+  manufacturer?: string | null;
+  countryOfOrigin?: string | null;
   productCategory?: string | null;
   businessLine?: {
     name?: string | null;
+    countryOfOrigin?: string | null;
     productCategory?: string | null;
     expertiseGroup?: string | null;
     productIndustry?: {
@@ -29,7 +32,7 @@ const productCategoryLabels: Record<string, string> = {
 export function machineDisplayName(model?: ProductNamingModel | null) {
   if (!model) return '';
 
-  const modelName = model.code || model.displayName || model.name || '';
+  const modelName = machineModelName(model);
   const category =
     categoryLabel(model.productCategory) ||
     categoryLabel(model.businessLine?.productCategory) ||
@@ -37,6 +40,37 @@ export function machineDisplayName(model?: ProductNamingModel | null) {
     normalizeProductName(model.businessLine?.productIndustry?.name);
 
   return [modelName, category].filter(Boolean).join(' - ');
+}
+
+export function machineModelName(model?: ProductNamingModel | null) {
+  return model?.code || model?.displayName || model?.name || '';
+}
+
+export function machineProductName(model?: ProductNamingModel | null) {
+  if (!model) return '';
+
+  const modelName = machineModelName(model);
+  const category =
+    categoryLabel(model.productCategory) ||
+    categoryLabel(model.businessLine?.productCategory) ||
+    normalizeProductName(model.businessLine?.name) ||
+    normalizeProductName(model.businessLine?.productIndustry?.name);
+
+  if (category && modelName) return `${category} ${modelName}`;
+  return modelName || category || '';
+}
+
+export function machineModelOptionLabel(model?: ProductNamingModel | null) {
+  if (!model) return '';
+
+  return [
+    machineModelName(model),
+    machineProductName(model),
+    model.manufacturer,
+    model.countryOfOrigin || model.businessLine?.countryOfOrigin,
+  ]
+    .filter(Boolean)
+    .join(' | ');
 }
 
 function categoryLabel(value?: string | null) {

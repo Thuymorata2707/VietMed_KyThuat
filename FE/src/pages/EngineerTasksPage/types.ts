@@ -147,9 +147,11 @@ export type QuickMachineModel = {
   name?: string | null;
   displayName?: string | null;
   manufacturer?: string | null;
+  countryOfOrigin?: string | null;
   productCategory?: string | null;
   businessLine?: {
     name?: string | null;
+    countryOfOrigin?: string | null;
     productCategory?: string | null;
     expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
     productIndustry?: {

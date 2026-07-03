@@ -1,4 +1,4 @@
-import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, FocusEvent, FormEvent, ReactNode } from 'react';
@@ -13,7 +13,7 @@ import { PageTitle } from '../../components/PageTitle';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { queryKeys } from '../../lib/queryKeys';
-import { machineDisplayName } from '../../utils/machineDisplayName';
+import { machineDisplayName, machineModelOptionLabel } from '../../utils/machineDisplayName';
 import { formatMachineAccessoriesText, parseMachineAccessoriesInput, serializeMachineAccessories } from '../../utils/machineAccessories';
 
 type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING' | 'PHYSIOTHERAPY' | 'ICU';
@@ -1403,85 +1403,68 @@ function ModelDetailBlock({
           </div>
         </div>
 
-        <section className="rounded-lg border border-[#e5e5e5] bg-white p-6 text-sm text-[#666666]">
-          Chọn một serial máy để mở panel chi tiết máy và phụ kiện đi kèm.
-        </section>
+        <MachineDetailPanel detail={machineDetail} loading={loadingMachineDetail} />
       </div>
-      <MachineDetailDrawer detail={machineDetail} loading={loadingMachineDetail} onClose={() => onSelectMachine('')} open={Boolean(selectedMachineId)} />
     </div>
   );
 }
 
-function MachineDetailDrawer({ detail, loading, onClose, open }: { detail: MachineDetail | null; loading: boolean; onClose: () => void; open: boolean }) {
-  if (!open) return null;
+function MachineDetailPanel({ detail, loading }: { detail: MachineDetail | null; loading: boolean }) {
+  if (loading) {
+    return (
+      <section className="rounded-lg border border-[#e5e5e5] bg-white p-6 text-sm font-semibold text-[#666666]">
+        <Loader2 className="spin-icon mr-2 inline" size={18} />
+        Đang tải chi tiết máy
+      </section>
+    );
+  }
+
+  if (!detail) {
+    return (
+      <section className="rounded-lg border border-[#e5e5e5] bg-white p-6 text-sm text-[#666666]">
+        Chọn một serial máy để xem chi tiết máy và phụ kiện đi kèm.
+      </section>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-[95] bg-[#0f172a]/35 backdrop-blur-[3px]" onClick={onClose} role="presentation">
-      <aside
-        aria-modal="true"
-        className="ml-auto grid h-full w-full max-w-[720px] grid-rows-[auto_1fr] overflow-hidden rounded-l-[26px] border-l border-[#dbe6f3] bg-white shadow-[-24px_0_60px_rgba(15,23,42,0.22)]"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-[#e2e8f0] bg-[#f8fbff] p-5">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2563eb]">Chi tiết máy</span>
-            <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#172033]">{detail?.name || detail?.modelName || detail?.serialNumber || 'Đang tải máy'}</h2>
-            <p className="mt-1 text-sm font-medium text-[#64748b]">{detail ? [detail.machineCode, detail.serialNumber, detail.manufacturer].filter(Boolean).join(' - ') : 'Đang lấy dữ liệu...'}</p>
+    <section className="rounded-lg border border-[#e5e5e5] bg-white">
+      <div className="border-b border-[#eeeeee] p-4">
+        <span className="text-xs font-medium text-[#666666]">Chi tiết máy</span>
+        <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">{detail.name || detail.serialNumber}</h2>
+        <p className="mt-1 text-sm text-[#666666]">{[detail.machineCode, detail.modelName, detail.manufacturer].filter(Boolean).join(' - ')}</p>
+      </div>
+
+      <div className="grid gap-4 p-4">
+        <div className="grid gap-3 md:grid-cols-2">
+          <DetailItem label="Trạng thái kho" value={inventoryLabel(detail.inventoryStatus)} />
+          <DetailItem label="Vận hành" value={statusLabel(detail.status)} />
+          <DetailItem label="Ngày nhập kho" value={formatDate(detail.warehouseImportDate)} />
+          <DetailItem label="Ngày lắp" value={formatDate(detail.installDate)} />
+          <DetailItem label="Bắt đầu bảo hành" value={formatDate(detail.warrantyStartDate)} />
+          <DetailItem label="Kết thúc bảo hành" value={formatDate(detail.warrantyEndDate)} />
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <strong className="text-sm text-[#1f1f1f]">Phụ kiện</strong>
+            <span className="text-xs font-medium text-[#666666]">{detail.accessories?.length ?? 0} phụ kiện</span>
           </div>
-          <button className="grid size-10 place-items-center rounded-2xl border border-[#cbd5e1] bg-white text-[#475569] shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:border-[#94a3b8]" onClick={onClose} type="button">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="overflow-auto p-5">
-          {loading ? (
-            <section className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-6 text-sm font-semibold text-[#64748b]">
-              <Loader2 className="spin-icon mr-2 inline" size={18} />
-              Đang tải chi tiết máy
-            </section>
-          ) : null}
-
-          {!loading && detail ? (
-            <div className="grid gap-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                <DetailItem label="Trạng thái kho" value={inventoryLabel(detail.inventoryStatus)} />
-                <DetailItem label="Vận hành" value={statusLabel(detail.status)} />
-                <DetailItem label="Ngày nhập kho" value={formatDate(detail.warehouseImportDate)} />
-                <DetailItem label="Ngày lắp" value={formatDate(detail.installDate)} />
-                <DetailItem label="Bắt đầu bảo hành" value={formatDate(detail.warrantyStartDate)} />
-                <DetailItem label="Kết thúc bảo hành" value={formatDate(detail.warrantyEndDate)} />
+          <div className="grid gap-2">
+            {detail.accessories?.map((accessory) => (
+              <div className="rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3" key={accessory.id}>
+                <strong className="block text-sm text-[#1f1f1f]">{accessory.name}</strong>
+                <span className="mt-1 block text-[13px] text-[#666666]">
+                  {[accessory.serialNumber, accessory.code].filter(Boolean).join(' - ') || 'Chưa có S/N'}
+                </span>
+                <small className="mt-1 block text-xs text-[#666666]">{accessory.componentAccessory?.component?.name || accessory.note || 'Phụ kiện theo máy'}</small>
               </div>
-
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <strong className="text-sm text-[#1f1f1f]">Phụ kiện</strong>
-                  <span className="text-xs font-medium text-[#666666]">{detail.accessories?.length ?? 0} phụ kiện</span>
-                </div>
-                <div className="grid gap-2">
-                  {detail.accessories?.map((accessory) => (
-                    <div className="rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3" key={accessory.id}>
-                      <strong className="block text-sm text-[#1f1f1f]">{accessory.name}</strong>
-                      <span className="mt-1 block text-[13px] text-[#666666]">
-                        {[accessory.serialNumber, accessory.code].filter(Boolean).join(' - ') || 'Chưa có S/N'}
-                      </span>
-                      <small className="mt-1 block text-xs text-[#666666]">{accessory.componentAccessory?.component?.name || accessory.note || 'Phụ kiện theo máy'}</small>
-                    </div>
-                  ))}
-                  {!detail.accessories?.length ? <p className="rounded-lg bg-[#fafafa] p-4 text-sm text-[#666666]">Máy này chưa khai báo phụ kiện.</p> : null}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {!loading && !detail ? (
-            <section className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-6 text-sm text-[#64748b]">
-              Chưa có dữ liệu chi tiết máy.
-            </section>
-          ) : null}
+            ))}
+            {!detail.accessories?.length ? <p className="rounded-lg bg-[#fafafa] p-4 text-sm text-[#666666]">Máy này chưa khai báo phụ kiện.</p> : null}
+          </div>
         </div>
-      </aside>
-    </div>
+      </div>
+    </section>
   );
 }
 function DetailItem({ label, value }: { label: string; value?: string }) {
@@ -1715,7 +1698,7 @@ function modelDetailLabel(model: MachineModel) {
 }
 
 function modelOptionLabel(model: MachineModel) {
-  return modelShortLabel(model);
+  return machineModelOptionLabel(model) || modelShortLabel(model);
 }
 
 function machineDefaultName(model: MachineModel) {

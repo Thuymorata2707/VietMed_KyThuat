@@ -1,6 +1,7 @@
 import { ClipboardCheck, PackageCheck, Wrench } from 'lucide-react';
 import type { ApiUser } from '../../api';
 import { displayLabel } from '../../utils/displayLabels';
+import { machineModelOptionLabel } from '../../utils/machineDisplayName';
 import type {
   AttachmentType,
   BusinessTab,
@@ -357,16 +358,13 @@ export function normalizeInstallationDeviceItems(items: InstallationDeviceItem[]
 }
 
 export function canEngineerSeeModel(user: ApiUser, model: QuickMachineModel) {
-  const expertiseGroup = user.engineerProfile?.expertiseGroup;
-  if (!expertiseGroup) return true;
-  const modelGroup = model.businessLine?.productIndustry?.expertiseGroup ?? model.businessLine?.expertiseGroup;
-  return !modelGroup || modelGroup === expertiseGroup;
+  void user;
+  void model;
+  return true;
 }
 
 export function quickModelLabel(model: QuickMachineModel) {
-  const shortName = model.code || model.displayName || model.name || 'Model';
-  const detail = [model.name, model.manufacturer].filter(Boolean).join(' - ');
-  return detail && detail !== shortName ? `${shortName} - ${detail}` : shortName;
+  return machineModelOptionLabel(model) || model.code || model.displayName || model.name || 'Model';
 }
 
 export function canEngineerSeeMachine(user: ApiUser, machine: TaskMachine) {

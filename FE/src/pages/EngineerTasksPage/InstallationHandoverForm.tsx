@@ -1,6 +1,6 @@
 import type { ApiUser } from '../../api';
 import { DateInput } from '../../components/DateInput';
-import { machineDisplayName } from '../../utils/machineDisplayName';
+import { machineModelName, machineModelOptionLabel, machineProductName } from '../../utils/machineDisplayName';
 import type { CreateTicketForm, InstallationDeviceItem } from './types';
 
 type InstallationHandoverFormProps = {
@@ -19,9 +19,11 @@ type MachineModelOption = {
   name?: string | null;
   displayName?: string | null;
   manufacturer?: string | null;
+  countryOfOrigin?: string | null;
   productCategory?: string | null;
   businessLine?: {
     name?: string | null;
+    countryOfOrigin?: string | null;
     productCategory?: string | null;
     productIndustry?: {
       name?: string | null;
@@ -82,17 +84,13 @@ export function InstallationHandoverForm({
         {form.installedDeviceItems.map((item, index) => (
           <div className="installation-device-row" key={index}>
             <label>
-              Tên hàng
-              <input onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required value={item.itemName} />
-            </label>
-            <label>
               Model
               <select
                 onChange={(event) => {
                   const model = machineModels.find((option) => option.id === event.target.value);
                   updateDeviceItem(index, {
-                    itemName: machineDisplayName(model) || model?.displayName || model?.name || model?.code || item.itemName,
-                    model: model?.code || model?.displayName || model?.name || '',
+                    itemName: machineProductName(model) || item.itemName,
+                    model: machineModelName(model),
                   });
                 }}
                 value={modelIdByName(machineModels, item.model)}
@@ -104,6 +102,10 @@ export function InstallationHandoverForm({
                   </option>
                 ))}
               </select>
+            </label>
+            <label>
+              Tên sản phẩm
+              <input onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required value={item.itemName} />
             </label>
             <label>
               S/N
@@ -156,7 +158,7 @@ export function InstallationHandoverForm({
 }
 
 function machineModelLabel(model: MachineModelOption) {
-  return [model.code, model.displayName || model.name, model.manufacturer].filter(Boolean).join(' - ');
+  return machineModelOptionLabel(model) || machineModelName(model);
 }
 
 function modelIdByName(models: MachineModelOption[], value: string) {

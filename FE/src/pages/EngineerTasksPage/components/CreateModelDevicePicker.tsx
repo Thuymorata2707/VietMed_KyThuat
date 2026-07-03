@@ -1,5 +1,5 @@
 import type { ApiUser } from '../../../api';
-import { machineDisplayName } from '../../../utils/machineDisplayName';
+import { machineDisplayName, machineProductName } from '../../../utils/machineDisplayName';
 import type { CreateTicketForm, QuickMachineModel } from '../types';
 import { canEngineerSeeModel, quickModelLabel } from '../utils';
 import { AsyncEntityPicker } from './AsyncEntityPicker';
@@ -40,7 +40,7 @@ export function CreateModelDevicePicker({
           onChange({
             machineModelId: nextValue,
             modelName: model?.name || model?.displayName || model?.code || '',
-            deviceName: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
+            deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
           });
         }}
         placeholder="Tìm model, tên máy hoặc hãng"
