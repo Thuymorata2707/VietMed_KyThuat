@@ -1,8 +1,81 @@
 import { ClipboardCheck, PackageCheck, Wrench } from 'lucide-react';
+import type { ApiUser } from '../../api';
 import { displayLabel } from '../../utils/displayLabels';
-import type { AttachmentType, EngineerTask, InstallationDeviceItem, TaskFilter, TaskKind, TaskTone, CreateTicketForm } from './types';
+import type {
+  AttachmentType,
+  BusinessTab,
+  DailyWorkNote,
+  EngineerTask,
+  InstallationDeviceItem,
+  InstallationTask,
+  PickerCustomer,
+  PickerMachine,
+  TaskFilter,
+  TaskKind,
+  TaskTone,
+  CreateTicketForm,
+  QuickMachineModel,
+  TaskMachine,
+} from './types';
 
 export const todayValue = () => new Date().toISOString().slice(0, 10);
+
+export function startOfDay(value: Date) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+export function startOfWeek(value: Date) {
+  const date = startOfDay(value);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  return date;
+}
+
+export function addDays(value: Date, days: number) {
+  const date = new Date(value);
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+export function toDateInput(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function formatDailyWorkDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'short',
+  }).format(date);
+}
+
+export function dayNumber(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+  return String(date.getDate()).padStart(2, '0');
+}
+
+export function monthLabel(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '---';
+  return `T${date.getMonth() + 1}`;
+}
+
+export function formatDailyWorkTime(note: DailyWorkNote) {
+  const range = [note.startTime, note.endTime].filter(Boolean).join(' - ');
+  return range || 'Cả ngày';
+}
+
+export function weeklyReportHrefForDailyWork(note: DailyWorkNote) {
+  const weekStart = toDateInput(startOfWeek(new Date(note.workDate)));
+  return `/weekly-reports?weekStart=${weekStart}`;
+}
 
 export function emptyInstallationDeviceItem(): InstallationDeviceItem {
   return {
@@ -281,4 +354,254 @@ export function normalizeInstallationDeviceItems(items: InstallationDeviceItem[]
       warrantyPeriod: item.warrantyPeriod.trim() || undefined,
     }))
     .filter((item) => item.itemName);
+}
+
+export function canEngineerSeeModel(user: ApiUser, model: QuickMachineModel) {
+  const expertiseGroup = user.engineerProfile?.expertiseGroup;
+  if (!expertiseGroup) return true;
+  const modelGroup = model.businessLine?.productIndustry?.expertiseGroup ?? model.businessLine?.expertiseGroup;
+  return !modelGroup || modelGroup === expertiseGroup;
+}
+
+export function quickModelLabel(model: QuickMachineModel) {
+  const shortName = model.code || model.displayName || model.name || 'Model';
+  const detail = [model.name, model.manufacturer].filter(Boolean).join(' - ');
+  return detail && detail !== shortName ? `${shortName} - ${detail}` : shortName;
+}
+
+export function canEngineerSeeMachine(user: ApiUser, machine: TaskMachine) {
+  const expertiseGroup = user.engineerProfile?.expertiseGroup;
+  if (!expertiseGroup) return true;
+  const machineGroup = machine.businessLine?.productIndustry?.expertiseGroup ?? machine.businessLine?.expertiseGroup;
+  return !machineGroup || machineGroup === expertiseGroup;
+}
+
+export function groupTasksByDate(tasks: EngineerTask[]) {
+  const groups = new Map<string, EngineerTask[]>();
+
+  tasks.forEach((task) => {
+    const key = taskDateGroupKey(task);
+    groups.set(key, [...(groups.get(key) ?? []), task]);
+  });
+
+  return Array.from(groups.entries())
+    .sort(([left], [right]) => compareTaskGroupKeys(left, right))
+    .map(([key, items]) => ({
+      key,
+      label: key === '__missing__' ? 'Chưa có ngày hẹn' : formatDate(key),
+      items: items.sort(compareTasks),
+    }));
+}
+
+function taskDateGroupKey(task: EngineerTask) {
+  const value = taskDateValue(task);
+  if (!value) return '__missing__';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '__missing__';
+  return date.toISOString().slice(0, 10);
+}
+
+function compareTaskGroupKeys(left: string, right: string) {
+  if (left === '__missing__') return 1;
+  if (right === '__missing__') return -1;
+  return right.localeCompare(left);
+}
+
+export function machinePickerLabel(machine: PickerMachine) {
+  return [machine.machineCode, machine.serialNumber ? `S/N ${machine.serialNumber}` : '', machine.modelName || machine.name, machine.customer?.name]
+    .filter(Boolean)
+    .join(' - ');
+}
+
+export function machinePickerEndpoint(kind: TaskKind) {
+  const inventoryStatus = kind === 'installation' ? 'IN_STOCK' : 'INSTALLED';
+  return `/machines?limit=20&inventoryStatus=${inventoryStatus}`;
+}
+
+export function isMachineEligibleForTicket(kind: TaskKind, machine: PickerMachine) {
+  if (!machine.inventoryStatus) return true;
+  return kind === 'installation' ? machine.inventoryStatus === 'IN_STOCK' : machine.inventoryStatus === 'INSTALLED';
+}
+
+export function customerPickerLabel(customer: PickerCustomer) {
+  return [customer.customerCode, customer.name, customer.province, customer.phone].filter(Boolean).join(' - ');
+}
+
+export function isEngineerUser(user: ApiUser) {
+  return user.roleName === 'engineer' || user.role?.name === 'engineer' || user.role?.name === 'kỹ sư';
+}
+
+export function matchesBusinessTab(task: EngineerTask, tab: BusinessTab) {
+  if (tab === 'all') {
+    return true;
+  }
+
+  if (tab === 'repair') {
+    return task.kind === 'repair' && task.warrantyStatus !== 'IN_WARRANTY';
+  }
+
+  if (tab === 'maintenance') {
+    return task.kind === 'maintenance' && task.type !== 'WARRANTY';
+  }
+
+  if (tab === 'installation') {
+    return task.kind === 'installation';
+  }
+
+  if (tab === 'warranty') {
+    return (
+      (task.kind === 'repair' && task.warrantyStatus === 'IN_WARRANTY') ||
+      (task.kind === 'maintenance' && task.type === 'WARRANTY')
+    );
+  }
+
+  if (tab === 'calendar') {
+    return false;
+  }
+
+  return false;
+}
+
+export function buildInstallationEditForm(task: InstallationTask): CreateTicketForm {
+  const installedAt = task.installedAt ? task.installedAt.slice(0, 10) : '';
+  const warrantyStartDate = (task.warrantyStartDate || task.warrantyCard?.startDate)?.slice(0, 10) || installedAt;
+  const warrantyEndDate = (task.warrantyEndDate || task.warrantyCard?.endDate)?.slice(0, 10) || '';
+  const installedDeviceItems = task.installedDeviceItems?.length
+    ? task.installedDeviceItems.map((item) => ({
+        itemName: item.itemName || '',
+        model: item.model || '',
+        serialNumber: item.serialNumber || '',
+        manufactureDate: item.manufactureDate ? item.manufactureDate.slice(0, 10) : '',
+        quantity: Number(item.quantity) || 1,
+        warrantyPeriod: item.warrantyPeriod || '',
+      }))
+    : [emptyInstallationDeviceItem()];
+
+  return {
+    ...emptyCreateTicketForm('installation'),
+    workDate: warrantyStartDate,
+    warrantyEndDate,
+    description: task.warrantyNote || task.warrantyCard?.note || '',
+    handoverInstallerName: task.handoverInstallerName || '',
+    handoverInstallerPosition: task.handoverInstallerPosition || '',
+    handoverVehicle: task.handoverVehicle || '',
+    handoverDepartureDate: task.handoverDepartureDate ? task.handoverDepartureDate.slice(0, 10) : warrantyStartDate,
+    receiverInstallAddress: task.receiverInstallAddress || '',
+    receiverRepresentative: task.receiverRepresentative || '',
+    receiverPosition: task.receiverPosition || '',
+    receiverPhone: task.receiverPhone || '',
+    installedDeviceItems,
+    deviceCondition: task.deviceCondition || 'NEW_100',
+    deviceConditionNote: task.deviceConditionNote || '',
+  };
+}
+
+export function defaultCreateKindForBusinessTab(tab: BusinessTab): TaskKind {
+  if (tab === 'installation') return 'installation';
+  if (tab === 'maintenance') return 'maintenance';
+  return 'repair';
+}
+
+export function taskAttention(task: EngineerTask): { label: string; tone: TaskTone } {
+  if (task.reviewStatus === 'NEEDS_REVISION') return { label: 'Bổ sung theo phản hồi admin', tone: 'danger' };
+  if (isOverdueTask(task)) return { label: 'Quá hạn, xử lý trước', tone: 'danger' };
+  if (needsMachineProfile(task)) return { label: 'Tạo hoặc bổ sung hồ sơ máy', tone: 'warn' };
+  if (isTodayTask(task)) return { label: 'Việc hôm nay', tone: 'warn' };
+  if (task.reviewStatus === 'PENDING') return { label: 'Đã gửi, chờ admin duyệt', tone: 'good' };
+  if (['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status)) return { label: 'Đã hoàn tất', tone: 'neutral' };
+  return { label: 'Cập nhật kết quả hiện trường', tone: 'neutral' };
+}
+
+export function taskUpdateHref(task: EngineerTask) {
+  if (task.kind === 'installation') return `/installations/${task.id}/update?returnTo=/my-tasks`;
+  if (task.kind === 'repair') return `/repairs/${task.id}/update?returnTo=/my-tasks`;
+  if (task.kind === 'maintenance') return `/maintenance/${task.id}/update?returnTo=/my-tasks`;
+  return '';
+}
+
+export function taskPrimaryMachineName(task: EngineerTask) {
+  if (task.kind === 'installation') {
+    return (
+      task.installedDeviceItems?.[0]?.itemName ||
+      task.plannedMachineModel?.displayName ||
+      task.plannedMachineModel?.name ||
+      task.plannedModelName ||
+      task.machine?.modelName ||
+      'Chưa có tên thiết bị'
+    );
+  }
+
+  return task.deviceName || task.machine?.modelName || task.modelName || 'Chưa có tên thiết bị';
+}
+
+export function taskContactPhone(task: EngineerTask) {
+  if (task.kind === 'installation') return task.receiverPhone || '';
+  return task.contactPhone || '';
+}
+
+export function taskLocation(task: EngineerTask) {
+  if (task.kind === 'installation') return task.receiverInstallAddress || task.customer?.province || task.machine?.customer?.province || '';
+  return task.address || task.machine?.customer?.province || '';
+}
+
+export function taskPriorityScore(task: EngineerTask) {
+  let score = 0;
+  if (task.reviewStatus === 'NEEDS_REVISION') score += 140;
+  if (task.reviewStatus === 'PENDING') score += 10;
+  if (isOverdueTask(task)) score += 100;
+  if (isTodayTask(task)) score += 50;
+  if (needsMachineProfile(task)) score += 30;
+  if (task.kind === 'repair' && task.priority === 'URGENT') score += 25;
+  if (task.kind === 'repair' && task.priority === 'HIGH') score += 15;
+  return score;
+}
+
+export function taskActionLabel(task: EngineerTask) {
+  if (task.reviewStatus === 'NEEDS_REVISION') return 'Cần bổ sung báo cáo';
+  if (task.reviewStatus === 'PENDING') return 'Chờ admin xác nhận';
+  if (isOverdueTask(task)) return 'Cần xử lý ngay';
+  if (isTodayTask(task)) return 'Cần làm hôm nay';
+  if (needsMachineProfile(task)) return 'Cần tạo hồ sơ máy';
+  if (['ASSIGNED', 'SCHEDULED', 'PENDING'].includes(task.status)) return 'Cần bắt đầu';
+  if (['IN_PROGRESS', 'WAITING_PARTS'].includes(task.status)) return 'Cần cập nhật kết quả';
+  if (['COMPLETED', 'INSTALLED'].includes(task.status)) return 'Đã hoàn tất';
+  return 'Theo dõi';
+}
+
+export function taskUpdatePanelTitle(task: EngineerTask) {
+  if (task.kind === 'installation') return 'Hoàn thiện bàn giao và bảo hành';
+  if (task.kind === 'maintenance') return 'Ghi nhận kết quả bảo trì';
+  return 'Ghi nhận kết quả sửa chữa';
+}
+
+export function taskActionTextClass(task: EngineerTask) {
+  if (task.reviewStatus === 'NEEDS_REVISION' || isOverdueTask(task)) return 'text-[#b5121b]';
+  if (task.reviewStatus === 'PENDING' || needsMachineProfile(task)) return 'text-[#9b5a17]';
+  if (['COMPLETED', 'INSTALLED'].includes(task.status)) return 'text-[#177245]';
+  return 'text-[#18181b]';
+}
+
+export function createTicketHrefForTab(tab: BusinessTab) {
+  const returnTo = encodeURIComponent('/my-tasks');
+
+  if (tab === 'installation') {
+    return `/installations/create?returnTo=${returnTo}`;
+  }
+
+  if (tab === 'maintenance') {
+    return `/service-tickets/create?kind=maintenance&returnTo=${returnTo}`;
+  }
+
+  if (tab === 'warranty') {
+    return `/service-tickets/create?kind=repair&warrantyStatus=IN_WARRANTY&returnTo=${returnTo}`;
+  }
+
+  return `/service-tickets/create?kind=repair&returnTo=${returnTo}`;
+}
+
+export function createTicketLabelForTab(tab: BusinessTab) {
+  if (tab === 'installation') return 'Tạo phiếu lắp đặt';
+  if (tab === 'maintenance') return 'Tạo phiếu bảo trì';
+  if (tab === 'warranty') return 'Tạo phiếu bảo hành';
+  return 'Tạo phiếu sửa chữa';
 }

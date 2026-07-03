@@ -4,9 +4,11 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
+import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { appendChecklistLines, checklistForCategory } from '../../config/medicalDeviceChecklists';
+import { machineDisplayName } from '../../utils/machineDisplayName';
 import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
 import type { AttachmentType, MaintenanceTask, TaskAttachment } from '../EngineerTasksPage/types';
 import { attachmentTypeLabel, formatFileSize, statusLabel } from '../EngineerTasksPage/utils';
@@ -41,6 +43,14 @@ type MachineModelOption = {
   name?: string | null;
   displayName?: string | null;
   manufacturer?: string | null;
+  productCategory?: string | null;
+  businessLine?: {
+    name?: string | null;
+    productCategory?: string | null;
+    productIndustry?: {
+      name?: string | null;
+    } | null;
+  } | null;
 };
 
 export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
@@ -297,14 +307,8 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                     </select>
                   </label>
                 ) : null}
-                <label className={labelClass}>
-                  Ngày bảo trì
-                  <input className={fieldClass} onChange={(event) => updateForm({ scheduledDate: event.target.value })} type="date" value={form.scheduledDate} />
-                </label>
-                <label className={labelClass}>
-                  Lịch bảo trì tiếp theo
-                  <input className={fieldClass} onChange={(event) => updateForm({ nextDueDate: event.target.value })} type="date" value={form.nextDueDate} />
-                </label>
+                <DateInput className={labelClass} label="Ngày bảo trì" onChange={(value) => updateForm({ scheduledDate: value })} value={form.scheduledDate} />
+                <DateInput className={labelClass} label="Lịch bảo trì tiếp theo" onChange={(value) => updateForm({ nextDueDate: value })} value={form.nextDueDate} />
                 <label className={labelClass}>
                   S/N máy
                   <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
@@ -318,7 +322,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                       updateForm({
                         machineModelId: event.target.value,
                         modelName: model?.name || model?.displayName || model?.code || '',
-                        deviceName: model?.displayName || model?.name || model?.code || '',
+                        deviceName: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
                       });
                     }}
                     value={form.machineModelId || modelIdByName(machineModels, form.modelName)}

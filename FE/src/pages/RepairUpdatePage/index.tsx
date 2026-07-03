@@ -7,6 +7,7 @@ import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { checklistForCategory } from '../../config/medicalDeviceChecklists';
+import { machineDisplayName } from '../../utils/machineDisplayName';
 import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
 import type { AttachmentType, RepairTask, TaskAttachment } from '../EngineerTasksPage/types';
 import { attachmentTypeLabel, formatFileSize, statusLabel } from '../EngineerTasksPage/utils';
@@ -41,6 +42,14 @@ type MachineModelOption = {
   name?: string | null;
   displayName?: string | null;
   manufacturer?: string | null;
+  productCategory?: string | null;
+  businessLine?: {
+    name?: string | null;
+    productCategory?: string | null;
+    productIndustry?: {
+      name?: string | null;
+    } | null;
+  } | null;
 };
 
 export function RepairUpdatePage({ user }: { user: ApiUser }) {
@@ -309,7 +318,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                       updateForm({
                         machineModelId: event.target.value,
                         modelName: model?.name || model?.displayName || model?.code || '',
-                        deviceName: model?.displayName || model?.name || model?.code || '',
+                        deviceName: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
                       });
                     }}
                     value={form.machineModelId || modelIdByName(machineModels, form.modelName)}

@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
+import { DateInput } from '../../components/DateInput';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -12,6 +13,7 @@ import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { queryKeys } from '../../lib/queryKeys';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
+import { machineDisplayName } from '../../utils/machineDisplayName';
 
 type TicketKind = 'repair' | 'maintenance' | 'installation';
 type TicketScope = 'installation' | 'service';
@@ -42,9 +44,11 @@ type MachineModelOption = {
   manufacturer?: string | null;
   productCategory?: string | null;
   businessLine?: {
+    name?: string | null;
     productCategory?: string | null;
     expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
     productIndustry?: {
+      name?: string | null;
       expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
     } | null;
   } | null;
@@ -486,6 +490,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                       updateForm({
                         machineModelId: event.target.value,
                         modelName: model?.name || model?.displayName || '',
+                        deviceName: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
                       });
                     }}
                     required
@@ -656,10 +661,7 @@ function RepairFields({ form, updateForm }: { form: TicketForm; updateForm: (pat
           <option value="URGENT">Khẩn cấp</option>
         </select>
       </label>
-      <label className={labelClass}>
-        Ngày báo lỗi
-        <input className={fieldClass} onChange={(event) => updateForm({ reportedAt: event.target.value })} type="date" value={form.reportedAt} />
-      </label>
+      <DateInput className={labelClass} label="Ngày báo lỗi" onChange={(value) => updateForm({ reportedAt: value })} value={form.reportedAt} />
       <label className={labelClass}>
         Đơn vị sử dụng
         <input className={fieldClass} onChange={(event) => updateForm({ usingDepartment: event.target.value })} value={form.usingDepartment} />
@@ -712,14 +714,8 @@ function MaintenanceFields({ form, models, updateForm }: { form: TicketForm; mod
           <option value="OTHER">Khác</option>
         </select>
       </label>
-      <label className={labelClass}>
-        Ngày bảo trì
-        <input className={fieldClass} onChange={(event) => updateForm({ scheduledDate: event.target.value })} required type="date" value={form.scheduledDate} />
-      </label>
-      <label className={labelClass}>
-        Lịch tiếp theo
-        <input className={fieldClass} onChange={(event) => updateForm({ nextDueDate: event.target.value })} type="date" value={form.nextDueDate} />
-      </label>
+      <DateInput className={labelClass} label="Ngày bảo trì" onChange={(value) => updateForm({ scheduledDate: value })} required value={form.scheduledDate} />
+      <DateInput className={labelClass} label="Lịch tiếp theo" onChange={(value) => updateForm({ nextDueDate: value })} value={form.nextDueDate} />
       <label className={labelClass}>
         Đơn vị sử dụng
         <input className={fieldClass} onChange={(event) => updateForm({ usingDepartment: event.target.value })} value={form.usingDepartment} />
@@ -765,7 +761,7 @@ function ModelDeviceSelect({ form, models, updateForm }: { form: TicketForm; mod
             updateForm({
               machineModelId: event.target.value,
               modelName: model?.name || model?.displayName || model?.code || '',
-              deviceName: model?.displayName || model?.name || model?.code || '',
+              deviceName: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
             });
           }}
           value={form.machineModelId}
@@ -785,18 +781,9 @@ function ModelDeviceSelect({ form, models, updateForm }: { form: TicketForm; mod
 function InstallationFields({ form, updateForm }: { form: TicketForm; updateForm: (patch: Partial<TicketForm>) => void }) {
   return (
     <>
-      <label className={labelClass}>
-        Ngày lắp đặt
-        <input className={fieldClass} onChange={(event) => updateForm({ scheduledDate: event.target.value, warrantyStartDate: event.target.value })} required type="date" value={form.scheduledDate} />
-      </label>
-      <label className={labelClass}>
-        Bắt đầu bảo hành
-        <input className={fieldClass} onChange={(event) => updateForm({ warrantyStartDate: event.target.value })} type="date" value={form.warrantyStartDate} />
-      </label>
-      <label className={labelClass}>
-        Kết thúc bảo hành
-        <input className={fieldClass} onChange={(event) => updateForm({ warrantyEndDate: event.target.value })} required type="date" value={form.warrantyEndDate} />
-      </label>
+      <DateInput className={labelClass} label="Ngày lắp đặt" onChange={(value) => updateForm({ scheduledDate: value, warrantyStartDate: value })} required value={form.scheduledDate} />
+      <DateInput className={labelClass} label="Bắt đầu bảo hành" onChange={(value) => updateForm({ warrantyStartDate: value })} value={form.warrantyStartDate} />
+      <DateInput className={labelClass} label="Kết thúc bảo hành" onChange={(value) => updateForm({ warrantyEndDate: value })} required value={form.warrantyEndDate} />
       <label className={wideLabelClass}>
         Ghi chú lắp đặt
         <textarea className={textareaClass} onChange={(event) => updateForm({ description: event.target.value })} value={form.description} />
@@ -908,7 +895,7 @@ function QuickMachinePanel({
             updateForm({
               machineModelId: event.target.value,
               modelName: model?.name || model?.code || '',
-              name: model?.displayName || model?.name || model?.code || '',
+              name: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
             });
           }}
           value={form.machineModelId}

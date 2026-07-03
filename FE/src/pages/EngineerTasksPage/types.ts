@@ -5,7 +5,34 @@ export type TaskTone = 'good' | 'warn' | 'danger' | 'neutral';
 export type TaskFilter = 'all' | 'action' | 'open' | 'progress' | 'today' | 'overdue' | 'review' | 'revision' | 'done';
 export type KindFilter = 'all' | TaskKind;
 export type WorkspaceTab = 'create' | 'assigned';
+export type BusinessTab = 'all' | 'repair' | 'maintenance' | 'installation' | 'warranty' | 'calendar';
 export type WorkReviewStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'NEEDS_REVISION';
+
+export type DailyWorkType = 'WORK' | 'BUSINESS_TRIP' | 'LEAVE' | 'REPAIR' | 'INSTALLATION' | 'MAINTENANCE' | 'OTHER';
+export type DailyWorkStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+export type DailyWorkNote = {
+  id: string;
+  title: string;
+  note?: string | null;
+  workDate: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  color?: string | null;
+  type?: DailyWorkType;
+  status?: DailyWorkStatus;
+  rejectReason?: string | null;
+};
+
+export type WeeklyReportStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'NEEDS_REVISION';
+
+export type WeeklyReportQuick = {
+  id: string;
+  weekStart: string;
+  status: WeeklyReportStatus;
+  submittedAt?: string | null;
+  rows?: Array<{ id: string }>;
+};
 
 export type WorkReviewFields = {
   reviewStatus?: WorkReviewStatus | null;
@@ -35,6 +62,25 @@ export type TaskMachine = {
       expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
     } | null;
   } | null;
+};
+
+export type PickerMachine = TaskMachine & {
+  id: string;
+  inventoryStatus?: string | null;
+  name?: string | null;
+  customer?: {
+    id?: string | null;
+    name?: string | null;
+    province?: string | null;
+  } | null;
+};
+
+export type PickerCustomer = {
+  id: string;
+  customerCode?: string | null;
+  name: string;
+  phone?: string | null;
+  province?: string | null;
 };
 
 export type RepairTask = WorkReviewFields & {
@@ -93,6 +139,24 @@ export type MaintenanceTask = WorkReviewFields & {
   modelName?: string | null;
   serialNumber?: string | null;
   machine?: TaskMachine | null;
+};
+
+export type QuickMachineModel = {
+  id: string;
+  code?: string | null;
+  name?: string | null;
+  displayName?: string | null;
+  manufacturer?: string | null;
+  productCategory?: string | null;
+  businessLine?: {
+    name?: string | null;
+    productCategory?: string | null;
+    expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
+    productIndustry?: {
+      name?: string | null;
+      expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
+    } | null;
+  } | null;
 };
 
 export type InstallationDeviceItem = {

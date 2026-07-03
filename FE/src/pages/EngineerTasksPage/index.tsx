@@ -2,6 +2,7 @@ import { ArrowRight, CalendarDays, Clock3, Download, FileText, FileUp, Loader2, 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
+import { DateInput } from '../../components/DateInput';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
@@ -9,35 +10,58 @@ import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
+import { machineDisplayName } from '../../utils/machineDisplayName';
+import { AsyncEntityPicker, type PickerOption } from './components/AsyncEntityPicker';
+import { CreateModelDevicePicker } from './components/CreateModelDevicePicker';
+import { EngineerTaskRow } from './components/EngineerTaskRow';
+import { StatusActionPicker, TodayCommandCenter, TodayDailyWorkCard, WeeklyReportQuickCard } from './components/EngineerTaskPanels';
 import { InstallationHandoverForm } from './InstallationHandoverForm';
 import { SummaryTile } from './SummaryTile';
 import { attachmentOptionsByKind, installationStatusOptions, maintenanceStatusOptions, repairStatusOptions } from './constants';
 import type {
   AttachmentType,
+  BusinessTab,
   CreateTicketForm,
+  DailyWorkNote,
+  DailyWorkStatus,
+  DailyWorkType,
   EngineerTask,
   InstallationDeviceItem,
   InstallationTask,
   KindFilter,
   MaintenanceTask,
+  PickerCustomer,
+  PickerMachine,
   RepairTask,
+  QuickMachineModel,
   SelectOption,
   TaskAttachment,
   TaskFilter,
   TaskKind,
-  TaskMachine,
+  WeeklyReportQuick,
+  WeeklyReportStatus,
   WorkspaceTab,
 } from './types';
 import {
+  addDays,
   attachmentTypeLabel,
+  buildInstallationEditForm,
+  canEngineerSeeMachine,
+  canEngineerSeeModel,
   compareTasks,
+  createTicketHrefForTab,
+  createTicketLabelForTab,
   createTicketTitle,
+  customerPickerLabel,
+  defaultCreateKindForBusinessTab,
   deviceConditionLabel,
   emptyCreateTicketForm,
   emptyInstallationDeviceItem,
   entityTypeForTask,
   formatDate,
+  formatDailyWorkDate,
   formatFileSize,
+  dayNumber,
   isOverdueTask,
   isTodayTask,
   isUpcomingTask,
@@ -45,23 +69,45 @@ import {
   matchesFilter,
   nextDefaultStatus,
   normalizeInstallationDeviceItems,
+  quickModelLabel,
   reviewStatusLabel,
   reviewStatusTone,
   secondaryLabel,
   secondaryTone,
+  formatDailyWorkTime,
+  groupTasksByDate,
+  isEngineerUser,
+  isMachineEligibleForTicket,
+  machinePickerEndpoint,
+  machinePickerLabel,
+  monthLabel,
+  matchesBusinessTab,
   splitLines,
+  startOfDay,
+  startOfWeek,
   statusLabel,
   statusTone,
+  taskAttention,
+  taskActionLabel,
+  taskActionTextClass,
+  taskContactPhone,
   taskCustomer,
   taskDate,
   taskDateValue,
   taskDescription,
   taskIcon,
   taskKindLabel,
+  taskLocation,
   taskModelText,
+  taskPrimaryMachineName,
+  taskPriorityScore,
   taskSerialText,
   taskTitle,
+  taskUpdatePanelTitle,
+  taskUpdateHref,
+  toDateInput,
   warrantyStatusLabel,
+  weeklyReportHrefForDailyWork,
 } from './utils';
 import './styles.css';
 
@@ -82,22 +128,6 @@ const emptyQuickMachineForm = (): QuickMachineForm => ({
   name: '',
   serialNumber: '',
 });
-
-type DailyWorkNote = {
-  id: string;
-  title: string;
-  note?: string | null;
-  workDate: string;
-  startTime?: string | null;
-  endTime?: string | null;
-  color?: string | null;
-  type?: DailyWorkType;
-  status?: DailyWorkStatus;
-  rejectReason?: string | null;
-};
-
-type DailyWorkType = 'WORK' | 'BUSINESS_TRIP' | 'LEAVE' | 'REPAIR' | 'INSTALLATION' | 'MAINTENANCE' | 'OTHER';
-type DailyWorkStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
   WORK: 'Công việc',
@@ -132,57 +162,6 @@ const emptyQuickCustomerForm = (): QuickCustomerForm => ({
   phone: '',
   province: '',
 });
-
-type QuickMachineModel = {
-  id: string;
-  code?: string | null;
-  name?: string | null;
-  displayName?: string | null;
-  manufacturer?: string | null;
-  productCategory?: string | null;
-  businessLine?: {
-    productCategory?: string | null;
-    expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
-    productIndustry?: {
-      expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
-    } | null;
-  } | null;
-};
-
-type PickerOption<Row> = SelectOption & {
-  row: Row;
-};
-
-type PickerMachine = TaskMachine & {
-  id: string;
-  inventoryStatus?: string | null;
-  name?: string | null;
-  customer?: {
-    id?: string | null;
-    name?: string | null;
-    province?: string | null;
-  } | null;
-};
-
-type PickerCustomer = {
-  id: string;
-  customerCode?: string | null;
-  name: string;
-  phone?: string | null;
-  province?: string | null;
-};
-
-type BusinessTab = 'all' | 'repair' | 'maintenance' | 'installation' | 'warranty' | 'calendar';
-
-type WeeklyReportStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'NEEDS_REVISION';
-
-type WeeklyReportQuick = {
-  id: string;
-  weekStart: string;
-  status: WeeklyReportStatus;
-  submittedAt?: string | null;
-  rows?: Array<{ id: string }>;
-};
 
 const weeklyReportStatusLabels: Record<WeeklyReportStatus | 'NONE', string> = {
   NONE: 'Chưa có',
@@ -579,7 +558,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       ...current,
       machineModelId,
       modelName: model?.name || current.modelName,
-      name: model?.displayName || model?.name || model?.code || '',
+      name: machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
     }));
   }
 
@@ -611,13 +590,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setSuccess('');
 
     try {
-      const machine = await apiFetch<
-        TaskMachine & {
-          id: string;
-          name?: string | null;
-          customer?: { id?: string | null; name?: string | null; province?: string | null } | null;
-        }
-      >('/machines', {
+      const machine = await apiFetch<PickerMachine>('/machines', {
         method: 'POST',
         body: JSON.stringify({
           serialNumber,
@@ -1058,7 +1031,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     updateCreateForm({
                       machineModelId: value,
                       modelName: model?.name || model?.displayName || '',
-                      deviceName: model?.displayName || model?.name || '',
+                      deviceName: machineDisplayName(model) || model?.displayName || model?.name || '',
                     });
                   }}
                   placeholder="VD: X-CUBE 50, X-CUBE 70..."
@@ -1277,10 +1250,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     <option value="URGENT">Khẩn cấp</option>
                   </select>
                 </label>
-                <label>
-                  Ngày báo lỗi
-                  <input onChange={(event) => updateCreateForm({ workDate: event.target.value })} required type="date" value={createForm.workDate} />
-                </label>
+                <DateInput label="Ngày báo lỗi" onChange={(value) => updateCreateForm({ workDate: value })} required value={createForm.workDate} />
                 <div className="create-form-section">Thông tin đơn vị sử dụng</div>
                 <label>
                   Đơn vị sử dụng thiết bị
@@ -1349,14 +1319,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     <option value="OTHER">Khác</option>
                   </select>
                 </label>
-                <label>
-                  Ngày bảo trì
-                  <input onChange={(event) => updateCreateForm({ workDate: event.target.value })} required type="date" value={createForm.workDate} />
-                </label>
-                <label>
-                  Lịch tiếp theo
-                  <input onChange={(event) => updateCreateForm({ nextDueDate: event.target.value })} type="date" value={createForm.nextDueDate} />
-                </label>
+                <DateInput label="Ngày bảo trì" onChange={(value) => updateCreateForm({ workDate: value })} required value={createForm.workDate} />
+                <DateInput label="Lịch tiếp theo" onChange={(value) => updateCreateForm({ nextDueDate: value })} value={createForm.nextDueDate} />
                 <div className="create-form-section">Thông tin đơn vị sử dụng</div>
                 <label>
                   Đơn vị sử dụng thiết bị
@@ -1412,14 +1376,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   updateForm={updateCreateForm}
                   user={user}
                 />
-                <label>
-                  Ngày lắp đặt
-                  <input onChange={(event) => updateCreateForm({ workDate: event.target.value })} required type="date" value={createForm.workDate} />
-                </label>
-                <label>
-                  Hạn bảo hành
-                  <input onChange={(event) => updateCreateForm({ warrantyEndDate: event.target.value })} required type="date" value={createForm.warrantyEndDate} />
-                </label>
+                <DateInput label="Ngày lắp đặt" onChange={(value) => updateCreateForm({ workDate: value })} required value={createForm.workDate} />
+                <DateInput label="Hạn bảo hành" onChange={(value) => updateCreateForm({ warrantyEndDate: value })} required value={createForm.warrantyEndDate} />
                 <label className="create-wide-field">
                   Ghi chú lắp đặt
                   <textarea onChange={(event) => updateCreateForm({ description: event.target.value })} value={createForm.description} />
@@ -1884,24 +1842,12 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 </div>
                 <form className="grid content-start gap-3.5" onSubmit={handleSubmit}>
                 <StatusActionPicker onChange={setStatus} task={selectedTask} value={status} />
-                <label className={drawerFieldClass}>
-                  Ngày lắp đặt
-                  <input className={drawerInputClass} onChange={(event) => setInstallationDate(event.target.value)} type="date" value={installationDate} />
-                </label>
+                <DateInput className={drawerFieldClass} label="Ngày lắp đặt" onChange={setInstallationDate} value={installationDate} />
                 <label className={drawerFieldClass}>
                   Ghi chú lắp đặt
                   <textarea className={drawerTextareaClass} onChange={(event) => setResultNote(event.target.value)} value={resultNote} />
                 </label>
-                <label className={drawerFieldClass}>
-                  Kết thúc bảo hành
-                  <input
-                    className={drawerInputClass}
-                    onChange={(event) => updateInstallationEditForm({ warrantyEndDate: event.target.value })}
-                    required
-                    type="date"
-                    value={installationEditForm.warrantyEndDate}
-                  />
-                </label>
+                <DateInput className={drawerFieldClass} label="Kết thúc bảo hành" onChange={(value) => updateInstallationEditForm({ warrantyEndDate: value })} required value={installationEditForm.warrantyEndDate} />
                 <label className={`create-wide-field ${drawerFieldClass}`}>
                   Ghi chú bảo hành
                   <textarea
@@ -1950,10 +1896,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   <textarea className={drawerTextareaClass} onChange={(event) => setCustomerFeedback(event.target.value)} value={customerFeedback} />
                 </label>
               ) : (
-                <label className={drawerFieldClass}>
-                  Lịch bảo trì tiếp theo
-                  <input className={drawerInputClass} onChange={(event) => setNextDueDate(event.target.value)} type="date" value={nextDueDate} />
-                </label>
+                <DateInput className={drawerFieldClass} label="Lịch bảo trì tiếp theo" onChange={setNextDueDate} value={nextDueDate} />
               )}
               <div className="col-span-full mt-2 flex justify-end gap-2.5">
                 <button className="task-secondary" onClick={() => setSelectedTask(null)} type="button">
@@ -2046,871 +1989,4 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       ) : null}
     </PageFrame>
   );
-}
-
-function canEngineerSeeMachine(user: ApiUser, machine: TaskMachine) {
-  const expertiseGroup = user.engineerProfile?.expertiseGroup;
-  if (!expertiseGroup) return true;
-  const machineGroup = machine.businessLine?.productIndustry?.expertiseGroup ?? machine.businessLine?.expertiseGroup;
-  return !machineGroup || machineGroup === expertiseGroup;
-}
-
-function groupTasksByDate(tasks: EngineerTask[]) {
-  const groups = new Map<string, EngineerTask[]>();
-
-  tasks.forEach((task) => {
-    const key = taskDateGroupKey(task);
-    groups.set(key, [...(groups.get(key) ?? []), task]);
-  });
-
-  return Array.from(groups.entries())
-    .sort(([left], [right]) => compareTaskGroupKeys(left, right))
-    .map(([key, items]) => ({
-      key,
-      label: key === '__missing__' ? 'Chưa có ngày hẹn' : formatDate(key),
-      items: items.sort(compareTasks),
-    }));
-}
-
-function taskDateGroupKey(task: EngineerTask) {
-  const value = taskDateValue(task);
-  if (!value) return '__missing__';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '__missing__';
-  return date.toISOString().slice(0, 10);
-}
-
-function compareTaskGroupKeys(left: string, right: string) {
-  if (left === '__missing__') return 1;
-  if (right === '__missing__') return -1;
-  return right.localeCompare(left);
-}
-
-function EngineerTaskRow({ onOpen, task }: { onOpen: (task: EngineerTask) => void; task: EngineerTask }) {
-  const actionHref = taskUpdateHref(task);
-  const attention = taskAttention(task);
-  const machine = task.machine?.machineCode || task.machine?.serialNumber || taskSerialText(task) || 'Chưa có mã máy';
-  const model = task.machine?.modelName || taskModelText(task) || 'Chưa có model';
-  const customer = taskCustomer(task) || 'Chưa có khách hàng';
-
-  return (
-    <article className={`engineer-task-row ${attention.tone}`}>
-      <div className="engineer-task-row__head">
-        <div className="engineer-task-row__icon">{taskIcon(task.kind)}</div>
-        <div className="engineer-task-row__title">
-          <div className="engineer-task-row__meta">
-            <span>{taskKindLabel(task.kind)}</span>
-            <span>{task.code}</span>
-            <span>{taskDate(task)}</span>
-          </div>
-          <h2>{taskTitle(task)}</h2>
-        </div>
-      </div>
-
-      <div className="engineer-task-row__body">
-        <p>{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
-        <div className="engineer-task-row__facts">
-          <span>{machine}</span>
-          <span>{model}</span>
-          <span>{customer}</span>
-        </div>
-      </div>
-
-      <div className="engineer-task-row__status">
-        <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
-        {task.reviewStatus && task.reviewStatus !== 'NOT_REQUIRED' ? (
-          <span className={`task-badge ${reviewStatusTone(task.reviewStatus)}`}>{reviewStatusLabel(task.reviewStatus)}</span>
-        ) : null}
-        <span className={`task-badge ${secondaryTone(task)}`}>{secondaryLabel(task)}</span>
-      </div>
-
-      <div className="engineer-task-row__action">
-        <span className={`engineer-next-step ${attention.tone}`}>{attention.label}</span>
-        {actionHref ? (
-          <Link className="task-action" to={actionHref}>
-            Nhập kết quả
-            <ArrowRight size={15} />
-          </Link>
-        ) : (
-          <button className="task-action" onClick={() => onOpen(task)} type="button">
-            Nhập kết quả
-            <ArrowRight size={15} />
-          </button>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function CreateModelDevicePicker({
-  loading,
-  machineModelOptions,
-  onChange,
-  user,
-  value,
-}: {
-  loading: boolean;
-  machineModelOptions: QuickMachineModel[];
-  onChange: (patch: Partial<CreateTicketForm>) => void;
-  user: ApiUser;
-  value: string;
-}) {
-  return (
-    <div className="machine-picker">
-      <AsyncEntityPicker<QuickMachineModel>
-        className="engineer-picker"
-        disabled={loading}
-        endpoint="/machine-models?limit=100"
-        formatOption={(model) => ({
-          label: quickModelLabel(model),
-          row: model,
-          value: model.id,
-        })}
-        initialOptions={machineModelOptions.map((model) => ({
-          label: quickModelLabel(model),
-          row: model,
-          value: model.id,
-        }))}
-        label="Model / tên thiết bị"
-        onChange={(nextValue, model) => {
-          onChange({
-            machineModelId: nextValue,
-            modelName: model?.name || model?.displayName || model?.code || '',
-            deviceName: model?.displayName || model?.name || model?.code || '',
-          });
-        }}
-        placeholder="Tìm model, tên máy hoặc hãng"
-        rowFilter={(model) => canEngineerSeeModel(user, model)}
-        value={value}
-      />
-    </div>
-  );
-}
-
-function AsyncEntityPicker<Row extends { id: string }>({
-  className,
-  disabled,
-  endpoint,
-  formatOption,
-  initialOptions,
-  label,
-  onChange,
-  placeholder,
-  required,
-  rowFilter,
-  value,
-}: {
-  className?: string;
-  disabled?: boolean;
-  endpoint: string;
-  formatOption: (row: Row) => PickerOption<Row>;
-  initialOptions: Array<PickerOption<Row>>;
-  label: string;
-  onChange: (value: string, row?: Row) => void;
-  placeholder: string;
-  required?: boolean;
-  rowFilter?: (row: Row) => boolean;
-  value: string;
-}) {
-  const [search, setSearch] = useState('');
-  const [options, setOptions] = useState<Array<PickerOption<Row>>>(initialOptions);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const selectedOption = options.find((option) => option.value === value);
-
-  useEffect(() => {
-    setOptions((current) => {
-      const merged = mergePickerOptions([...current, ...initialOptions]);
-      const isSame =
-        merged.length === current.length &&
-        merged.every((option, index) => option.value === current[index]?.value && option.label === current[index]?.label);
-      return isSame ? current : merged;
-    });
-  }, [initialOptions]);
-
-  useEffect(() => {
-    if (!open || disabled) return;
-
-    const timeout = window.setTimeout(() => {
-      loadOptions();
-    }, 220);
-
-    return () => window.clearTimeout(timeout);
-  }, [open, search, endpoint, disabled]);
-
-  async function loadOptions() {
-    setLoading(true);
-
-    try {
-      const result = await apiFetch<Paginated<Row>>(
-        withSearchParams(endpoint, {
-          limit: '20',
-          search: search.trim(),
-        }),
-      );
-      const nextOptions = result.data
-        .filter((row) => (rowFilter ? rowFilter(row) : true))
-        .map(formatOption);
-      setOptions((current) => mergePickerOptions([...current, ...nextOptions]));
-    } catch {
-      setOptions((current) => current);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function choose(option: PickerOption<Row>) {
-    onChange(option.value, option.row);
-    setSearch(option.label);
-    setOpen(false);
-  }
-
-  const inputValue = open ? search : selectedOption?.label || '';
-
-  return (
-    <div className={['async-entity-picker', className].filter(Boolean).join(' ')}>
-      <span>{label}</span>
-      <div className="async-picker-control">
-        <input
-          disabled={disabled}
-          onBlur={() => {
-            window.setTimeout(() => {
-              setSearch('');
-              setOpen(false);
-            }, 160);
-          }}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => {
-            setSearch('');
-            setOpen(true);
-          }}
-          placeholder={placeholder}
-          value={inputValue}
-        />
-        {required && !value ? <input className="async-picker-required" required value="" onChange={() => null} /> : null}
-        {open ? (
-          <div className="async-picker-menu">
-            {loading ? <div className="async-picker-state">Đang tìm...</div> : null}
-            {!loading && options.length === 0 ? <div className="async-picker-state">Không tìm thấy dữ liệu phù hợp.</div> : null}
-            {!loading
-              ? options.map((option) => (
-                  <button
-                    className={option.value === value ? 'active' : ''}
-                    key={option.value}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => choose(option)}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))
-              : null}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function machinePickerLabel(machine: PickerMachine) {
-  return [machine.machineCode, machine.serialNumber ? `S/N ${machine.serialNumber}` : '', machine.modelName || machine.name, machine.customer?.name]
-    .filter(Boolean)
-    .join(' - ');
-}
-
-function machinePickerEndpoint(kind: TaskKind) {
-  const inventoryStatus = kind === 'installation' ? 'IN_STOCK' : 'INSTALLED';
-  return `/machines?limit=20&inventoryStatus=${inventoryStatus}`;
-}
-
-function isMachineEligibleForTicket(kind: TaskKind, machine: PickerMachine) {
-  if (!machine.inventoryStatus) return true;
-  return kind === 'installation' ? machine.inventoryStatus === 'IN_STOCK' : machine.inventoryStatus === 'INSTALLED';
-}
-
-function customerPickerLabel(customer: PickerCustomer) {
-  return [customer.customerCode, customer.name, customer.province, customer.phone].filter(Boolean).join(' - ');
-}
-
-function mergePickerOptions<Row>(options: Array<PickerOption<Row>>) {
-  const seen = new Set<string>();
-  return options.filter((option) => {
-    if (!option.value || seen.has(option.value)) return false;
-    seen.add(option.value);
-    return true;
-  });
-}
-
-function withSearchParams(endpoint: string, params: Record<string, string>) {
-  const [path, query = ''] = endpoint.split('?');
-  const searchParams = new URLSearchParams(query);
-
-  Object.entries(params).forEach(([key, paramValue]) => {
-    if (paramValue) {
-      searchParams.set(key, paramValue);
-    }
-  });
-
-  const queryString = searchParams.toString();
-  return queryString ? `${path}?${queryString}` : path;
-}
-
-function canEngineerSeeModel(user: ApiUser, model: QuickMachineModel) {
-  const expertiseGroup = user.engineerProfile?.expertiseGroup;
-  if (!expertiseGroup) return true;
-  const modelGroup = model.businessLine?.productIndustry?.expertiseGroup ?? model.businessLine?.expertiseGroup;
-  return !modelGroup || modelGroup === expertiseGroup;
-}
-
-function quickModelLabel(model: QuickMachineModel) {
-  const shortName = model.code || model.displayName || model.name || 'Model';
-  const detail = [model.name, model.manufacturer].filter(Boolean).join(' - ');
-  return detail && detail !== shortName ? `${shortName} - ${detail}` : shortName;
-}
-
-function isEngineerUser(user: ApiUser) {
-  return user.roleName === 'engineer' || user.role?.name === 'engineer' || user.role?.name === 'kỹ sư';
-}
-
-function startOfDay(value: Date) {
-  const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function startOfWeek(value: Date) {
-  const date = startOfDay(value);
-  const day = date.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + diff);
-  return date;
-}
-
-function addDays(value: Date, days: number) {
-  const date = new Date(value);
-  date.setDate(date.getDate() + days);
-  return date;
-}
-
-function toDateInput(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const day = String(value.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function formatDailyWorkDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('vi-VN', {
-    dateStyle: 'short',
-  }).format(date);
-}
-
-function dayNumber(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '--';
-  return String(date.getDate()).padStart(2, '0');
-}
-
-function monthLabel(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '---';
-  return `T${date.getMonth() + 1}`;
-}
-
-function formatDailyWorkTime(note: DailyWorkNote) {
-  const range = [note.startTime, note.endTime].filter(Boolean).join(' - ');
-  return range || 'Cả ngày';
-}
-
-function weeklyReportHrefForDailyWork(note: DailyWorkNote) {
-  const weekStart = toDateInput(startOfWeek(new Date(note.workDate)));
-  return `/weekly-reports?weekStart=${weekStart}`;
-}
-
-function matchesBusinessTab(task: EngineerTask, tab: BusinessTab) {
-  if (tab === 'all') {
-    return true;
-  }
-
-  if (tab === 'repair') {
-    return task.kind === 'repair' && task.warrantyStatus !== 'IN_WARRANTY';
-  }
-
-  if (tab === 'maintenance') {
-    return task.kind === 'maintenance' && task.type !== 'WARRANTY';
-  }
-
-  if (tab === 'installation') {
-    return task.kind === 'installation';
-  }
-
-  if (tab === 'warranty') {
-    return (
-      (task.kind === 'repair' && task.warrantyStatus === 'IN_WARRANTY') ||
-      (task.kind === 'maintenance' && task.type === 'WARRANTY')
-    );
-  }
-
-  if (tab === 'calendar') {
-    return false;
-  }
-
-  return false;
-}
-
-function buildInstallationEditForm(task: InstallationTask): CreateTicketForm {
-  const installedAt = task.installedAt ? task.installedAt.slice(0, 10) : '';
-  const warrantyStartDate = (task.warrantyStartDate || task.warrantyCard?.startDate)?.slice(0, 10) || installedAt;
-  const warrantyEndDate = (task.warrantyEndDate || task.warrantyCard?.endDate)?.slice(0, 10) || '';
-  const installedDeviceItems = task.installedDeviceItems?.length
-    ? task.installedDeviceItems.map((item) => ({
-        itemName: item.itemName || '',
-        model: item.model || '',
-        serialNumber: item.serialNumber || '',
-        manufactureDate: item.manufactureDate ? item.manufactureDate.slice(0, 10) : '',
-        quantity: Number(item.quantity) || 1,
-        warrantyPeriod: item.warrantyPeriod || '',
-      }))
-    : [emptyInstallationDeviceItem()];
-
-  return {
-    ...emptyCreateTicketForm('installation'),
-    workDate: warrantyStartDate,
-    warrantyEndDate,
-    description: task.warrantyNote || task.warrantyCard?.note || '',
-    handoverInstallerName: task.handoverInstallerName || '',
-    handoverInstallerPosition: task.handoverInstallerPosition || '',
-    handoverVehicle: task.handoverVehicle || '',
-    handoverDepartureDate: task.handoverDepartureDate ? task.handoverDepartureDate.slice(0, 10) : warrantyStartDate,
-    receiverInstallAddress: task.receiverInstallAddress || '',
-    receiverRepresentative: task.receiverRepresentative || '',
-    receiverPosition: task.receiverPosition || '',
-    receiverPhone: task.receiverPhone || '',
-    installedDeviceItems,
-    deviceCondition: task.deviceCondition || 'NEW_100',
-    deviceConditionNote: task.deviceConditionNote || '',
-  };
-}
-
-function defaultCreateKindForBusinessTab(tab: BusinessTab): TaskKind {
-  if (tab === 'installation') return 'installation';
-  if (tab === 'maintenance') return 'maintenance';
-  return 'repair';
-}
-
-function WeeklyReportQuickCard({ loading, report }: { loading: boolean; report: WeeklyReportQuick | null }) {
-  const weekStart = toDateInput(startOfWeek(new Date()));
-  const weekEnd = toDateInput(addDays(new Date(`${weekStart}T00:00:00`), 6));
-  const status = report?.status ?? 'NONE';
-  const rowCount = report?.rows?.length ?? 0;
-
-  return (
-    <aside className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-        <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#666666]">
-          <CalendarDays size={14} />
-          Báo cáo tuần
-        </span>
-          <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">
-            {formatDate(weekStart)} - {formatDate(weekEnd)}
-          </h2>
-        </div>
-        <span className={`task-badge ${status === 'APPROVED' ? 'good' : status === 'SUBMITTED' ? 'warn' : status === 'NEEDS_REVISION' ? 'danger' : 'neutral'}`}>
-          {loading ? 'Đang tải' : weeklyReportStatusLabels[status]}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg bg-[#fafafa] p-3">
-          <span className="block text-xs font-medium text-[#666666]">Dòng báo cáo</span>
-          <strong className="mt-1 block text-2xl leading-none text-[#1f1f1f]">{loading ? '-' : rowCount}</strong>
-        </div>
-        <div className="rounded-lg bg-[#fafafa] p-3">
-          <span className="block text-xs font-medium text-[#666666]">Trạng thái</span>
-          <strong className="mt-1 block text-sm text-[#1f1f1f]">{loading ? 'Đang tải' : weeklyReportStatusLabels[status]}</strong>
-        </div>
-      </div>
-
-      <Link className="primary-button justify-center" to={`/weekly-reports?weekStart=${weekStart}`}>
-        <FileText size={16} />
-        Mở báo cáo tuần
-      </Link>
-    </aside>
-  );
-}
-
-function TodayCommandCenter({
-  onCreate,
-  onFilter,
-  onOpen,
-  stats,
-  tasks,
-}: {
-  onCreate: () => void;
-  onFilter: (filter: TaskFilter) => void;
-  onOpen: (task: EngineerTask) => void;
-  stats: {
-    overdue: number;
-    revision: number;
-    missingMachine: number;
-    today: number;
-  };
-  tasks: EngineerTask[];
-}) {
-  return (
-    <section className="grid gap-3.5 rounded-[18px] border border-[#dbeafe] bg-[radial-gradient(circle_at_8%_12%,rgba(37,99,235,0.11),transparent_32%),linear-gradient(135deg,#ffffff_0%,#f7fbff_48%,#f4fbf8_100%)] p-4 shadow-[0_18px_50px_rgba(37,99,235,0.08)]">
-      <div className="flex items-start justify-between gap-3.5">
-        <div>
-          <span className="block text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#2563eb]">Bảng việc hôm nay</span>
-          <h2 className="mt-1.5 text-[clamp(22px,3vw,34px)] font-[760] leading-[1.08] tracking-[-0.04em] text-[#18181b] [text-wrap:balance]">Mở app là biết việc cần làm trước.</h2>
-        </div>
-        <button className="secondary-button flex-none" onClick={onCreate} type="button">
-          <Plus size={16} />
-          Tạo phiếu
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5 min-[1180px]:grid-cols-4" aria-label="Bộ lọc nhanh">
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#fecdd3] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('revision')} type="button">
-          <span className="text-[12px] font-bold text-[#52525b]">Cần bổ sung</span>
-          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.revision}</strong>
-        </button>
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#fecdd3] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('overdue')} type="button">
-          <span className="text-[12px] font-bold text-[#52525b]">Quá hạn</span>
-          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.overdue}</strong>
-        </button>
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[rgba(191,219,254,0.88)] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('today')} type="button">
-          <span className="text-[12px] font-bold text-[#52525b]">Hôm nay</span>
-          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.today}</strong>
-        </button>
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#cdeedb] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('action')} type="button">
-          <span className="text-[12px] font-bold text-[#52525b]">Thiếu hồ sơ máy</span>
-          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.missingMachine}</strong>
-        </button>
-      </div>
-
-      <div className="grid gap-2.5">
-        {tasks.length ? (
-          tasks.map((task) => (
-            <PriorityTaskCard key={`${task.kind}-${task.id}`} onOpen={onOpen} task={task} />
-          ))
-        ) : (
-          <div className="grid min-h-32 place-items-center gap-1 rounded-2xl border border-dashed border-[#bfdbfe] bg-white/70 p-[18px] text-center text-[#52525b]">
-            <strong className="text-[#18181b]">Không có việc gấp.</strong>
-            <span>Các phiếu quá hạn, phiếu hôm nay hoặc phiếu cần bổ sung sẽ hiện ở đây.</span>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function TodayDailyWorkCard({ loading, notes }: { loading: boolean; notes: DailyWorkNote[] }) {
-  return (
-    <aside className="grid gap-3 rounded-[18px] border border-[#e4e4e7] bg-white p-3.5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
-      <div className="flex items-start justify-between">
-        <span className="inline-flex items-center gap-1.5 text-[12px] font-extrabold text-[#52525b]">
-          <Clock3 size={14} />
-          Lịch hôm nay
-        </span>
-        <strong className="min-w-8 rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 text-center text-[#1d4ed8]">{loading ? '-' : notes.length}</strong>
-      </div>
-      <div className="grid gap-2">
-        {loading ? <div className="text-[12px] text-[#71717a]">Đang tải lịch...</div> : null}
-        {!loading && notes.length === 0 ? <div className="text-[12px] text-[#71717a]">Hôm nay chưa có lịch riêng.</div> : null}
-        {!loading
-          ? notes.slice(0, 4).map((note) => (
-              <article className="grid gap-[3px] border-l-[3px] border-[#60a5fa] pl-2.5" key={note.id}>
-                <span className="text-[12px] text-[#71717a]">{formatDailyWorkTime(note)}</span>
-                <strong className="text-[14px] leading-[1.35] text-[#18181b]">{note.title}</strong>
-              </article>
-            ))
-          : null}
-      </div>
-      <Link className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-[#2563eb] no-underline" to="/daily-work">
-        Mở lịch công tác
-        <ArrowRight size={14} />
-      </Link>
-    </aside>
-  );
-}
-
-function PriorityTaskCard({ onOpen, task }: { onOpen: (task: EngineerTask) => void; task: EngineerTask }) {
-  const actionHref = taskUpdateHref(task);
-  const attention = taskAttention(task);
-  const phone = taskContactPhone(task);
-  const location = taskLocation(task);
-  const model = task.machine?.modelName || taskModelText(task) || 'Chưa có model';
-  const serial = task.machine?.serialNumber || taskSerialText(task) || task.machine?.machineCode || '';
-  const customer = taskCustomer(task) || 'Chưa có khách hàng';
-
-  return (
-    <article className={priorityTaskCardClass(attention.tone)}>
-      <button className="grid min-w-0 cursor-pointer gap-2 border-0 bg-transparent p-0 text-left text-inherit" onClick={() => onOpen(task)} type="button">
-        <div className="flex flex-wrap items-center gap-2 text-[12px] text-[#71717a]">
-          <span>{taskKindLabel(task.kind)}</span>
-          <span>{task.code}</span>
-          <strong className={priorityTaskHeadlineClass(attention.tone)}>{taskActionLabel(task)}</strong>
-        </div>
-        <h3 className="text-[17px] font-[760] leading-[1.25] tracking-[-0.02em] text-[#18181b]">{taskTitle(task)}</h3>
-        <div className="flex flex-wrap items-center gap-2 text-[12px] text-[#71717a]">
-          <span className="max-w-full overflow-hidden truncate rounded-full bg-[#f4f4f5] px-2 py-[5px] text-[#3f3f46]">{model}</span>
-          <span className="max-w-full overflow-hidden truncate rounded-full bg-[#f4f4f5] px-2 py-[5px] text-[#3f3f46]">{customer}</span>
-          {serial ? <span className="max-w-full overflow-hidden truncate rounded-full bg-[#f4f4f5] px-2 py-[5px] text-[#3f3f46]">S/N {serial}</span> : null}
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-[#71717a]">
-          <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
-          {location ? (
-            <small className="inline-flex min-w-0 items-center gap-1 text-[#71717a]">
-              <MapPin size={13} />
-              {location}
-            </small>
-          ) : null}
-        </div>
-      </button>
-
-      <div className="grid items-center gap-2.5">
-        <span className={`engineer-next-step ${attention.tone}`}>{attention.label}</span>
-        <div className="flex flex-wrap gap-2">
-          {phone ? (
-            <a className="task-secondary icon-button" href={`tel:${phone}`} title={`Gọi ${phone}`}>
-              <PhoneCall size={15} />
-            </a>
-          ) : null}
-          <button className="task-secondary" onClick={() => onOpen(task)} type="button">
-            Xem phiếu
-          </button>
-          {actionHref ? (
-            <Link className="task-action" to={actionHref}>
-              Cập nhật
-              <ArrowRight size={15} />
-            </Link>
-          ) : null}
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function StatusActionPicker({
-  onChange,
-  task,
-  value,
-}: {
-  onChange: (status: string) => void;
-  task: EngineerTask;
-  value: string;
-}) {
-  const actions = statusActionOptions(task);
-
-  return (
-    <div className="col-span-full grid gap-3 rounded-2xl border border-[#e4e4e7] bg-white/80 p-3">
-      <div className="flex items-center justify-between gap-2.5">
-        <span className="text-[12px] font-extrabold text-[#52525b]">Chọn bước xử lý</span>
-        <strong className="rounded-full border border-[#e4e4e7] bg-[#f4f4f5] px-2.5 py-1.5 text-[12px] text-[#18181b]">{statusLabel(value)}</strong>
-      </div>
-      <div className="grid grid-cols-2 gap-2.5 max-[760px]:grid-cols-1">
-        {actions.map((action) => (
-          <button
-            className={statusActionCardClass(action.tone, action.value === value)}
-            key={action.value}
-            onClick={() => onChange(action.value)}
-            type="button"
-          >
-            <strong className="text-[14px] leading-[1.2]">{action.label}</strong>
-            <span className="text-[12px] leading-[1.4] text-[#71717a]">{action.description}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function taskAttention(task: EngineerTask): { label: string; tone: 'danger' | 'good' | 'neutral' | 'warn' } {
-  if (task.reviewStatus === 'NEEDS_REVISION') return { label: 'Bổ sung theo phản hồi admin', tone: 'danger' };
-  if (isOverdueTask(task)) return { label: 'Quá hạn, xử lý trước', tone: 'danger' };
-  if (needsMachineProfile(task)) return { label: 'Tạo hoặc bổ sung hồ sơ máy', tone: 'warn' };
-  if (isTodayTask(task)) return { label: 'Việc hôm nay', tone: 'warn' };
-  if (task.reviewStatus === 'PENDING') return { label: 'Đã gửi, chờ admin duyệt', tone: 'good' };
-  if (['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status)) return { label: 'Đã hoàn tất', tone: 'neutral' };
-  return { label: 'Cập nhật kết quả hiện trường', tone: 'neutral' };
-}
-
-function priorityTaskCardClass(tone: 'danger' | 'good' | 'neutral' | 'warn') {
-  return [
-    'grid gap-3 rounded-2xl border bg-white/85 p-3 transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_16px_34px_rgba(37,99,235,0.1)] min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(210px,0.36fr)] min-[1180px]:items-center',
-    tone === 'danger' ? 'border-[#fecdd3]' : '',
-    tone === 'warn' ? 'border-[#fed7aa]' : '',
-    tone === 'good' ? 'border-[#bbf7d0]' : '',
-    tone === 'neutral' ? 'border-[#e4e4e7]' : '',
-  ].filter(Boolean).join(' ');
-}
-
-function priorityTaskHeadlineClass(tone: 'danger' | 'good' | 'neutral' | 'warn') {
-  if (tone === 'danger') return 'font-extrabold text-[#b91c1c]';
-  if (tone === 'warn') return 'font-extrabold text-[#b45309]';
-  return 'font-extrabold text-[#2563eb]';
-}
-
-function statusActionCardClass(tone: string, active: boolean) {
-  const base = 'grid min-h-[86px] cursor-pointer gap-[5px] rounded-[14px] border bg-white p-3 text-left text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#bfdbfe] hover:shadow-[0_12px_28px_rgba(37,99,235,0.1)]';
-  if (!active) return `${base} border-[#e4e4e7]`;
-  if (tone === 'good') return `${base} border-[#86efac] shadow-[0_0_0_3px_rgba(34,197,94,0.13)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#16a34a] before:content-['']`;
-  if (tone === 'warn') return `${base} border-[#fed7aa] shadow-[0_0_0_3px_rgba(245,158,11,0.13)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#d97706] before:content-['']`;
-  if (tone === 'danger') return `${base} border-[#fecdd3] shadow-[0_0_0_3px_rgba(244,63,94,0.12)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#e11d48] before:content-['']`;
-  return `${base} border-[#2563eb] shadow-[0_0_0_3px_rgba(37,99,235,0.12)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#2563eb] before:content-['']`;
-}
-
-function taskUpdateHref(task: EngineerTask) {
-  if (task.kind === 'installation') return `/installations/${task.id}/update?returnTo=/my-tasks`;
-  if (task.kind === 'repair') return `/repairs/${task.id}/update?returnTo=/my-tasks`;
-  if (task.kind === 'maintenance') return `/maintenance/${task.id}/update?returnTo=/my-tasks`;
-  return '';
-}
-
-function taskPrimaryMachineName(task: EngineerTask) {
-  if (task.kind === 'installation') {
-    return (
-      task.installedDeviceItems?.[0]?.itemName ||
-      task.plannedMachineModel?.displayName ||
-      task.plannedMachineModel?.name ||
-      task.plannedModelName ||
-      task.machine?.modelName ||
-      'Chưa có tên thiết bị'
-    );
-  }
-
-  return task.deviceName || task.machine?.modelName || task.modelName || 'Chưa có tên thiết bị';
-}
-
-function taskUpdatePanelTitle(task: EngineerTask) {
-  if (task.kind === 'installation') return 'Hoàn thiện bàn giao và bảo hành';
-  if (task.kind === 'maintenance') return 'Ghi nhận kết quả bảo trì';
-  return 'Ghi nhận kết quả sửa chữa';
-}
-
-function statusActionOptions(task: EngineerTask) {
-  if (task.kind === 'installation') {
-    return installationStatusOptions.map((option) => ({
-      ...option,
-      label:
-        option.value === 'INSTALLED'
-          ? 'Đã bàn giao'
-          : option.value === 'PENDING'
-            ? 'Giữ chờ duyệt'
-            : 'Hủy phiếu',
-      description:
-        option.value === 'INSTALLED'
-          ? 'Hoàn tất thông tin bàn giao, bảo hành và gửi admin kiểm tra.'
-          : option.value === 'PENDING'
-            ? 'Giữ phiếu ở trạng thái chờ nếu chưa đủ thông tin.'
-            : 'Dùng khi phiếu không còn thực hiện.',
-      tone: option.value === 'INSTALLED' ? 'good' : option.value === 'CANCELLED' ? 'danger' : 'warn',
-    }));
-  }
-
-  const sourceOptions = task.kind === 'repair' ? repairStatusOptions : maintenanceStatusOptions;
-  return sourceOptions.map((option) => ({
-    ...option,
-    label: statusActionTitle(task.kind, option.value),
-    description: statusActionDescription(task.kind, option.value),
-    tone: statusActionTone(option.value),
-  }));
-}
-
-function statusActionTitle(kind: TaskKind, value: string) {
-  if (value === 'IN_PROGRESS') return kind === 'maintenance' ? 'Bắt đầu bảo trì' : 'Bắt đầu xử lý';
-  if (value === 'WAITING_PARTS') return 'Chờ linh kiện';
-  if (value === 'COMPLETED') return 'Hoàn thành';
-  if (value === 'CANCELLED') return 'Hủy phiếu';
-  return statusLabel(value);
-}
-
-function statusActionDescription(kind: TaskKind, value: string) {
-  if (value === 'IN_PROGRESS') {
-    return kind === 'maintenance' ? 'Đánh dấu phiếu đang được bảo trì tại hiện trường.' : 'Đánh dấu máy đang được kiểm tra hoặc sửa chữa.';
-  }
-  if (value === 'WAITING_PARTS') return 'Tạm dừng vì cần vật tư, linh kiện hoặc xác nhận thêm.';
-  if (value === 'COMPLETED') return 'Nhập kết quả đầy đủ rồi gửi admin kiểm tra.';
-  if (value === 'CANCELLED') return 'Dùng khi phiếu không tiếp tục thực hiện.';
-  return 'Cập nhật trạng thái phiếu.';
-}
-
-function statusActionTone(value: string) {
-  if (value === 'COMPLETED' || value === 'INSTALLED') return 'good';
-  if (value === 'CANCELLED') return 'danger';
-  if (value === 'WAITING_PARTS' || value === 'PENDING') return 'warn';
-  return 'neutral';
-}
-
-function taskContactPhone(task: EngineerTask) {
-  if (task.kind === 'installation') return task.receiverPhone || '';
-  return task.contactPhone || '';
-}
-
-function taskLocation(task: EngineerTask) {
-  if (task.kind === 'installation') return task.receiverInstallAddress || task.customer?.province || task.machine?.customer?.province || '';
-  return task.address || task.machine?.customer?.province || '';
-}
-
-function taskPriorityScore(task: EngineerTask) {
-  let score = 0;
-  if (task.reviewStatus === 'NEEDS_REVISION') score += 140;
-  if (task.reviewStatus === 'PENDING') score += 10;
-  if (isOverdueTask(task)) score += 100;
-  if (isTodayTask(task)) score += 50;
-  if (needsMachineProfile(task)) score += 30;
-  if (task.kind === 'repair' && task.priority === 'URGENT') score += 25;
-  if (task.kind === 'repair' && task.priority === 'HIGH') score += 15;
-  return score;
-}
-
-function taskActionLabel(task: EngineerTask) {
-  if (task.reviewStatus === 'NEEDS_REVISION') return 'Cần bổ sung báo cáo';
-  if (task.reviewStatus === 'PENDING') return 'Chờ admin xác nhận';
-  if (isOverdueTask(task)) return 'Cần xử lý ngay';
-  if (isTodayTask(task)) return 'Cần làm hôm nay';
-  if (needsMachineProfile(task)) return 'Cần tạo hồ sơ máy';
-  if (['ASSIGNED', 'SCHEDULED', 'PENDING'].includes(task.status)) return 'Cần bắt đầu';
-  if (['IN_PROGRESS', 'WAITING_PARTS'].includes(task.status)) return 'Cần cập nhật kết quả';
-  if (['COMPLETED', 'INSTALLED'].includes(task.status)) return 'Đã hoàn tất';
-  return 'Theo dõi';
-}
-
-function taskActionTextClass(task: EngineerTask) {
-  if (task.reviewStatus === 'NEEDS_REVISION' || isOverdueTask(task)) return 'text-[#b5121b]';
-  if (task.reviewStatus === 'PENDING' || needsMachineProfile(task)) return 'text-[#9b5a17]';
-  if (['COMPLETED', 'INSTALLED'].includes(task.status)) return 'text-[#177245]';
-  return 'text-[#18181b]';
-}
-
-function createTicketHrefForTab(tab: BusinessTab) {
-  const returnTo = encodeURIComponent('/my-tasks');
-
-  if (tab === 'installation') {
-    return `/installations/create?returnTo=${returnTo}`;
-  }
-
-  if (tab === 'maintenance') {
-    return `/service-tickets/create?kind=maintenance&returnTo=${returnTo}`;
-  }
-
-  if (tab === 'warranty') {
-    return `/service-tickets/create?kind=repair&warrantyStatus=IN_WARRANTY&returnTo=${returnTo}`;
-  }
-
-  return `/service-tickets/create?kind=repair&returnTo=${returnTo}`;
-}
-
-function createTicketLabelForTab(tab: BusinessTab) {
-  if (tab === 'installation') return 'Tạo phiếu lắp đặt';
-  if (tab === 'maintenance') return 'Tạo phiếu bảo trì';
-  if (tab === 'warranty') return 'Tạo phiếu bảo hành';
-  return 'Tạo phiếu sửa chữa';
 }

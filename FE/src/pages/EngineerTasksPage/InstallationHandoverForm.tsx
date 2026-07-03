@@ -1,4 +1,6 @@
 import type { ApiUser } from '../../api';
+import { DateInput } from '../../components/DateInput';
+import { machineDisplayName } from '../../utils/machineDisplayName';
 import type { CreateTicketForm, InstallationDeviceItem } from './types';
 
 type InstallationHandoverFormProps = {
@@ -17,6 +19,14 @@ type MachineModelOption = {
   name?: string | null;
   displayName?: string | null;
   manufacturer?: string | null;
+  productCategory?: string | null;
+  businessLine?: {
+    name?: string | null;
+    productCategory?: string | null;
+    productIndustry?: {
+      name?: string | null;
+    } | null;
+  } | null;
 };
 
 export function InstallationHandoverForm({
@@ -47,10 +57,7 @@ export function InstallationHandoverForm({
         Phương tiện đi
         <input onChange={(event) => updateForm({ handoverVehicle: event.target.value })} value={form.handoverVehicle} />
       </label>
-      <label>
-        Ngày đi
-        <input onChange={(event) => updateForm({ handoverDepartureDate: event.target.value })} type="date" value={form.handoverDepartureDate} />
-      </label>
+      <DateInput label="Ngày đi" onChange={(value) => updateForm({ handoverDepartureDate: value })} value={form.handoverDepartureDate} />
 
       <div className="create-form-section">Bên nhận bàn giao</div>
       <label className="create-wide-field">
@@ -84,7 +91,7 @@ export function InstallationHandoverForm({
                 onChange={(event) => {
                   const model = machineModels.find((option) => option.id === event.target.value);
                   updateDeviceItem(index, {
-                    itemName: model?.displayName || model?.name || model?.code || item.itemName,
+                    itemName: machineDisplayName(model) || model?.displayName || model?.name || model?.code || item.itemName,
                     model: model?.code || model?.displayName || model?.name || '',
                   });
                 }}
@@ -102,14 +109,7 @@ export function InstallationHandoverForm({
               S/N
               <input onChange={(event) => updateDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} />
             </label>
-            <label>
-              NSX
-              <input
-                onChange={(event) => updateDeviceItem(index, { manufactureDate: event.target.value })}
-                type="date"
-                value={item.manufactureDate}
-              />
-            </label>
+            <DateInput label="NSX" onChange={(value) => updateDeviceItem(index, { manufactureDate: value })} value={item.manufactureDate} />
             <label>
               Số lượng
               <input

@@ -1,4 +1,4 @@
-import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, FocusEvent, FormEvent, ReactNode } from 'react';
@@ -6,12 +6,14 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { DateInput } from '../../components/DateInput';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { queryKeys } from '../../lib/queryKeys';
+import { machineDisplayName } from '../../utils/machineDisplayName';
 import { formatMachineAccessoriesText, parseMachineAccessoriesInput, serializeMachineAccessories } from '../../utils/machineAccessories';
 
 type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING' | 'PHYSIOTHERAPY' | 'ICU';
@@ -112,6 +114,7 @@ type MachineAccessory = {
 };
 
 type MachineDetail = MachineItem & {
+  name?: string | null;
   modelName?: string | null;
   manufacturer?: string | null;
   productLine?: string | null;
@@ -589,7 +592,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
               machineModelId: model.id,
               serialNumber: row.serialNumber,
               machineCode: row.machineCode,
-              name: row.name || modelShortLabel(model),
+              name: row.name || machineDefaultName(model),
               manufacturingDate: currentForm.manufacturingDate,
               warehouseImportDate: currentForm.warehouseImportDate,
               inventoryStatus: 'IN_STOCK',
@@ -785,30 +788,14 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                 <ProductMachineRowsEditor
                   accessoryMode={supportsEndoscopyChecklist ? 'endoscopy' : supportsProbes ? 'probe' : 'generic'}
                   defaultAccessoriesText={form.accessoriesText}
-                  defaultMachineName={selectedModel ? modelShortLabel(selectedModel) : ''}
+                  defaultMachineName={selectedModel ? machineDefaultName(selectedModel) : ''}
                   onChange={(value) => updateField('machineRows', value)}
                   value={form.machineRows}
                 />
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
-                  Ngày sản xuất
-                  <input
-                    className="h-12 min-w-0 rounded-2xl border border-[#cbd5e1] bg-white px-4 text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-                    onChange={(event) => updateField('manufacturingDate', event.target.value)}
-                    type="date"
-                    value={form.manufacturingDate}
-                  />
-                </label>
-                <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
-                  Ngày nhập kho
-                  <input
-                    className="h-12 min-w-0 rounded-2xl border border-[#cbd5e1] bg-white px-4 text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-                    onChange={(event) => updateField('warehouseImportDate', event.target.value)}
-                    type="date"
-                    value={form.warehouseImportDate}
-                  />
-                </label>
+                <DateInput label="Ngày sản xuất" onChange={(value) => updateField('manufacturingDate', value)} value={form.manufacturingDate} />
+                <DateInput label="Ngày nhập kho" onChange={(value) => updateField('warehouseImportDate', value)} value={form.warehouseImportDate} />
               </div>
               {duplicatedSerial ? (
                 <div className="rounded-2xl border border-[#fed7aa] bg-[#fff7ed] px-4 py-3 text-sm font-semibold text-[#c2410c]">
@@ -1416,71 +1403,87 @@ function ModelDetailBlock({
           </div>
         </div>
 
-        <MachineDetailPanel detail={machineDetail} loading={loadingMachineDetail} />
+        <section className="rounded-lg border border-[#e5e5e5] bg-white p-6 text-sm text-[#666666]">
+          Chọn một serial máy để mở panel chi tiết máy và phụ kiện đi kèm.
+        </section>
       </div>
+      <MachineDetailDrawer detail={machineDetail} loading={loadingMachineDetail} onClose={() => onSelectMachine('')} open={Boolean(selectedMachineId)} />
     </div>
   );
 }
 
-function MachineDetailPanel({ detail, loading }: { detail: MachineDetail | null; loading: boolean }) {
-  if (loading) {
-    return (
-      <section className="rounded-lg border border-[#e5e5e5] bg-white p-6 text-sm font-semibold text-[#666666]">
-        <Loader2 className="spin-icon mr-2 inline" size={18} />
-        Đang tải chi tiết máy
-      </section>
-    );
-  }
-
-  if (!detail) {
-    return (
-      <section className="rounded-lg border border-[#e5e5e5] bg-white p-6 text-sm text-[#666666]">
-        Chọn một serial máy để xem chi tiết máy và phụ kiện đi kèm.
-      </section>
-    );
-  }
+function MachineDetailDrawer({ detail, loading, onClose, open }: { detail: MachineDetail | null; loading: boolean; onClose: () => void; open: boolean }) {
+  if (!open) return null;
 
   return (
-    <section className="rounded-lg border border-[#e5e5e5] bg-white">
-      <div className="border-b border-[#eeeeee] p-4">
-        <span className="text-xs font-medium text-[#666666]">Chi tiết máy</span>
-        <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">{detail.serialNumber}</h2>
-        <p className="mt-1 text-sm text-[#666666]">{[detail.machineCode, detail.modelName, detail.manufacturer].filter(Boolean).join(' - ')}</p>
-      </div>
-
-      <div className="grid gap-4 p-4">
-        <div className="grid gap-3 md:grid-cols-2">
-          <DetailItem label="Trạng thái kho" value={inventoryLabel(detail.inventoryStatus)} />
-          <DetailItem label="Vận hành" value={statusLabel(detail.status)} />
-          <DetailItem label="Ngày nhập kho" value={formatDate(detail.warehouseImportDate)} />
-          <DetailItem label="Ngày lắp" value={formatDate(detail.installDate)} />
-          <DetailItem label="Bắt đầu bảo hành" value={formatDate(detail.warrantyStartDate)} />
-          <DetailItem label="Kết thúc bảo hành" value={formatDate(detail.warrantyEndDate)} />
+    <div className="fixed inset-0 z-[95] bg-[#0f172a]/35 backdrop-blur-[3px]" onClick={onClose} role="presentation">
+      <aside
+        aria-modal="true"
+        className="ml-auto grid h-full w-full max-w-[720px] grid-rows-[auto_1fr] overflow-hidden rounded-l-[26px] border-l border-[#dbe6f3] bg-white shadow-[-24px_0_60px_rgba(15,23,42,0.22)]"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[#e2e8f0] bg-[#f8fbff] p-5">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2563eb]">Chi tiết máy</span>
+            <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#172033]">{detail?.name || detail?.modelName || detail?.serialNumber || 'Đang tải máy'}</h2>
+            <p className="mt-1 text-sm font-medium text-[#64748b]">{detail ? [detail.machineCode, detail.serialNumber, detail.manufacturer].filter(Boolean).join(' - ') : 'Đang lấy dữ liệu...'}</p>
+          </div>
+          <button className="grid size-10 place-items-center rounded-2xl border border-[#cbd5e1] bg-white text-[#475569] shadow-[0_8px_18px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:border-[#94a3b8]" onClick={onClose} type="button">
+            <X size={18} />
+          </button>
         </div>
 
-        <div>
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <strong className="text-sm text-[#1f1f1f]">Phụ kiện</strong>
-            <span className="text-xs font-medium text-[#666666]">{detail.accessories?.length ?? 0} phụ kiện</span>
-          </div>
-          <div className="grid gap-2">
-            {detail.accessories?.map((accessory) => (
-              <div className="rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3" key={accessory.id}>
-                <strong className="block text-sm text-[#1f1f1f]">{accessory.name}</strong>
-                <span className="mt-1 block text-[13px] text-[#666666]">
-                  {[accessory.serialNumber, accessory.code].filter(Boolean).join(' - ') || 'Chưa có S/N'}
-                </span>
-                <small className="mt-1 block text-xs text-[#666666]">{accessory.componentAccessory?.component?.name || accessory.note || 'Phụ kiện theo máy'}</small>
+        <div className="overflow-auto p-5">
+          {loading ? (
+            <section className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-6 text-sm font-semibold text-[#64748b]">
+              <Loader2 className="spin-icon mr-2 inline" size={18} />
+              Đang tải chi tiết máy
+            </section>
+          ) : null}
+
+          {!loading && detail ? (
+            <div className="grid gap-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <DetailItem label="Trạng thái kho" value={inventoryLabel(detail.inventoryStatus)} />
+                <DetailItem label="Vận hành" value={statusLabel(detail.status)} />
+                <DetailItem label="Ngày nhập kho" value={formatDate(detail.warehouseImportDate)} />
+                <DetailItem label="Ngày lắp" value={formatDate(detail.installDate)} />
+                <DetailItem label="Bắt đầu bảo hành" value={formatDate(detail.warrantyStartDate)} />
+                <DetailItem label="Kết thúc bảo hành" value={formatDate(detail.warrantyEndDate)} />
               </div>
-            ))}
-            {!detail.accessories?.length ? <p className="rounded-lg bg-[#fafafa] p-4 text-sm text-[#666666]">Máy này chưa khai báo phụ kiện.</p> : null}
-          </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <strong className="text-sm text-[#1f1f1f]">Phụ kiện</strong>
+                  <span className="text-xs font-medium text-[#666666]">{detail.accessories?.length ?? 0} phụ kiện</span>
+                </div>
+                <div className="grid gap-2">
+                  {detail.accessories?.map((accessory) => (
+                    <div className="rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3" key={accessory.id}>
+                      <strong className="block text-sm text-[#1f1f1f]">{accessory.name}</strong>
+                      <span className="mt-1 block text-[13px] text-[#666666]">
+                        {[accessory.serialNumber, accessory.code].filter(Boolean).join(' - ') || 'Chưa có S/N'}
+                      </span>
+                      <small className="mt-1 block text-xs text-[#666666]">{accessory.componentAccessory?.component?.name || accessory.note || 'Phụ kiện theo máy'}</small>
+                    </div>
+                  ))}
+                  {!detail.accessories?.length ? <p className="rounded-lg bg-[#fafafa] p-4 text-sm text-[#666666]">Máy này chưa khai báo phụ kiện.</p> : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {!loading && !detail ? (
+            <section className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-6 text-sm text-[#64748b]">
+              Chưa có dữ liệu chi tiết máy.
+            </section>
+          ) : null}
         </div>
-      </div>
-    </section>
+      </aside>
+    </div>
   );
 }
-
 function DetailItem({ label, value }: { label: string; value?: string }) {
   return (
     <div className="rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3">
@@ -1713,6 +1716,10 @@ function modelDetailLabel(model: MachineModel) {
 
 function modelOptionLabel(model: MachineModel) {
   return modelShortLabel(model);
+}
+
+function machineDefaultName(model: MachineModel) {
+  return machineDisplayName(model) || modelShortLabel(model);
 }
 
 function buildStockByModel(models: MachineModel[], machines: CatalogMachine[]) {
