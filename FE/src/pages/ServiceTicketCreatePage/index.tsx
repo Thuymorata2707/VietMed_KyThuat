@@ -236,6 +236,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     mutationFn: async () => {
       const name = quickCustomerForm.name.trim();
       const regionId = quickCustomerForm.regionId.trim();
+      const selectedRegion = regions.find((region) => region.id === regionId);
 
       if (!name || !regionId) {
         throw new Error('Vui lòng nhập tên khách hàng và chọn khu vực.');
@@ -248,7 +249,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           phone: quickCustomerForm.phone.trim() || undefined,
           contactPerson: quickCustomerForm.contactPerson.trim() || undefined,
           contactPhone: quickCustomerForm.phone.trim() || undefined,
-          province: quickCustomerForm.province.trim() || undefined,
+          province: quickCustomerForm.province.trim() || selectedRegion?.name || undefined,
           address: quickCustomerForm.address.trim() || undefined,
           regionId,
           status: 'ACTIVE',
@@ -929,14 +930,21 @@ function QuickCustomerPanel({
       </label>
       {isEngineer ? (
         <div className="grid min-w-0 gap-2 rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm">
-          <span className="font-bold text-[#333333]">Khu vực</span>
+          <span className="font-bold text-[#333333]">Tỉnh/Thành / Khu vực</span>
           <strong className="text-[#1f1f1f]">{regions[0]?.name || 'Theo khu vực tài khoản'}</strong>
         </div>
       ) : (
         <label className={labelClass}>
-          Khu vực
-          <select className={fieldClass} onChange={(event) => updateForm({ regionId: event.target.value })} value={form.regionId}>
-            <option value="">Chọn khu vực</option>
+          Tỉnh/Thành / Khu vực
+          <select
+            className={fieldClass}
+            onChange={(event) => {
+              const region = regions.find((item) => item.id === event.target.value);
+              updateForm({ province: region?.name || '', regionId: event.target.value });
+            }}
+            value={form.regionId}
+          >
+            <option value="">Chọn tỉnh/khu vực</option>
             {regions.map((region) => (
               <option key={region.id} value={region.id}>
                 {region.name}
@@ -945,10 +953,6 @@ function QuickCustomerPanel({
           </select>
         </label>
       )}
-      <label className={labelClass}>
-        Tỉnh/Thành
-        <input className={fieldClass} onChange={(event) => updateForm({ province: event.target.value })} value={form.province} />
-      </label>
       <label className={labelClass}>
         Người liên hệ
         <input className={fieldClass} onChange={(event) => updateForm({ contactPerson: event.target.value })} value={form.contactPerson} />
@@ -1210,7 +1214,7 @@ function emptyQuickCustomerForm(user: ApiUser): QuickCustomerForm {
     contactPerson: '',
     name: '',
     phone: '',
-    province: '',
+    province: user.region?.name || '',
     regionId: user.regionId || user.region?.id || '',
   };
 }

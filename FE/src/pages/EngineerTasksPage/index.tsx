@@ -156,12 +156,12 @@ type QuickCustomerForm = {
   province: string;
 };
 
-const emptyQuickCustomerForm = (): QuickCustomerForm => ({
+const emptyQuickCustomerForm = (user?: ApiUser): QuickCustomerForm => ({
   address: '',
   contactPerson: '',
   name: '',
   phone: '',
-  province: '',
+  province: user?.region?.name || '',
 });
 
 const weeklyReportStatusLabels: Record<WeeklyReportStatus | 'NONE', string> = {
@@ -221,7 +221,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [isQuickMachineOpen, setIsQuickMachineOpen] = useState(false);
   const [isQuickCustomerOpen, setIsQuickCustomerOpen] = useState(false);
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(() => emptyQuickMachineForm());
-  const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm());
+  const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm(user));
   const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [machineOptions, setMachineOptions] = useState<Array<PickerOption<PickerMachine>>>([]);
   const [machineModelOptions, setMachineModelOptions] = useState<QuickMachineModel[]>([]);
@@ -661,7 +661,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           phone: quickCustomerForm.phone.trim() || undefined,
           contactPerson: quickCustomerForm.contactPerson.trim() || undefined,
           contactPhone: quickCustomerForm.phone.trim() || undefined,
-          province: quickCustomerForm.province.trim() || undefined,
+          province: quickCustomerForm.province.trim() || user.region?.name || undefined,
           address: quickCustomerForm.address.trim() || undefined,
           regionId,
           status: 'ACTIVE',
@@ -676,7 +676,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       setCustomerOptions((current) => [option, ...current.filter((item) => item.value !== option.value)]);
       setCreateForm((current) => ({ ...current, customerId: customer.id }));
       setQuickMachineForm((current) => ({ ...current, customerId: customer.id }));
-      setQuickCustomerForm(emptyQuickCustomerForm());
+      setQuickCustomerForm(emptyQuickCustomerForm(user));
       setIsQuickCustomerOpen(false);
       setSuccess('Đã tạo khách hàng nhanh và chọn vào phiếu hiện tại.');
     } catch (err) {
@@ -1220,10 +1220,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     value={quickCustomerForm.name}
                   />
                 </label>
-                <label>
-                  Tỉnh/Thành
-                  <input onChange={(event) => updateQuickCustomerForm({ province: event.target.value })} value={quickCustomerForm.province} />
-                </label>
+                <div className="grid gap-2 rounded-[18px] border border-[#dbe6f3] bg-white px-4 py-3 text-sm">
+                  <span className="font-bold text-[#333333]">Tỉnh/Thành / Khu vực</span>
+                  <strong className="text-[#1f1f1f]">{quickCustomerForm.province || user.region?.name || 'Chưa gán khu vực'}</strong>
+                </div>
                 <label>
                   Người liên hệ
                   <input onChange={(event) => updateQuickCustomerForm({ contactPerson: event.target.value })} value={quickCustomerForm.contactPerson} />

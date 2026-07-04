@@ -1,4 +1,5 @@
 import { ResourceConfig } from './resources';
+import { vietnamProvinceOptions } from './vietnamProvinces';
 import { enumOptions } from '../utils/displayLabels';
 
 export type CrudField = {
@@ -35,6 +36,8 @@ export type AdminCrudConfig = ResourceConfig & {
 const customerTypes = enumOptions(['HOSPITAL', 'CLINIC', 'LAB', 'DISTRIBUTOR', 'UNIVERSITY', 'COMPANY', 'OTHER']);
 
 const customerStatuses = enumOptions(['ACTIVE', 'INACTIVE', 'POTENTIAL', 'BLACKLISTED']);
+
+const provinceOptions = vietnamProvinceOptions.map((province) => ({ label: province.name, value: province.name }));
 
 const activeInactiveStatuses = enumOptions(['ACTIVE', 'INACTIVE']);
 
@@ -166,7 +169,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'contactPerson', label: 'Người liên hệ' },
       { name: 'contactPhone', label: 'SĐT liên hệ' },
       { name: 'contactEmail', label: 'Email liên hệ', type: 'email' },
-      { name: 'province', label: 'Tỉnh/Thành' },
+      { name: 'province', label: 'Tỉnh/Thành', type: 'select', options: provinceOptions },
       { name: 'district', label: 'Quận/Huyện' },
       { name: 'address', label: 'Địa chỉ' },
       { name: 'fullAddress', label: 'Địa chỉ đầy đủ' },
