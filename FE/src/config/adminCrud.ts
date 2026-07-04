@@ -171,6 +171,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'contactEmail', label: 'Email liên hệ', type: 'email' },
       { name: 'province', label: 'Tỉnh/Thành', type: 'select', options: provinceOptions },
       { name: 'district', label: 'Quận/Huyện' },
+      { name: 'ward', label: 'Phường/Xã' },
       { name: 'address', label: 'Địa chỉ' },
       { name: 'fullAddress', label: 'Địa chỉ đầy đủ' },
       { name: 'note', label: 'Ghi chú', type: 'textarea' },

@@ -10,6 +10,7 @@ import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { GoogleMapsDirectionsButton, VietnamAddressSelects, buildFullVietnamAddress } from '../../components/VietnamAddressSelects';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { queryKeys } from '../../lib/queryKeys';
@@ -119,10 +120,12 @@ type InstallationDeviceItem = {
 type QuickCustomerForm = {
   address: string;
   contactPerson: string;
+  district: string;
   name: string;
   phone: string;
   province: string;
   regionId: string;
+  ward: string;
 };
 
 type QuickMachineForm = {
@@ -250,7 +253,10 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           contactPerson: quickCustomerForm.contactPerson.trim() || undefined,
           contactPhone: quickCustomerForm.phone.trim() || undefined,
           province: quickCustomerForm.province.trim() || selectedRegion?.name || undefined,
+          district: quickCustomerForm.district.trim() || undefined,
+          ward: quickCustomerForm.ward.trim() || undefined,
           address: quickCustomerForm.address.trim() || undefined,
+          fullAddress: buildFullVietnamAddress(quickCustomerForm) || undefined,
           regionId,
           status: 'ACTIVE',
         }),
@@ -953,6 +959,12 @@ function QuickCustomerPanel({
           </select>
         </label>
       )}
+      <VietnamAddressSelects
+        fieldClassName={fieldClass}
+        labelClassName={labelClass}
+        onChange={(patch) => updateForm(patch)}
+        value={form}
+      />
       <label className={labelClass}>
         Người liên hệ
         <input className={fieldClass} onChange={(event) => updateForm({ contactPerson: event.target.value })} value={form.contactPerson} />
@@ -961,10 +973,10 @@ function QuickCustomerPanel({
         Số điện thoại
         <input className={fieldClass} onChange={(event) => updateForm({ phone: event.target.value })} value={form.phone} />
       </label>
-      <label className={wideLabelClass}>
-        Địa chỉ
-        <input className={fieldClass} onChange={(event) => updateForm({ address: event.target.value })} value={form.address} />
-      </label>
+      <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#dbe6f3] bg-white px-4 py-3 text-sm font-semibold text-[#667985]">
+        <span className="min-w-0 flex-1 truncate">{buildFullVietnamAddress(form) || 'Chọn đủ địa chỉ để mở Google Maps nhanh.'}</span>
+        {buildFullVietnamAddress(form) ? <GoogleMapsDirectionsButton address={buildFullVietnamAddress(form)} className="secondary-button compact" /> : null}
+      </div>
       <div className="md:col-span-2">
         <button className="primary-button" disabled={creating} onClick={onCreate} type="button">
           {creating ? 'Đang tạo khách hàng' : 'Tạo khách hàng và chọn'}
@@ -1212,10 +1224,12 @@ function emptyQuickCustomerForm(user: ApiUser): QuickCustomerForm {
   return {
     address: '',
     contactPerson: '',
+    district: '',
     name: '',
     phone: '',
     province: user.region?.name || '',
     regionId: user.regionId || user.region?.id || '',
+    ward: '',
   };
 }
 

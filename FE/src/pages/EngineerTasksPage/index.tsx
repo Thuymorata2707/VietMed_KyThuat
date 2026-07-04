@@ -5,6 +5,7 @@ import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken
 import { DateInput } from '../../components/DateInput';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { ModelInfoFields } from '../../components/ModelInfoFields';
+import { GoogleMapsDirectionsButton, VietnamAddressSelects, buildFullVietnamAddress } from '../../components/VietnamAddressSelects';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { Notice } from '../../components/Notice';
@@ -151,17 +152,21 @@ const dailyWorkStatusMeta: Record<DailyWorkStatus, { label: string; className: s
 type QuickCustomerForm = {
   address: string;
   contactPerson: string;
+  district: string;
   name: string;
   phone: string;
   province: string;
+  ward: string;
 };
 
 const emptyQuickCustomerForm = (user?: ApiUser): QuickCustomerForm => ({
   address: '',
   contactPerson: '',
+  district: '',
   name: '',
   phone: '',
   province: user?.region?.name || '',
+  ward: '',
 });
 
 const weeklyReportStatusLabels: Record<WeeklyReportStatus | 'NONE', string> = {
@@ -662,7 +667,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           contactPerson: quickCustomerForm.contactPerson.trim() || undefined,
           contactPhone: quickCustomerForm.phone.trim() || undefined,
           province: quickCustomerForm.province.trim() || user.region?.name || undefined,
+          district: quickCustomerForm.district.trim() || undefined,
+          ward: quickCustomerForm.ward.trim() || undefined,
           address: quickCustomerForm.address.trim() || undefined,
+          fullAddress: buildFullVietnamAddress(quickCustomerForm) || undefined,
           regionId,
           status: 'ACTIVE',
         }),
@@ -1221,9 +1229,15 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   />
                 </label>
                 <div className="grid gap-2 rounded-[18px] border border-[#dbe6f3] bg-white px-4 py-3 text-sm">
-                  <span className="font-bold text-[#333333]">Tỉnh/Thành / Khu vực</span>
+                  <span className="font-bold text-[#333333]">Khu vực quản lý</span>
                   <strong className="text-[#1f1f1f]">{quickCustomerForm.province || user.region?.name || 'Chưa gán khu vực'}</strong>
                 </div>
+                <VietnamAddressSelects
+                  fieldClassName="min-h-11 rounded-2xl border border-[#d8dee8] bg-white px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.10)]"
+                  labelClassName="grid gap-2 text-sm font-semibold text-[#333333]"
+                  onChange={(patch) => updateQuickCustomerForm(patch)}
+                  value={quickCustomerForm}
+                />
                 <label>
                   Người liên hệ
                   <input onChange={(event) => updateQuickCustomerForm({ contactPerson: event.target.value })} value={quickCustomerForm.contactPerson} />
@@ -1232,10 +1246,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   Số điện thoại
                   <input onChange={(event) => updateQuickCustomerForm({ phone: event.target.value })} value={quickCustomerForm.phone} />
                 </label>
-                <label className="create-wide-field">
-                  Địa chỉ
-                  <input onChange={(event) => updateQuickCustomerForm({ address: event.target.value })} value={quickCustomerForm.address} />
-                </label>
+                <div className="create-wide-field flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#dbe6f3] bg-white px-4 py-3 text-sm font-semibold text-[#667985]">
+                  <span className="min-w-0 flex-1 truncate">{buildFullVietnamAddress(quickCustomerForm) || 'Chọn đủ địa chỉ để mở Google Maps nhanh.'}</span>
+                  {buildFullVietnamAddress(quickCustomerForm) ? <GoogleMapsDirectionsButton address={buildFullVietnamAddress(quickCustomerForm)} className="task-secondary" /> : null}
+                </div>
                 <button className="task-primary" disabled={creatingCustomer} onClick={handleQuickCustomerCreate} type="button">
                   {creatingCustomer ? 'Đang tạo khách hàng' : 'Tạo và chọn khách hàng'}
                 </button>

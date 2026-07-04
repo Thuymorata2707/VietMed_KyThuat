@@ -7,6 +7,7 @@ import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { GoogleMapsDirectionsButton, VietnamAddressSelects, buildFullVietnamAddress } from '../../components/VietnamAddressSelects';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { displayLabel } from '../../utils/displayLabels';
@@ -1200,7 +1201,7 @@ function GroupedCustomerFields({
     {
       title: 'Địa chỉ',
       description: 'Dùng cho lắp đặt, bảo trì và điều phối lịch công tác.',
-      fields: ['province', 'district', 'address', 'fullAddress'],
+      fields: ['province', 'district', 'ward', 'address', 'fullAddress'],
     },
     {
       title: 'Ghi chú',
@@ -1222,18 +1223,26 @@ function GroupedCustomerFields({
               <h3>{group.title}</h3>
               <p>{group.description}</p>
             </div>
-            <div className="form-grid">
-              {groupFields.map((field) => (
-                <FieldControl
-                  field={field}
-                  key={field.name}
-                  onChange={(value, optionRow) => onFieldChange(field, value, optionRow)}
-                  options={options[field.name] || field.options || []}
-                  row={row}
-                  value={form[field.name] ?? ''}
-                />
-              ))}
-            </div>
+            {group.title === 'Địa chỉ' ? (
+              <CustomerAddressFields
+                fieldMap={fieldMap}
+                form={form}
+                onFieldChange={onFieldChange}
+              />
+            ) : (
+              <div className="form-grid">
+                {groupFields.map((field) => (
+                  <FieldControl
+                    field={field}
+                    key={field.name}
+                    onChange={(value, optionRow) => onFieldChange(field, value, optionRow)}
+                    options={options[field.name] || field.options || []}
+                    row={row}
+                    value={form[field.name] ?? ''}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         );
       })}
@@ -1259,6 +1268,50 @@ function GroupedCustomerFields({
           </div>
         </section>
       ) : null}
+    </div>
+  );
+}
+
+function CustomerAddressFields({
+  fieldMap,
+  form,
+  onFieldChange,
+}: {
+  fieldMap: Map<string, CrudField>;
+  form: FormState;
+  onFieldChange: (field: CrudField, value: string) => void;
+}) {
+  const addressValue = {
+    address: form.address ?? '',
+    district: form.district ?? '',
+    province: form.province ?? '',
+    ward: form.ward ?? '',
+  };
+  const fullAddress = buildFullVietnamAddress(addressValue);
+
+  function patchAddress(patch: Partial<typeof addressValue>) {
+    const nextValue = { ...addressValue, ...patch };
+    const fieldsToUpdate: Array<[string, string]> = [
+      ['province', nextValue.province],
+      ['district', nextValue.district],
+      ['ward', nextValue.ward],
+      ['address', nextValue.address],
+      ['fullAddress', buildFullVietnamAddress(nextValue)],
+    ];
+
+    fieldsToUpdate.forEach(([name, value]) => {
+      const field = fieldMap.get(name);
+      if (field) onFieldChange(field, value);
+    });
+  }
+
+  return (
+    <div className="form-grid">
+      <VietnamAddressSelects onChange={patchAddress} value={addressValue} />
+      <div className="wide-field flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#dbe6f3] bg-white px-4 py-3 text-sm font-semibold text-[#667985]">
+        <span className="min-w-0 flex-1 truncate">{fullAddress || 'Chọn đủ địa chỉ để mở Google Maps nhanh.'}</span>
+        {fullAddress ? <GoogleMapsDirectionsButton address={fullAddress} className="secondary-button compact" /> : null}
+      </div>
     </div>
   );
 }
