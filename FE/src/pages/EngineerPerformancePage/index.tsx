@@ -152,8 +152,9 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const weeklySubmitted = summary?.weeklyReports?.filter((report) => report.status === 'SUBMITTED').length ?? 0;
   const closedActivities = summary?.activities?.filter((activity) => ['COMPLETED', 'INSTALLED', 'APPROVED'].includes(activity.status)).length ?? 0;
   const unresolvedActivities = Math.max((summary?.activities.length ?? 0) - closedActivities, 0);
+  const reportHomePath = isAdmin ? '/engineer-performance' : '/my-reports';
   const currentWeeklyReportHref = buildWeeklyReportHref(weekStart, isAdmin ? engineerId : '');
-  const currentTechnicalReportHref = buildTechnicalReportHref(from, to, isAdmin ? engineerId : user.id, isAdmin);
+  const currentTechnicalReportHref = buildTechnicalReportHref(from, to, isAdmin ? engineerId : user.id, isAdmin, reportHomePath);
   const sortedWeeklyReports = useMemo(
     () => [...(summary?.weeklyReports ?? [])].sort((left, right) => right.weekStart.localeCompare(left.weekStart)),
     [summary],
@@ -202,9 +203,9 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   return (
     <PageFrame>
       <PageTitle
-        eyebrow="Báo cáo vận hành"
-        title="Hiệu suất kỹ sư"
-        description="Xem trực quan khối lượng lắp đặt, sửa chữa, bảo trì, khách hàng và máy đã xử lý theo khoảng thời gian."
+        eyebrow={isAdmin ? 'Báo cáo vận hành' : 'Báo cáo cá nhân'}
+        title={isAdmin ? 'Hiệu suất kỹ sư' : 'Báo cáo của tôi'}
+        description={isAdmin ? 'Xem trực quan khối lượng lắp đặt, sửa chữa, bảo trì, khách hàng và máy đã xử lý theo khoảng thời gian.' : 'Theo dõi việc đã làm, báo cáo tuần, phiếu cần sửa và hiệu suất cá nhân trong một nơi.'}
       />
 
       {error ? <Notice message={error} /> : null}
@@ -259,7 +260,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             {currentTechnicalReportHref ? (
               <Link className="secondary-button" to={currentTechnicalReportHref}>
                 <FileText size={16} />
-                Báo cáo
+                Thống kê kỹ thuật
               </Link>
             ) : null}
             <button className="secondary-button" disabled={!summary?.activities.length} onClick={exportCsv} type="button">
@@ -286,9 +287,9 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
       <section className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
         <PanelHeader
-          eyebrow="Chất lượng kỹ thuật"
-          title="Rủi ro báo cáo và hoàn tất"
-          subtitle="Theo dõi các điểm admin thường cần kiểm tra: báo cáo bị trả về, chờ duyệt và việc chưa đóng."
+          eyebrow={isAdmin ? 'Chất lượng kỹ thuật' : 'Việc cần chú ý'}
+          title={isAdmin ? 'Rủi ro báo cáo và hoàn tất' : 'Báo cáo và phiếu cần xử lý'}
+          subtitle={isAdmin ? 'Theo dõi các điểm admin thường cần kiểm tra: báo cáo bị trả về, chờ duyệt và việc chưa đóng.' : 'Ưu tiên xử lý báo cáo bị trả về, báo cáo chờ duyệt và các việc chưa đóng.'}
         />
         <div className="grid gap-3 md:grid-cols-4">
           <QualityCard label="Báo cáo cần sửa" value={weeklyNeedsRevision} tone={weeklyNeedsRevision > 0 ? 'danger' : 'good'} />
@@ -565,12 +566,12 @@ function buildWeeklyReportHref(weekStart: string, engineerId?: string) {
   return `/weekly-reports?${params.toString()}`;
 }
 
-function buildTechnicalReportHref(from: string, to: string, engineerId: string, includeEngineerId: boolean) {
+function buildTechnicalReportHref(from: string, to: string, engineerId: string, includeEngineerId: boolean, returnBasePath: string) {
   if (!from || !to || !engineerId) return '';
-  const params = new URLSearchParams({ from, to, returnTo: `/engineer-performance?from=${from}&to=${to}` });
+  const params = new URLSearchParams({ from, to, returnTo: `${returnBasePath}?from=${from}&to=${to}` });
   if (includeEngineerId) {
     params.set('engineerId', engineerId);
-    params.set('returnTo', `/engineer-performance?engineerId=${engineerId}&from=${from}&to=${to}`);
+    params.set('returnTo', `${returnBasePath}?engineerId=${engineerId}&from=${from}&to=${to}`);
   }
   return `/technical-statistics?${params.toString()}`;
 }

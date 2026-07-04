@@ -127,6 +127,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Thống kê kỹ thuật'
     : location.pathname.startsWith('/reports')
       ? 'Báo cáo'
+    : location.pathname.startsWith('/my-reports')
+      ? 'Báo cáo của tôi'
     : location.pathname.startsWith('/my-customers')
       ? 'Khách hàng phụ trách'
     : activeNavItem?.label || 'Tổng quan';
@@ -363,6 +365,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <WeeklyReportsPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/my-reports"
+            element={
+              <RequireRole
+                allowedRoles={['engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <EngineerPerformancePage currentRole={role} user={user} />
               </RequireRole>
             }
           />

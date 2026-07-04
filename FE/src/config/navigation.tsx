@@ -37,7 +37,7 @@ export const navItems: NavItem[] = [
   { path: '/knowledge-base', label: 'Chia sẻ kinh nghiệm', icon: <BookOpenCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/technical-statistics', label: 'Thống kê kỹ thuật', icon: <BarChart3 size={18} />, roles: ['admin'] },
   { path: '/reports', label: 'Báo cáo', icon: <FileBarChart2 size={18} />, roles: ['admin', 'manager'] },
-  { path: '/engineer-performance', label: 'Hiệu suất kỹ sư', icon: <BarChart3 size={18} />, roles: ['engineer'] },
+  { path: '/my-reports', label: 'Báo cáo của tôi', icon: <FileBarChart2 size={18} />, roles: ['engineer'] },
   { path: '/inventory-movements', label: 'Kho máy', icon: <Boxes size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/product-catalog', label: 'Sản phẩm & Thiết bị', icon: <BriefcaseBusiness size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/product-industries', label: 'Ngành hàng', icon: <BriefcaseBusiness size={18} />, roles: ['admin'] },
@@ -86,7 +86,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { path: '/technical-statistics', label: 'Thống kê kỹ thuật', icon: <BarChart3 size={18} />, roles: ['admin'] },
       { path: '/reports', label: 'Báo cáo', icon: <FileBarChart2 size={18} />, roles: ['admin', 'manager'] },
-      { path: '/engineer-performance', label: 'Hiệu suất kỹ sư', icon: <BarChart3 size={18} />, roles: ['engineer'] },
+      { path: '/my-reports', label: 'Báo cáo của tôi', icon: <FileBarChart2 size={18} />, roles: ['engineer'] },
     ],
   },
   {

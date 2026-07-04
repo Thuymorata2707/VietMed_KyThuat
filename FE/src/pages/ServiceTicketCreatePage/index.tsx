@@ -797,20 +797,35 @@ function MaintenanceFields({ form, models, updateForm }: { form: TicketForm; mod
 }
 
 function ModelDeviceSelect({ form, models, updateForm }: { form: TicketForm; models: MachineModelOption[]; updateForm: (patch: Partial<TicketForm>) => void }) {
+  const selectedModel = models.find((model) => model.id === form.machineModelId);
+
   return (
-    <ModelGridSelect
-      className="md:col-span-2"
-      models={models}
-      onChange={(modelId, model) => {
-        updateForm({
-          machineId: '',
-          machineModelId: modelId,
-          modelName: model?.name || model?.displayName || model?.code || '',
-          deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
-        });
-      }}
-      value={form.machineModelId}
-    />
+    <div className="grid gap-3 md:col-span-2">
+      <label className={wideLabelClass}>
+        Model / tên thiết bị
+        <select
+          className={fieldClass}
+          onChange={(event) => {
+            const model = models.find((option) => option.id === event.target.value);
+            updateForm({
+              machineId: '',
+              machineModelId: event.target.value,
+              modelName: model?.name || model?.displayName || model?.code || '',
+              deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
+            });
+          }}
+          value={form.machineModelId}
+        >
+          <option value="">Không bắt buộc, chọn model nếu chưa chọn thiết bị có sẵn</option>
+          {models.map((model) => (
+            <option key={model.id} value={model.id}>
+              {model.code || model.displayName || model.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <ModelInfoFields model={selectedModel} />
+    </div>
   );
 }
 
