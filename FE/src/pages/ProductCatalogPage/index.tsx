@@ -1066,16 +1066,29 @@ function ModelRow({
   model: MachineModel;
   stock?: ModelStock;
 }) {
+  const navigate = useNavigate();
+  const detailHref = `/business-lines/models/${model.id}${catalogSearch}`;
+
   return (
-    <tr className="border-b border-[#eeeeee] hover:bg-[#f4f4f5]">
+    <tr
+      className="cursor-pointer border-b border-[#eeeeee] hover:bg-[#f4f4f5]"
+      onClick={() => navigate(detailHref)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          navigate(detailHref);
+        }
+      }}
+      tabIndex={0}
+    >
       <td className="px-4 py-4">
-        <Link className="flex min-w-0 items-center gap-3 text-left" to={`/business-lines/models/${model.id}${catalogSearch}`}>
+        <div className="flex min-w-0 items-center gap-3 text-left">
           <ModelImage model={model} />
           <div className="min-w-0">
             <strong className="block text-sm text-[#1f1f1f]">{modelShortLabel(model)}</strong>
             <span className="block max-w-[340px] truncate text-[13px] text-[#666666]">{modelDetailLabel(model)}</span>
           </div>
-        </Link>
+        </div>
       </td>
       <td className="px-4 py-4 text-sm text-[#333333]">
         <span className="block font-semibold">{model.businessLine?.productIndustry?.name ?? 'Chưa phân ngành'}</span>
@@ -1090,7 +1103,7 @@ function ModelRow({
       </td>
       <td className="px-4 py-4">
         {canAddProduct ? (
-          <Link className="primary-button compact" to={`/business-lines/add-product?modelId=${model.id}`}>
+          <Link className="primary-button compact" onClick={(event) => event.stopPropagation()} to={`/business-lines/add-product?modelId=${model.id}`}>
             <PackagePlus size={16} />
             Add Product
           </Link>
@@ -1300,20 +1313,32 @@ function ModelCard({
   model: MachineModel;
   stock?: ModelStock;
 }) {
+  const navigate = useNavigate();
   const total = stock?.total ?? 0;
   const inStock = stock?.inStock ?? 0;
   const ratio = total ? Math.round((inStock / total) * 100) : 0;
+  const detailHref = `/business-lines/models/${model.id}${catalogSearch}`;
 
   return (
-    <article className="grid min-w-0 gap-4 px-4 py-3 transition hover:bg-[#fafafa] min-[1120px]:grid-cols-[minmax(320px,1fr)_180px_220px_auto] min-[1120px]:items-center">
-      <Link className="flex min-w-0 gap-3" to={`/business-lines/models/${model.id}${catalogSearch}`}>
+    <article
+      className="grid min-w-0 cursor-pointer gap-4 px-4 py-3 transition hover:bg-[#fafafa] min-[1120px]:grid-cols-[minmax(320px,1fr)_180px_220px_auto] min-[1120px]:items-center"
+      onClick={() => navigate(detailHref)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          navigate(detailHref);
+        }
+      }}
+      tabIndex={0}
+    >
+      <div className="flex min-w-0 gap-3">
         <ModelImage model={model} />
         <div className="min-w-0">
           <strong className="block truncate text-base font-semibold text-[#1f1f1f]">{modelShortLabel(model)}</strong>
           <span className="mt-1 block truncate text-sm leading-5 text-[#666666]">{modelDetailLabel(model)}</span>
           <span className="mt-1 block text-xs font-medium text-[#18181b]">{model.businessLine?.name || 'Chưa có dòng sản phẩm'}</span>
         </div>
-      </Link>
+      </div>
 
       <div className="grid gap-1 text-sm">
         <span className="text-[12px] font-medium text-[#666666]">Hãng / loại</span>
@@ -1332,11 +1357,8 @@ function ModelCard({
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Link className="secondary-button compact" to={`/business-lines/models/${model.id}${catalogSearch}`}>
-          View
-        </Link>
         {canAddProduct ? (
-          <Link className="primary-button compact" to={`/business-lines/add-product?modelId=${model.id}`}>
+          <Link className="primary-button compact" onClick={(event) => event.stopPropagation()} to={`/business-lines/add-product?modelId=${model.id}`}>
             <PackagePlus size={16} />
             Add Product
           </Link>

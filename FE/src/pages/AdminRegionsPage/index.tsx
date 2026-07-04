@@ -189,46 +189,63 @@ export function AdminRegionsPage() {
           </button>
         </div>
 
-        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredRegions.map((region) => (
-            <button
-              className={`group grid min-h-[150px] content-between gap-5 rounded-[18px] border bg-[#ffffff] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#18181b] hover:shadow-[0_14px_30px_rgba(24,24,27,0.08)] ${
-                selectedRegion?.id === region.id ? 'border-[#18181b] shadow-[0_18px_38px_rgba(24,24,27,0.1)]' : 'border-[#e4e4e7]'
-              }`}
-              key={region.id}
-              onClick={() => selectRegion(region)}
-              type="button"
-            >
-              <span className="flex items-start justify-between gap-3">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] bg-[#f4f4f5] text-[#18181b]">
-                  <MapPinned size={19} />
-                </span>
-                <span className="rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-semibold text-[#18181b]">{region.code}</span>
-              </span>
-              <span className="grid gap-1">
-                <strong className="text-xl font-semibold text-[#182033]">{region.name}</strong>
-                <small className="text-xs font-medium text-[#667085]">Cập nhật {formatDate(region.updatedAt)}</small>
-              </span>
-              <span className="inline-flex items-center justify-between gap-3 text-sm font-semibold text-[#18181b]">
-                Khách hàng trong khu vực
-                <span className="h-px flex-1 bg-[#e4e4e7] transition group-hover:bg-[#18181b]" />
-              </span>
-            </button>
-          ))}
-
-          {loading ? (
-            <div className="col-span-full table-state">
-              <Loader2 className="spin-icon" size={18} />
-              Đang tải khu vực...
-            </div>
-          ) : null}
-          {!loading && filteredRegions.length === 0 ? (
-            <div className="col-span-full table-state empty-state">
-              <strong>Không có khu vực phù hợp</strong>
-              <span>Thử đổi từ khóa tìm kiếm hoặc tạo khu vực mới.</span>
-            </div>
-          ) : null}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] border-collapse text-left">
+            <thead className="bg-[#fafafa] text-xs font-black uppercase tracking-[0.08em] text-[#667085]">
+              <tr className="border-b border-[#e4e4e7]">
+                <th className="px-4 py-3">Khu vực</th>
+                <th className="px-4 py-3">Mã tỉnh</th>
+                <th className="px-4 py-3">Cập nhật</th>
+                <th className="px-4 py-3">Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRegions.map((region) => (
+                <tr
+                  className={`cursor-pointer border-b border-[#eeeeee] transition last:border-b-0 hover:bg-[#fafafa] ${
+                    selectedRegion?.id === region.id ? 'bg-[#f4f4f5]' : ''
+                  }`}
+                  key={region.id}
+                  onClick={() => selectRegion(region)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      selectRegion(region);
+                    }
+                  }}
+                  tabIndex={0}
+                >
+                  <td className="px-4 py-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#f4f4f5] text-[#18181b]">
+                        <MapPinned size={18} />
+                      </span>
+                      <strong className="min-w-0 truncate text-base font-semibold text-[#182033]">{region.name}</strong>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4">
+                    <span className="rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-bold text-[#18181b]">{region.code}</span>
+                  </td>
+                  <td className="px-4 py-4 text-sm font-medium text-[#333333]">{formatDate(region.updatedAt)}</td>
+                  <td className="px-4 py-4 text-sm font-medium text-[#667085]">Click dòng để xem khách hàng và máy trong khu vực</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+
+        {loading ? (
+          <div className="table-state">
+            <Loader2 className="spin-icon" size={18} />
+            Đang tải khu vực...
+          </div>
+        ) : null}
+        {!loading && filteredRegions.length === 0 ? (
+          <div className="table-state empty-state">
+            <strong>Không có khu vực phù hợp</strong>
+            <span>Thử đổi từ khóa tìm kiếm hoặc tạo khu vực mới.</span>
+          </div>
+        ) : null}
       </section>
 
       {selectedRegion ? (

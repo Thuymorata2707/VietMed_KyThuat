@@ -380,6 +380,8 @@ function OperationsBoard({
   const [queue, setQueue] = useState<QueueKey>('all');
   const [groupBy, setGroupBy] = useState<GroupByKey>('date');
   const [query, setQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<BoardItem | null>(null);
@@ -435,16 +437,17 @@ function OperationsBoard({
   });
 
   const items = useMemo(() => [...(boardQuery.data ?? [])].sort(compareBoardItemsByDateDesc), [boardQuery.data]);
+  const dateFilteredItems = useMemo(() => filterByDateRange(items, dateFrom, dateTo), [dateFrom, dateTo, items]);
   const engineers = engineersQuery.data ?? [];
   const loading = boardQuery.isLoading || boardQuery.isFetching;
   const error =
     (boardQuery.error instanceof Error ? boardQuery.error.message : '') ||
     (engineersQuery.error instanceof Error ? engineersQuery.error.message : '');
 
-  const counts = useMemo(() => buildQueueCounts(items), [items]);
-  const visibleItems = useMemo(() => filterByQueue(items, queue).sort(compareBoardItemsByDateDesc), [items, queue]);
+  const counts = useMemo(() => buildQueueCounts(dateFilteredItems), [dateFilteredItems]);
+  const visibleItems = useMemo(() => filterByQueue(dateFilteredItems, queue).sort(compareBoardItemsByDateDesc), [dateFilteredItems, queue]);
   const groupedItems = useMemo(() => groupItems(visibleItems, groupBy), [groupBy, visibleItems]);
-  const activeFilterCount = [productIndustryId, engineerId, groupBy !== 'date' ? groupBy : ''].filter(Boolean).length;
+  const activeFilterCount = [productIndustryId, engineerId, dateFrom, dateTo, groupBy !== 'date' ? groupBy : ''].filter(Boolean).length;
   const selectedEngineer = engineers.find((engineer) => engineer.id === engineerId);
 
   return (
@@ -517,11 +520,13 @@ function OperationsBoard({
               <FilterSummary label="Nhóm" value={groupOptions.find((option) => option.value === groupBy)?.label || 'Theo ngày'} />
               {selectedEngineer ? <FilterSummary label="Kỹ sư" value={technicalUserName(selectedEngineer)} /> : null}
               {productIndustryId ? <FilterSummary label="Ngành hàng" value="Đang lọc" /> : null}
+              {dateFrom ? <FilterSummary label="Từ ngày" value={formatDate(dateFrom)} /> : null}
+              {dateTo ? <FilterSummary label="Đến ngày" value={formatDate(dateTo)} /> : null}
             </div>
           </div>
 
           {filtersOpen ? (
-            <div className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white/86 p-3 shadow-[0_10px_28px_rgba(24,24,27,0.06)] min-[900px]:grid-cols-[minmax(210px,1fr)_minmax(210px,1fr)_180px_auto] min-[900px]:items-end">
+            <div className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white/86 p-3 shadow-[0_10px_28px_rgba(24,24,27,0.06)] min-[980px]:grid-cols-[minmax(190px,1fr)_minmax(190px,1fr)_minmax(150px,0.8fr)_minmax(150px,0.8fr)_160px_auto] min-[980px]:items-end">
               <ProductIndustryFilter onChange={setProductIndustryId} value={productIndustryId} />
               <label className="operation-filter-field">
                 <span>Kỹ sư</span>
@@ -533,6 +538,14 @@ function OperationsBoard({
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="operation-filter-field">
+                <span>Từ ngày</span>
+                <input onChange={(event) => setDateFrom(event.target.value)} type="date" value={dateFrom} />
+              </label>
+              <label className="operation-filter-field">
+                <span>Đến ngày</span>
+                <input onChange={(event) => setDateTo(event.target.value)} type="date" value={dateTo} />
               </label>
               <label className="operation-filter-field">
                 <span>Nhóm theo</span>
@@ -550,6 +563,8 @@ function OperationsBoard({
                 onClick={() => {
                   setProductIndustryId('');
                   setEngineerId('');
+                  setDateFrom('');
+                  setDateTo('');
                   setGroupBy('date');
                   setQuery('');
                 }}
@@ -864,6 +879,20 @@ function filterByQueue(items: BoardItem[], queue: QueueKey) {
   if (queue === 'review') return items.filter((item) => item.reviewStatus === 'PENDING');
   if (queue === 'closed') return items.filter((item) => isClosed(item.status));
   return items;
+}
+
+function filterByDateRange(items: BoardItem[], dateFrom: string, dateTo: string) {
+  if (!dateFrom && !dateTo) return items;
+
+  const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : Number.NEGATIVE_INFINITY;
+  const toTime = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : Number.POSITIVE_INFINITY;
+
+  return items.filter((item) => {
+    if (!item.date) return false;
+    const itemTime = new Date(item.date).getTime();
+    if (Number.isNaN(itemTime)) return false;
+    return itemTime >= fromTime && itemTime <= toTime;
+  });
 }
 
 function groupItems(items: BoardItem[], groupBy: GroupByKey) {

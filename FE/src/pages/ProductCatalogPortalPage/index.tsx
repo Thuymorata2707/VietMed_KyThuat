@@ -1,7 +1,7 @@
-import { ArrowLeft, ArrowRight, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Search } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, ArrowRight, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
@@ -54,10 +54,46 @@ type ModelStock = {
 };
 
 type ProductCatalogOverview = {
+  businessLines: BusinessLine[];
   industries: ProductIndustry[];
   models: MachineModel[];
   stockByModel: Record<string, ModelStock>;
 };
+
+type ModelFormState = {
+  businessLineId: string;
+  code: string;
+  countryOfOrigin: string;
+  displayName: string;
+  manufacturer: string;
+  name: string;
+  note: string;
+  productCategory: string;
+  productLine: string;
+};
+
+const emptyModelForm: ModelFormState = {
+  businessLineId: '',
+  code: '',
+  countryOfOrigin: '',
+  displayName: '',
+  manufacturer: '',
+  name: '',
+  note: '',
+  productCategory: '',
+  productLine: '',
+};
+
+const productCategoryOptions = [
+  { label: 'Máy siêu âm', value: 'ULTRASOUND' },
+  { label: 'Máy xét nghiệm', value: 'LAB_TESTING' },
+  { label: 'Sinh hóa', value: 'BIOCHEMISTRY' },
+  { label: 'Miễn dịch', value: 'IMMUNOLOGY' },
+  { label: 'Huyết học', value: 'HEMATOLOGY' },
+  { label: 'X-quang', value: 'X_RAY' },
+  { label: 'Nội soi', value: 'ENDOSCOPY' },
+  { label: 'Khác', value: 'OTHER' },
+];
 
 export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
   const catalogQuery = useCatalogOverview();
@@ -123,19 +159,26 @@ export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
 
 export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { industryId = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') || '');
+  const [modelForm, setModelForm] = useState<ModelFormState>(emptyModelForm);
+  const [modelFormError, setModelFormError] = useState('');
+  const [modelModalOpen, setModelModalOpen] = useState(false);
   const catalogQuery = useCatalogOverview();
   const role = getRoleName(user);
   const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
   const canAddProduct = role === 'admin' || role === 'engineer';
+  const canAddModel = role === 'admin';
   const industries = catalogQuery.data?.industries ?? [];
+  const businessLines = catalogQuery.data?.businessLines ?? [];
   const models = catalogQuery.data?.models ?? [];
   const stockByModel = catalogQuery.data?.stockByModel ?? {};
   const loading = catalogQuery.isLoading || catalogQuery.isFetching;
   const error = catalogQuery.error instanceof Error ? catalogQuery.error.message : '';
   const industry = industries.find((item) => item.id === industryId) ?? null;
+  const industryBusinessLines = useMemo(() => businessLines.filter((line) => line.productIndustry?.id === industryId), [businessLines, industryId]);
 
   const visibleModels = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -175,6 +218,84 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
 
   const catalogSearch = buildCatalogSearch(industryId, query);
 
+  const createModelMutation = useMutation({
+    mutationFn: async (payload: Record<string, string>) =>
+      apiFetch<MachineModel>('/machine-models', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: async () => {
+      setModelModalOpen(false);
+      setModelForm(emptyModelForm);
+      setModelFormError('');
+      await queryClient.invalidateQueries({ queryKey: queryKeys.productCatalog.overview });
+    },
+    onError: (mutationError) => {
+      setModelFormError(mutationError instanceof Error ? mutationError.message : 'Không thể tạo model mới.');
+    },
+  });
+
+  function openModelForm() {
+    const firstLine = industryBusinessLines[0] ?? null;
+    setModelForm({
+      ...emptyModelForm,
+      businessLineId: firstLine?.id ?? '',
+      countryOfOrigin: firstLine?.countryOfOrigin ?? '',
+      productCategory: firstLine?.productCategory ?? '',
+      productLine: firstLine?.name ?? '',
+    });
+    setModelFormError('');
+    setModelModalOpen(true);
+  }
+
+  function updateModelForm(field: keyof ModelFormState, value: string) {
+    if (field === 'businessLineId') {
+      const line = industryBusinessLines.find((item) => item.id === value) ?? null;
+      setModelForm((current) => ({
+        ...current,
+        businessLineId: value,
+        countryOfOrigin: current.countryOfOrigin || line?.countryOfOrigin || '',
+        productCategory: current.productCategory || line?.productCategory || '',
+        productLine: line?.name || current.productLine,
+      }));
+      return;
+    }
+    setModelForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function submitModelForm(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const code = modelForm.code.trim().toUpperCase();
+    const name = modelForm.name.trim();
+
+    if (!modelForm.businessLineId) {
+      setModelFormError('Vui lòng chọn dòng sản phẩm cho model.');
+      return;
+    }
+    if (!code || !name) {
+      setModelFormError('Vui lòng nhập model và tên sản phẩm.');
+      return;
+    }
+
+    const payload = compactModelPayload({
+      businessLineId: modelForm.businessLineId,
+      code,
+      countryOfOrigin: modelForm.countryOfOrigin.trim(),
+      displayName: modelForm.displayName.trim(),
+      manufacturer: modelForm.manufacturer.trim(),
+      name,
+      note: modelForm.note.trim(),
+      productCategory: modelForm.productCategory,
+      productLine: modelForm.productLine.trim(),
+    });
+
+    createModelMutation.mutate(payload);
+  }
+
+  function openModelDetail(modelId: string) {
+    navigate(`/business-lines/models/${modelId}${catalogSearch}`);
+  }
+
   return (
     <PageFrame>
       <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#fafafa] p-5 shadow-[0_12px_30px_rgba(24,24,27,0.05)] md:p-7">
@@ -193,6 +314,12 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
             />
           </div>
           <div className="flex flex-wrap justify-end gap-2">
+            {canAddModel ? (
+              <button className="secondary-button bg-white" onClick={openModelForm} type="button">
+                <Plus size={17} />
+                Thêm model
+              </button>
+            ) : null}
             {canAddProduct ? (
               <Link className="primary-button" to="/business-lines/add-product">
                 <Plus size={17} />
@@ -226,7 +353,20 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
           canAddProduct={canAddProduct}
           catalogSearch={catalogSearch}
           models={visibleModels}
+          onOpenModel={openModelDetail}
           stockByModel={stockByModel}
+        />
+      ) : null}
+
+      {modelModalOpen ? (
+        <AddModelModal
+          businessLines={industryBusinessLines}
+          error={modelFormError}
+          form={modelForm}
+          loading={createModelMutation.isPending}
+          onChange={updateModelForm}
+          onClose={() => setModelModalOpen(false)}
+          onSubmit={submitModelForm}
         />
       ) : null}
     </PageFrame>
@@ -237,13 +377,15 @@ function useCatalogOverview() {
   return useQuery({
     queryKey: queryKeys.productCatalog.overview,
     queryFn: async (): Promise<ProductCatalogOverview> => {
-      const [industryResult, nextModels, machines] = await Promise.all([
+      const [industryResult, businessLines, nextModels, machines] = await Promise.all([
         apiFetch<Paginated<ProductIndustry>>('/product-industries?limit=100'),
+        apiFetch<BusinessLine[]>('/business-lines'),
         apiFetchAllPages<MachineModel>('/machine-models'),
         apiFetchAllPages<CatalogMachine>('/machines'),
       ]);
 
       return {
+        businessLines,
         industries: industryResult.data ?? [],
         models: nextModels,
         stockByModel: buildStockByModel(nextModels, machines),
@@ -335,11 +477,13 @@ function CatalogModelTable({
   canAddProduct,
   catalogSearch,
   models,
+  onOpenModel,
   stockByModel,
 }: {
   canAddProduct: boolean;
   catalogSearch: string;
   models: MachineModel[];
+  onOpenModel: (modelId: string) => void;
   stockByModel: Record<string, ModelStock>;
 }) {
   return (
@@ -373,6 +517,7 @@ function CatalogModelTable({
                 catalogSearch={catalogSearch}
                 key={model.id}
                 model={model}
+                onOpen={onOpenModel}
                 stock={stockByModel[model.id]}
               />
             ))}
@@ -383,17 +528,38 @@ function CatalogModelTable({
   );
 }
 
-function CatalogModelRow({ canAddProduct, catalogSearch, model, stock }: { canAddProduct: boolean; catalogSearch: string; model: MachineModel; stock?: ModelStock }) {
+function CatalogModelRow({
+  canAddProduct,
+  model,
+  onOpen,
+  stock,
+}: {
+  canAddProduct: boolean;
+  catalogSearch: string;
+  model: MachineModel;
+  onOpen: (modelId: string) => void;
+  stock?: ModelStock;
+}) {
   const total = stock?.total ?? 0;
   const inStock = stock?.inStock ?? 0;
 
   return (
-    <tr className="border-b border-[#eeeeee] transition last:border-b-0 hover:bg-[#fafafa]">
+    <tr
+      className="cursor-pointer border-b border-[#eeeeee] transition last:border-b-0 hover:bg-[#fafafa] focus-within:bg-[#fafafa]"
+      onClick={() => onOpen(model.id)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen(model.id);
+        }
+      }}
+      tabIndex={0}
+    >
       <td className="px-4 py-4">
-        <Link className="flex min-w-0 items-center gap-3" to={`/business-lines/models/${model.id}${catalogSearch}`}>
+        <div className="flex min-w-0 items-center gap-3">
           <ModelImage model={model} />
           <strong className="min-w-0 truncate text-base font-black text-[#1f1f1f]">{modelShortLabel(model)}</strong>
-        </Link>
+        </div>
       </td>
       <td className="px-4 py-4">
         <span className="block max-w-[360px] truncate text-sm font-semibold text-[#333333]">{modelProductName(model)}</span>
@@ -412,11 +578,8 @@ function CatalogModelRow({ canAddProduct, catalogSearch, model, stock }: { canAd
       </td>
       <td className="px-4 py-4">
         <div className="flex justify-end gap-2">
-          <Link className="secondary-button compact bg-white" to={`/business-lines/models/${model.id}${catalogSearch}`}>
-            Chi tiết
-          </Link>
           {canAddProduct ? (
-            <Link className="primary-button compact" to={`/business-lines/add-product?modelId=${model.id}`}>
+            <Link className="primary-button compact" onClick={(event) => event.stopPropagation()} to={`/business-lines/add-product?modelId=${model.id}`}>
               <PackagePlus size={15} />
               Thêm máy
             </Link>
@@ -424,6 +587,112 @@ function CatalogModelRow({ canAddProduct, catalogSearch, model, stock }: { canAd
         </div>
       </td>
     </tr>
+  );
+}
+
+function AddModelModal({
+  businessLines,
+  error,
+  form,
+  loading,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  businessLines: BusinessLine[];
+  error: string;
+  form: ModelFormState;
+  loading: boolean;
+  onChange: (field: keyof ModelFormState, value: string) => void;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#18181b]/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <form className="max-h-[92vh] w-full max-w-4xl overflow-auto rounded-[26px] border border-[#e4e4e7] bg-white p-5 shadow-[0_30px_90px_rgba(24,24,27,0.28)]" onSubmit={onSubmit}>
+        <div className="flex items-start justify-between gap-4 border-b border-[#eeeeee] pb-4">
+          <div>
+            <span className="text-xs font-black uppercase tracking-[0.14em] text-[#667985]">Danh mục model</span>
+            <h2 className="mt-1 text-2xl font-black tracking-[-0.03em] text-[#1f1f1f]">Thêm model theo ngành hàng</h2>
+            <p className="mt-1 text-sm font-semibold text-[#667985]">Model được ghim vào dòng sản phẩm để dùng chung khi nhập máy và tạo phiếu.</p>
+          </div>
+          <button className="secondary-button compact bg-white" onClick={onClose} type="button" aria-label="Đóng">
+            <X size={16} />
+          </button>
+        </div>
+
+        {businessLines.length === 0 ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-[#e4e4e7] bg-[#fafafa] p-5 text-sm font-semibold text-[#667985]">
+            Ngành hàng này chưa có dòng sản phẩm. Vui lòng tạo dòng sản phẩm trước rồi thêm model.
+          </div>
+        ) : (
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <ModelFormField label="Dòng sản phẩm">
+              <select className="form-input" onChange={(event) => onChange('businessLineId', event.target.value)} value={form.businessLineId}>
+                {businessLines.map((line) => (
+                  <option key={line.id} value={line.id}>
+                    {line.name}
+                  </option>
+                ))}
+              </select>
+            </ModelFormField>
+            <ModelFormField label="Model">
+              <input className="form-input uppercase" onChange={(event) => onChange('code', event.target.value)} placeholder="VD: X-CUBE 50" value={form.code} />
+            </ModelFormField>
+            <ModelFormField label="Tên sản phẩm">
+              <input className="form-input" onChange={(event) => onChange('name', event.target.value)} placeholder="VD: Máy siêu âm X-CUBE 50" value={form.name} />
+            </ModelFormField>
+            <ModelFormField label="Tên hiển thị">
+              <input className="form-input" onChange={(event) => onChange('displayName', event.target.value)} placeholder="Không bắt buộc" value={form.displayName} />
+            </ModelFormField>
+            <ModelFormField label="Hãng sản xuất">
+              <input className="form-input" onChange={(event) => onChange('manufacturer', event.target.value)} placeholder="Mindray, Sonoscape..." value={form.manufacturer} />
+            </ModelFormField>
+            <ModelFormField label="Xuất xứ">
+              <input className="form-input" onChange={(event) => onChange('countryOfOrigin', event.target.value)} placeholder="China, Korea, Japan..." value={form.countryOfOrigin} />
+            </ModelFormField>
+            <ModelFormField label="Sản phẩm">
+              <select className="form-input" onChange={(event) => onChange('productCategory', event.target.value)} value={form.productCategory}>
+                <option value="">Chưa chọn</option>
+                {productCategoryOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </ModelFormField>
+            <ModelFormField label="Dòng/nhóm">
+              <input className="form-input" onChange={(event) => onChange('productLine', event.target.value)} placeholder="VD: Máy siêu âm" value={form.productLine} />
+            </ModelFormField>
+            <label className="grid gap-2 text-sm font-bold text-[#333333] md:col-span-2">
+              Ghi chú
+              <textarea className="min-h-24 rounded-2xl border border-[#d8dee8] bg-white px-4 py-3 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.10)]" onChange={(event) => onChange('note', event.target.value)} placeholder="Quy cách đóng gói, kích thước..." value={form.note} />
+            </label>
+          </div>
+        )}
+
+        {error ? <Notice message={error} /> : null}
+
+        <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-[#eeeeee] pt-4">
+          <button className="secondary-button" onClick={onClose} type="button">
+            Hủy
+          </button>
+          <button className="primary-button" disabled={loading || businessLines.length === 0} type="submit">
+            {loading ? <Loader2 className="spin-icon" size={16} /> : <Plus size={16} />}
+            Lưu model
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ModelFormField({ children, label }: { children: ReactNode; label: string }) {
+  return (
+    <label className="grid gap-2 text-sm font-bold text-[#333333]">
+      {label}
+      {children}
+    </label>
   );
 }
 
@@ -555,7 +824,7 @@ function modelOrigin(model: MachineModel) {
 
 function productCategoryLabel(value?: string | null) {
   if (!value) return 'Chưa phân loại';
-  return value;
+  return productCategoryOptions.find((option) => option.value === value)?.label ?? value;
 }
 
 function buildCatalogSearch(industryId: string, query: string) {
@@ -564,4 +833,8 @@ function buildCatalogSearch(industryId: string, query: string) {
   if (query.trim()) params.set('q', query.trim());
   const value = params.toString();
   return value ? `?${value}` : '';
+}
+
+function compactModelPayload(values: Record<string, string>) {
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value.trim())) as Record<string, string>;
 }
