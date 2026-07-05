@@ -430,7 +430,9 @@ function CatalogPortalHero({
           </button>
         </div>
         <div className="mx-auto mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
-          <MetricCard icon={<Boxes size={18} />} label="Tổng máy" subLabel={`${totals.inStock} còn kho`} value={totals.machines} />
+          <Link to="/technical-machines" className="block cursor-pointer rounded-[22px] transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(24,24,27,0.08)]">
+            <MetricCard icon={<Boxes size={18} />} label="Tổng máy" subLabel={`${totals.inStock} còn kho`} value={totals.machines} />
+          </Link>
           <MetricCard icon={<Layers3 size={18} />} label="Model" subLabel={`${totals.businessLines} dòng`} value={totals.models} />
           <MetricCard icon={<BarChart3 size={18} />} label="Ngành hàng" subLabel="nhóm chính" value={totals.industries} />
         </div>

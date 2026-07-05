@@ -304,7 +304,9 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
               </p>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
-              <IndustryStockCard icon={<Boxes size={18} />} label="Tổng máy" value={catalogTotals.machines} subLabel={`${catalogTotals.inStock} còn kho`} />
+              <Link to="/technical-machines" className="block cursor-pointer rounded-[18px] transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(24,24,27,0.08)]">
+                <IndustryStockCard icon={<Boxes size={18} />} label="Tổng máy" value={catalogTotals.machines} subLabel={`${catalogTotals.inStock} còn kho`} />
+              </Link>
               <IndustryStockCard icon={<Layers3 size={18} />} label="Model" value={catalogTotals.models} subLabel={`${catalogTotals.businessLines} dòng`} />
               <IndustryStockCard icon={<BarChart3 size={18} />} label="Đang xem" value={visibleModels.length} subLabel="model sau lọc" />
             </div>
