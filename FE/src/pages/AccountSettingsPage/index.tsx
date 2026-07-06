@@ -83,7 +83,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
           <div>
             <span className="mb-2 inline-flex rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-semibold text-[#18181b]">Account settings</span>
             <h1 className="mb-2.5 text-[clamp(28px,4vw,46px)] font-semibold leading-none tracking-[-0.03em] text-[#171717]">{form.fullName || user.email}</h1>
-            <p className="max-w-[640px] text-[15px] leading-7 text-[#555555]">Cập nhật thông tin cá nhân, hồ sơ kỹ sư và chuyên môn hiển thị trong hệ thống VietMed.</p>
+            <p className="max-w-[640px] text-[15px] leading-7 text-[#555555]">Cập nhật thông tin cá nhân và hồ sơ kỹ sư.</p>
           </div>
         </div>
 
@@ -105,7 +105,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
             </span>
             <div>
               <strong className="block text-[#1f1f1f]">Quyền truy cập</strong>
-              <p className="mt-1 text-[#666666]">Vai trò, trạng thái và khu vực do admin quản lý.</p>
+              <p className="mt-1 text-[#666666]">Vai trò và khu vực do admin quản lý.</p>
             </div>
           </div>
 
@@ -143,7 +143,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
               <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#fafafa] p-[9px] text-[#18181b]" size={18} />
               <div>
                 <h2 className="text-[#1f1f1f]">Thông tin cá nhân</h2>
-                <p className="mt-1 text-[#666666]">Dữ liệu liên hệ dùng khi phân việc, bàn giao và xử lý phiếu dịch vụ.</p>
+                <p className="mt-1 text-[#666666]">Liên hệ dùng khi phân việc và bàn giao.</p>
               </div>
             </div>
 
@@ -192,7 +192,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
                 <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#fafafa] p-[9px] text-[#18181b]" size={18} />
                 <div>
                   <h2 className="text-[#1f1f1f]">Hồ sơ kỹ sư</h2>
-                  <p className="mt-1 text-[#666666]">Thông tin chuyên môn giúp điều phối công việc đúng năng lực và khu vực phụ trách.</p>
+                  <p className="mt-1 text-[#666666]">Chuyên môn để điều phối công việc.</p>
                 </div>
               </div>
 
@@ -266,7 +266,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
         </section>
 
         <div className="col-span-full flex items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(24,24,27,0.04)] max-[760px]:grid max-[760px]:items-stretch">
-          <span className="text-[#666666]">Thông tin sẽ được cập nhật ngay trên tài khoản hiện tại.</span>
+          <span className="text-[#666666]">Cập nhật ngay trên tài khoản hiện tại.</span>
           <button className="primary-button" disabled={saving} type="submit">
             {saving ? <Loader2 className="spin-icon" size={18} /> : <Save size={18} />}
             {saving ? 'Saving' : 'Save'}

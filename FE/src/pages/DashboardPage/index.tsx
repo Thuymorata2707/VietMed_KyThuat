@@ -256,7 +256,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
                 {loading
                   ? 'Đang gom dữ liệu mới nhất.'
                   : totalOpenWork > 0
-                  ? `${totalOpenWork} việc chưa xong. Xem Tổng hợp phiếu để xử lý.`
+                  ? `${totalOpenWork} việc chưa xong.`
                   : 'Không có cảnh báo lớn.'}
               </p>
             </div>

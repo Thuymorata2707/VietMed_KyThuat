@@ -343,7 +343,7 @@ export function ReportsPage() {
       <div className="grid gap-5 rounded-[28px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_12px_30px_rgba(24,24,27,0.05)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
-            description="Đọc nhanh tình hình lắp đặt theo kỹ sư, khách hàng, model và tỉnh. Bộ lọc liên kết để chỉ giữ dữ liệu còn liên quan."
+            description="Lắp đặt theo kỹ sư, khách hàng, model và tỉnh."
             eyebrow="Báo cáo kỹ thuật"
             title="Báo cáo vận hành kỹ thuật"
           />
@@ -364,7 +364,7 @@ export function ReportsPage() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4e4e7] pb-3">
             <div>
               <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#18181b]">Bộ lọc báo cáo</span>
-              <p className="mt-0.5 text-xs font-semibold text-[#666666]">Chọn điều kiện là dữ liệu tự tải lại, không cần bấm áp dụng.</p>
+              <p className="mt-0.5 text-xs font-semibold text-[#666666]">Chọn điều kiện, dữ liệu tự tải lại.</p>
             </div>
             <div className="flex items-center gap-2">
               {hasAdvancedFilters ? <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-1 text-xs font-semibold text-[#9b5a17]">Đang lọc nâng cao</span> : null}

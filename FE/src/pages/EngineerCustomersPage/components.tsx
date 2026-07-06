@@ -69,7 +69,7 @@ export function CustomerDetailView({
       </div>
 
       <section className={panelClass}>
-        <PanelTitle title="Việc đang mở" subtitle="Các phiếu cần xử lý, đang làm hoặc chờ xác nhận của khách hàng này" />
+        <PanelTitle title="Việc đang mở" subtitle="Phiếu cần xử lý hoặc chờ xác nhận" />
         {detailLoading ? (
           <EmptyState title="Đang tải việc đang mở..." />
         ) : openTasks.length ? (
@@ -115,7 +115,7 @@ export function CustomerDetailView({
         </section>
 
         <section className={panelClass}>
-          <PanelTitle title="Lịch sử công việc" subtitle="Lắp đặt, sửa chữa và bảo trì gần nhất" />
+          <PanelTitle title="Lịch sử công việc" subtitle="Lắp đặt, sửa chữa, bảo trì" />
           {detailLoading ? (
             <EmptyState title="Đang tải lịch sử..." />
           ) : timeline.length ? (
@@ -145,7 +145,7 @@ export function CustomerDetailView({
       </div>
 
       <section className={panelClass}>
-        <PanelTitle title="Linh kiện và phụ kiện liên quan" subtitle="Phụ kiện đang gắn trên máy, phụ kiện bàn giao khi lắp đặt và ghi chú kho gần nhất" />
+        <PanelTitle title="Linh kiện và phụ kiện liên quan" subtitle="Phụ kiện gắn trên máy và bàn giao" />
         {detailLoading ? (
           <EmptyState title="Đang tải phụ kiện..." />
         ) : accessories.length || installationAccessories.length ? (

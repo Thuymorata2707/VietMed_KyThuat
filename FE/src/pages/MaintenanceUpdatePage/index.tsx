@@ -237,7 +237,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Bảo trì"
           title="Cập nhật phiếu bảo trì"
-          description="Cập nhật checklist, kết quả bảo trì, lịch tiếp theo và tài liệu hiện trường."
+          description="Checklist, kết quả và lịch bảo trì."
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
@@ -363,7 +363,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Khách hàng</span>
                   <h2 className={sectionTitleClass}>Thông tin tại điểm bảo trì</h2>
-                  <p className={sectionDescriptionClass}>Người đại diện, khoa/phòng và địa chỉ thực tế.</p>
+                  <p className={sectionDescriptionClass}>Người đại diện và địa chỉ thực tế.</p>
                 </div>
               </div>
               <div className="grid min-w-0 gap-5 md:grid-cols-2">

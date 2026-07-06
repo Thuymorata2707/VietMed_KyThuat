@@ -301,7 +301,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
             </span>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-[#1f1f1f] md:text-4xl">Sổ tay chia sẻ giữa các kỹ sư</h1>
             <p className="mt-3 max-w-2xl text-[15px] leading-7 text-[#555555]">
-              Gom lỗi thường gặp, quy trình đóng hàng, sửa chữa, lắp đặt và bàn giao vào một nơi để đội kỹ thuật tra nhanh khi cần.
+              Lỗi thường gặp, quy trình và bàn giao cho đội kỹ thuật.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">

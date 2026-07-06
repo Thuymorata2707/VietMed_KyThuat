@@ -391,7 +391,7 @@ export function AdminWorkAssignmentPage() {
         <PageTitle
             eyebrow="Điều phối kỹ thuật"
             title="Điều phối & duyệt"
-            description="Phân người phụ trách, duyệt kết quả kỹ sư gửi về và trả lại khi hồ sơ cần bổ sung."
+            description="Phân công, duyệt và trả lại hồ sơ kỹ sư."
         />
           <button
             className="secondary-button bg-white/90"

@@ -205,7 +205,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       <PageTitle
         eyebrow={isAdmin ? 'Báo cáo vận hành' : 'Báo cáo cá nhân'}
         title={isAdmin ? 'Hiệu suất kỹ sư' : 'Báo cáo của tôi'}
-        description={isAdmin ? 'Xem trực quan khối lượng lắp đặt, sửa chữa, bảo trì, khách hàng và máy đã xử lý theo khoảng thời gian.' : 'Theo dõi việc đã làm, báo cáo tuần, phiếu cần sửa và hiệu suất cá nhân trong một nơi.'}
+        description={isAdmin ? 'Khối lượng công việc theo khoảng thời gian.' : 'Việc đã làm, báo cáo và hiệu suất cá nhân.'}
       />
 
       {error ? <Notice message={error} /> : null}
@@ -289,7 +289,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
         <PanelHeader
           eyebrow={isAdmin ? 'Chất lượng kỹ thuật' : 'Việc cần chú ý'}
           title={isAdmin ? 'Rủi ro báo cáo và hoàn tất' : 'Báo cáo và phiếu cần xử lý'}
-          subtitle={isAdmin ? 'Theo dõi các điểm admin thường cần kiểm tra: báo cáo bị trả về, chờ duyệt và việc chưa đóng.' : 'Ưu tiên xử lý báo cáo bị trả về, báo cáo chờ duyệt và các việc chưa đóng.'}
+          subtitle={isAdmin ? 'Báo cáo bị trả về, chờ duyệt và việc chưa đóng.' : 'Báo cáo bị trả về, chờ duyệt và việc chưa đóng.'}
         />
         <div className="grid gap-3 md:grid-cols-4">
           <QualityCard label="Báo cáo cần sửa" value={weeklyNeedsRevision} tone={weeklyNeedsRevision > 0 ? 'danger' : 'good'} />

@@ -236,7 +236,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Sửa chữa"
           title="Cập nhật phiếu sửa chữa"
-          description="Cập nhật tình trạng thiết bị, phương án xử lý, kết quả và trạng thái máy sau khi kiểm tra thực tế."
+          description="Tình trạng, phương án xử lý và kết quả sửa chữa."
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
@@ -352,7 +352,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Khách hàng</span>
                   <h2 className={sectionTitleClass}>Thông tin tại điểm sửa chữa</h2>
-                  <p className={sectionDescriptionClass}>Người nhận việc, khoa/phòng và địa chỉ thực tế.</p>
+                  <p className={sectionDescriptionClass}>Người liên hệ và địa chỉ thực tế.</p>
                 </div>
               </div>
               <div className="grid min-w-0 gap-5 md:grid-cols-2">
@@ -381,7 +381,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Kết quả</span>
                   <h2 className={sectionTitleClass}>Ghi nhận sau xử lý</h2>
-                  <p className={sectionDescriptionClass}>Viết ngắn gọn lỗi, cách xử lý và phản hồi khách hàng.</p>
+                  <p className={sectionDescriptionClass}>Lỗi, cách xử lý và phản hồi khách hàng.</p>
                 </div>
               </div>
               <div className="grid min-w-0 gap-5">

@@ -486,7 +486,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         <PageTitle
           eyebrow="Phiếu dịch vụ"
           title="Tạo phiếu"
-          description="Tạo phiếu từ đúng mục nghiệp vụ. Dữ liệu khách hàng hoặc thiết bị do kỹ sư tạo nhanh sẽ chờ admin kiểm tra trước khi xác nhận chính thức."
+          description="Tạo phiếu nghiệp vụ, dữ liệu mới sẽ chờ admin kiểm tra."
         />
         <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
           <ArrowLeft size={17} />
@@ -512,7 +512,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 <div>
                   <span className={eyebrowClass}>Thông tin phiếu</span>
                   <h2 className={sectionTitleClass}>Chọn nghiệp vụ và người phụ trách</h2>
-                  <p className={sectionDescriptionClass}>Chọn đúng loại phiếu, thiết bị và kỹ sư trước khi nhập chi tiết.</p>
+                  <p className={sectionDescriptionClass}>Chọn loại phiếu, thiết bị và kỹ sư.</p>
                 </div>
               </div>
               <label className="grid min-w-[220px] max-sm:min-w-0 max-sm:w-full gap-2 text-sm font-semibold text-[#333333]">
@@ -616,7 +616,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 <div>
                   <span className={eyebrowClass}>Dữ liệu chưa có</span>
                   <h2 className={sectionTitleClass}>Tạo nhanh khi cần</h2>
-                  <p className={sectionDescriptionClass}>Chỉ mở phần này khi tìm không thấy khách hàng hoặc thiết bị.</p>
+                  <p className={sectionDescriptionClass}>Tạo nhanh khi không tìm thấy dữ liệu.</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">

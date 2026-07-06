@@ -304,7 +304,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       <PageTitle
         eyebrow="Kỹ sư"
         title="Báo cáo tuần"
-        description="Ghi lại việc đã làm trong tuần, lưu nháp rồi gửi admin."
+        description="Ghi việc trong tuần, lưu nháp rồi gửi admin."
       />
 
       {error ? <Notice message={error} /> : null}

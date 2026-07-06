@@ -172,7 +172,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
         <PageTitle
           eyebrow="Báo cáo kỹ thuật"
           title="Thống kê kỹ thuật"
-          description={isAdmin ? 'Theo dõi sửa chữa, bảo trì và lắp đặt theo khoảng ngày, kỹ sư và ngành hàng.' : 'Báo cáo kỹ thuật chi tiết theo khoảng ngày của kỹ sư đang đăng nhập.'}
+          description={isAdmin ? 'Thống kê theo khoảng ngày, kỹ sư và ngành hàng.' : 'Thống kê theo khoảng ngày.'}
         />
         <div className="flex flex-wrap gap-2">
           {returnTo ? (
@@ -271,7 +271,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
-            <Panel title="Theo kỹ sư" subtitle="Số việc trong tháng, tách theo sửa chữa, bảo trì và lắp đặt">
+            <Panel title="Theo kỹ sư" subtitle="Số việc trong tháng theo loại">
               {data.byEngineer.length ? (
                 <div className="grid gap-4">
                   {data.byEngineer.slice(0, 10).map((item) => (
@@ -291,13 +291,13 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
               )}
             </Panel>
 
-            <Panel title="Cơ cấu loại việc" subtitle="Tỷ trọng sửa chữa, bảo trì, lắp đặt">
+            <Panel title="Cơ cấu loại việc" subtitle="Tỷ trọng các loại">
               <DonutChart counts={data.typeCounts} />
             </Panel>
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <Panel title="Theo ngành hàng" subtitle="Ngành hàng phát sinh nhiều việc nhất">
+            <Panel title="Theo ngành hàng" subtitle="Ngành hàng nhiều việc nhất">
               {data.byIndustry.length ? (
                 <div className="grid gap-3">
                   {data.byIndustry.map((item) => (
@@ -309,7 +309,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
               )}
             </Panel>
 
-            <Panel title="Xu hướng trong tháng" subtitle="Khối lượng việc theo từng ngày">
+            <Panel title="Xu hướng trong tháng" subtitle="Khối lượng việc theo ngày">
               <TrendBars max={maxTrendTotal} trend={data.trend} />
             </Panel>
           </section>

@@ -218,7 +218,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       <PageTitle
         eyebrow="Kho kỹ thuật"
         title="Kho máy"
-        description="Theo dõi máy trong kho, máy đã lắp và toàn bộ lịch sử điều chuyển trạng thái."
+        description="Máy trong kho, đã lắp và lịch sử điều chuyển."
       />
 
       {error ? <Notice message={error} /> : null}

@@ -724,7 +724,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         <PageTitle
           eyebrow="Phòng kỹ thuật"
           title="Danh sách máy quản lý"
-          description="Chọn ngành hàng, xem số S/N của máy và thông tin khách hàng đã lắp. Máy chưa lắp sẽ để trống thông tin khách hàng."
+          description="Tra cứu máy theo ngành hàng, S/N và khách hàng."
         />
           <button className="secondary-button" onClick={() => navigate('/')} type="button">
             <ArrowLeft size={17} />
@@ -1389,7 +1389,7 @@ function MachineLifecycleTimeline({ events }: { events: MachineLifecycleEvent[] 
         <div>
           <span className="text-[12px] font-semibold text-[#666666]">Vòng đời thiết bị</span>
           <h2 className="mt-1 text-2xl font-medium leading-tight text-[#1f1f1f]">Timeline hồ sơ máy</h2>
-          <p className="mt-1 text-sm leading-6 text-[#666666]">Gom lắp đặt, bảo hành, sửa chữa, bảo trì và luân chuyển kho theo một dòng thời gian.</p>
+          <p className="mt-1 text-sm leading-6 text-[#666666]">Lịch sử vòng đời thiết bị theo thời gian.</p>
         </div>
         <span className="inline-flex min-h-9 items-center rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-sm font-semibold text-[#18181b]">
           {events.length} sự kiện

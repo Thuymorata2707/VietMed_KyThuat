@@ -244,7 +244,7 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
 export function InstallationsPage({ user }: { user: ApiUser }) {
   return (
     <OperationsBoard
-      description="Theo dõi kế hoạch lắp đặt, kỹ sư phụ trách, nghiệm thu và bảo hành theo ngành hàng."
+      description="Kế hoạch lắp đặt và bảo hành theo ngành hàng."
       kind="installations"
       reportHref="/technical-statistics?workType=installation&returnTo=/installations"
       title="Kế hoạch lắp đặt"
@@ -288,7 +288,7 @@ function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh:
             Tổng hợp phiếu
           </h1>
           <p className="mt-4 max-w-2xl text-[15px] font-semibold leading-7 text-[#667985]">
-            Chọn đúng loại phiếu để tạo mới hoặc tra cứu lịch sử. Admin xử lý phân công và duyệt kết quả ở màn Điều phối & duyệt.
+            Tạo hoặc tra cứu phiếu. Admin duyệt tại Điều phối & duyệt.
           </p>
         </div>
         <button className="secondary-button bg-white/86" disabled={loading} onClick={onRefresh} type="button">

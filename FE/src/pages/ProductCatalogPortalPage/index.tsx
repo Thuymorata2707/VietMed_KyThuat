@@ -416,7 +416,7 @@ function CatalogPortalHero({
           Catalog sản phẩm VietMed
         </span>
         <h1 className="mt-6 text-[clamp(42px,7vw,86px)] font-black leading-[0.95] tracking-[-0.055em] text-[#1f1f1f]">Sản phẩm & Thiết bị</h1>
-        <p className="mx-auto mt-5 max-w-2xl text-lg font-semibold leading-8 text-[#667985]">Chọn ngành hàng, mở model máy, xem tồn kho và chi tiết serial.</p>
+        <p className="mx-auto mt-5 max-w-2xl text-lg font-semibold leading-8 text-[#667985]">Chọn ngành hàng, xem model và tồn kho.</p>
         <div className="mt-7 flex flex-wrap justify-center gap-2">
           {canAddProduct ? (
             <Link className="primary-button" to="/business-lines/add-product">
@@ -616,7 +616,7 @@ function AddModelModal({
           <div>
             <span className="text-xs font-black uppercase tracking-[0.14em] text-[#667985]">Danh mục model</span>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.03em] text-[#1f1f1f]">Thêm model theo ngành hàng</h2>
-            <p className="mt-1 text-sm font-semibold text-[#667985]">Model được ghim vào dòng sản phẩm để dùng chung khi nhập máy và tạo phiếu.</p>
+            <p className="mt-1 text-sm font-semibold text-[#667985]">Model ghim vào dòng sản phẩm dùng chung.</p>
           </div>
           <button className="secondary-button compact bg-white" onClick={onClose} type="button" aria-label="Đóng">
             <X size={16} />

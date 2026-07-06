@@ -300,7 +300,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
                 Danh mục sản phẩm theo ngành hàng, nhìn nhanh được kho và model.
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#667985]">
-                Mỗi ngành hàng gom model, số máy thực tế và tồn kho vào cùng một khung để chọn lọc nhanh hơn khi nhập serial hoặc theo dõi danh mục.
+                Tổng hợp model, số máy và tồn kho theo ngành hàng.
               </p>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
@@ -478,7 +478,7 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Sản phẩm & Thiết bị"
           title={detail ? modelShortLabel(detail) : 'Chi tiết model'}
-          description="Xem toàn bộ máy thực tế thuộc model, chi tiết từng máy và phụ kiện đi kèm."
+          description="Danh sách máy và phụ kiện theo model."
         />
         <div className="flex flex-wrap justify-end gap-2">
           {detail && canAddProduct ? (

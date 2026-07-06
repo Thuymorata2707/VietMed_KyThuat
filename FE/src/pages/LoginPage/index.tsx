@@ -54,7 +54,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 Đăng nhập hệ thống kỹ thuật
               </h1>
               <p className="max-w-[430px] text-[15px] leading-7 text-[#666666]">
-                Truy cập không gian quản lý thiết bị, lịch việc và phiếu dịch vụ nội bộ.
+                Quản lý thiết bị, lịch việc và phiếu dịch vụ.
               </p>
             </div>
 
@@ -97,11 +97,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             </form>
 
             <div className="grid gap-2 border-t border-[#e4e4e7] pt-5 text-[13px] leading-5 text-[#666666]">
-              <span className="inline-flex items-center gap-2 font-bold text-[#333333]">
-                <ShieldCheck size={16} />
-                Truy cập dành cho nhân sự được phân quyền
-              </span>
-              <span>Dữ liệu vận hành được bảo vệ theo vai trò tài khoản.</span>
+                <span className="inline-flex items-center gap-2 font-bold text-[#333333]">
+                  <ShieldCheck size={16} />
+                  Dành cho nhân sự được phân quyền
+                </span>
+                <span>Dữ liệu bảo vệ theo vai trò.</span>
             </div>
           </div>
 
@@ -120,10 +120,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 Không gian vận hành kỹ thuật
               </span>
               <h2 className="mt-5 max-w-[560px] text-[46px] font-extrabold leading-[1.03] text-[#1f1f1f] max-[980px]:text-[36px] max-sm:text-[30px]">
-                Một nơi để theo dõi thiết bị và công việc kỹ thuật.
+                Theo dõi thiết bị và công việc kỹ thuật.
               </h2>
               <p className="mt-4 max-w-[520px] text-[15px] font-semibold leading-7 text-[#666666]">
-                Truy cập hồ sơ máy, phiếu dịch vụ và lịch bảo trì theo đúng phân quyền.
+                Hồ sơ máy, phiếu dịch vụ và lịch bảo trì.
               </p>
             </div>
 

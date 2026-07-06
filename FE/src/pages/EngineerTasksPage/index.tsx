@@ -919,7 +919,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       <PageTitle
         eyebrow="Kỹ sư"
         title="Việc của tôi"
-        description="Việc được giao, lịch hôm nay và cập nhật kết quả."
+        description="Việc được giao và cập nhật kết quả."
       />
 
       {error ? <Notice message={error} /> : null}
