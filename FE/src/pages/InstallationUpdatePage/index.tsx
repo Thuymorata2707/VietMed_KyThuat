@@ -156,10 +156,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   function removeDeviceItem(index: number) {
     setForm((current) => ({
       ...current,
-      installedDeviceItems:
-        current.installedDeviceItems.length === 1
-          ? [emptyInstallationDeviceItem()]
-          : current.installedDeviceItems.filter((_, itemIndex) => itemIndex !== index),
+      installedDeviceItems: current.installedDeviceItems.filter((_, itemIndex) => itemIndex !== index),
     }));
   }
 
@@ -358,14 +355,14 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               <div className={sectionHeaderClass}>
                 <span className={stepBadgeClass}>4</span>
                 <div>
-                  <span className={eyebrowClass}>Máy thực tế</span>
-                  <h2 className={sectionTitleClass}>Sau bóc hàng</h2>
-                  <p className={sectionDescriptionClass}>Nhập S/N và phụ kiện thực tế.</p>
+                  <span className={eyebrowClass}>Máy & thiết bị</span>
+                  <h2 className={sectionTitleClass}>Máy và thiết bị lắp đặt</h2>
+                  <p className={sectionDescriptionClass}>Nhập S/N thực tế và thêm thiết bị bàn giao kèm.</p>
                 </div>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
                 <label className={labelClass}>
-                  Model dự kiến
+                  Model
                   <input className={fieldClass} readOnly value={detail?.machine?.modelName || detail?.plannedMachineModel?.name || detail?.plannedModelName || ''} />
                 </label>
                 <label className={labelClass}>
@@ -396,82 +393,82 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   )}
                 </div>
               </div>
-            </div>
 
-            <div className={panelClass}>
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-[#e4e4e7] pb-4">
-                <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
-                  <span className={stepBadgeClass}>5</span>
+              <div className="mt-5 border-t border-[#e4e4e7] pt-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <span className={eyebrowClass}>Danh mục thiết bị</span>
-                    <h2 className={sectionTitleClass}>Thiết bị lắp đặt</h2>
-                    <p className={sectionDescriptionClass}>Các thiết bị được bàn giao trong cùng biên bản.</p>
+                    <h3 className="text-sm font-bold text-[#1f1f1f]">Thiết bị bàn giao thêm</h3>
+                    <p className="text-xs font-medium text-[#8a8f99]">Thêm nếu bàn giao kèm thiết bị phụ (máy in, UPS, ...).</p>
                   </div>
+                  <button className="secondary-button" onClick={addDeviceItem} type="button">
+                    Thêm thiết bị
+                  </button>
                 </div>
-                <button className="secondary-button" onClick={addDeviceItem} type="button">
-                  Thêm thiết bị
-                </button>
-              </div>
-              <div className="grid gap-3">
-                {form.installedDeviceItems.map((item, index) => (
-                  <div className="rounded-[20px] border border-[#e4e4e7] bg-[#ffffff] p-4" key={index}>
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <strong className="text-sm text-[#1f1f1f]">Thiết bị {index + 1}</strong>
-                      <button className="secondary-button compact" onClick={() => removeDeviceItem(index)} type="button">
-                        Xóa dòng
-                      </button>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <label className={labelClass}>
-                        Model
-                        <select
-                          className={fieldClass}
-                          onChange={(event) => {
-                            const model = machineModels.find((option) => option.id === event.target.value);
-                            updateDeviceItem(index, {
-                              itemName: machineProductName(model) || item.itemName,
-                              model: machineModelName(model),
-                            });
-                          }}
-                          value={modelIdByName(machineModels, item.model)}
-                        >
-                          <option value="">Chọn model</option>
-                          {machineModels.map((model) => (
-                            <option key={model.id} value={model.id}>
-                              {machineModelLabel(model)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className={labelClass}>
-                        Tên sản phẩm
-                        <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required value={item.itemName} />
-                      </label>
-                      <ModelInfoFields className="md:col-span-3" model={machineModels.find((model) => model.id === modelIdByName(machineModels, item.model))} />
-                      <label className={labelClass}>
-                        S/N
-                        <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} />
-                      </label>
-                      <DateInput className={labelClass} label="NSX" onChange={(value) => updateDeviceItem(index, { manufactureDate: value })} value={item.manufactureDate} />
-                      <label className={labelClass}>
-                        Số lượng
-                        <input className={fieldClass} min={1} onChange={(event) => updateDeviceItem(index, { quantity: Number(event.target.value) || 1 })} type="number" value={item.quantity} />
-                      </label>
-                      <label className={labelClass}>
-                        Thời gian bảo hành
-                        <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { warrantyPeriod: event.target.value })} placeholder="VD: 12 tháng" value={item.warrantyPeriod} />
-                      </label>
-                    </div>
+                {form.installedDeviceItems.length > 0 ? (
+                  <div className="grid gap-3">
+                    {form.installedDeviceItems.map((item, index) => (
+                      <div className="rounded-[20px] border border-[#e4e4e7] bg-[#ffffff] p-4" key={index}>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <strong className="text-sm text-[#1f1f1f]">Thiết bị {index + 1}</strong>
+                          <button className="secondary-button compact" onClick={() => removeDeviceItem(index)} type="button">
+                            Xóa dòng
+                          </button>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <label className={labelClass}>
+                            Model
+                            <select
+                              className={fieldClass}
+                              onChange={(event) => {
+                                const model = machineModels.find((option) => option.id === event.target.value);
+                                updateDeviceItem(index, {
+                                  itemName: machineProductName(model) || item.itemName,
+                                  model: machineModelName(model),
+                                });
+                              }}
+                              value={modelIdByName(machineModels, item.model)}
+                            >
+                              <option value="">Chọn model</option>
+                              {machineModels.map((model) => (
+                                <option key={model.id} value={model.id}>
+                                  {machineModelLabel(model)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className={labelClass}>
+                            Tên sản phẩm
+                            <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} value={item.itemName} />
+                          </label>
+                          <ModelInfoFields className="md:col-span-3" model={machineModels.find((model) => model.id === modelIdByName(machineModels, item.model))} />
+                          <label className={labelClass}>
+                            S/N
+                            <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} />
+                          </label>
+                          <DateInput className={labelClass} label="NSX" onChange={(value) => updateDeviceItem(index, { manufactureDate: value })} value={item.manufactureDate} />
+                          <label className={labelClass}>
+                            Số lượng
+                            <input className={fieldClass} min={1} onChange={(event) => updateDeviceItem(index, { quantity: Number(event.target.value) || 1 })} type="number" value={item.quantity} />
+                          </label>
+                          <label className={labelClass}>
+                            Thời gian bảo hành
+                            <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { warrantyPeriod: event.target.value })} placeholder="VD: 12 tháng" value={item.warrantyPeriod} />
+                          </label>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <p className="text-sm font-medium text-[#8a8f99]">Chưa có thiết bị bàn giao thêm.</p>
+                )}
               </div>
             </div>
 
             <div className={panelClass}>
               <div className={sectionHeaderClass}>
-                <span className={stepBadgeClass}>6</span>
-                <div>
-                  <span className={eyebrowClass}>Kiểm tra cuối</span>
+                <span className={stepBadgeClass}>5</span>
+                  <div>
+                    <span className={eyebrowClass}>Kiểm tra cuối</span>
                   <h2 className={sectionTitleClass}>Tình trạng thiết bị</h2>
                   <p className={sectionDescriptionClass}>Xác nhận tình trạng khi bàn giao.</p>
                 </div>
@@ -621,7 +618,7 @@ function buildForm(task: InstallationTask): CreateTicketForm {
         quantity: Number(item.quantity) || 1,
         warrantyPeriod: item.warrantyPeriod || '',
       }))
-    : [emptyInstallationDeviceItem()];
+    : [];
 
   return {
     ...emptyCreateTicketForm('installation'),
