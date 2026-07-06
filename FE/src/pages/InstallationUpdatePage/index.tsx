@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, RefreshCw, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
@@ -40,6 +40,15 @@ type MachineModelOption = {
   } | null;
 };
 
+type StockMachine = {
+  id: string;
+  machineCode?: string | null;
+  serialNumber?: string | null;
+  modelName?: string | null;
+  name?: string | null;
+  customer?: { id?: string | null; name?: string | null } | null;
+};
+
 const statusOptions = [
   { value: 'PENDING', label: 'Chờ duyệt' },
   { value: 'INSTALLED', label: 'Đã lắp đặt' },
@@ -67,6 +76,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   const [installedById, setInstalledById] = useState('');
   const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
+  const [stockMachines, setStockMachines] = useState<StockMachine[]>([]);
   const [form, setForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm('installation'));
   const isAdmin = role === 'admin';
   const accessoryMode: 'probe' | 'endoscopy' | null = isEndoscopyMachineModel({
@@ -105,6 +115,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
       setInstalledById(installation.installedBy?.id || '');
       setForm(buildForm(installation));
       await loadMachineModels();
+      await loadStockMachines();
       if (isAdmin) {
         await loadEngineers();
       }
@@ -135,6 +146,44 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
     } catch {
       setMachineModels([]);
     }
+  }
+
+  async function loadStockMachines() {
+    try {
+      const result = await apiFetch<Paginated<StockMachine>>('/machines?limit=200&inventoryStatus=IN_STOCK');
+      setStockMachines(result.data);
+    } catch {
+      setStockMachines([]);
+    }
+  }
+
+  useEffect(() => {
+    if (detail?.customer) {
+      const c = detail.customer;
+      if (!form.receiverInstallAddress && (c.fullAddress || c.address)) {
+        updateForm({ receiverInstallAddress: c.fullAddress || c.address || '' });
+      }
+      if (!form.receiverRepresentative && c.contactPerson) {
+        updateForm({ receiverRepresentative: c.contactPerson });
+      }
+      if (!form.receiverPosition && c.contactPosition) {
+        updateForm({ receiverPosition: c.contactPosition });
+      }
+      if (!form.receiverPhone && (c.contactPhone || c.phone)) {
+        updateForm({ receiverPhone: c.contactPhone || c.phone || '' });
+      }
+    }
+  }, [detail]);
+
+  function syncAddressFromCustomer() {
+    const c = detail?.customer;
+    if (!c) return;
+    updateForm({
+      receiverInstallAddress: c.fullAddress || c.address || form.receiverInstallAddress,
+      receiverRepresentative: c.contactPerson || form.receiverRepresentative,
+      receiverPosition: c.contactPosition || form.receiverPosition,
+      receiverPhone: c.contactPhone || c.phone || form.receiverPhone,
+    });
   }
 
   function updateDeviceItem(index: number, patch: Partial<InstallationDeviceItem>) {
@@ -333,7 +382,12 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </div>
               <div className="grid gap-5 md:grid-cols-2">
                 <label className={`${labelClass} md:col-span-2`}>
-                  Địa chỉ lắp đặt
+                  <span className="flex items-center gap-2">
+                    Địa chỉ lắp đặt
+                    <button className="text-xs font-medium text-[#b5121b] hover:underline" onClick={syncAddressFromCustomer} type="button">
+                      <RefreshCw size={13} className="inline" /> Lấy từ hồ sơ
+                    </button>
+                  </span>
                   <input className={fieldClass} onChange={(event) => updateForm({ receiverInstallAddress: event.target.value })} value={form.receiverInstallAddress} />
                 </label>
                 <label className={labelClass}>
@@ -361,6 +415,27 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 </div>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
+                <label className={`${labelClass} md:col-span-2`}>
+                  Chọn máy từ kho
+                  <select
+                    className={fieldClass}
+                    onChange={(event) => {
+                      const machine = stockMachines.find((m) => m.id === event.target.value);
+                      if (machine) {
+                        setMachineSerialNumber(machine.serialNumber || '');
+                        setMachineCode(machine.machineCode || '');
+                      }
+                    }}
+                    value=""
+                  >
+                    <option value="">-- Chọn máy trong kho (hoặc nhập tay S/N) --</option>
+                    {stockMachines.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {[m.machineCode, m.serialNumber ? `S/N ${m.serialNumber}` : '', m.modelName || m.name].filter(Boolean).join(' - ')}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className={labelClass}>
                   Model
                   <input className={fieldClass} readOnly value={detail?.machine?.modelName || detail?.plannedMachineModel?.name || detail?.plannedModelName || ''} />
@@ -620,6 +695,8 @@ function buildForm(task: InstallationTask): CreateTicketForm {
       }))
     : [];
 
+  const customer = task.customer;
+
   return {
     ...emptyCreateTicketForm('installation'),
     workDate: warrantyStartDate,
@@ -629,10 +706,10 @@ function buildForm(task: InstallationTask): CreateTicketForm {
     handoverInstallerPosition: task.handoverInstallerPosition || '',
     handoverVehicle: task.handoverVehicle || '',
     handoverDepartureDate: dateInputValue(task.handoverDepartureDate) || warrantyStartDate,
-    receiverInstallAddress: task.receiverInstallAddress || '',
-    receiverRepresentative: task.receiverRepresentative || '',
-    receiverPosition: task.receiverPosition || '',
-    receiverPhone: task.receiverPhone || '',
+    receiverInstallAddress: task.receiverInstallAddress || customer?.fullAddress || customer?.address || '',
+    receiverRepresentative: task.receiverRepresentative || customer?.contactPerson || '',
+    receiverPosition: task.receiverPosition || customer?.contactPosition || '',
+    receiverPhone: task.receiverPhone || customer?.contactPhone || customer?.phone || '',
     installedDeviceItems,
     deviceCondition: task.deviceCondition || 'NEW_100',
     deviceConditionNote: task.deviceConditionNote || '',

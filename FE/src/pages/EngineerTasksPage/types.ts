@@ -214,6 +214,15 @@ export type InstallationTask = WorkReviewFields & {
   customer?: {
     name?: string | null;
     province?: string | null;
+    fullAddress?: string | null;
+    address?: string | null;
+    district?: string | null;
+    ward?: string | null;
+    phone?: string | null;
+    contactPerson?: string | null;
+    contactPosition?: string | null;
+    contactPhone?: string | null;
+    contactEmail?: string | null;
   } | null;
 };
 
