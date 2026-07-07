@@ -237,6 +237,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     loadTasks();
     loadDailyWorkNotes();
     loadWeeklyReportQuick();
+    loadCreateOptions();
   }, [user.id]);
 
   const filteredTasks = useMemo(() => {
@@ -388,15 +389,17 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setLoadingCreateOptions(true);
 
     try {
-      const [installedMachinesResult, stockMachinesResult, customersResult] = await Promise.all([
+      const [installedMachinesResult, stockMachinesResult, reservedMachinesResult, returnedMachinesResult, customersResult] = await Promise.all([
         apiFetch<Paginated<PickerMachine>>('/machines?limit=20&inventoryStatus=INSTALLED'),
         apiFetch<Paginated<PickerMachine>>('/machines?limit=20&inventoryStatus=IN_STOCK'),
+        apiFetch<Paginated<PickerMachine>>('/machines?limit=20&inventoryStatus=RESERVED'),
+        apiFetch<Paginated<PickerMachine>>('/machines?limit=20&inventoryStatus=RETURNED'),
         apiFetch<Paginated<PickerCustomer>>('/customers?limit=20'),
       ]);
       const modelsResult = await apiFetchAllPages<QuickMachineModel>('/machine-models');
 
       setMachineOptions(
-        [...installedMachinesResult.data, ...stockMachinesResult.data].filter((machine) => canEngineerSeeMachine(user, machine)).map((machine) => ({
+        [...installedMachinesResult.data, ...stockMachinesResult.data, ...reservedMachinesResult.data, ...returnedMachinesResult.data].filter((machine) => canEngineerSeeMachine(user, machine)).map((machine) => ({
           value: machine.id,
           label: machinePickerLabel(machine),
           row: machine,

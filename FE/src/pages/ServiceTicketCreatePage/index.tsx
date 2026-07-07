@@ -17,6 +17,7 @@ import { queryKeys } from '../../lib/queryKeys';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 import { machineDisplayName, machineModelName, machineModelOptionLabel, machineProductName } from '../../utils/machineDisplayName';
 import { isTechnicalUser } from '../../utils/technicalUsers';
+import { AsyncEntityPicker, type PickerOption } from '../EngineerTasksPage/components/AsyncEntityPicker';
 
 type TicketKind = 'repair' | 'maintenance' | 'installation';
 type TicketScope = 'installation' | 'service';
@@ -160,6 +161,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const [form, setForm] = useState<TicketForm>(() => emptyTicketForm(user, initialKind));
   const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm(user));
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(() => emptyQuickMachineForm());
+  const [customerOptions, setCustomerOptions] = useState<Array<PickerOption<CustomerOption>>>([]);
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
   const [showQuickMachine, setShowQuickMachine] = useState(false);
   const [formError, setFormError] = useState('');
@@ -170,7 +172,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     queryKey: queryKeys.serviceTickets.createOptions,
     queryFn: async (): Promise<CreateTicketOptions> => {
       const [customersResult, modelsResult] = await Promise.all([
-        apiFetch<Paginated<CustomerOption>>('/customers?limit=100'),
+        apiFetch<Paginated<CustomerOption>>('/customers?limit=20'),
         apiFetchAllPages<MachineModelOption>('/machine-models'),
       ]);
 
@@ -211,6 +213,19 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const regions = optionsQuery.data?.regions ?? [];
   const machineModels = optionsQuery.data?.machineModels ?? [];
   const machines = machinesQuery.data ?? [];
+
+  useEffect(() => {
+    setCustomerOptions((current) =>
+      mergePickerOptions([
+        ...current,
+        ...customers.map((customer) => ({
+          label: customerLabel(customer),
+          row: customer,
+          value: customer.id,
+        })),
+      ]),
+    );
+  }, [customers]);
 
   const visibleMachines = useMemo(
     () =>
@@ -263,6 +278,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       });
     },
     onSuccess: async (customer) => {
+      rememberCustomerOption(customer);
       queryClient.setQueryData<CreateTicketOptions>(queryKeys.serviceTickets.createOptions, (current) =>
         current
           ? {
@@ -420,7 +436,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   }
 
   function selectCustomer(customerId: string) {
-    const customer = customers.find((item) => item.id === customerId);
+    const customer = customers.find((item) => item.id === customerId) || customerOptions.find((item) => item.value === customerId)?.row;
     applyCustomer(customer, customerId);
   }
 
@@ -433,6 +449,16 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       contactPhone: customer?.contactPhone || customer?.phone || form.contactPhone,
     });
     setQuickMachineForm((current) => ({ ...current, customerId: customer?.id || fallbackCustomerId || current.customerId }));
+  }
+
+  function rememberCustomerOption(customer?: CustomerOption) {
+    if (!customer) return;
+    setCustomerOptions((current) =>
+      mergePickerOptions([
+        { label: customerLabel(customer), row: customer, value: customer.id },
+        ...current,
+      ]),
+    );
   }
 
   function applyMachine(machine?: MachineOption, fallbackMachineId = machine?.id ?? '') {
@@ -553,31 +579,46 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
               ) : null}
 
               {kind !== 'installation' ? (
-                <label className={labelClass}>
-                  Khách hàng
-                  <select className={fieldClass} disabled={loading} onChange={(event) => selectCustomer(event.target.value)} value={form.customerId}>
-                    <option value="">Tất cả khách hàng</option>
-                    {customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customerLabel(customer)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <AsyncEntityPicker<CustomerOption>
+                  className={labelClass}
+                  disabled={loading}
+                  endpoint="/customers?limit=20"
+                  formatOption={(customer) => ({
+                    label: customerLabel(customer),
+                    row: customer,
+                    value: customer.id,
+                  })}
+                  initialOptions={customerOptions}
+                  label="Khách hàng"
+                  onChange={(value, customer) => {
+                    rememberCustomerOption(customer);
+                    applyCustomer(customer, value);
+                  }}
+                  placeholder="Tìm tên, mã khách hàng, tỉnh hoặc số điện thoại"
+                  value={form.customerId}
+                />
               ) : null}
 
               {kind === 'installation' ? (
-                <label className={labelClass}>
-                  Khách hàng
-                  <select className={fieldClass} disabled={loading} onChange={(event) => selectCustomer(event.target.value)} required value={form.customerId}>
-                    <option value="">Chọn khách hàng</option>
-                    {customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customerLabel(customer)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <AsyncEntityPicker<CustomerOption>
+                  className={labelClass}
+                  disabled={loading}
+                  endpoint="/customers?limit=20"
+                  formatOption={(customer) => ({
+                    label: customerLabel(customer),
+                    row: customer,
+                    value: customer.id,
+                  })}
+                  initialOptions={customerOptions}
+                  label="Khách hàng"
+                  onChange={(value, customer) => {
+                    rememberCustomerOption(customer);
+                    applyCustomer(customer, value);
+                  }}
+                  placeholder="Tìm tên, mã khách hàng, tỉnh hoặc số điện thoại"
+                  required
+                  value={form.customerId}
+                />
               ) : null}
 
               <label className={labelClass}>
@@ -1437,6 +1478,15 @@ function ticketKindLabel(kind: TicketKind) {
 
 function customerLabel(customer: CustomerOption) {
   return [customer.customerCode, customer.name, customer.province, customer.phone].filter(Boolean).join(' - ');
+}
+
+function mergePickerOptions<Row>(options: Array<PickerOption<Row>>) {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    if (!option.value || seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
+  });
 }
 
 function machineLabel(machine: MachineOption) {

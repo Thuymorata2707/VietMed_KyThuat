@@ -414,13 +414,16 @@ export function machinePickerLabel(machine: PickerMachine) {
 }
 
 export function machinePickerEndpoint(kind: TaskKind) {
-  const inventoryStatus = kind === 'installation' ? 'IN_STOCK' : 'INSTALLED';
-  return `/machines?limit=20&inventoryStatus=${inventoryStatus}`;
+  return kind === 'installation'
+    ? '/machines?limit=20'
+    : '/machines?limit=20&inventoryStatus=INSTALLED';
 }
 
 export function isMachineEligibleForTicket(kind: TaskKind, machine: PickerMachine) {
   if (!machine.inventoryStatus) return true;
-  return kind === 'installation' ? machine.inventoryStatus === 'IN_STOCK' : machine.inventoryStatus === 'INSTALLED';
+  return kind === 'installation'
+    ? !['INSTALLED', 'SOLD'].includes(machine.inventoryStatus)
+    : machine.inventoryStatus === 'INSTALLED';
 }
 
 export function customerPickerLabel(customer: PickerCustomer) {
