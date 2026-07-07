@@ -163,6 +163,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm(user));
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(() => emptyQuickMachineForm());
   const [customerOptions, setCustomerOptions] = useState<Array<PickerOption<CustomerOption>>>([]);
+  const [machineOptions, setMachineOptions] = useState<Array<PickerOption<MachineOption>>>([]);
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
   const [showQuickMachine, setShowQuickMachine] = useState(false);
   const [formError, setFormError] = useState('');
@@ -204,13 +205,13 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     queryKey: queryKeys.serviceTickets.machines(kind),
     queryFn: async () => {
       if (kind !== 'installation') {
-        const result = await apiFetch<Paginated<MachineOption>>('/machines?limit=100&inventoryStatus=INSTALLED');
+        const result = await apiFetch<Paginated<MachineOption>>('/machines?limit=20&inventoryStatus=INSTALLED');
         return result.data.filter((machine) => canEngineerUseMachine(user, machine));
       }
 
       const results = await Promise.all(
         ['IN_STOCK', 'RESERVED', 'RETURNED'].map((inventoryStatus) =>
-          apiFetch<Paginated<MachineOption>>(`/machines?limit=100&inventoryStatus=${inventoryStatus}`),
+          apiFetch<Paginated<MachineOption>>(`/machines?limit=20&inventoryStatus=${inventoryStatus}`),
         ),
       );
       return mergeMachines(results.flatMap((result) => result.data)).filter((machine) => canEngineerUseMachine(user, machine));
@@ -236,6 +237,19 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     );
   }, [customers]);
 
+  useEffect(() => {
+    setMachineOptions((current) =>
+      mergePickerOptions([
+        ...current,
+        ...machines.map((machine) => ({
+          label: machineLabel(machine),
+          row: machine,
+          value: machine.id,
+        })),
+      ]),
+    );
+  }, [machines]);
+
   const visibleMachines = useMemo(
     () =>
       machines
@@ -244,7 +258,10 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     [form.customerId, kind, machines, user],
   );
   const visibleMachineModels = useMemo(() => machineModels.filter((model) => canEngineerUseModel(user, model)), [machineModels, user]);
-  const selectedMachine = useMemo(() => visibleMachines.find((machine) => machine.id === form.machineId), [form.machineId, visibleMachines]);
+  const selectedMachine = useMemo(
+    () => visibleMachines.find((machine) => machine.id === form.machineId) || machineOptions.find((option) => option.value === form.machineId)?.row,
+    [form.machineId, machineOptions, visibleMachines],
+  );
   const installationDeviceSummary = useMemo(
     () => buildInstallationDeviceSummary(form),
     [form],
@@ -432,11 +449,6 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     }));
   }
 
-  function selectMachine(machineId: string) {
-    const machine = machines.find((item) => item.id === machineId);
-    applyMachine(machine, machineId);
-  }
-
   function selectCustomer(customerId: string) {
     const customer = customers.find((item) => item.id === customerId) || customerOptions.find((item) => item.value === customerId)?.row;
     applyCustomer(customer, customerId);
@@ -458,6 +470,16 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     setCustomerOptions((current) =>
       mergePickerOptions([
         { label: customerLabel(customer), row: customer, value: customer.id },
+        ...current,
+      ]),
+    );
+  }
+
+  function rememberMachineOption(machine?: MachineOption) {
+    if (!machine) return;
+    setMachineOptions((current) =>
+      mergePickerOptions([
+        { label: machineLabel(machine), row: machine, value: machine.id },
         ...current,
       ]),
     );
@@ -573,31 +595,57 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
               ) : null}
 
               {kind !== 'installation' ? (
-                <label className={wideLabelClass}>
-                  Thiết bị có sẵn
-                  <select className={fieldClass} disabled={loading} onChange={(event) => selectMachine(event.target.value)} value={form.machineId}>
-                    <option value="">Không bắt buộc</option>
-                    {visibleMachines.map((machine) => (
-                      <option key={machine.id} value={machine.id}>
-                        {machineLabel(machine)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <AsyncEntityPicker<MachineOption>
+                  className={wideLabelClass}
+                  disabled={loading}
+                  endpoint={machinePickerEndpoint(kind, form.customerId)}
+                  formatOption={(machine) => ({
+                    label: machineLabel(machine),
+                    row: machine,
+                    value: machine.id,
+                  })}
+                  initialOptions={machineOptions.filter((option) => machinePickerRowFilter(kind, form.customerId, user, option.row))}
+                  inputClassName={fieldClass}
+                  label="Thiết bị có sẵn"
+                  onChange={(value, machine) => {
+                    rememberMachineOption(machine);
+                    applyMachine(machine, value);
+                  }}
+                  placeholder="Tìm mã máy, S/N, model, tên máy hoặc khách hàng"
+                  rowFilter={(machine) => machinePickerRowFilter(kind, form.customerId, user, machine)}
+                  value={form.machineId}
+                />
               ) : null}
 
               {kind === 'installation' ? (
-                <label className={wideLabelClass}>
-                  Máy đã có hồ sơ
-                  <select className={fieldClass} disabled={loading} onChange={(event) => selectMachine(event.target.value)} value={form.machineId}>
-                    <option value="">Không bắt buộc, chọn máy nếu đã có trong dữ liệu</option>
-                    {visibleMachines.map((machine) => (
-                      <option key={machine.id} value={machine.id}>
-                        {machineLabel(machine)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <AsyncEntityPicker<MachineOption>
+                  className={wideLabelClass}
+                  disabled={loading}
+                  endpoint={machinePickerEndpoint(kind, form.customerId)}
+                  formatOption={(machine) => ({
+                    label: machineLabel(machine),
+                    row: machine,
+                    value: machine.id,
+                  })}
+                  initialOptions={machineOptions.filter((option) => machinePickerRowFilter(kind, form.customerId, user, option.row))}
+                  inputClassName={fieldClass}
+                  label="Máy đã có hồ sơ"
+                  onChange={(value, machine) => {
+                    rememberMachineOption(machine);
+                    applyMachine(machine, value);
+                  }}
+                  placeholder="Tìm máy trong kho theo mã máy, S/N, model hoặc tên máy"
+                  rowFilter={(machine) => machinePickerRowFilter(kind, form.customerId, user, machine)}
+                  value={form.machineId}
+                />
+              ) : null}
+
+              {form.machineId ? (
+                <div className="md:col-span-2 -mt-3 flex justify-end">
+                  <button className="text-xs font-bold text-[#475569] underline-offset-4 hover:underline" onClick={() => applyMachine()} type="button">
+                    Bỏ chọn máy
+                  </button>
+                </div>
               ) : null}
 
               {kind !== 'installation' ? (
@@ -665,11 +713,13 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 <InstallationFields
                   addDeviceItem={addInstallationDeviceItem}
                   form={form}
+                  machineOptions={machineOptions}
                   machines={visibleMachines}
                   models={visibleMachineModels}
                   removeDeviceItem={removeInstallationDeviceItem}
                   updateDeviceItem={updateInstallationDeviceItem}
                   updateForm={updateForm}
+                  user={user}
                 />
               )}
             </div>
@@ -898,22 +948,26 @@ function ModelDeviceSelect({ form, models, updateForm }: { form: TicketForm; mod
 function InstallationFields({
   addDeviceItem,
   form,
+  machineOptions,
   machines,
   models,
   removeDeviceItem,
   updateDeviceItem,
   updateForm,
+  user,
 }: {
   addDeviceItem: () => void;
   form: TicketForm;
+  machineOptions: Array<PickerOption<MachineOption>>;
   machines: MachineOption[];
   models: MachineModelOption[];
   removeDeviceItem: (index: number) => void;
   updateDeviceItem: (index: number, patch: Partial<InstallationDeviceItem>) => void;
   updateForm: (patch: Partial<TicketForm>) => void;
+  user: ApiUser;
 }) {
-  const selectedMachine = machines.find((machine) => machine.id === form.machineId);
-  const extraMachineOptions = machines.filter((machine) => machine.id !== form.machineId);
+  const selectedMachine = machines.find((machine) => machine.id === form.machineId) || machineOptions.find((option) => option.value === form.machineId)?.row;
+  const extraMachineOptions = machineOptions.filter((option) => option.value !== form.machineId && machinePickerRowFilter('installation', '', user, option.row));
 
   return (
     <>
@@ -964,35 +1018,35 @@ function InstallationFields({
                 </button>
               </div>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <label className={`${labelClass} xl:col-span-3`}>
-                  Chọn thiết bị có sẵn
-                  <select
-                    className={fieldClass}
-                    onChange={(event) => {
-                      const machine = extraMachineOptions.find((option) => option.id === event.target.value);
-                      updateDeviceItem(
-                        index,
-                        machine
-                          ? {
-                              sourceMachineId: machine.id,
-                              itemName: machine.name || machine.modelName || '',
-                              model: machine.modelName || machine.machineModel?.name || machine.name || '',
-                              serialNumber: machine.serialNumber || '',
-                              quantity: 1,
-                            }
-                          : { sourceMachineId: '' },
-                      );
-                    }}
-                    value={item.sourceMachineId}
-                  >
-                    <option value="">Nhập tay hoặc chọn model bên dưới</option>
-                    {extraMachineOptions.map((machine) => (
-                      <option key={machine.id} value={machine.id}>
-                        {machineLabel(machine)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <AsyncEntityPicker<MachineOption>
+                  className="xl:col-span-3"
+                  endpoint={machinePickerEndpoint('installation', '')}
+                  formatOption={(machine) => ({
+                    label: machineLabel(machine),
+                    row: machine,
+                    value: machine.id,
+                  })}
+                  initialOptions={extraMachineOptions}
+                  inputClassName={fieldClass}
+                  label="Chọn thiết bị có sẵn"
+                  onChange={(value, machine) => {
+                    updateDeviceItem(
+                      index,
+                      machine
+                        ? {
+                            sourceMachineId: machine.id,
+                            itemName: machine.name || machine.modelName || '',
+                            model: machine.modelName || machine.machineModel?.name || machine.name || '',
+                            serialNumber: machine.serialNumber || '',
+                            quantity: 1,
+                          }
+                        : { sourceMachineId: value },
+                    );
+                  }}
+                  placeholder="Tìm máy trong kho theo mã máy, S/N, model hoặc tên máy"
+                  rowFilter={(machine) => machine.id !== form.machineId && machinePickerRowFilter('installation', '', user, machine)}
+                  value={item.sourceMachineId}
+                />
                 <label className={labelClass}>
                   Model
                   <select
@@ -1511,6 +1565,25 @@ function canEngineerUseMachine(user: ApiUser, machine: MachineOption) {
     machine.machineModel?.businessLine?.expertiseGroup;
 
   return !machineGroup || machineGroup === expertiseGroup;
+}
+
+function machinePickerEndpoint(kind: TicketKind, customerId: string) {
+  const params = new URLSearchParams({ limit: '20' });
+  if (kind !== 'installation') {
+    params.set('inventoryStatus', 'INSTALLED');
+    if (customerId) params.set('customerId', customerId);
+  }
+  return `/machines?${params.toString()}`;
+}
+
+function machinePickerRowFilter(kind: TicketKind, customerId: string, user: ApiUser, machine: MachineOption) {
+  if (!canEngineerUseMachine(user, machine)) return false;
+
+  if (kind === 'installation') {
+    return !['INSTALLED', 'SOLD'].includes(machine.inventoryStatus || '');
+  }
+
+  return machine.inventoryStatus === 'INSTALLED' && (!customerId || machine.customer?.id === customerId);
 }
 
 function canEngineerUseModel(user: ApiUser, model: MachineModelOption) {
