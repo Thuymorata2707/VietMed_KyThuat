@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, RefreshCw, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
@@ -17,6 +17,15 @@ type EngineerOption = {
   id: string;
   fullName?: string | null;
   email: string;
+};
+
+type StockMachine = {
+  id: string;
+  machineCode?: string | null;
+  serialNumber?: string | null;
+  modelName?: string | null;
+  name?: string | null;
+  customer?: { id?: string | null; name?: string | null } | null;
 };
 
 type RepairForm = {
@@ -68,6 +77,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
   const [detail, setDetail] = useState<RepairTask | null>(null);
   const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
+  const [installedMachines, setInstalledMachines] = useState<StockMachine[]>([]);
   const [form, setForm] = useState<RepairForm>(() => emptyForm());
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
@@ -93,6 +103,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
       setDetail(repair);
       setForm(buildForm(repair));
       await loadMachineModels();
+      await loadInstalledMachines();
       if (isAdmin) {
         await loadEngineers();
       }
@@ -124,6 +135,26 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
     } catch {
       setMachineModels([]);
     }
+  }
+
+  async function loadInstalledMachines() {
+    try {
+      const result = await apiFetch<Paginated<StockMachine>>('/machines?limit=200&inventoryStatus=INSTALLED');
+      setInstalledMachines(result.data);
+    } catch {
+      setInstalledMachines([]);
+    }
+  }
+
+  function syncAddressFromCustomer() {
+    const c = detail?.customer || detail?.machine?.customer;
+    if (!c) return;
+    updateForm({
+      usingDepartment: (c as { name?: string | null }).name || form.usingDepartment,
+      representative: (detail?.customer ? detail.customer.contactPerson : '') || form.representative,
+      address: (detail?.customer ? (detail.customer.fullAddress || detail.customer.address || '') : '') || form.address,
+      contactPhone: (detail?.customer ? (detail.customer.contactPhone || detail.customer.phone || '') : '') || form.contactPhone,
+    });
   }
 
   async function loadAttachments() {
@@ -308,6 +339,31 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                     </select>
                   </label>
                 ) : null}
+                <label className={`${labelClass} md:col-span-2`}>
+                  Chọn máy đã lắp đặt
+                  <select
+                    className={fieldClass}
+                    onChange={(event) => {
+                      const machine = installedMachines.find((m) => m.id === event.target.value);
+                      if (machine) {
+                        updateForm({
+                          serialNumber: machine.serialNumber || '',
+                          modelName: machine.modelName || machine.name || '',
+                          deviceName: machine.name || machine.modelName || '',
+                          machineModelId: '',
+                        });
+                      }
+                    }}
+                    value=""
+                  >
+                    <option value="">-- Chọn máy đã lắp đặt (hoặc nhập tay S/N) --</option>
+                    {installedMachines.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {[m.machineCode, m.serialNumber ? `S/N ${m.serialNumber}` : '', m.modelName || m.name].filter(Boolean).join(' - ')}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className={labelClass}>
                   S/N máy
                   <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
@@ -357,7 +413,12 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
               </div>
               <div className="grid min-w-0 gap-5 md:grid-cols-2">
                 <label className={labelClass}>
-                  Đơn vị sử dụng
+                  <span className="flex items-center gap-2">
+                    Đơn vị sử dụng
+                    <button className="text-xs font-medium text-[#b5121b] hover:underline" onClick={syncAddressFromCustomer} type="button">
+                      <RefreshCw size={13} className="inline" /> Lấy từ hồ sơ
+                    </button>
+                  </span>
                   <input className={fieldClass} onChange={(event) => updateForm({ usingDepartment: event.target.value })} value={form.usingDepartment} />
                 </label>
                 <label className={labelClass}>
@@ -530,6 +591,7 @@ function emptyForm(): RepairForm {
 }
 
 function buildForm(repair: RepairTask): RepairForm {
+  const c = repair.customer || repair.machine?.customer;
   return {
     status: repair.status || 'IN_PROGRESS',
     priority: repair.priority || 'NORMAL',
@@ -538,10 +600,10 @@ function buildForm(repair: RepairTask): RepairForm {
     customerFeedback: repair.customerFeedback || '',
     conditionAssessment: repair.conditionAssessment || '',
     repairMethod: repair.repairMethod || '',
-    usingDepartment: repair.usingDepartment || repair.machine?.customer?.name || '',
-    representative: repair.representative || '',
-    address: repair.address || '',
-    contactPhone: repair.contactPhone || '',
+    usingDepartment: repair.usingDepartment || c?.name || '',
+    representative: repair.representative || (repair.customer ? (repair.customer.contactPerson || '') : ''),
+    address: repair.address || (repair.customer ? (repair.customer.fullAddress || repair.customer.address || '') : ''),
+    contactPhone: repair.contactPhone || (repair.customer ? (repair.customer.contactPhone || repair.customer.phone || '') : ''),
     deviceName: repair.deviceName || repair.machine?.modelName || '',
     machineModelId: '',
     modelName: repair.modelName || repair.machine?.modelName || '',

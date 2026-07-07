@@ -46,9 +46,11 @@ export type WorkReviewFields = {
 };
 
 export type TaskMachine = {
+  id?: string | null;
   machineCode?: string | null;
   serialNumber?: string | null;
   modelName?: string | null;
+  name?: string | null;
   productCategory?: string | null;
   customer?: {
     name?: string | null;
@@ -81,6 +83,10 @@ export type PickerCustomer = {
   name: string;
   phone?: string | null;
   province?: string | null;
+  fullAddress?: string | null;
+  address?: string | null;
+  contactPerson?: string | null;
+  contactPhone?: string | null;
 };
 
 export type RepairTask = WorkReviewFields & {
@@ -113,6 +119,14 @@ export type RepairTask = WorkReviewFields & {
     email?: string | null;
   } | null;
   machine?: TaskMachine | null;
+  customer?: {
+    name?: string | null;
+    fullAddress?: string | null;
+    address?: string | null;
+    contactPerson?: string | null;
+    contactPhone?: string | null;
+    phone?: string | null;
+  } | null;
 };
 
 export type MaintenanceTask = WorkReviewFields & {
@@ -139,6 +153,14 @@ export type MaintenanceTask = WorkReviewFields & {
   modelName?: string | null;
   serialNumber?: string | null;
   machine?: TaskMachine | null;
+  customer?: {
+    name?: string | null;
+    fullAddress?: string | null;
+    address?: string | null;
+    contactPerson?: string | null;
+    contactPhone?: string | null;
+    phone?: string | null;
+  } | null;
 };
 
 export type QuickMachineModel = {

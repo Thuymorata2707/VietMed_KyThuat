@@ -387,14 +387,15 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setLoadingCreateOptions(true);
 
     try {
-      const [machinesResult, customersResult] = await Promise.all([
+      const [installedMachinesResult, stockMachinesResult, customersResult] = await Promise.all([
         apiFetch<Paginated<PickerMachine>>('/machines?limit=20&inventoryStatus=INSTALLED'),
+        apiFetch<Paginated<PickerMachine>>('/machines?limit=20&inventoryStatus=IN_STOCK'),
         apiFetch<Paginated<PickerCustomer>>('/customers?limit=20'),
       ]);
       const modelsResult = await apiFetchAllPages<QuickMachineModel>('/machine-models');
 
       setMachineOptions(
-        machinesResult.data.filter((machine) => canEngineerSeeMachine(user, machine)).map((machine) => ({
+        [...installedMachinesResult.data, ...stockMachinesResult.data].filter((machine) => canEngineerSeeMachine(user, machine)).map((machine) => ({
           value: machine.id,
           label: machinePickerLabel(machine),
           row: machine,
@@ -509,6 +510,16 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setCreateForm((current) => ({ ...current, ...patch }));
   }
 
+  function selectCreateCustomer(customerId: string, customer?: PickerCustomer) {
+    updateCreateForm({
+      customerId,
+      usingDepartment: customer?.name || createForm.usingDepartment,
+      representative: customer?.contactPerson || createForm.representative,
+      address: customer?.fullAddress || customer?.address || createForm.address,
+      contactPhone: customer?.contactPhone || customer?.phone || createForm.contactPhone,
+    });
+  }
+
   function updateInstallationEditForm(patch: Partial<CreateTicketForm>) {
     setInstallationEditForm((current) => ({ ...current, ...patch }));
   }
@@ -569,12 +580,27 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   }
 
   function selectCreateMachine(machine: PickerMachine) {
-    updateCreateForm({
-      machineId: machine.id,
-      customerId: machine.customer?.id || createForm.customerId,
-      modelName: machine.modelName || createForm.modelName,
-      serialNumber: machine.serialNumber || createForm.serialNumber,
-      deviceName: machine.name || createForm.deviceName,
+    setCreateForm((current) => {
+      const firstDevice = current.installedDeviceItems[0] || emptyInstallationDeviceItem();
+      const machineItem = {
+        ...firstDevice,
+        itemName: machine.name || firstDevice.itemName || machine.modelName || '',
+        model: machine.modelName || firstDevice.model,
+        serialNumber: machine.serialNumber || firstDevice.serialNumber,
+      };
+
+      return {
+        ...current,
+        machineId: machine.id,
+        customerId: machine.customer?.id || current.customerId,
+        modelName: machine.modelName || current.modelName,
+        serialNumber: machine.serialNumber || current.serialNumber,
+        deviceName: machine.name || current.deviceName,
+        installedDeviceItems:
+          current.kind === 'installation'
+            ? [machineItem, ...current.installedDeviceItems.slice(1)]
+            : current.installedDeviceItems,
+      };
     });
   }
 
@@ -1020,7 +1046,33 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ) : null}
 
             {createForm.kind === 'installation' ? (
-              <div className="machine-picker create-span-6">
+              <>
+                <div className="machine-picker create-span-6">
+                <AsyncEntityPicker<PickerMachine>
+                  className="engineer-picker"
+                  disabled={loadingCreateOptions}
+                  endpoint={machinePickerEndpoint('installation')}
+                  formatOption={(machine) => ({
+                    label: machinePickerLabel(machine),
+                    row: machine,
+                    value: machine.id,
+                  })}
+                  initialOptions={machineOptions.filter((option) => isMachineEligibleForTicket('installation', option.row))}
+                  label="Máy trong kho"
+                  onChange={(value, machine) => {
+                    updateCreateForm({ machineId: value });
+                    if (machine) selectCreateMachine(machine);
+                  }}
+                  placeholder="Tìm mã máy, S/N hoặc model trong kho"
+                  rowFilter={(machine) => canEngineerSeeMachine(user, machine) && isMachineEligibleForTicket('installation', machine)}
+                  value={createForm.machineId}
+                />
+                <button className="task-secondary" onClick={() => setIsQuickMachineOpen((value) => !value)} type="button">
+                  <Plus size={16} />
+                  Add machine
+                </button>
+                </div>
+                <div className="machine-picker create-span-6">
                 <AsyncEntityPicker<QuickMachineModel>
                   className="engineer-picker"
                   disabled={loadingCreateOptions}
@@ -1044,12 +1096,13 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     });
                   }}
                   placeholder="VD: X-CUBE 50, X-CUBE 70..."
-                  required
+                  required={!createForm.machineId}
                   rowFilter={(model) => canEngineerSeeModel(user, model)}
                   value={createForm.machineModelId}
                 />
                 <ModelInfoFields model={machineModelOptions.find((model) => model.id === createForm.machineModelId)} />
-              </div>
+                </div>
+              </>
             ) : (
               <div className="machine-picker">
                 <AsyncEntityPicker<PickerMachine>
@@ -1177,7 +1230,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   })}
                   initialOptions={customerOptions}
                   label="Khách hàng"
-                  onChange={(value) => updateCreateForm({ customerId: value })}
+                  onChange={(value, row) => selectCreateCustomer(value, row)}
                   placeholder="Tìm tên, mã khách hàng, tỉnh hoặc số điện thoại"
                   required
                   value={createForm.customerId}
@@ -1200,8 +1253,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   })}
                   initialOptions={customerOptions}
                   label="Khách hàng cho thiết bị mới"
-                  onChange={(value) => {
-                    updateCreateForm({ customerId: value });
+                  onChange={(value, row) => {
+                    selectCreateCustomer(value, row);
                     updateQuickMachineForm({ customerId: value });
                   }}
                   placeholder="Chọn trước khách hàng nếu cần tạo thiết bị nhanh"

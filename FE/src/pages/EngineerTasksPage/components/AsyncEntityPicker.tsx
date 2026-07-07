@@ -37,7 +37,7 @@ export function AsyncEntityPicker<Row extends { id: string }>({
   const [options, setOptions] = useState<Array<PickerOption<Row>>>(initialOptions);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const selectedOption = options.find((option) => option.value === value);
+  const selectedOption = options.find((option) => option.value === value) || initialOptions.find((option) => option.value === value);
 
   useEffect(() => {
     setOptions((current) => {
@@ -72,7 +72,7 @@ export function AsyncEntityPicker<Row extends { id: string }>({
       const nextOptions = result.data
         .filter((row) => (rowFilter ? rowFilter(row) : true))
         .map(formatOption);
-      setOptions((current) => mergePickerOptions([...current, ...nextOptions]));
+      setOptions(mergePickerOptions([...(selectedOption ? [selectedOption] : []), ...initialOptions, ...nextOptions]));
     } catch {
       setOptions((current) => current);
     } finally {

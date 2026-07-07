@@ -209,6 +209,17 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
     }));
   }
 
+  function selectStockMachine(machineId: string) {
+    const machine = stockMachines.find((m) => m.id === machineId);
+    if (!machine) {
+      updateForm({ machineId: '' });
+      return;
+    }
+    updateForm({ machineId });
+    setMachineSerialNumber(machine.serialNumber || '');
+    setMachineCode(machine.machineCode || '');
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -225,6 +236,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
           warrantyStartDate: form.workDate || installedAt || undefined,
           warrantyEndDate: form.warrantyEndDate || undefined,
           machineModelId: detail?.plannedMachineModelId || undefined,
+          machineId: form.machineId || undefined,
           machineSerialNumber: machineSerialNumber.trim() || undefined,
           machineCode: machineCode.trim() || undefined,
           machineName: form.deviceName.trim() || detail?.plannedMachineModel?.name || detail?.plannedModelName || undefined,
@@ -419,14 +431,8 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   Chọn máy từ kho
                   <select
                     className={fieldClass}
-                    onChange={(event) => {
-                      const machine = stockMachines.find((m) => m.id === event.target.value);
-                      if (machine) {
-                        setMachineSerialNumber(machine.serialNumber || '');
-                        setMachineCode(machine.machineCode || '');
-                      }
-                    }}
-                    value=""
+                    onChange={(event) => selectStockMachine(event.target.value)}
+                    value={form.machineId}
                   >
                     <option value="">-- Chọn máy trong kho (hoặc nhập tay S/N) --</option>
                     {stockMachines.map((m) => (
@@ -515,15 +521,30 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                             Tên sản phẩm
                             <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} value={item.itemName} />
                           </label>
-                          <ModelInfoFields className="md:col-span-3" model={machineModels.find((model) => model.id === modelIdByName(machineModels, item.model))} />
                           <label className={labelClass}>
                             S/N
-                            <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} />
+                            <SerialNumberInputs
+                              fieldClass={fieldClass}
+                              item={item}
+                              onChange={(serialNumber) => updateDeviceItem(index, { serialNumber })}
+                            />
                           </label>
                           <DateInput className={labelClass} label="NSX" onChange={(value) => updateDeviceItem(index, { manufactureDate: value })} value={item.manufactureDate} />
                           <label className={labelClass}>
                             Số lượng
-                            <input className={fieldClass} min={1} onChange={(event) => updateDeviceItem(index, { quantity: Number(event.target.value) || 1 })} type="number" value={item.quantity} />
+                            <input
+                              className={fieldClass}
+                              min={1}
+                              onChange={(event) => {
+                                const quantity = Number(event.target.value) || 1;
+                                updateDeviceItem(index, {
+                                  quantity,
+                                  serialNumber: resizeSerialNumberList(item.serialNumber, quantity),
+                                });
+                              }}
+                              type="number"
+                              value={item.quantity}
+                            />
                           </label>
                           <label className={labelClass}>
                             Thời gian bảo hành
@@ -684,21 +705,22 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 function buildForm(task: InstallationTask): CreateTicketForm {
   const installedAt = dateInputValue(task.installedAt);
   const warrantyStartDate = dateInputValue(task.warrantyStartDate || task.warrantyCard?.startDate) || installedAt;
-  const installedDeviceItems = task.installedDeviceItems?.length
-    ? task.installedDeviceItems.map((item) => ({
+  const installedDeviceItems = (task.installedDeviceItems || [])
+    .filter((item) => !isMainMachineItem(task, item))
+    .map((item) => ({
         itemName: item.itemName || '',
         model: item.model || '',
         serialNumber: item.serialNumber || '',
         manufactureDate: dateInputValue(item.manufactureDate),
         quantity: Number(item.quantity) || 1,
         warrantyPeriod: item.warrantyPeriod || '',
-      }))
-    : [];
+      }));
 
   const customer = task.customer;
 
   return {
     ...emptyCreateTicketForm('installation'),
+    machineId: task.machine?.id || '',
     workDate: warrantyStartDate,
     warrantyEndDate: dateInputValue(task.warrantyEndDate || task.warrantyCard?.endDate),
     description: task.warrantyNote || task.warrantyCard?.note || '',
@@ -714,6 +736,26 @@ function buildForm(task: InstallationTask): CreateTicketForm {
     deviceCondition: task.deviceCondition || 'NEW_100',
     deviceConditionNote: task.deviceConditionNote || '',
   };
+}
+
+function isMainMachineItem(task: InstallationTask, item: InstallationDeviceItem) {
+  const machineSerial = task.machine?.serialNumber?.trim().toLowerCase();
+  const itemSerial = item.serialNumber?.trim().toLowerCase();
+  if (machineSerial && itemSerial && machineSerial === itemSerial) return true;
+
+  const itemName = item.itemName?.trim().toLowerCase();
+  const itemModel = item.model?.trim().toLowerCase();
+  const mainNames = [
+    task.machine?.name,
+    task.machine?.modelName,
+    task.plannedMachineModel?.displayName,
+    task.plannedMachineModel?.name,
+    task.plannedModelName,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).trim().toLowerCase());
+
+  return !itemSerial && mainNames.some((value) => value && (value === itemName || value === itemModel));
 }
 
 function dateInputValue(value?: string | null) {
@@ -732,6 +774,63 @@ function modelIdByName(models: MachineModelOption[], value: string) {
       .filter(Boolean)
       .some((item) => String(item).trim().toLowerCase() === normalized),
   )?.id || '';
+}
+
+function SerialNumberInputs({
+  fieldClass,
+  item,
+  onChange,
+}: {
+  fieldClass: string;
+  item: InstallationDeviceItem;
+  onChange: (serialNumber: string) => void;
+}) {
+  const quantity = Math.max(1, Number(item.quantity) || 1);
+  const serialNumbers = serialNumberList(item.serialNumber, quantity);
+
+  if (quantity === 1) {
+    return (
+      <input
+        className={fieldClass}
+        onChange={(event) => onChange(event.target.value)}
+        value={serialNumbers[0] || ''}
+      />
+    );
+  }
+
+  return (
+    <div className="grid gap-2">
+      {serialNumbers.map((serialNumber, serialIndex) => (
+        <input
+          className={fieldClass}
+          key={serialIndex}
+          onChange={(event) => {
+            const next = [...serialNumbers];
+            next[serialIndex] = event.target.value;
+            onChange(joinSerialNumbers(next));
+          }}
+          placeholder={`S/N ${serialIndex + 1}`}
+          value={serialNumber}
+        />
+      ))}
+    </div>
+  );
+}
+
+function serialNumberList(value: string, quantity: number) {
+  const items = value
+    .split(/[\n,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return Array.from({ length: quantity }, (_, index) => items[index] || '');
+}
+
+function resizeSerialNumberList(value: string, quantity: number) {
+  return joinSerialNumbers(serialNumberList(value, Math.max(1, quantity)));
+}
+
+function joinSerialNumbers(items: string[]) {
+  return items.map((item) => item.trim()).filter(Boolean).join(', ');
 }
 
 function safeFileName(value: string) {

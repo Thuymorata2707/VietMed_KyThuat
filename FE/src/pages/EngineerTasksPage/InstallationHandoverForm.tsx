@@ -1,6 +1,5 @@
 import type { ApiUser } from '../../api';
 import { DateInput } from '../../components/DateInput';
-import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { machineModelName, machineModelOptionLabel, machineProductName } from '../../utils/machineDisplayName';
 import type { CreateTicketForm, InstallationDeviceItem } from './types';
 
@@ -110,17 +109,25 @@ export function InstallationHandoverForm({
               Tên sản phẩm
               <input onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required={index === 0} value={item.itemName} />
             </label>
-            <ModelInfoFields className="installation-model-info" model={machineModels.find((model) => model.id === modelIdByName(machineModels, item.model))} />
             <label>
               S/N
-              <input onChange={(event) => updateDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} />
+              <SerialNumberInputs
+                item={item}
+                onChange={(serialNumber) => updateDeviceItem(index, { serialNumber })}
+              />
             </label>
             <DateInput label="NSX" onChange={(value) => updateDeviceItem(index, { manufactureDate: value })} value={item.manufactureDate} />
             <label>
               Số lượng
               <input
                 min={1}
-                onChange={(event) => updateDeviceItem(index, { quantity: Number(event.target.value) || 1 })}
+                onChange={(event) => {
+                  const quantity = Number(event.target.value) || 1;
+                  updateDeviceItem(index, {
+                    quantity,
+                    serialNumber: resizeSerialNumberList(item.serialNumber, quantity),
+                  });
+                }}
                 type="number"
                 value={item.quantity}
               />
@@ -173,4 +180,57 @@ function modelIdByName(models: MachineModelOption[], value: string) {
       .filter(Boolean)
       .some((item) => String(item).trim().toLowerCase() === normalized),
   )?.id || '';
+}
+
+function SerialNumberInputs({
+  item,
+  onChange,
+}: {
+  item: InstallationDeviceItem;
+  onChange: (serialNumber: string) => void;
+}) {
+  const quantity = Math.max(1, Number(item.quantity) || 1);
+  const serialNumbers = serialNumberList(item.serialNumber, quantity);
+
+  if (quantity === 1) {
+    return (
+      <input
+        onChange={(event) => onChange(event.target.value)}
+        value={serialNumbers[0] || ''}
+      />
+    );
+  }
+
+  return (
+    <div className="grid gap-2">
+      {serialNumbers.map((serialNumber, serialIndex) => (
+        <input
+          key={serialIndex}
+          onChange={(event) => {
+            const next = [...serialNumbers];
+            next[serialIndex] = event.target.value;
+            onChange(joinSerialNumbers(next));
+          }}
+          placeholder={`S/N ${serialIndex + 1}`}
+          value={serialNumber}
+        />
+      ))}
+    </div>
+  );
+}
+
+function serialNumberList(value: string, quantity: number) {
+  const items = value
+    .split(/[\n,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return Array.from({ length: quantity }, (_, index) => items[index] || '');
+}
+
+function resizeSerialNumberList(value: string, quantity: number) {
+  return joinSerialNumbers(serialNumberList(value, Math.max(1, quantity)));
+}
+
+function joinSerialNumbers(items: string[]) {
+  return items.map((item) => item.trim()).filter(Boolean).join(', ');
 }

@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, RefreshCw, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
@@ -18,6 +18,15 @@ type EngineerOption = {
   id: string;
   fullName?: string | null;
   email: string;
+};
+
+type StockMachine = {
+  id: string;
+  machineCode?: string | null;
+  serialNumber?: string | null;
+  modelName?: string | null;
+  name?: string | null;
+  customer?: { id?: string | null; name?: string | null } | null;
 };
 
 type MaintenanceForm = {
@@ -69,6 +78,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
   const [detail, setDetail] = useState<MaintenanceTask | null>(null);
   const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
+  const [installedMachines, setInstalledMachines] = useState<StockMachine[]>([]);
   const [form, setForm] = useState<MaintenanceForm>(() => emptyForm());
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
@@ -94,6 +104,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
       setDetail(maintenance);
       setForm(buildForm(maintenance));
       await loadMachineModels();
+      await loadInstalledMachines();
       if (isAdmin) {
         await loadEngineers();
       }
@@ -125,6 +136,26 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
     } catch {
       setMachineModels([]);
     }
+  }
+
+  async function loadInstalledMachines() {
+    try {
+      const result = await apiFetch<Paginated<StockMachine>>('/machines?limit=200&inventoryStatus=INSTALLED');
+      setInstalledMachines(result.data);
+    } catch {
+      setInstalledMachines([]);
+    }
+  }
+
+  function syncAddressFromCustomer() {
+    const c = detail?.customer || detail?.machine?.customer;
+    if (!c) return;
+    updateForm({
+      usingDepartment: (c as { name?: string | null }).name || form.usingDepartment,
+      representative: (detail?.customer ? detail.customer.contactPerson : '') || form.representative,
+      address: (detail?.customer ? (detail.customer.fullAddress || detail.customer.address || '') : '') || form.address,
+      contactPhone: (detail?.customer ? (detail.customer.contactPhone || detail.customer.phone || '') : '') || form.contactPhone,
+    });
   }
 
   async function loadAttachments() {
@@ -312,6 +343,31 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 ) : null}
                 <DateInput className={labelClass} label="Ngày bảo trì" onChange={(value) => updateForm({ scheduledDate: value })} value={form.scheduledDate} />
                 <DateInput className={labelClass} label="Lịch bảo trì tiếp theo" onChange={(value) => updateForm({ nextDueDate: value })} value={form.nextDueDate} />
+                <label className={`${labelClass} md:col-span-2`}>
+                  Chọn máy đã lắp đặt
+                  <select
+                    className={fieldClass}
+                    onChange={(event) => {
+                      const machine = installedMachines.find((m) => m.id === event.target.value);
+                      if (machine) {
+                        updateForm({
+                          serialNumber: machine.serialNumber || '',
+                          modelName: machine.modelName || machine.name || '',
+                          deviceName: machine.name || machine.modelName || '',
+                          machineModelId: '',
+                        });
+                      }
+                    }}
+                    value=""
+                  >
+                    <option value="">-- Chọn máy đã lắp đặt (hoặc nhập tay S/N) --</option>
+                    {installedMachines.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {[m.machineCode, m.serialNumber ? `S/N ${m.serialNumber}` : '', m.modelName || m.name].filter(Boolean).join(' - ')}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className={labelClass}>
                   S/N máy
                   <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
@@ -368,7 +424,12 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
               </div>
               <div className="grid min-w-0 gap-5 md:grid-cols-2">
                 <label className={labelClass}>
-                  Đơn vị sử dụng
+                  <span className="flex items-center gap-2">
+                    Đơn vị sử dụng
+                    <button className="text-xs font-medium text-[#b5121b] hover:underline" onClick={syncAddressFromCustomer} type="button">
+                      <RefreshCw size={13} className="inline" /> Lấy từ hồ sơ
+                    </button>
+                  </span>
                   <input className={fieldClass} onChange={(event) => updateForm({ usingDepartment: event.target.value })} value={form.usingDepartment} />
                 </label>
                 <label className={labelClass}>
@@ -513,6 +574,7 @@ function emptyForm(): MaintenanceForm {
 }
 
 function buildForm(maintenance: MaintenanceTask): MaintenanceForm {
+  const c = maintenance.customer || maintenance.machine?.customer;
   return {
     status: maintenance.status || 'IN_PROGRESS',
     type: maintenance.type || 'PERIODIC',
@@ -521,10 +583,10 @@ function buildForm(maintenance: MaintenanceTask): MaintenanceForm {
     nextDueDate: dateInputValue(maintenance.nextDueDate),
     resultNote: maintenance.resultNote || '',
     checklistText: maintenance.checklist?.join('\n') || '',
-    usingDepartment: maintenance.usingDepartment || maintenance.machine?.customer?.name || '',
-    representative: maintenance.representative || '',
-    address: maintenance.address || '',
-    contactPhone: maintenance.contactPhone || '',
+    usingDepartment: maintenance.usingDepartment || c?.name || '',
+    representative: maintenance.representative || (maintenance.customer ? (maintenance.customer.contactPerson || '') : ''),
+    address: maintenance.address || (maintenance.customer ? (maintenance.customer.fullAddress || maintenance.customer.address || '') : ''),
+    contactPhone: maintenance.contactPhone || (maintenance.customer ? (maintenance.customer.contactPhone || maintenance.customer.phone || '') : ''),
     deviceName: maintenance.deviceName || maintenance.machine?.modelName || '',
     machineModelId: '',
     modelName: maintenance.modelName || maintenance.machine?.modelName || '',

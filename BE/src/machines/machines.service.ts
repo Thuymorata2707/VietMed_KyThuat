@@ -1424,6 +1424,9 @@ export class MachinesService {
     where: Prisma.MachineWhereInput,
     user?: RequestUser,
   ): Prisma.MachineWhereInput {
+    if (where.inventoryStatus === 'IN_STOCK') {
+      return where;
+    }
     return {
       AND: [where, machineAccessWhere(user)],
     };
