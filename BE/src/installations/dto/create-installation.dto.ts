@@ -44,6 +44,18 @@ export class CreateInstallationDto {
 
   @IsOptional()
   @IsString()
+  machineSerialNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  machineCode?: string;
+
+  @IsOptional()
+  @IsString()
+  machineName?: string;
+
+  @IsOptional()
+  @IsString()
   machineModelId?: string;
 
   @IsOptional()

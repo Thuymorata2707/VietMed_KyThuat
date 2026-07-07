@@ -79,6 +79,18 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   const [stockMachines, setStockMachines] = useState<StockMachine[]>([]);
   const [form, setForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm('installation'));
   const isAdmin = role === 'admin';
+  const selectedMachine =
+    stockMachines.find((machine) => machine.id === form.machineId) ||
+    (detail?.machine?.id === form.machineId
+      ? {
+          id: detail.machine.id,
+          machineCode: detail.machine.machineCode,
+          serialNumber: detail.machine.serialNumber,
+          modelName: detail.machine.modelName,
+          name: detail.machine.name,
+          customer: null,
+        }
+      : null);
   const accessoryMode: 'probe' | 'endoscopy' | null = isEndoscopyMachineModel({
     code: detail?.plannedMachineModel?.code,
     name: detail?.plannedMachineModel?.name || detail?.plannedModelName || detail?.machine?.modelName,
@@ -435,6 +447,13 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                     value={form.machineId}
                   >
                     <option value="">-- Chọn máy trong kho (hoặc nhập tay S/N) --</option>
+                    {selectedMachine && !stockMachines.some((machine) => machine.id === selectedMachine.id) ? (
+                      <option value={selectedMachine.id}>
+                        {[selectedMachine.machineCode, selectedMachine.serialNumber ? `S/N ${selectedMachine.serialNumber}` : '', selectedMachine.modelName || selectedMachine.name]
+                          .filter(Boolean)
+                          .join(' - ')}
+                      </option>
+                    ) : null}
                     {stockMachines.map((m) => (
                       <option key={m.id} value={m.id}>
                         {[m.machineCode, m.serialNumber ? `S/N ${m.serialNumber}` : '', m.modelName || m.name].filter(Boolean).join(' - ')}
@@ -444,7 +463,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 </label>
                 <label className={labelClass}>
                   Model
-                  <input className={fieldClass} readOnly value={detail?.machine?.modelName || detail?.plannedMachineModel?.name || detail?.plannedModelName || ''} />
+                  <input className={fieldClass} readOnly value={selectedMachine?.modelName || selectedMachine?.name || detail?.plannedMachineModel?.name || detail?.plannedModelName || ''} />
                 </label>
                 <label className={labelClass}>
                   S/N máy thực tế

@@ -289,6 +289,7 @@ export type CreateTicketForm = {
   title: string;
   description: string;
   machineId: string;
+  machineCode: string;
   machineModelId: string;
   customerId: string;
   priority: string;

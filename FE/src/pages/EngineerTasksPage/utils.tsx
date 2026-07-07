@@ -94,6 +94,7 @@ export const emptyCreateTicketForm = (kind: TaskKind = 'repair'): CreateTicketFo
   title: '',
   description: '',
   machineId: '',
+  machineCode: '',
   machineModelId: '',
   customerId: '',
   priority: 'NORMAL',
@@ -171,6 +172,7 @@ export function taskModelText(task: EngineerTask) {
 }
 
 export function taskSerialText(task: EngineerTask) {
+  if (task.kind === 'installation') return task.machine?.serialNumber;
   return task.kind === 'repair' || task.kind === 'maintenance' ? task.serialNumber : undefined;
 }
 
@@ -464,8 +466,9 @@ export function buildInstallationEditForm(task: InstallationTask): CreateTicketF
   const installedAt = task.installedAt ? task.installedAt.slice(0, 10) : '';
   const warrantyStartDate = (task.warrantyStartDate || task.warrantyCard?.startDate)?.slice(0, 10) || installedAt;
   const warrantyEndDate = (task.warrantyEndDate || task.warrantyCard?.endDate)?.slice(0, 10) || '';
-  const installedDeviceItems = task.installedDeviceItems?.length
-    ? task.installedDeviceItems.map((item) => ({
+  const extraDeviceItems = installationExtraItems(task);
+  const installedDeviceItems = extraDeviceItems.length
+    ? extraDeviceItems.map((item) => ({
         itemName: item.itemName || '',
         model: item.model || '',
         serialNumber: item.serialNumber || '',
@@ -527,20 +530,45 @@ export function taskPrimaryMachineName(task: EngineerTask) {
 
 function installationPrimaryName(task: InstallationTask) {
   return (
-    task.installedDeviceItems?.find((item) => item.itemName || item.model || item.serialNumber)?.itemName ||
+    task.machine?.name ||
+    task.machine?.modelName ||
+    task.machine?.machineCode ||
     task.plannedMachineModel?.displayName ||
     task.plannedMachineModel?.name ||
     task.plannedModelName ||
-    task.machine?.modelName ||
-    task.machine?.machineCode ||
+    task.installedDeviceItems?.find((item) => item.itemName || item.model || item.serialNumber)?.itemName ||
     task.code ||
     'Chưa có tên thiết bị'
   );
 }
 
 function installationExtraCount(task: InstallationTask) {
-  const deviceCount = task.installedDeviceItems?.filter((item) => item.itemName || item.model || item.serialNumber).length ?? 0;
-  return Math.max(0, deviceCount - 1);
+  return installationExtraItems(task).filter((item) => item.itemName || item.model || item.serialNumber).length;
+}
+
+export function installationExtraItems(task: InstallationTask) {
+  return (task.installedDeviceItems || []).filter((item) => !isInstallationMainMachineItem(task, item));
+}
+
+function isInstallationMainMachineItem(task: InstallationTask, item: InstallationDeviceItem) {
+  const machineSerial = task.machine?.serialNumber?.trim().toLowerCase();
+  const itemSerial = item.serialNumber?.trim().toLowerCase();
+  if (machineSerial && itemSerial && machineSerial === itemSerial) return true;
+
+  const itemName = item.itemName?.trim().toLowerCase();
+  const itemModel = item.model?.trim().toLowerCase();
+  const mainNames = [
+    task.machine?.name,
+    task.machine?.modelName,
+    task.machine?.machineCode,
+    task.plannedMachineModel?.displayName,
+    task.plannedMachineModel?.name,
+    task.plannedModelName,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).trim().toLowerCase());
+
+  return !itemSerial && mainNames.some((value) => value && (value === itemName || value === itemModel));
 }
 
 export function taskContactPhone(task: EngineerTask) {

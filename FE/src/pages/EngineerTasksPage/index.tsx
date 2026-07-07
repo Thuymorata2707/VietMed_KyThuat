@@ -79,6 +79,7 @@ import {
   formatDailyWorkTime,
   groupTasksByDate,
   isEngineerUser,
+  installationExtraItems,
   isMachineEligibleForTicket,
   machinePickerEndpoint,
   machinePickerLabel,
@@ -472,6 +473,9 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           method: 'POST',
           body: JSON.stringify({
             machineId: createForm.machineId || undefined,
+            machineSerialNumber: createForm.machineId ? undefined : createForm.serialNumber.trim() || undefined,
+            machineCode: createForm.machineId ? undefined : createForm.machineCode.trim() || undefined,
+            machineName: createForm.machineId ? undefined : createForm.deviceName.trim() || undefined,
             machineModelId: createForm.machineModelId || undefined,
             plannedModelName: selectedModel?.name || createForm.modelName.trim() || undefined,
             customerId: createForm.customerId,
@@ -529,6 +533,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       ...current,
       kind,
       machineId: '',
+      machineCode: '',
       customerId: '',
       deviceName: '',
       modelName: '',
@@ -543,6 +548,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       ...current,
       kind,
       machineId: '',
+      machineCode: '',
       customerId: '',
       deviceName: '',
       modelName: '',
@@ -581,25 +587,14 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
   function selectCreateMachine(machine: PickerMachine) {
     setCreateForm((current) => {
-      const firstDevice = current.installedDeviceItems[0] || emptyInstallationDeviceItem();
-      const machineItem = {
-        ...firstDevice,
-        itemName: machine.name || firstDevice.itemName || machine.modelName || '',
-        model: machine.modelName || firstDevice.model,
-        serialNumber: machine.serialNumber || firstDevice.serialNumber,
-      };
-
       return {
         ...current,
         machineId: machine.id,
+        machineCode: machine.machineCode || current.machineCode,
         customerId: machine.customer?.id || current.customerId,
         modelName: machine.modelName || current.modelName,
         serialNumber: machine.serialNumber || current.serialNumber,
         deviceName: machine.name || current.deviceName,
-        installedDeviceItems:
-          current.kind === 'installation'
-            ? [machineItem, ...current.installedDeviceItems.slice(1)]
-            : current.installedDeviceItems,
       };
     });
   }
@@ -1058,12 +1053,12 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     value: machine.id,
                   })}
                   initialOptions={machineOptions.filter((option) => isMachineEligibleForTicket('installation', option.row))}
-                  label="Máy trong kho"
+                  label="Luồng 1: Chọn máy đã có hồ sơ"
                   onChange={(value, machine) => {
                     updateCreateForm({ machineId: value });
                     if (machine) selectCreateMachine(machine);
                   }}
-                  placeholder="Tìm mã máy, S/N hoặc model trong kho"
+                  placeholder="Tìm mã máy, S/N hoặc model"
                   rowFilter={(machine) => canEngineerSeeMachine(user, machine) && isMachineEligibleForTicket('installation', machine)}
                   value={createForm.machineId}
                 />
@@ -1087,7 +1082,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     row: model,
                     value: model.id,
                   }))}
-                  label="Model dự kiến"
+                  label="Model máy lắp đặt"
                   onChange={(value, model) => {
                     updateCreateForm({
                       machineModelId: value,
@@ -1101,6 +1096,48 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   value={createForm.machineModelId}
                 />
                 <ModelInfoFields model={machineModelOptions.find((model) => model.id === createForm.machineModelId)} />
+                </div>
+                <div className="quick-machine-form create-span-6">
+                  <div className="quick-customer-heading">
+                    <strong>Luồng 2: Nhập máy mới</strong>
+                    <span>Nếu máy chưa có hồ sơ, nhập S/N để hệ thống tạo máy và gắn vào phiếu.</span>
+                  </div>
+                  <label>
+                    Tên máy
+                    <input
+                      disabled={Boolean(createForm.machineId)}
+                      onChange={(event) => updateCreateForm({ deviceName: event.target.value })}
+                      placeholder="VD: Máy xét nghiệm miễn dịch"
+                      value={createForm.deviceName}
+                    />
+                  </label>
+                  <label>
+                    S/N máy mới
+                    <input
+                      disabled={Boolean(createForm.machineId)}
+                      onChange={(event) => updateCreateForm({ serialNumber: event.target.value })}
+                      placeholder="Nhập S/N nếu máy chưa có trong dữ liệu"
+                      value={createForm.serialNumber}
+                    />
+                  </label>
+                  <label>
+                    Mã máy nội bộ
+                    <input
+                      disabled={Boolean(createForm.machineId)}
+                      onChange={(event) => updateCreateForm({ machineCode: event.target.value })}
+                      placeholder="Có thể để trống"
+                      value={createForm.machineCode}
+                    />
+                  </label>
+                  {createForm.machineId ? (
+                    <button
+                      className="task-secondary"
+                      onClick={() => updateCreateForm({ machineId: '', machineCode: '', serialNumber: '', deviceName: '' })}
+                      type="button"
+                    >
+                      Nhập máy mới thay vì chọn máy có sẵn
+                    </button>
+                  ) : null}
                 </div>
               </>
             ) : (
@@ -1866,7 +1903,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     <dd>{deviceConditionLabel(selectedTask.deviceCondition, selectedTask.deviceConditionNote)}</dd>
                   </div>
                 </dl>
-                {selectedTask.installedDeviceItems?.length ? (
+                {installationExtraItems(selectedTask).length ? (
                   <div className="installed-device-table">
                     <table>
                       <thead>
@@ -1880,7 +1917,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedTask.installedDeviceItems.map((item, index) => (
+                        {installationExtraItems(selectedTask).map((item, index) => (
                           <tr key={`${item.itemName}-${index}`}>
                             <td>{item.itemName || '-'}</td>
                             <td>{item.model || '-'}</td>

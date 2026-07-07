@@ -79,7 +79,7 @@ export function InstallationHandoverForm({
         <input onChange={(event) => updateForm({ receiverPhone: event.target.value })} value={form.receiverPhone} />
       </label>
 
-      <div className="create-form-section">Máy lắp đặt</div>
+      <div className="create-form-section">Thiết bị bàn giao thêm</div>
       <div className="installation-device-list">
         {form.installedDeviceItems.map((item, index) => (
           <div className="installation-device-row" key={index}>
@@ -94,7 +94,6 @@ export function InstallationHandoverForm({
                     model: machineModelName(model),
                   });
                 }}
-                required={index === 0}
                 value={modelIdByName(machineModels, item.model)}
               >
                 <option value="">Chọn model</option>
@@ -107,7 +106,7 @@ export function InstallationHandoverForm({
             </label>
             <label>
               Tên sản phẩm
-              <input onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required={index === 0} value={item.itemName} />
+              <input onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} value={item.itemName} />
             </label>
             <label>
               S/N

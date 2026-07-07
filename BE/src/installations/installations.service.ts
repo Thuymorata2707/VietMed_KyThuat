@@ -56,7 +56,7 @@ export class InstallationsService {
 
     const installedById = isEngineer(actor) ? actor.id : dto.installedById;
 
-    const [machine, customer, engineer, businessLine, machineModel] = await Promise.all([
+    const [selectedMachine, customer, engineer, businessLine, machineModel] = await Promise.all([
       dto.machineId ? this.findMachine(dto.machineId) : Promise.resolve(null),
       this.findCustomer(dto.customerId),
       this.findEngineer(installedById),
@@ -64,12 +64,12 @@ export class InstallationsService {
       dto.machineModelId ? this.findMachineModel(dto.machineModelId) : Promise.resolve(null),
     ]);
 
-    if (machine?.inventoryStatus === MachineInventoryStatus.INSTALLED) {
+    if (selectedMachine?.inventoryStatus === MachineInventoryStatus.INSTALLED) {
       throw new BadRequestException('Machine is already installed');
     }
 
-    if (machine) {
-      await this.assertEngineerCanUseMachine(actor, machine);
+    if (selectedMachine) {
+      await this.assertEngineerCanUseMachine(actor, selectedMachine);
     }
 
     const installedAt =
@@ -89,6 +89,19 @@ export class InstallationsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      const machine =
+        selectedMachine ??
+        (dto.machineSerialNumber?.trim()
+          ? await this.createManualInstallationMachine(tx, {
+              dto,
+              actor,
+              customerId: customer.id,
+              engineerId: engineer.id,
+              machineModel,
+              businessLineId: businessLine?.id ?? machineModel?.businessLineId ?? null,
+              installedAt,
+            })
+          : null);
       const installationCode = await this.generateInstallationCode(
         tx,
         machine,
@@ -1207,32 +1220,31 @@ export class InstallationsService {
       }))
       .filter((item) => item.itemName !== '................................');
 
-    if (normalized.length) {
-      return normalized;
-    }
+    const mainMachineRow = {
+      itemName: docValue(
+        installation.machine?.name ||
+          installation.plannedMachineModel?.displayName ||
+          installation.plannedMachineModel?.name ||
+          installation.plannedModelName ||
+          'Thiết bị',
+      ),
+      model: docValue(
+        installation.machine?.modelName ||
+          installation.plannedMachineModel?.name ||
+          installation.plannedModelName,
+      ),
+      serialNumber: docValue(installation.machine?.serialNumber),
+      manufactureDate: null,
+      quantity: 1,
+      warrantyPeriod: formatWarrantyPeriod(
+        installation.warrantyStartDate || installation.warrantyCard?.startDate,
+        installation.warrantyEndDate || installation.warrantyCard?.endDate,
+      ),
+    };
 
     return [
-      {
-        itemName: docValue(
-          installation.machine?.name ||
-            installation.plannedMachineModel?.displayName ||
-            installation.plannedMachineModel?.name ||
-            installation.plannedModelName ||
-            'Thiết bị',
-        ),
-        model: docValue(
-          installation.machine?.modelName ||
-            installation.plannedMachineModel?.name ||
-            installation.plannedModelName,
-        ),
-        serialNumber: docValue(installation.machine?.serialNumber),
-        manufactureDate: null,
-        quantity: 1,
-        warrantyPeriod: formatWarrantyPeriod(
-          installation.warrantyStartDate || installation.warrantyCard?.startDate,
-          installation.warrantyEndDate || installation.warrantyCard?.endDate,
-        ),
-      },
+      mainMachineRow,
+      ...normalized.filter((item) => !isSameHandoverDevice(item, mainMachineRow)),
     ];
   }
 
@@ -1240,10 +1252,13 @@ export class InstallationsService {
     if (
       !dto.customerId ||
       !dto.installedById ||
-      (!dto.machineId && !dto.machineModelId && !dto.plannedModelName?.trim())
+      (!dto.machineId &&
+        !dto.machineSerialNumber?.trim() &&
+        !dto.machineModelId &&
+        !dto.plannedModelName?.trim())
     ) {
       throw new BadRequestException(
-        'customerId, installedById and machineId or planned model are required',
+        'customerId, installedById and machineId, machine serial number or planned model are required',
       );
     }
 
@@ -1252,6 +1267,67 @@ export class InstallationsService {
         'deviceConditionNote is required when deviceCondition is OTHER',
       );
     }
+  }
+
+  private async createManualInstallationMachine(
+    tx: Prisma.TransactionClient,
+    input: {
+      dto: CreateInstallationDto;
+      actor: RequestUser;
+      customerId: string;
+      engineerId: string;
+      machineModel: Awaited<ReturnType<InstallationsService['findMachineModel']>> | null;
+      businessLineId: string | null;
+      installedAt: Date;
+    },
+  ) {
+    const serialNumber = input.dto.machineSerialNumber?.trim().toUpperCase();
+    if (!serialNumber) {
+      return null;
+    }
+
+    const existing = await tx.machine.findUnique({
+      where: { serialNumber },
+    });
+
+    if (existing) {
+      if (existing.inventoryStatus === MachineInventoryStatus.INSTALLED) {
+        throw new BadRequestException('Machine is already installed');
+      }
+      return existing;
+    }
+
+    const fallbackModelName =
+      input.dto.plannedModelName?.trim() ||
+      input.dto.machineName?.trim() ||
+      input.machineModel?.name ||
+      'Máy lắp đặt';
+
+    return tx.machine.create({
+      data: {
+        machineCode: input.dto.machineCode?.trim() || null,
+        serialNumber,
+        name:
+          input.dto.machineName?.trim() ||
+          input.machineModel?.displayName ||
+          input.machineModel?.name ||
+          fallbackModelName,
+        modelName: input.machineModel?.name || fallbackModelName,
+        manufacturer: input.machineModel?.manufacturer || '',
+        productCategory: input.machineModel?.productCategory || 'OTHER',
+        productLine: input.machineModel?.productLine || null,
+        machineModelId: input.machineModel?.id || null,
+        businessLineId: input.businessLineId,
+        customerId: input.customerId,
+        installedById: input.engineerId,
+        primaryEngineerId: input.engineerId,
+        warehouseImportDate: input.installedAt,
+        inventoryStatus: MachineInventoryStatus.RESERVED,
+        status: MachineStatus.ACTIVE,
+        createdSource: isEngineer(input.actor) ? 'ENGINEER' : 'ADMIN',
+        dataStatus: isEngineer(input.actor) ? 'PENDING_REVIEW' : 'VERIFIED',
+      },
+    });
   }
 
   private async findMachine(machineId: string) {
@@ -1388,7 +1464,7 @@ export class InstallationsService {
         customerId: installation.customerId,
         installedById: installation.installedById,
         primaryEngineerId: installation.installedById,
-        inventoryStatus: MachineInventoryStatus.IN_STOCK,
+        inventoryStatus: MachineInventoryStatus.RESERVED,
         status: MachineStatus.ACTIVE,
         createdSource: isEngineer(actor) ? 'ENGINEER' : 'ADMIN',
         dataStatus: isEngineer(actor) ? 'PENDING_REVIEW' : 'VERIFIED',
@@ -1974,6 +2050,31 @@ function borderlessTableBorders() {
 function docValue(value?: string | number | null) {
   const text = value === undefined || value === null ? '' : String(value).trim();
   return text || '................................';
+}
+
+function isSameHandoverDevice(
+  item: { itemName: string; model: string; serialNumber: string },
+  main: { itemName: string; model: string; serialNumber: string },
+) {
+  const itemSerial = normalizedDocValue(item.serialNumber);
+  const mainSerial = normalizedDocValue(main.serialNumber);
+  if (itemSerial && mainSerial && itemSerial === mainSerial) return true;
+
+  const itemName = normalizedDocValue(item.itemName);
+  const itemModel = normalizedDocValue(item.model);
+  const mainName = normalizedDocValue(main.itemName);
+  const mainModel = normalizedDocValue(main.model);
+
+  return Boolean(
+    !itemSerial &&
+      ((itemName && (itemName === mainName || itemName === mainModel)) ||
+        (itemModel && (itemModel === mainModel || itemModel === mainName))),
+  );
+}
+
+function normalizedDocValue(value?: string | null) {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === '................................' ? '' : normalized;
 }
 
 function formatVietnameseFullDate(value?: Date | string | null) {
