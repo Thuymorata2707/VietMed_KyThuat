@@ -115,6 +115,7 @@ type InstallationDeviceItem = {
   serialNumber: string;
   manufactureDate: string;
   quantity: number;
+  sourceMachineId: string;
   warrantyPeriod: string;
 };
 
@@ -245,8 +246,8 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const visibleMachineModels = useMemo(() => machineModels.filter((model) => canEngineerUseModel(user, model)), [machineModels, user]);
   const selectedMachine = useMemo(() => visibleMachines.find((machine) => machine.id === form.machineId), [form.machineId, visibleMachines]);
   const installationDeviceSummary = useMemo(
-    () => buildInstallationDeviceSummary(form, visibleMachineModels),
-    [form, visibleMachineModels],
+    () => buildInstallationDeviceSummary(form),
+    [form],
   );
   const selectedModel = useMemo(
     () => visibleMachineModels.find((model) => model.id === quickMachineForm.machineModelId),
@@ -427,10 +428,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   function removeInstallationDeviceItem(index: number) {
     setForm((current) => ({
       ...current,
-      installedDeviceItems:
-        current.installedDeviceItems.length === 1
-          ? [emptyInstallationDeviceItem()]
-          : current.installedDeviceItems.filter((_, itemIndex) => itemIndex !== index),
+      installedDeviceItems: current.installedDeviceItems.filter((_, itemIndex) => itemIndex !== index),
     }));
   }
 
@@ -466,6 +464,17 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   }
 
   function applyMachine(machine?: MachineOption, fallbackMachineId = machine?.id ?? '') {
+    if (!machine && !fallbackMachineId) {
+      updateForm({
+        machineId: '',
+        deviceName: '',
+        modelName: '',
+        machineModelId: '',
+        serialNumber: '',
+      });
+      return;
+    }
+
     updateForm({
       machineId: machine?.id || fallbackMachineId,
       customerId: machine?.customer?.id || form.customerId,
@@ -661,6 +670,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 <InstallationFields
                   addDeviceItem={addInstallationDeviceItem}
                   form={form}
+                  machines={visibleMachines}
                   models={visibleMachineModels}
                   removeDeviceItem={removeInstallationDeviceItem}
                   updateDeviceItem={updateInstallationDeviceItem}
@@ -893,6 +903,7 @@ function ModelDeviceSelect({ form, models, updateForm }: { form: TicketForm; mod
 function InstallationFields({
   addDeviceItem,
   form,
+  machines,
   models,
   removeDeviceItem,
   updateDeviceItem,
@@ -900,21 +911,39 @@ function InstallationFields({
 }: {
   addDeviceItem: () => void;
   form: TicketForm;
+  machines: MachineOption[];
   models: MachineModelOption[];
   removeDeviceItem: (index: number) => void;
   updateDeviceItem: (index: number, patch: Partial<InstallationDeviceItem>) => void;
   updateForm: (patch: Partial<TicketForm>) => void;
 }) {
+  const selectedMachine = machines.find((machine) => machine.id === form.machineId);
+  const extraMachineOptions = machines.filter((machine) => machine.id !== form.machineId);
+
   return (
     <>
       <DateInput className={labelClass} label="Ngày lắp đặt" onChange={(value) => updateForm({ scheduledDate: value, warrantyStartDate: value })} required value={form.scheduledDate} />
       <DateInput className={labelClass} label="Bắt đầu bảo hành" onChange={(value) => updateForm({ warrantyStartDate: value })} value={form.warrantyStartDate} />
       <DateInput className={labelClass} label="Kết thúc bảo hành" onChange={(value) => updateForm({ warrantyEndDate: value })} required value={form.warrantyEndDate} />
-      <ModelDeviceSelect form={form} models={models} updateForm={updateForm} />
-      <label className={labelClass}>
-        S/N máy chính
-        <input className={fieldClass} disabled={Boolean(form.machineId)} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
-      </label>
+      {form.machineId ? (
+        <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 md:col-span-2">
+          <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#42638f]">Máy chính đã chọn</span>
+          <div className="mt-2 grid gap-2 text-sm font-semibold text-[#172033] md:grid-cols-3">
+            <span className="rounded-xl bg-white px-3 py-2">{selectedMachine?.machineCode || 'Chưa có mã máy'}</span>
+            <span className="rounded-xl bg-white px-3 py-2">{selectedMachine?.modelName || selectedMachine?.name || form.modelName || 'Chưa có model'}</span>
+            <span className="rounded-xl bg-white px-3 py-2">{selectedMachine?.serialNumber ? `S/N ${selectedMachine.serialNumber}` : 'Chưa có S/N'}</span>
+          </div>
+          <p className="mt-2 text-xs font-medium text-[#64748b]">Đã chọn máy có hồ sơ nên không cần chọn model hoặc nhập S/N máy chính ở dưới.</p>
+        </div>
+      ) : (
+        <>
+          <ModelDeviceSelect form={form} models={models} updateForm={updateForm} />
+          <label className={labelClass}>
+            S/N máy chính
+            <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
+          </label>
+        </>
+      )}
       <div className="md:col-span-2">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -922,10 +951,15 @@ function InstallationFields({
             <p className="mt-1 text-xs font-medium text-[#64748b]">Chỉ thêm thiết bị/phụ kiện bàn giao kèm, không nhập lại máy chính.</p>
           </div>
           <button className="secondary-button compact" onClick={addDeviceItem} type="button">
-            Thêm dòng
+            Thêm thiết bị
           </button>
         </div>
         <div className="grid gap-3">
+          {form.installedDeviceItems.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-4 py-5 text-sm font-medium text-[#64748b]">
+              Chưa có thiết bị bàn giao thêm. Khi cần bàn giao thêm máy/phụ kiện, bấm “Thêm thiết bị”.
+            </div>
+          ) : null}
           {form.installedDeviceItems.map((item, index) => (
             <div className="rounded-[18px] border border-[#dbe6f3] bg-[#fbfdff] p-3" key={index}>
               <div className="mb-3 flex items-center justify-between gap-3">
@@ -935,6 +969,35 @@ function InstallationFields({
                 </button>
               </div>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <label className={`${labelClass} xl:col-span-3`}>
+                  Chọn thiết bị có sẵn
+                  <select
+                    className={fieldClass}
+                    onChange={(event) => {
+                      const machine = extraMachineOptions.find((option) => option.id === event.target.value);
+                      updateDeviceItem(
+                        index,
+                        machine
+                          ? {
+                              sourceMachineId: machine.id,
+                              itemName: machine.name || machine.modelName || '',
+                              model: machine.modelName || machine.machineModel?.name || machine.name || '',
+                              serialNumber: machine.serialNumber || '',
+                              quantity: 1,
+                            }
+                          : { sourceMachineId: '' },
+                      );
+                    }}
+                    value={item.sourceMachineId}
+                  >
+                    <option value="">Nhập tay hoặc chọn model bên dưới</option>
+                    {extraMachineOptions.map((machine) => (
+                      <option key={machine.id} value={machine.id}>
+                        {machineLabel(machine)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className={labelClass}>
                   Model
                   <select
@@ -942,6 +1005,7 @@ function InstallationFields({
                     onChange={(event) => {
                       const model = models.find((option) => option.id === event.target.value);
                       updateDeviceItem(index, {
+                        sourceMachineId: '',
                         itemName: machineProductName(model) || item.itemName,
                         model: machineModelName(model),
                       });
@@ -1278,7 +1342,7 @@ function emptyTicketForm(user: ApiUser, kind: TicketKind): TicketForm {
     warrantyEndDate: '',
     warrantyStartDate: kind === 'installation' ? date : '',
     warrantyStatus: 'IN_WARRANTY',
-    installedDeviceItems: [emptyInstallationDeviceItem()],
+    installedDeviceItems: kind === 'installation' ? [] : [emptyInstallationDeviceItem()],
   };
 }
 
@@ -1289,6 +1353,7 @@ function emptyInstallationDeviceItem(): InstallationDeviceItem {
     serialNumber: '',
     manufactureDate: '',
     quantity: 1,
+    sourceMachineId: '',
     warrantyPeriod: '',
   };
 }
@@ -1368,7 +1433,7 @@ async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineMo
   }
 
   const primaryModel = visibleMachineModels.find((model) => model.id === form.machineModelId);
-  const deviceSummary = buildInstallationDeviceSummary(form, visibleMachineModels);
+  const deviceSummary = buildInstallationDeviceSummary(form);
 
   return apiFetch('/installations', {
     method: 'POST',
@@ -1407,7 +1472,7 @@ function normalizeInstallationDeviceItems(items: InstallationDeviceItem[]) {
     .filter((item) => item.itemName);
 }
 
-function buildInstallationDeviceSummary(form: TicketForm, models: MachineModelOption[]) {
+function buildInstallationDeviceSummary(form: TicketForm) {
   const primaryName = form.deviceName.trim() || form.modelName.trim();
   const primarySummary = [primaryName, form.serialNumber.trim() ? `S/N ${form.serialNumber.trim()}` : ''].filter(Boolean).join(' - ');
   const extraCount = form.installedDeviceItems.filter((item) => item.itemName.trim() || item.model.trim() || item.serialNumber.trim()).length;
@@ -1419,27 +1484,9 @@ function buildInstallationDeviceSummary(form: TicketForm, models: MachineModelOp
     };
   }
 
-  const devices = form.installedDeviceItems
-    .map((item) => {
-      const model = models.find((candidate) => candidate.id === modelIdByName(models, item.model));
-      const modelName = model ? modelLabel(model) : item.model.trim();
-      const productName = item.itemName.trim() || machineProductName(model);
-      const displayName = productName || modelName;
-
-      return {
-        name: displayName,
-        serialNumber: item.serialNumber.trim(),
-      };
-    })
-    .filter((item) => item.name || item.serialNumber);
-
-  const primary = devices[0];
-  const fallbackPrimaryName = primary?.name || '';
-  const fallbackPrimarySummary = [fallbackPrimaryName, primary?.serialNumber ? `S/N ${primary.serialNumber}` : ''].filter(Boolean).join(' - ');
-
   return {
-    primaryName: fallbackPrimaryName,
-    summary: fallbackPrimarySummary || fallbackPrimaryName,
+    primaryName: '',
+    summary: extraCount ? `${extraCount} thiết bị bàn giao thêm, chưa chọn máy chính` : '',
   };
 }
 
