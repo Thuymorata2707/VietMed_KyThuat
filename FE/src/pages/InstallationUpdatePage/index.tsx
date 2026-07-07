@@ -162,8 +162,12 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
 
   async function loadStockMachines() {
     try {
-      const result = await apiFetch<Paginated<StockMachine>>('/machines?limit=200&inventoryStatus=IN_STOCK');
-      setStockMachines(result.data);
+      const results = await Promise.all(
+        ['IN_STOCK', 'RESERVED', 'RETURNED'].map((inventoryStatus) =>
+          apiFetch<Paginated<StockMachine>>(`/machines?limit=200&inventoryStatus=${inventoryStatus}`),
+        ),
+      );
+      setStockMachines(mergeMachines(results.flatMap((result) => result.data)));
     } catch {
       setStockMachines([]);
     }
@@ -783,6 +787,15 @@ function dateInputValue(value?: string | null) {
 
 function machineModelLabel(model: MachineModelOption) {
   return machineModelOptionLabel(model) || machineModelName(model) || 'Model';
+}
+
+function mergeMachines(machines: StockMachine[]) {
+  const seen = new Set<string>();
+  return machines.filter((machine) => {
+    if (!machine.id || seen.has(machine.id)) return false;
+    seen.add(machine.id);
+    return true;
+  });
 }
 
 function modelIdByName(models: MachineModelOption[], value: string) {

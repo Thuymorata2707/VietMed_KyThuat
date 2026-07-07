@@ -11,6 +11,7 @@ type AsyncEntityPickerProps<Row extends { id: string }> = {
   disabled?: boolean;
   endpoint: string;
   formatOption: (row: Row) => PickerOption<Row>;
+  inputClassName?: string;
   initialOptions: Array<PickerOption<Row>>;
   label: string;
   onChange: (value: string, row?: Row) => void;
@@ -25,6 +26,7 @@ export function AsyncEntityPicker<Row extends { id: string }>({
   disabled,
   endpoint,
   formatOption,
+  inputClassName,
   initialOptions,
   label,
   onChange,
@@ -88,11 +90,19 @@ export function AsyncEntityPicker<Row extends { id: string }>({
 
   const inputValue = open ? search : selectedOption?.label || '';
 
+  const rootClass = [
+    'grid min-w-0 content-start gap-2 font-sans text-sm font-semibold leading-snug text-[#333333]',
+    className,
+  ].filter(Boolean).join(' ');
+  const inputClass = inputClassName ||
+    'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-white px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
+
   return (
-    <div className={['async-entity-picker', className].filter(Boolean).join(' ')}>
+    <div className={rootClass}>
       <span>{label}</span>
-      <div className="async-picker-control">
+      <div className="relative min-w-0">
         <input
+          className={inputClass}
           disabled={disabled}
           onBlur={() => {
             window.setTimeout(() => {
@@ -111,15 +121,18 @@ export function AsyncEntityPicker<Row extends { id: string }>({
           placeholder={placeholder}
           value={inputValue}
         />
-        {required && !value ? <input className="async-picker-required" required value="" onChange={() => null} /> : null}
+        {required && !value ? <input className="pointer-events-none absolute h-px w-px opacity-0" required value="" onChange={() => null} /> : null}
         {open ? (
-          <div className="async-picker-menu">
-            {loading ? <div className="async-picker-state">Đang tìm...</div> : null}
-            {!loading && options.length === 0 ? <div className="async-picker-state">Không tìm thấy dữ liệu phù hợp.</div> : null}
+          <div className="absolute left-0 right-0 top-[calc(100%+0.45rem)] z-50 grid max-h-72 overflow-y-auto rounded-2xl border border-[#ded8d8] bg-white p-1.5 shadow-[0_18px_44px_rgba(15,23,42,0.16)]">
+            {loading ? <div className="p-3 text-sm font-semibold text-[#667085]">Đang tìm...</div> : null}
+            {!loading && options.length === 0 ? <div className="p-3 text-sm font-semibold text-[#667085]">Không tìm thấy dữ liệu phù hợp.</div> : null}
             {!loading
               ? options.map((option) => (
                   <button
-                    className={option.value === value ? 'active' : ''}
+                    className={[
+                      'w-full rounded-xl border-0 bg-transparent px-3 py-3 text-left text-sm font-semibold text-[#1f1f1f] hover:bg-[#f4f7fb]',
+                      option.value === value ? 'bg-[#f4f7fb]' : '',
+                    ].filter(Boolean).join(' ')}
                     key={option.value}
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => choose(option)}

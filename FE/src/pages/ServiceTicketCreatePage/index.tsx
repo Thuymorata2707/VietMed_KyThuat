@@ -202,9 +202,17 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const machinesQuery = useQuery({
     queryKey: queryKeys.serviceTickets.machines(kind),
     queryFn: async () => {
-      const inventoryStatus = kind === 'installation' ? 'IN_STOCK' : 'INSTALLED';
-      const result = await apiFetch<Paginated<MachineOption>>(`/machines?limit=100&inventoryStatus=${inventoryStatus}`);
-      return result.data.filter((machine) => canEngineerUseMachine(user, machine));
+      if (kind !== 'installation') {
+        const result = await apiFetch<Paginated<MachineOption>>('/machines?limit=100&inventoryStatus=INSTALLED');
+        return result.data.filter((machine) => canEngineerUseMachine(user, machine));
+      }
+
+      const results = await Promise.all(
+        ['IN_STOCK', 'RESERVED', 'RETURNED'].map((inventoryStatus) =>
+          apiFetch<Paginated<MachineOption>>(`/machines?limit=100&inventoryStatus=${inventoryStatus}`),
+        ),
+      );
+      return mergeMachines(results.flatMap((result) => result.data)).filter((machine) => canEngineerUseMachine(user, machine));
     },
   });
 
@@ -237,8 +245,8 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const visibleMachineModels = useMemo(() => machineModels.filter((model) => canEngineerUseModel(user, model)), [machineModels, user]);
   const selectedMachine = useMemo(() => visibleMachines.find((machine) => machine.id === form.machineId), [form.machineId, visibleMachines]);
   const installationDeviceSummary = useMemo(
-    () => buildInstallationDeviceSummary(form.installedDeviceItems, visibleMachineModels),
-    [form.installedDeviceItems, visibleMachineModels],
+    () => buildInstallationDeviceSummary(form, visibleMachineModels),
+    [form, visibleMachineModels],
   );
   const selectedModel = useMemo(
     () => visibleMachineModels.find((model) => model.id === quickMachineForm.machineModelId),
@@ -332,10 +340,6 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         deviceName: current.deviceName || machine.name || quickMachineForm.modelName,
         modelName: current.modelName || machine.modelName || quickMachineForm.modelName,
         serialNumber: current.serialNumber || machine.serialNumber || quickMachineForm.serialNumber,
-        installedDeviceItems:
-          kind === 'installation'
-            ? syncPrimaryInstallationItem(current.installedDeviceItems, machine)
-            : current.installedDeviceItems,
       }));
       setQuickMachineForm(emptyQuickMachineForm());
       setShowQuickMachine(false);
@@ -578,6 +582,20 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 </label>
               ) : null}
 
+              {kind === 'installation' ? (
+                <label className={wideLabelClass}>
+                  Máy đã có hồ sơ
+                  <select className={fieldClass} disabled={loading} onChange={(event) => selectMachine(event.target.value)} value={form.machineId}>
+                    <option value="">Không bắt buộc, chọn máy nếu đã có trong dữ liệu</option>
+                    {visibleMachines.map((machine) => (
+                      <option key={machine.id} value={machine.id}>
+                        {machineLabel(machine)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+
               {kind !== 'installation' ? (
                 <AsyncEntityPicker<CustomerOption>
                   className={labelClass}
@@ -589,6 +607,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                     value: customer.id,
                   })}
                   initialOptions={customerOptions}
+                  inputClassName={fieldClass}
                   label="Khách hàng"
                   onChange={(value, customer) => {
                     rememberCustomerOption(customer);
@@ -610,6 +629,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                     value: customer.id,
                   })}
                   initialOptions={customerOptions}
+                  inputClassName={fieldClass}
                   label="Khách hàng"
                   onChange={(value, customer) => {
                     rememberCustomerOption(customer);
@@ -890,11 +910,16 @@ function InstallationFields({
       <DateInput className={labelClass} label="Ngày lắp đặt" onChange={(value) => updateForm({ scheduledDate: value, warrantyStartDate: value })} required value={form.scheduledDate} />
       <DateInput className={labelClass} label="Bắt đầu bảo hành" onChange={(value) => updateForm({ warrantyStartDate: value })} value={form.warrantyStartDate} />
       <DateInput className={labelClass} label="Kết thúc bảo hành" onChange={(value) => updateForm({ warrantyEndDate: value })} required value={form.warrantyEndDate} />
+      <ModelDeviceSelect form={form} models={models} updateForm={updateForm} />
+      <label className={labelClass}>
+        S/N máy chính
+        <input className={fieldClass} disabled={Boolean(form.machineId)} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
+      </label>
       <div className="md:col-span-2">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-bold text-[#172033]">Danh sách thiết bị</h3>
-            <p className="mt-1 text-xs font-medium text-[#64748b]">Thêm các thiết bị được bàn giao trong cùng biên bản.</p>
+            <h3 className="text-base font-bold text-[#172033]">Thiết bị bàn giao thêm</h3>
+            <p className="mt-1 text-xs font-medium text-[#64748b]">Chỉ thêm thiết bị/phụ kiện bàn giao kèm, không nhập lại máy chính.</p>
           </div>
           <button className="secondary-button compact" onClick={addDeviceItem} type="button">
             Thêm dòng
@@ -920,15 +945,7 @@ function InstallationFields({
                         itemName: machineProductName(model) || item.itemName,
                         model: machineModelName(model),
                       });
-                      if (index === 0) {
-                        updateForm({
-                          machineModelId: event.target.value,
-                          modelName: model?.name || model?.displayName || model?.code || '',
-                          deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
-                        });
-                      }
                     }}
-                    required={index === 0}
                     value={modelIdByName(models, item.model)}
                   >
                     <option value="">Chọn model</option>
@@ -941,7 +958,7 @@ function InstallationFields({
                 </label>
                 <label className={labelClass}>
                   Tên sản phẩm
-                  <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} required={index === 0} value={item.itemName} />
+                  <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { itemName: event.target.value })} value={item.itemName} />
                 </label>
                 <label className={labelClass}>
                   S/N
@@ -1350,15 +1367,16 @@ async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineMo
     });
   }
 
-  const primaryItem = form.installedDeviceItems.find((item) => item.itemName.trim() || item.model.trim());
-  const primaryModel = primaryItem ? visibleMachineModels.find((model) => modelIdByName(visibleMachineModels, primaryItem.model) === model.id) : undefined;
-  const deviceSummary = buildInstallationDeviceSummary(form.installedDeviceItems, visibleMachineModels);
+  const primaryModel = visibleMachineModels.find((model) => model.id === form.machineModelId);
+  const deviceSummary = buildInstallationDeviceSummary(form, visibleMachineModels);
 
   return apiFetch('/installations', {
     method: 'POST',
     body: JSON.stringify({
       machineId: form.machineId || undefined,
       machineModelId: primaryModel?.id || form.machineModelId || undefined,
+      machineSerialNumber: form.machineId ? undefined : form.serialNumber.trim() || undefined,
+      machineName: form.machineId ? undefined : form.deviceName.trim() || undefined,
       plannedModelName:
         deviceSummary.primaryName ||
         machineProductName(primaryModel) ||
@@ -1389,8 +1407,19 @@ function normalizeInstallationDeviceItems(items: InstallationDeviceItem[]) {
     .filter((item) => item.itemName);
 }
 
-function buildInstallationDeviceSummary(items: InstallationDeviceItem[], models: MachineModelOption[]) {
-  const devices = items
+function buildInstallationDeviceSummary(form: TicketForm, models: MachineModelOption[]) {
+  const primaryName = form.deviceName.trim() || form.modelName.trim();
+  const primarySummary = [primaryName, form.serialNumber.trim() ? `S/N ${form.serialNumber.trim()}` : ''].filter(Boolean).join(' - ');
+  const extraCount = form.installedDeviceItems.filter((item) => item.itemName.trim() || item.model.trim() || item.serialNumber.trim()).length;
+
+  if (primaryName || form.serialNumber.trim()) {
+    return {
+      primaryName,
+      summary: extraCount ? `${primarySummary || primaryName} + ${extraCount} thiết bị khác` : primarySummary || primaryName,
+    };
+  }
+
+  const devices = form.installedDeviceItems
     .map((item) => {
       const model = models.find((candidate) => candidate.id === modelIdByName(models, item.model));
       const modelName = model ? modelLabel(model) : item.model.trim();
@@ -1405,35 +1434,13 @@ function buildInstallationDeviceSummary(items: InstallationDeviceItem[], models:
     .filter((item) => item.name || item.serialNumber);
 
   const primary = devices[0];
-  const primaryName = primary?.name || '';
-  const primarySummary = [primaryName, primary?.serialNumber ? `S/N ${primary.serialNumber}` : ''].filter(Boolean).join(' - ');
-  const extraCount = Math.max(0, devices.length - 1);
+  const fallbackPrimaryName = primary?.name || '';
+  const fallbackPrimarySummary = [fallbackPrimaryName, primary?.serialNumber ? `S/N ${primary.serialNumber}` : ''].filter(Boolean).join(' - ');
 
   return {
-    primaryName,
-    summary: extraCount ? `${primarySummary || primaryName} + ${extraCount} thiết bị khác` : primarySummary || primaryName,
+    primaryName: fallbackPrimaryName,
+    summary: fallbackPrimarySummary || fallbackPrimaryName,
   };
-}
-
-function syncPrimaryInstallationItem(items: InstallationDeviceItem[], machine: MachineOption) {
-  const itemName = machine.machineModel
-    ? machineProductName(machine.machineModel) || machine.name || machine.modelName || ''
-    : machine.name || machine.modelName || '';
-
-  const nextItem: InstallationDeviceItem = {
-    itemName,
-    model: machine.machineModel ? machineModelName(machine.machineModel) : machine.modelName || '',
-    serialNumber: machine.serialNumber || '',
-    manufactureDate: '',
-    quantity: 1,
-    warrantyPeriod: '',
-  };
-
-  if (!items.length) return [nextItem];
-
-  const [first, ...rest] = items;
-  const firstIsEmpty = !first.itemName.trim() && !first.model.trim() && !first.serialNumber.trim();
-  return [firstIsEmpty ? nextItem : first, ...rest];
 }
 
 function splitLines(value: string) {
@@ -1491,6 +1498,15 @@ function mergePickerOptions<Row>(options: Array<PickerOption<Row>>) {
 
 function machineLabel(machine: MachineOption) {
   return [machine.machineCode, machine.serialNumber, machine.modelName || machine.name, machine.customer?.name].filter(Boolean).join(' - ');
+}
+
+function mergeMachines(machines: MachineOption[]) {
+  const seen = new Set<string>();
+  return machines.filter((machine) => {
+    if (!machine.id || seen.has(machine.id)) return false;
+    seen.add(machine.id);
+    return true;
+  });
 }
 
 function modelLabel(model: MachineModelOption) {
