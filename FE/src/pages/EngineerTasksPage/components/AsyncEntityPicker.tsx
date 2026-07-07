@@ -74,7 +74,12 @@ export function AsyncEntityPicker<Row extends { id: string }>({
       const nextOptions = result.data
         .filter((row) => (rowFilter ? rowFilter(row) : true))
         .map(formatOption);
-      setOptions(mergePickerOptions([...(selectedOption ? [selectedOption] : []), ...initialOptions, ...nextOptions]));
+      const baseOptions = search.trim()
+        ? selectedOption
+          ? [selectedOption]
+          : []
+        : [...(selectedOption ? [selectedOption] : []), ...initialOptions];
+      setOptions(mergePickerOptions([...baseOptions, ...nextOptions]));
     } catch {
       setOptions((current) => current);
     } finally {
