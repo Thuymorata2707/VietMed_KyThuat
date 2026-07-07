@@ -51,7 +51,6 @@ import {
   canEngineerSeeMachine,
   canEngineerSeeModel,
   compareTasks,
-  createTicketHrefForTab,
   createTicketLabelForTab,
   createTicketTitle,
   customerPickerLabel,
@@ -1000,6 +999,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
       <section className="grid grid-cols-1 gap-4 min-[1180px]:grid-cols-[minmax(0,1fr)_340px]">
         <TodayCommandCenter
+          createLabel={createTicketLabelForTab(businessTab)}
           onCreate={openCreateRequest}
           onFilter={focusTaskList}
           onOpen={openTask}

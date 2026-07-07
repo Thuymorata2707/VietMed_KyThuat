@@ -79,12 +79,14 @@ export function WeeklyReportQuickCard({ loading, report }: { loading: boolean; r
 }
 
 export function TodayCommandCenter({
+  createLabel = 'Tạo phiếu',
   onCreate,
   onFilter,
   onOpen,
   stats,
   tasks,
 }: {
+  createLabel?: string;
   onCreate: () => void;
   onFilter: (filter: TaskFilter) => void;
   onOpen: (task: EngineerTask) => void;
@@ -105,7 +107,7 @@ export function TodayCommandCenter({
         </div>
         <button className="secondary-button flex-none" onClick={onCreate} type="button">
           <Plus size={16} />
-          Tạo phiếu
+          {createLabel}
         </button>
       </div>
 
