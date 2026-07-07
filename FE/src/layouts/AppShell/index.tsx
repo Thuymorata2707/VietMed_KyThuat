@@ -250,13 +250,6 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
               <Plus size={16} />
               Tạo phiếu
             </Link>
-            <Link
-              className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg border border-[#cbd5e1] bg-white px-3.5 text-[13px] font-semibold text-[#18212f] shadow-[0_8px_18px_rgba(24,24,27,0.08)] transition hover:-translate-y-px hover:border-[#94a3b8] hover:bg-[#f8fafc]"
-              to="/installations/create"
-            >
-              <Plus size={16} />
-              Tạo phiếu lắp đặt
-            </Link>
             <span className="inline-flex min-h-[34px] items-center whitespace-nowrap rounded-lg border border-[#b9dfc9] bg-[#edf8f2] px-2.5 py-[7px] text-[12px] font-medium text-[#1b7a4c] before:mr-[7px] before:h-[7px] before:w-[7px] before:rounded-full before:bg-[#1b7a4c] before:content-['']" title={getApiBaseUrl()}>
               Kết nối ổn định
             </span>

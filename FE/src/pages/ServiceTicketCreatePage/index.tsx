@@ -556,15 +556,10 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
               </div>
               <label className="grid min-w-[220px] max-sm:min-w-0 max-sm:w-full gap-2 text-sm font-semibold text-[#333333]">
                 Loại phiếu
-                <select className={fieldClass} onChange={(event) => setKind(event.target.value as TicketKind)} value={kind}>
-                  {scope === 'installation' ? (
-                    <option value="installation">Lắp đặt</option>
-                  ) : (
-                    <>
-                      <option value="repair">Sửa chữa</option>
-                      <option value="maintenance">Bảo trì</option>
-                    </>
-                  )}
+                <select className={fieldClass} disabled={Boolean(fixedKind)} onChange={(event) => setKind(event.target.value as TicketKind)} value={kind}>
+                  <option value="repair">Sửa chữa</option>
+                  <option value="maintenance">Bảo trì</option>
+                  <option value="installation">Lắp đặt</option>
                 </select>
               </label>
             </div>
