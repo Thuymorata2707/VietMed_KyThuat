@@ -121,7 +121,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     queryKey: queryKeys.dailyWork.engineers,
     queryFn: async () => {
       const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&roleName=engineer&status=ACTIVE');
-      return result.data;
+      return result?.data ?? [];
     },
   });
 

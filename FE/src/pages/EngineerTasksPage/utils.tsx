@@ -237,7 +237,7 @@ export function matchesFilter(task: EngineerTask, filter: TaskFilter) {
 
 export function isTodayTask(task: EngineerTask) {
   const value = taskDateValue(task);
-  if (!value) return false;
+  if (!value || ['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status)) return false;
   const date = new Date(value);
   const today = new Date();
   return date.toDateString() === today.toDateString();
@@ -264,6 +264,7 @@ export function isUpcomingTask(task: EngineerTask) {
 }
 
 export function nextDefaultStatus(task: EngineerTask) {
+  if (['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status)) return task.status;
   if (task.status === 'ASSIGNED' || task.status === 'SCHEDULED' || task.status === 'OVERDUE') return 'IN_PROGRESS';
   if (task.kind === 'repair' && task.status === 'WAITING_PARTS') return 'IN_PROGRESS';
   return task.status === 'IN_PROGRESS' ? 'COMPLETED' : 'IN_PROGRESS';

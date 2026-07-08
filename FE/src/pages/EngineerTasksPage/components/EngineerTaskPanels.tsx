@@ -290,33 +290,71 @@ function statusActionCardClass(tone: string, active: boolean) {
   return `${base} border-[#2563eb] shadow-[0_0_0_3px_rgba(37,99,235,0.12)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#2563eb] before:content-['']`;
 }
 
+function isTransitionAllowed(kind: TaskKind, currentStatus: string, nextStatus: string) {
+  if (currentStatus === nextStatus) return true;
+
+  const repairTransitions: Record<string, string[]> = {
+    PENDING: ['IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+    ASSIGNED: ['IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED', 'CANCELLED'],
+    IN_PROGRESS: ['WAITING_PARTS', 'COMPLETED', 'CANCELLED'],
+    WAITING_PARTS: ['IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+    COMPLETED: [],
+    CANCELLED: [],
+  };
+  const maintenanceTransitions: Record<string, string[]> = {
+    SCHEDULED: ['ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE', 'CANCELLED'],
+    ASSIGNED: ['IN_PROGRESS', 'COMPLETED', 'OVERDUE', 'CANCELLED'],
+    IN_PROGRESS: ['COMPLETED', 'CANCELLED'],
+    OVERDUE: ['ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+    COMPLETED: [],
+    CANCELLED: [],
+  };
+  const installationTransitions: Record<string, string[]> = {
+    PENDING: ['INSTALLED', 'CANCELLED'],
+    INSTALLED: [],
+    CANCELLED: [],
+  };
+
+  const transitions =
+    kind === 'installation'
+      ? installationTransitions
+      : kind === 'repair'
+        ? repairTransitions
+        : maintenanceTransitions;
+  return (transitions[currentStatus] ?? []).includes(nextStatus);
+}
+
 function statusActionOptions(task: EngineerTask) {
   if (task.kind === 'installation') {
-    return installationStatusOptions.map((option) => ({
-      ...option,
-      label:
-        option.value === 'INSTALLED'
-          ? 'Đã bàn giao'
-          : option.value === 'PENDING'
-            ? 'Giữ chờ duyệt'
-            : 'Hủy phiếu',
-      description:
-        option.value === 'INSTALLED'
-          ? 'Hoàn tất thông tin bàn giao, bảo hành và gửi admin kiểm tra.'
-          : option.value === 'PENDING'
-            ? 'Giữ phiếu ở trạng thái chờ nếu chưa đủ thông tin.'
-            : 'Dùng khi phiếu không còn thực hiện.',
-      tone: option.value === 'INSTALLED' ? 'good' : option.value === 'CANCELLED' ? 'danger' : 'warn',
-    }));
+    return installationStatusOptions
+      .filter((option) => isTransitionAllowed(task.kind, task.status, option.value))
+      .map((option) => ({
+        ...option,
+        label:
+          option.value === 'INSTALLED'
+            ? 'Đã bàn giao'
+            : option.value === 'PENDING'
+              ? 'Giữ chờ duyệt'
+              : 'Hủy phiếu',
+        description:
+          option.value === 'INSTALLED'
+            ? 'Hoàn tất thông tin bàn giao, bảo hành và gửi admin kiểm tra.'
+            : option.value === 'PENDING'
+              ? 'Giữ phiếu ở trạng thái chờ nếu chưa đủ thông tin.'
+              : 'Dùng khi phiếu không còn thực hiện.',
+        tone: option.value === 'INSTALLED' ? 'good' : option.value === 'CANCELLED' ? 'danger' : 'warn',
+      }));
   }
 
   const sourceOptions = task.kind === 'repair' ? repairStatusOptions : maintenanceStatusOptions;
-  return sourceOptions.map((option) => ({
-    ...option,
-    label: statusActionTitle(task.kind, option.value),
-    description: statusActionDescription(task.kind, option.value),
-    tone: statusActionTone(option.value),
-  }));
+  return sourceOptions
+    .filter((option) => isTransitionAllowed(task.kind, task.status, option.value))
+    .map((option) => ({
+      ...option,
+      label: statusActionTitle(task.kind, option.value),
+      description: statusActionDescription(task.kind, option.value),
+      tone: statusActionTone(option.value),
+    }));
 }
 
 function statusActionTitle(kind: TaskKind, value: string) {

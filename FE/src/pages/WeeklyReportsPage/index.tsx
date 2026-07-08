@@ -94,7 +94,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     queryKey: queryKeys.weeklyReports.engineers,
     queryFn: async () => {
       const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&roleName=engineer&status=ACTIVE');
-      return result.data;
+      return result?.data ?? [];
     },
   });
 
@@ -114,13 +114,19 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const reportQuery = useQuery({
     enabled: !isAdmin || Boolean(selectedEngineerId),
     queryKey: queryKeys.weeklyReports.report(reportParams),
-    queryFn: () => apiFetch<WeeklyReport | null | undefined>(`/weekly-reports?${reportParams}`),
+    queryFn: async () => {
+      const result = await apiFetch<WeeklyReport | null>(`/weekly-reports?${reportParams}`);
+      return result ?? null;
+    },
   });
 
   const dailyWorkRowsQuery = useQuery({
     enabled: !isAdmin || Boolean(selectedEngineerId),
     queryKey: queryKeys.weeklyReports.dailyRows(reportParams),
-    queryFn: () => apiFetch<DailyWorkRowsResponse>(`/weekly-reports/daily-work-rows?${reportParams}`),
+    queryFn: async () => {
+      const result = await apiFetch<DailyWorkRowsResponse | null>(`/weekly-reports/daily-work-rows?${reportParams}`);
+      return result ?? null;
+    },
   });
 
   useEffect(() => {

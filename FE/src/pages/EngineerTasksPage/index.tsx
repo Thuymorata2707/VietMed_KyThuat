@@ -339,9 +339,9 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       ]);
 
       setTasks([
-        ...repairs.data.map((task) => ({ ...task, kind: 'repair' as const })),
-        ...maintenances.data.map((task) => ({ ...task, kind: 'maintenance' as const })),
-        ...installations.data.map((task) => ({ ...task, kind: 'installation' as const })),
+        ...(repairs?.data ?? []).map((task) => ({ ...task, kind: 'repair' as const })),
+        ...(maintenances?.data ?? []).map((task) => ({ ...task, kind: 'maintenance' as const })),
+        ...(installations?.data ?? []).map((task) => ({ ...task, kind: 'installation' as const })),
       ].sort(compareTasks));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được việc được giao.');
@@ -398,14 +398,14 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       const modelsResult = await apiFetchAllPages<QuickMachineModel>('/machine-models');
 
       setMachineOptions(
-        [...installedMachinesResult.data, ...stockMachinesResult.data, ...reservedMachinesResult.data, ...returnedMachinesResult.data].filter((machine) => canEngineerSeeMachine(user, machine)).map((machine) => ({
+        [...(installedMachinesResult?.data ?? []), ...(stockMachinesResult?.data ?? []), ...(reservedMachinesResult?.data ?? []), ...(returnedMachinesResult?.data ?? [])].filter((machine) => canEngineerSeeMachine(user, machine)).map((machine) => ({
           value: machine.id,
           label: machinePickerLabel(machine),
           row: machine,
         })),
       );
       setCustomerOptions(
-        customersResult.data.map((customer) => ({
+        (customersResult?.data ?? []).map((customer) => ({
           value: customer.id,
           label: customerPickerLabel(customer),
           row: customer,
@@ -806,7 +806,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       const response = await apiFetch<Paginated<TaskAttachment>>(
         `/attachments?entityType=${entityTypeForTask(task.kind)}&entityId=${task.id}&limit=100`,
       );
-      setAttachments(response.data);
+      setAttachments(response?.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được tài liệu của phiếu.');
     } finally {
@@ -1698,7 +1698,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         <div className="fixed inset-0 z-20 flex justify-end bg-[rgba(24,24,27,0.34)]" onClick={() => setSelectedTask(null)} role="presentation">
           <aside
             aria-modal="true"
-            className="grid w-[680px] max-w-full grid-rows-[auto_auto_auto_1fr] overflow-y-auto bg-[radial-gradient(circle_at_20%_0%,rgba(37,99,235,0.08),transparent_30%),#ffffff] p-6 font-sans shadow-[-24px_0_60px_rgba(15,23,42,0.16)]"
+            className="grid w-[680px] max-w-full grid-rows-[auto_auto_auto_1fr] overflow-y-auto bg-white p-6 font-sans shadow-[-24px_0_60px_rgba(15,23,42,0.16)]"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
           >

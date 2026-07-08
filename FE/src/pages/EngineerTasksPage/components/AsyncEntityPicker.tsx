@@ -71,7 +71,7 @@ export function AsyncEntityPicker<Row extends { id: string }>({
           search: search.trim(),
         }),
       );
-      const nextOptions = result.data
+      const nextOptions = (result?.data ?? [])
         .filter((row) => (rowFilter ? rowFilter(row) : true))
         .map(formatOption);
       const baseOptions = search.trim()

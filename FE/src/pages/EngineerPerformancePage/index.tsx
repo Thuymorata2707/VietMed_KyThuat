@@ -105,7 +105,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
     queryKey: queryKeys.engineerPerformance.engineers,
     queryFn: async () => {
       const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&status=ACTIVE');
-      return result.data.filter((item) => item.role?.name === 'engineer' || item.engineerProfile);
+      return (result?.data ?? []).filter((item) => item.role?.name === 'engineer' || item.engineerProfile);
     },
   });
 
@@ -125,7 +125,10 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const summaryQuery = useQuery({
     enabled: !isAdmin || Boolean(engineerId),
     queryKey: queryKeys.engineerPerformance.summary(summaryParams),
-    queryFn: () => apiFetch<EngineerWorkSummary>(`/weekly-reports/summary?${summaryParams}`),
+    queryFn: async () => {
+      const result = await apiFetch<EngineerWorkSummary | null>(`/weekly-reports/summary?${summaryParams}`);
+      return result ?? null;
+    },
   });
 
   const summary = summaryQuery.data ?? null;
