@@ -186,7 +186,7 @@ const businessTabs: Array<{ value: BusinessTab; label: string }> = [
 ];
 
 const drawerFieldClass = 'grid gap-[7px] font-semibold text-[#333333]';
-const drawerInputClass = 'min-h-[42px] rounded-xl border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]';
+const drawerInputClass = 'min-h-[42px] rounded-xl border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
 const drawerTextareaClass = `${drawerInputClass} min-h-28 resize-y py-2.5`;
 
 export function EngineerTasksPage({ user }: { user: ApiUser }) {
@@ -1706,12 +1706,12 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               </button>
             </div>
 
-            <div className="mt-[18px] grid grid-cols-2 gap-2.5 rounded-2xl border border-[#dbeafe] bg-[linear-gradient(135deg,rgba(239,246,255,0.94),rgba(240,253,244,0.78)),#ffffff] p-3 max-[760px]:grid-cols-1">
-              <div className="grid min-w-0 gap-1 rounded-xl border border-[rgba(191,219,254,0.72)] bg-white/75 p-2.5">
+            <div className="mt-[18px] grid grid-cols-2 gap-2.5 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3 max-[760px]:grid-cols-1">
+              <div className="grid min-w-0 gap-1 rounded-xl border border-[#ededf0] bg-white p-2.5">
                 <span className="text-[11px] font-extrabold text-[#64748b]">Thiết bị</span>
                 <strong className="text-[14px] leading-tight text-[#18181b] [overflow-wrap:anywhere]">{taskPrimaryMachineName(selectedTask)}</strong>
               </div>
-              <div className="grid min-w-0 gap-1 rounded-xl border border-[rgba(191,219,254,0.72)] bg-white/75 p-2.5">
+              <div className="grid min-w-0 gap-1 rounded-xl border border-[#ededf0] bg-white p-2.5">
                 <span className="text-[11px] font-extrabold text-[#64748b]">Ngày hẹn</span>
                 <strong className="text-[14px] leading-tight text-[#18181b] [overflow-wrap:anywhere]">{taskDate(selectedTask)}</strong>
               </div>
@@ -1932,7 +1932,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ) : null}
 
             {selectedTask.kind === 'installation' ? (
-              <section className="mt-5 grid gap-3.5 rounded-[18px] border border-[#bfdbfe] bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_42px_rgba(37,99,235,0.08)]">
+              <section className="mt-5 grid gap-3.5 rounded-[18px] border border-[#e4e4e7] bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
                 <div className="flex items-start justify-between max-[760px]:flex-col max-[760px]:gap-2.5">
                   <div>
                     <span className="text-[12px] font-bold text-[#18181b]">Kỹ sư cập nhật</span>
@@ -1975,7 +1975,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               </form>
               </section>
             ) : (
-              <section className="mt-5 grid gap-3.5 rounded-[18px] border border-[#bfdbfe] bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_42px_rgba(37,99,235,0.08)]">
+              <section className="mt-5 grid gap-3.5 rounded-[18px] border border-[#e4e4e7] bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
                 <div className="flex items-start justify-between max-[760px]:flex-col max-[760px]:gap-2.5">
                   <div>
                     <span className="text-[12px] font-bold text-[#18181b]">Kỹ sư cập nhật</span>

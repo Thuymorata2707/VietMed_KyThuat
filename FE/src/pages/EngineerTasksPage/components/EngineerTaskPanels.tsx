@@ -99,10 +99,10 @@ export function TodayCommandCenter({
   tasks: EngineerTask[];
 }) {
   return (
-    <section className="grid gap-3.5 rounded-[18px] border border-[#dbeafe] bg-[radial-gradient(circle_at_8%_12%,rgba(37,99,235,0.11),transparent_32%),linear-gradient(135deg,#ffffff_0%,#f7fbff_48%,#f4fbf8_100%)] p-4 shadow-[0_18px_50px_rgba(37,99,235,0.08)]">
+    <section className="grid gap-3.5 rounded-[18px] border border-[#e4e4e7] bg-[linear-gradient(180deg,#ffffff,#fbfcfd)] p-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
       <div className="flex items-start justify-between gap-3.5">
         <div>
-          <span className="block text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#2563eb]">Bảng việc hôm nay</span>
+          <span className="block text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#71717a]">Bảng việc hôm nay</span>
           <h2 className="mt-1.5 text-[clamp(22px,3vw,34px)] font-[760] leading-[1.08] tracking-[-0.04em] text-[#18181b] [text-wrap:balance]">Mở app là biết việc cần làm trước.</h2>
         </div>
         <button className="secondary-button flex-none" onClick={onCreate} type="button">
@@ -112,19 +112,19 @@ export function TodayCommandCenter({
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 min-[1180px]:grid-cols-4" aria-label="Bộ lọc nhanh">
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#fecdd3] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('revision')} type="button">
+        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#e4e4e7] bg-white px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#18181b] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]" onClick={() => onFilter('revision')} type="button">
           <span className="text-[12px] font-bold text-[#52525b]">Cần bổ sung</span>
           <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.revision}</strong>
         </button>
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#fecdd3] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('overdue')} type="button">
+        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#e4e4e7] bg-white px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#18181b] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]" onClick={() => onFilter('overdue')} type="button">
           <span className="text-[12px] font-bold text-[#52525b]">Quá hạn</span>
           <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.overdue}</strong>
         </button>
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[rgba(191,219,254,0.88)] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('today')} type="button">
+        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#e4e4e7] bg-white px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#18181b] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]" onClick={() => onFilter('today')} type="button">
           <span className="text-[12px] font-bold text-[#52525b]">Hôm nay</span>
           <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.today}</strong>
         </button>
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#cdeedb] bg-white/75 px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_12px_28px_rgba(37,99,235,0.11)]" onClick={() => onFilter('action')} type="button">
+        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#e4e4e7] bg-white px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#18181b] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]" onClick={() => onFilter('action')} type="button">
           <span className="text-[12px] font-bold text-[#52525b]">Thiếu hồ sơ máy</span>
           <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.missingMachine}</strong>
         </button>
@@ -134,7 +134,7 @@ export function TodayCommandCenter({
         {tasks.length ? (
           tasks.map((task) => <PriorityTaskCard key={`${task.kind}-${task.id}`} onOpen={onOpen} task={task} />)
         ) : (
-          <div className="grid min-h-32 place-items-center gap-1 rounded-2xl border border-dashed border-[#bfdbfe] bg-white/70 p-[18px] text-center text-[#52525b]">
+          <div className="grid min-h-32 place-items-center gap-1 rounded-2xl border border-dashed border-[#e4e4e7] bg-white p-[18px] text-center text-[#52525b]">
             <strong className="text-[#18181b]">Không có việc gấp.</strong>
             <span>Các phiếu quá hạn, phiếu hôm nay hoặc phiếu cần bổ sung sẽ hiện ở đây.</span>
           </div>
@@ -152,21 +152,21 @@ export function TodayDailyWorkCard({ loading, notes }: { loading: boolean; notes
           <Clock3 size={14} />
           Lịch hôm nay
         </span>
-        <strong className="min-w-8 rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 text-center text-[#1d4ed8]">{loading ? '-' : notes.length}</strong>
+        <strong className="min-w-8 rounded-full border border-[#e4e4e7] bg-[#f4f4f5] px-2 py-1 text-center text-[#18181b]">{loading ? '-' : notes.length}</strong>
       </div>
       <div className="grid gap-2">
         {loading ? <div className="text-[12px] text-[#71717a]">Đang tải lịch...</div> : null}
         {!loading && notes.length === 0 ? <div className="text-[12px] text-[#71717a]">Hôm nay chưa có lịch riêng.</div> : null}
         {!loading
           ? notes.slice(0, 4).map((note) => (
-              <article className="grid gap-[3px] border-l-[3px] border-[#60a5fa] pl-2.5" key={note.id}>
+              <article className="grid gap-[3px] border-l-[3px] border-[#18181b] pl-2.5" key={note.id}>
                 <span className="text-[12px] text-[#71717a]">{formatDailyWorkTime(note)}</span>
                 <strong className="text-[14px] leading-[1.35] text-[#18181b]">{note.title}</strong>
               </article>
             ))
           : null}
       </div>
-      <Link className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-[#2563eb] no-underline" to="/daily-work">
+      <Link className="inline-flex items-center gap-1.5 text-[13px] font-extrabold text-[#18181b] no-underline" to="/daily-work">
         Mở lịch công tác
         <ArrowRight size={14} />
       </Link>
@@ -266,28 +266,22 @@ export function StatusActionPicker({
 }
 
 function priorityTaskCardClass(tone: TaskTone) {
+  void tone;
   return [
-    'grid gap-3 rounded-2xl border bg-white/85 p-3 transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_16px_34px_rgba(37,99,235,0.1)] min-[1180px]:grid-cols-[minmax(0,1fr)_260px] min-[1180px]:items-center',
-    tone === 'danger' ? 'border-[#fecdd3]' : '',
-    tone === 'warn' ? 'border-[#fed7aa]' : '',
-    tone === 'good' ? 'border-[#bbf7d0]' : '',
-    tone === 'neutral' ? 'border-[#e4e4e7]' : '',
+    'grid gap-3 rounded-2xl border border-[#e4e4e7] bg-white p-3 transition duration-200 ease-out hover:-translate-y-px hover:border-[#18181b] hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)] min-[1180px]:grid-cols-[minmax(0,1fr)_260px] min-[1180px]:items-center',
   ].filter(Boolean).join(' ');
 }
 
 function priorityTaskHeadlineClass(tone: TaskTone) {
-  if (tone === 'danger') return 'font-extrabold text-[#b91c1c]';
-  if (tone === 'warn') return 'font-extrabold text-[#b45309]';
-  return 'font-extrabold text-[#2563eb]';
+  if (tone === 'danger') return 'font-extrabold text-[#b4232f]';
+  return 'font-extrabold text-[#18181b]';
 }
 
 function statusActionCardClass(tone: string, active: boolean) {
-  const base = 'grid min-h-[86px] cursor-pointer gap-[5px] rounded-[14px] border bg-white p-3 text-left text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#bfdbfe] hover:shadow-[0_12px_28px_rgba(37,99,235,0.1)]';
+  const base = 'grid min-h-[86px] cursor-pointer gap-[5px] rounded-[14px] border bg-white p-3 text-left text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#18181b] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]';
   if (!active) return `${base} border-[#e4e4e7]`;
-  if (tone === 'good') return `${base} border-[#86efac] shadow-[0_0_0_3px_rgba(34,197,94,0.13)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#16a34a] before:content-['']`;
-  if (tone === 'warn') return `${base} border-[#fed7aa] shadow-[0_0_0_3px_rgba(245,158,11,0.13)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#d97706] before:content-['']`;
-  if (tone === 'danger') return `${base} border-[#fecdd3] shadow-[0_0_0_3px_rgba(244,63,94,0.12)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#e11d48] before:content-['']`;
-  return `${base} border-[#2563eb] shadow-[0_0_0_3px_rgba(37,99,235,0.12)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#2563eb] before:content-['']`;
+  if (tone === 'danger') return `${base} border-[#b4232f] shadow-[0_0_0_3px_rgba(180,35,47,0.10)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#b4232f] before:content-['']`;
+  return `${base} border-[#18181b] shadow-[0_0_0_3px_rgba(24,24,27,0.08)] before:h-[7px] before:w-[7px] before:justify-self-end before:rounded-full before:bg-[#18181b] before:content-['']`;
 }
 
 function isTransitionAllowed(kind: TaskKind, currentStatus: string, nextStatus: string) {
