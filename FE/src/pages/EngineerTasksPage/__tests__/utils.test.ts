@@ -14,16 +14,17 @@ import type { EngineerTask } from '../types';
 // and machine is truthy so needsMachineProfile returns false.
 
 function task(overrides: Partial<EngineerTask> & { status: string }): EngineerTask {
+  const { status, ...rest } = overrides;
   return {
     kind: 'maintenance',
     id: 't1',
     code: 'M-001',
-    status: overrides.status,
+    status,
     reviewStatus: overrides.reviewStatus ?? null,
     reviewNote: overrides.reviewNote ?? null,
     type: 'PERIODIC',
     machine: {},
-    ...overrides,
+    ...rest,
   } as EngineerTask;
 }
 
