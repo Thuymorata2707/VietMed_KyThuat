@@ -10,7 +10,6 @@ import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
-import { PageTitle } from '../../components/PageTitle';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 import { machineDisplayName, machineProductName } from '../../utils/machineDisplayName';
 import { AsyncEntityPicker, type PickerOption } from './components/AsyncEntityPicker';
@@ -939,16 +938,28 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
   return (
     <PageFrame>
-      <PageTitle
-        eyebrow="Kỹ sư"
-        title="Việc của tôi"
-        description="Việc được giao và cập nhật kết quả."
-      />
+      <section className="engineer-task-hero">
+        <div className="engineer-task-hero__copy">
+          <span>Kỹ sư hiện trường</span>
+          <h1>Việc của tôi</h1>
+          <p>Mở màn là thấy việc cần xử lý, phiếu chờ duyệt và lịch hôm nay.</p>
+        </div>
+        <div className="engineer-task-hero__actions">
+          <button className="secondary-button" onClick={() => void loadTasks()} type="button">
+            {loading ? <Loader2 className="spin-icon" size={16} /> : <Clock3 size={16} />}
+            Làm mới
+          </button>
+          <button className="primary-button" onClick={openCreateRequest} type="button">
+            <Plus size={16} />
+            {createTicketLabelForTab(businessTab)}
+          </button>
+        </div>
+      </section>
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
+      <section className="engineer-task-summary">
         <SummaryTile
           active={filter === 'action' && businessTab === 'all'}
           description="Việc cần làm tiếp"
@@ -1512,16 +1523,11 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           </form>
         </section>
       ) : (
-        <section className="min-w-0 overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-          <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-1 border-b border-[#eeeeee] bg-[#fafafa] p-2" aria-label="Nhóm công việc">
+        <section className="engineer-task-panel">
+          <div className="engineer-business-tabs" aria-label="Nhóm công việc">
             {businessTabs.map((tab) => (
               <button
-                className={[
-                  'flex min-h-12 min-w-0 items-center justify-between gap-2 rounded-lg border-0 px-3 text-left text-sm font-medium transition',
-                  businessTab === tab.value
-                    ? 'bg-white text-[#18181b] shadow-[0_1px_5px_rgba(24,24,27,0.08)]'
-                    : 'bg-transparent text-[#333333] hover:bg-white/70',
-                ].join(' ')}
+                className={businessTab === tab.value ? 'active' : ''}
                 key={tab.value}
                 onClick={() => {
                   setBusinessTab(tab.value);
@@ -1529,27 +1535,18 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 }}
                 type="button"
               >
-                <span className="min-w-0 truncate">{tab.label}</span>
-                <strong
-                  className={[
-                    'inline-flex min-w-7 items-center justify-center rounded-full border px-2 py-[3px] text-xs',
-                    businessTab === tab.value
-                      ? 'border-[#e4e4e7] bg-[#f4f4f5] text-[#18181b]'
-                      : 'border-[#e5e5e5] bg-white text-[#666666]',
-                  ].join(' ')}
-                >
-                  {businessTabCounts[tab.value]}
-                </strong>
+                <span>{tab.label}</span>
+                <strong>{businessTabCounts[tab.value]}</strong>
               </button>
             ))}
           </div>
 
-          <div className="grid min-w-0 gap-3 border-b border-[#eeeeee] p-3 min-[1180px]:grid-cols-[minmax(220px,1fr)_auto_minmax(180px,220px)] min-[1180px]:items-end">
-            <div className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#666666] focus-within:border-[#18181b] focus-within:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]">
+          <div className="task-toolbar">
+            <div className="task-search">
               <Search size={17} />
-              <input className="min-w-0 flex-1 border-0 text-[#1f1f1f] outline-none" onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, mã máy, serial, khách hàng" value={query} />
+              <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, mã máy, serial, khách hàng" value={query} />
             </div>
-            <div className="grid w-full grid-cols-2 gap-[3px] rounded-lg border border-[#e5e5e5] bg-[#f4f7fb] p-[3px] min-[560px]:inline-flex min-[560px]:w-auto">
+            <div className="task-tabs">
               {[
                 ['action', 'Cần xử lý'],
                 ['revision', 'Cần bổ sung'],
@@ -1559,10 +1556,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 ['all', 'Tất cả'],
               ].map(([value, label]) => (
                 <button
-                  className={[
-                    'min-h-8 min-w-0 flex-1 rounded-md border-0 px-2 text-xs font-medium leading-tight min-[560px]:flex-none min-[560px]:px-3 min-[560px]:text-sm',
-                    filter === value ? 'bg-white text-[#18181b] shadow-[0_1px_4px_rgba(24,24,27,0.08)]' : 'bg-transparent text-[#333333]',
-                  ].join(' ')}
+                  className={filter === value ? 'active' : ''}
                   key={value}
                   onClick={() => setFilter(value as TaskFilter)}
                   type="button"
@@ -1571,9 +1565,9 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 </button>
               ))}
             </div>
-            <label className="grid min-w-0 gap-1.5 text-xs font-medium text-[#333333]">
+            <label className="task-filter-select">
               <span>Loại công việc</span>
-              <select className="h-10 w-full rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
+              <select onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
                 {businessTab === 'all' ? (
                   <>
                     <option value="all">Tất cả loại việc</option>
@@ -1609,7 +1603,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             </label>
           </div>
 
-          <div className="grid">
+          <div className="task-list">
             {loading ? (
               <div className="flex min-h-40 items-center justify-center gap-2 p-6 text-[#666666]">
                 <Loader2 className="spin-icon" size={18} />

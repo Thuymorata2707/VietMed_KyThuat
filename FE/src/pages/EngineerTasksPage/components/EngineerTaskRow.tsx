@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, PhoneCall } from 'lucide-react';
 import type { EngineerTask } from '../types';
 import {
   reviewStatusLabel,
@@ -8,11 +8,13 @@ import {
   statusLabel,
   statusTone,
   taskAttention,
+  taskContactPhone,
   taskCustomer,
   taskDate,
   taskDescription,
   taskIcon,
   taskKindLabel,
+  taskLocation,
   taskModelText,
   taskSerialText,
   taskTitle,
@@ -28,6 +30,8 @@ export function EngineerTaskRow({ onOpen, task }: EngineerTaskRowProps) {
   const machine = task.machine?.machineCode || task.machine?.serialNumber || taskSerialText(task) || 'Chưa có mã máy';
   const model = task.machine?.modelName || taskModelText(task) || 'Chưa có model';
   const customer = taskCustomer(task) || 'Chưa có khách hàng';
+  const phone = taskContactPhone(task);
+  const location = taskLocation(task);
 
   return (
     <article className={`engineer-task-row ${attention.tone}`}>
@@ -46,9 +50,10 @@ export function EngineerTaskRow({ onOpen, task }: EngineerTaskRowProps) {
       <div className="engineer-task-row__body">
         <p>{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
         <div className="engineer-task-row__facts">
-          <span>{machine}</span>
           <span>{model}</span>
+          <span>{machine}</span>
           <span>{customer}</span>
+          {location ? <span>{location}</span> : null}
         </div>
       </div>
 
@@ -62,10 +67,21 @@ export function EngineerTaskRow({ onOpen, task }: EngineerTaskRowProps) {
 
       <div className="engineer-task-row__action">
         <span className={`engineer-next-step ${attention.tone}`}>{attention.label}</span>
-        <button className="task-action" onClick={() => onOpen(task)} type="button">
-          Nhập kết quả
-          <ArrowRight size={15} />
-        </button>
+        <div className="engineer-task-row__buttons">
+          {phone ? (
+            <a className="task-secondary icon-button" href={`tel:${phone}`} title={`Gọi ${phone}`}>
+              <PhoneCall size={15} />
+            </a>
+          ) : null}
+          <button className="task-secondary" onClick={() => onOpen(task)} type="button">
+            <ClipboardCheck size={15} />
+            Chi tiết
+          </button>
+          <button className="task-action" onClick={() => onOpen(task)} type="button">
+            Cập nhật
+            <ArrowRight size={15} />
+          </button>
+        </div>
       </div>
     </article>
   );
