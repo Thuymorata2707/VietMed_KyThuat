@@ -1,4 +1,4 @@
-import { ClipboardCheck, Loader2, PackageCheck, RefreshCw, Search, UserCheck, Wrench } from 'lucide-react';
+import { Archive, CheckCircle2, ClipboardCheck, Loader2, PackageCheck, RefreshCw, Search, UserCheck, Wrench } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
@@ -392,7 +392,10 @@ export function AdminWorkAssignmentPage() {
             <small>Đang chạy</small>
           </button>
           <button className={summaryCardClass(filter === 'closed')} onClick={() => setFilter('closed')} type="button">
-            <span>Đã hoàn thành</span>
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2 size={14} />
+              Đã hoàn thành
+            </span>
             <strong>{closedCount}</strong>
             <small>Đã xong</small>
           </button>
@@ -531,9 +534,14 @@ export function AdminWorkAssignmentPage() {
 
           <div className="rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#c9ead6] bg-[#eefaf3] text-[#177245]">
+                  <Archive size={16} />
+                </span>
+                <div className="min-w-0">
                 <h2 className="text-base font-semibold text-[#1f1f1f]">Đã hoàn thành gần đây</h2>
                 <p className="mt-1 text-xs leading-5 text-[#8a8f99]">Xem nhanh các việc đã xong mà không phải kéo xuống cuối.</p>
+                </div>
               </div>
               <button className="secondary-button px-3 py-2 text-sm" onClick={() => setFilter('closed')} type="button">
                 Mở lọc
@@ -605,8 +613,13 @@ function WorkDispatchRow({
   reviewNote: string;
   reviewingKey: string;
 }) {
+  const closed = isClosed(item.status);
+  const pendingReview = item.reviewStatus === 'PENDING';
+  const lockedAssignment = closed || pendingReview;
+  const workflowTone = workTone(item);
+
   return (
-    <article className="grid items-start gap-3.5 border-b border-[#ededf0] px-4 py-4 last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(240px,330px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(150px,210px)_minmax(260px,330px)]">
+    <article className={`grid items-start gap-3.5 border-b border-[#ededf0] px-4 py-4 last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(240px,330px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(150px,210px)_minmax(260px,330px)] ${workRowClass(workflowTone)}`}>
       <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
       <div className="grid min-w-0 gap-[7px]">
         <div className={metaClass}>
@@ -628,8 +641,8 @@ function WorkDispatchRow({
             {actionLabel(item)}
           </span>
         ) : null}
-        <span className={badgeClass(statusTone(item.status))}>
-          <span className={badgeDotClass(statusTone(item.status))} />
+        <span className={badgeClass(statusTone(item.status, item.reviewStatus))}>
+          <span className={badgeDotClass(statusTone(item.status, item.reviewStatus))} />
           {statusLabel(item.status)}
         </span>
         {item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? (
@@ -642,30 +655,38 @@ function WorkDispatchRow({
           {item.engineer?.fullName || item.engineer?.email || 'Chưa có kỹ sư'}
         </span>
       </div>
-      <div className="col-span-full grid gap-2.5 max-[560px]:grid-cols-1 min-[561px]:grid-cols-[minmax(0,1fr)_auto] min-[821px]:col-start-3 min-[821px]:col-span-1 min-[821px]:row-span-2 min-[821px]:row-start-1 min-[1181px]:col-auto min-[1181px]:row-auto">
-        <select
-          aria-label={`Chọn kỹ sư cho ${item.code}`}
-          className="form-input h-10"
-          onChange={(event) => onSelectEngineer(event.target.value)}
-          value={assignmentByKey[item.key] ?? ''}
-        >
-          <option value="">Chọn kỹ sư</option>
-          {engineers.map((engineer) => (
-            <option key={engineer.id} value={engineer.id}>
-              {technicalUserName(engineer)}
-            </option>
-          ))}
-        </select>
-        <button
-          className="primary-button w-full min-[561px]:w-auto"
-          disabled={!assignmentByKey[item.key] || assigningKey === item.key}
-          onClick={() => onAssign(item)}
-          type="button"
-        >
-          {assigningKey === item.key ? <Loader2 className="spin-icon" size={16} /> : <UserCheck size={16} />}
-          Assign
-        </button>
-        {item.reviewStatus === 'PENDING' ? (
+      <div className="col-span-full grid gap-2.5 min-[821px]:col-start-3 min-[821px]:col-span-1 min-[821px]:row-span-2 min-[821px]:row-start-1 min-[1181px]:col-auto min-[1181px]:row-auto">
+        {lockedAssignment ? (
+          <div className={`rounded-2xl border px-3 py-3 text-sm ${closed ? 'border-[#c9ead6] bg-[#eefaf3] text-[#177245]' : 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]'}`}>
+            {closed ? 'Việc đã hoàn thành. Không còn phân công lại ở dòng này.' : 'Việc đang chờ admin xác nhận, tạm khóa phân công.'}
+          </div>
+        ) : (
+          <div className="grid gap-2 max-[560px]:grid-cols-1 min-[561px]:grid-cols-[minmax(0,1fr)_auto]">
+            <select
+              aria-label={`Chọn kỹ sư cho ${item.code}`}
+              className="form-input h-10"
+              onChange={(event) => onSelectEngineer(event.target.value)}
+              value={assignmentByKey[item.key] ?? ''}
+            >
+              <option value="">Chọn kỹ sư</option>
+              {engineers.map((engineer) => (
+                <option key={engineer.id} value={engineer.id}>
+                  {technicalUserName(engineer)}
+                </option>
+              ))}
+            </select>
+            <button
+              className="primary-button w-full min-[561px]:w-auto"
+              disabled={!assignmentByKey[item.key] || assigningKey === item.key}
+              onClick={() => onAssign(item)}
+              type="button"
+            >
+              {assigningKey === item.key ? <Loader2 className="spin-icon" size={16} /> : <UserCheck size={16} />}
+              Assign
+            </button>
+          </div>
+        )}
+        {pendingReview ? (
           <div className="col-span-full grid gap-2 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3">
             <QualityReviewChecklist item={item} />
             <textarea
@@ -880,6 +901,8 @@ function dateRank(item: WorkItem) {
 
 function actionLabel(item: WorkItem) {
   if (item.reviewStatus === 'PENDING') return 'Cần xác nhận báo cáo';
+  if (item.reviewStatus === 'APPROVED' && isClosed(item.status)) return 'Đã hoàn tất';
+  if (item.reviewStatus === 'APPROVED') return 'Đã duyệt';
   if (!item.engineer?.id) return 'Cần phân công';
   if (!isClosed(item.status)) return 'Đang theo dõi';
   return '';
@@ -887,6 +910,7 @@ function actionLabel(item: WorkItem) {
 
 function actionTone(item: WorkItem): Tone {
   if (item.reviewStatus === 'PENDING') return 'warn';
+  if (item.reviewStatus === 'APPROVED') return 'good';
   if (!item.engineer?.id) return 'danger';
   if (!isClosed(item.status)) return 'neutral';
   return 'good';
@@ -1004,11 +1028,28 @@ function statusLabel(value: string) {
   return labels[value] ?? value;
 }
 
-function statusTone(value: string): Tone {
-  if (['COMPLETED', 'INSTALLED'].includes(value)) return 'good';
+function statusTone(value: string, reviewStatus?: WorkReviewStatus | null): Tone {
+  if (['COMPLETED', 'INSTALLED'].includes(value) || reviewStatus === 'APPROVED') return 'good';
   if (['CANCELLED', 'WAITING_PARTS'].includes(value)) return 'danger';
   if (['PENDING', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS'].includes(value)) return 'warn';
   return 'neutral';
+}
+
+function workTone(item: WorkItem): Tone {
+  if (item.reviewStatus === 'PENDING') return 'warn';
+  if (item.reviewStatus === 'APPROVED' || isClosed(item.status)) return 'good';
+  if (!item.engineer?.id) return 'danger';
+  return 'neutral';
+}
+
+function workRowClass(tone: Tone) {
+  const styles: Record<Tone, string> = {
+    good: 'border-l-[#b9e8ca] bg-white',
+    warn: 'border-l-[#efd8a8] bg-[#fffdf8]',
+    danger: 'border-l-[#fecdd3] bg-[#fffdfb]',
+    neutral: 'border-l-transparent bg-white',
+  };
+  return `border-l-4 ${styles[tone]}`;
 }
 
 function reviewStatusLabel(value?: WorkReviewStatus | null) {
