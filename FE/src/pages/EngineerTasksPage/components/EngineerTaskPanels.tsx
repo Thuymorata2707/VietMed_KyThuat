@@ -66,7 +66,7 @@ export function WeeklyReportQuickCard({ loading, report }: { loading: boolean; r
       </div>
 
       <div className="grid gap-2">
-        <Link className="primary-button justify-center" to={`/weekly-reports?weekStart=${weekStart}`}>
+        <Link className="task-action justify-center" to={`/weekly-reports?weekStart=${weekStart}`}>
           <FileText size={16} />
           Mở báo cáo tuần
         </Link>
