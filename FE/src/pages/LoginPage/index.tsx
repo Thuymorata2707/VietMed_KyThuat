@@ -14,11 +14,11 @@ type LoginPageProps = {
 
 export function LoginPage({ onLogin }: LoginPageProps) {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const loginMutation = useMutation({
-    mutationFn: () => login(email, password),
+    mutationFn: () => login(identifier, password),
     onSuccess: (signedInUser) => {
       queryClient.setQueryData(queryKeys.auth.me, signedInUser);
       onLogin(signedInUser);
@@ -60,14 +60,14 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
             <form className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-[#ffffff] p-4 shadow-[0_8px_24px_rgba(24,24,27,0.05)]" onSubmit={handleSubmit}>
               <label className="grid gap-2 text-[13px] font-bold text-[#333333]">
-                Email
+                Email hoặc tên đăng nhập
                 <input
                   className="min-h-[52px] rounded-2xl border border-[#ded8d8] bg-[#ffffff] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#98a3b4] hover:border-[#e4e4e7] focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]"
-                  autoComplete="email"
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="name@vietmed.com.vn"
-                  type="email"
-                  value={email}
+                  autoComplete="username"
+                  onChange={(event) => setIdentifier(event.target.value)}
+                  placeholder="nguyenvana hoặc name@vietmed.com.vn"
+                  type="text"
+                  value={identifier}
                 />
               </label>
               <label className="grid gap-2 text-[13px] font-bold text-[#333333]">

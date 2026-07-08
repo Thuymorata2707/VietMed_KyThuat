@@ -14,10 +14,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
-import { mkdirSync } from 'fs';
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
 import { randomUUID } from 'crypto';
-import { join } from 'path';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -45,6 +43,7 @@ export class AttachmentsController {
       limits: {
         fileSize: 15 * 1024 * 1024,
       },
+      storage: memoryStorage(),
       fileFilter: (_req, file, callback) => {
         if (!ALLOWED_UPLOAD_EXTENSIONS[file.mimetype]) {
           callback(
@@ -58,17 +57,6 @@ export class AttachmentsController {
 
         callback(null, true);
       },
-      storage: diskStorage({
-        destination: (_req, _file, callback) => {
-          const uploadRoot = join(process.cwd(), 'uploads');
-          mkdirSync(uploadRoot, { recursive: true });
-          callback(null, uploadRoot);
-        },
-        filename: (_req, file, callback) => {
-          const extension = ALLOWED_UPLOAD_EXTENSIONS[file.mimetype];
-          callback(null, `${Date.now()}-${randomUUID()}.${extension}`);
-        },
-      }),
     }),
   )
   upload(
@@ -76,6 +64,11 @@ export class AttachmentsController {
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: RequestUser,
   ) {
+    const extension = ALLOWED_UPLOAD_EXTENSIONS[file?.mimetype];
+    if (file && extension) {
+      file.filename = `${Date.now()}-${randomUUID()}.${extension}`;
+    }
+
     return this.attachmentsService.create(dto, file, user);
   }
 
@@ -112,6 +105,10 @@ export class AttachmentsController {
       'Content-Disposition',
       `inline; filename="${encodeURIComponent(attachment.originalName)}"`,
     );
+
+    if (attachment.fileData) {
+      return res.end(Buffer.from(attachment.fileData));
+    }
 
     return res.sendFile(attachment.path);
   }

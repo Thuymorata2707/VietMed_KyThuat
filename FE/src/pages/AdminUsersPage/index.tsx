@@ -26,6 +26,7 @@ type Region = {
 type AdminUser = {
   id: string;
   email: string;
+  username?: string | null;
   fullName: string;
   phone?: string | null;
   status: UserStatus;
@@ -54,6 +55,7 @@ type AdminUsersBootstrap = {
 
 type UserFormState = {
   email: string;
+  username: string;
   password: string;
   fullName: string;
   phone: string;
@@ -75,6 +77,7 @@ type UserFormState = {
 
 const emptyForm: UserFormState = {
   email: '',
+  username: '',
   password: '',
   fullName: '',
   phone: '',
@@ -223,6 +226,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
       [
         user.fullName,
         user.email,
+        user.username,
         user.phone,
         user.role?.name,
         user.region?.name,
@@ -541,6 +545,7 @@ function buildPayload(form: UserFormState, isEditing: boolean) {
     >
   > = {
     email: form.email.trim(),
+    username: form.username.trim() || undefined,
     fullName: form.fullName.trim(),
     phone: form.phone.trim() || '',
     roleId: form.roleId,
@@ -599,6 +604,16 @@ function UserForm({
             required
             type="email"
             value={form.email}
+          />
+        </label>
+
+        <label>
+          Tên đăng nhập
+          <input
+            autoComplete="username"
+            onChange={(event) => onChange((current) => ({ ...current, username: event.target.value }))}
+            placeholder="VD: nguyenvana"
+            value={form.username}
           />
         </label>
 
@@ -789,6 +804,7 @@ function formFromUser(user: AdminUser, roles: Role[], regions: Region[]): UserFo
 
   return {
     email: user.email,
+    username: user.username || '',
     password: '',
     fullName: user.fullName,
     phone: user.phone || '',
@@ -889,6 +905,7 @@ function UserCard({ onDelete, onToggleStatus, user }: { onDelete: () => void; on
             </span>
           </div>
           <p>{user.email}</p>
+          {user.username ? <p className="text-xs font-semibold text-[#667085]">Tên đăng nhập: {user.username}</p> : null}
           <div className="user-card-chips">
             <span className={`user-role-chip is-${roleTone(user.role?.name)}`}>{user.role?.name ?? 'Chưa gán vai trò'}</span>
             {isTechnical ? <span className="user-role-chip is-technical">Kỹ thuật</span> : null}

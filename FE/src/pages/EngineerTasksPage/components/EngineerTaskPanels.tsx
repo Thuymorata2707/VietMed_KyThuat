@@ -208,19 +208,19 @@ function PriorityTaskCard({ onOpen, task }: { onOpen: (task: EngineerTask) => vo
         </div>
       </button>
 
-      <div className="grid items-center gap-2.5">
-        <span className={`engineer-next-step ${attention.tone}`}>{attention.label}</span>
-        <div className="flex flex-wrap gap-2">
+      <div className="grid min-w-0 content-center gap-2.5 min-[1180px]:w-[260px] min-[1180px]:justify-self-end">
+        <span className={`engineer-next-step ${attention.tone} w-full min-w-0 whitespace-normal px-3 py-2 text-center leading-snug`}>{attention.label}</span>
+        <div className={`grid min-w-0 gap-2 ${phone ? 'grid-cols-[auto_minmax(0,1fr)] min-[1180px]:grid-cols-[auto_1fr_1fr]' : 'grid-cols-2'}`}>
           {phone ? (
-            <a className="task-secondary icon-button" href={`tel:${phone}`} title={`Gọi ${phone}`}>
+            <a className="task-secondary icon-button h-10 w-10 shrink-0 p-0" href={`tel:${phone}`} title={`Gọi ${phone}`}>
               <PhoneCall size={15} />
             </a>
           ) : null}
-          <button className="task-secondary" onClick={() => onOpen(task)} type="button">
+          <button className="task-secondary min-w-0 px-3" onClick={() => onOpen(task)} type="button">
             Xem phiếu
           </button>
           {actionHref ? (
-            <Link className="task-action" to={actionHref}>
+            <Link className="task-action min-w-0 px-3" to={actionHref}>
               Cập nhật
               <ArrowRight size={15} />
             </Link>
@@ -267,7 +267,7 @@ export function StatusActionPicker({
 
 function priorityTaskCardClass(tone: TaskTone) {
   return [
-    'grid gap-3 rounded-2xl border bg-white/85 p-3 transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_16px_34px_rgba(37,99,235,0.1)] min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(210px,0.36fr)] min-[1180px]:items-center',
+    'grid gap-3 rounded-2xl border bg-white/85 p-3 transition duration-200 ease-out hover:-translate-y-px hover:bg-white hover:shadow-[0_16px_34px_rgba(37,99,235,0.1)] min-[1180px]:grid-cols-[minmax(0,1fr)_260px] min-[1180px]:items-center',
     tone === 'danger' ? 'border-[#fecdd3]' : '',
     tone === 'warn' ? 'border-[#fed7aa]' : '',
     tone === 'good' ? 'border-[#bbf7d0]' : '',

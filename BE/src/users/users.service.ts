@@ -49,12 +49,14 @@ export class UsersService {
       throw new ConflictException('Email already exists');
     }
 
+    await this.ensureUsernameIsAvailable(dto.username);
     await this.ensureRoleAndRegionExist(dto.roleId, dto.regionId);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
           email: this.normalizeEmail(dto.email),
+          username: this.normalizeOptionalUsername(dto.username),
           password: await bcrypt.hash(dto.password, 10),
           fullName: dto.fullName.trim(),
           phone: dto.phone?.trim() || null,
@@ -77,6 +79,7 @@ export class UsersService {
           actor,
           metadata: {
             email: created.email,
+            username: created.username,
             roleId: created.roleId,
             regionId: created.regionId,
             status: created.status,
@@ -179,6 +182,10 @@ export class UsersService {
       }
     }
 
+    if (dto.username !== undefined) {
+      await this.ensureUsernameIsAvailable(dto.username, id);
+    }
+
     if (dto.roleId || dto.regionId) {
       const currentUser = await this.prisma.user.findUniqueOrThrow({
         where: { id },
@@ -195,6 +202,10 @@ export class UsersService {
         where: { id },
         data: {
           email: dto.email ? this.normalizeEmail(dto.email) : undefined,
+          username:
+            dto.username === undefined
+              ? undefined
+              : this.normalizeOptionalUsername(dto.username),
           password: dto.password
             ? await bcrypt.hash(dto.password, 10)
             : undefined,
@@ -220,6 +231,7 @@ export class UsersService {
           actor,
           changes: pickChangedFields(current, this.withoutPassword(updated), [
             'email',
+            'username',
             'fullName',
             'phone',
             'roleId',
@@ -328,6 +340,7 @@ export class UsersService {
           actor,
           metadata: {
             email: user.email,
+            username: user.username,
             fullName: user.fullName,
             roleId: user.roleId,
             regionId: user.regionId,
@@ -375,6 +388,24 @@ export class UsersService {
 
   private normalizeEmail(email: string): string {
     return email.toLowerCase().trim();
+  }
+
+  private normalizeOptionalUsername(username?: string | null): string | null {
+    const normalized = username?.toLowerCase().trim();
+    return normalized || null;
+  }
+
+  private async ensureUsernameIsAvailable(username?: string | null, userId?: string) {
+    const normalized = this.normalizeOptionalUsername(username);
+    if (!normalized) return;
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { username: normalized },
+    });
+
+    if (existingUser && existingUser.id !== userId) {
+      throw new ConflictException('Username already exists');
+    }
   }
 
   private shouldPaginate(query?: ListUsersQueryDto): boolean {
@@ -426,6 +457,7 @@ export class UsersService {
       conditions.push({
         OR: [
           { email: { contains: search } },
+          { username: { contains: search } },
           { fullName: { contains: search } },
           { phone: { contains: search } },
           {
@@ -464,6 +496,7 @@ export class UsersService {
     return {
       id: user.id,
       email: user.email,
+      username: user.username,
       fullName: user.fullName,
       phone: user.phone,
       status: user.status,

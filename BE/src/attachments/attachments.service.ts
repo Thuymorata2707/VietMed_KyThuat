@@ -79,8 +79,9 @@ export class AttachmentsService {
           storedName: file.filename,
           mimeType: file.mimetype,
           size: file.size,
-          path: file.path,
+          path: file.path ?? '',
           url: `/attachments/${file.filename}/file`,
+          fileData: new Uint8Array(file.buffer),
           title: dto.title?.trim() || null,
           description: dto.description?.trim() || null,
           uploadedById: actor.id,
@@ -109,7 +110,7 @@ export class AttachmentsService {
       return created;
     });
 
-    return attachment;
+    return this.withoutFileData(attachment);
   }
 
   async findAll(
@@ -134,7 +135,12 @@ export class AttachmentsService {
       this.prisma.attachment.count({ where }),
     ]);
 
-    return this.toPaginatedResult(data, page, limit, total);
+    return this.toPaginatedResult(
+      data.map((attachment) => this.withoutFileData(attachment)),
+      page,
+      limit,
+      total,
+    );
   }
 
   async findOne(id: string, user?: RequestUser) {
@@ -151,7 +157,7 @@ export class AttachmentsService {
       throw new NotFoundException('Attachment not found');
     }
 
-    return attachment;
+    return this.withoutFileData(attachment);
   }
 
   async findFileByStoredName(storedName: string, user?: RequestUser) {
@@ -163,7 +169,7 @@ export class AttachmentsService {
       },
     });
 
-    if (!attachment || !existsSync(attachment.path)) {
+    if (!attachment || (!attachment.fileData && !existsSync(attachment.path))) {
       throw new NotFoundException('Attachment file not found');
     }
 
@@ -199,7 +205,7 @@ export class AttachmentsService {
       return updated;
     });
 
-    if (existsSync(attachment.path)) {
+    if (attachment.path && existsSync(attachment.path)) {
       unlinkSync(attachment.path);
     }
 
@@ -295,6 +301,11 @@ export class AttachmentsService {
         },
       },
     };
+  }
+
+  private withoutFileData<T extends { fileData?: unknown }>(attachment: T) {
+    const { fileData: _fileData, ...rest } = attachment;
+    return rest;
   }
 
   private toPaginatedResult<T>(

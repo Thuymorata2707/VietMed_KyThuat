@@ -108,10 +108,11 @@ export const resources: Record<string, ResourceConfig> = {
     description: 'Danh sách tài khoản, vai trò, vùng phụ trách và trạng thái.',
     endpoint: '/users',
     icon: <Users size={20} />,
-    searchPlaceholder: 'Tìm tên, email, số điện thoại',
+    searchPlaceholder: 'Tìm tên, username, email, số điện thoại',
     roles: ['admin'],
     columns: [
       { key: 'fullName', label: 'Họ tên' },
+      { key: 'username', label: 'Tên đăng nhập' },
       { key: 'email', label: 'Email' },
       { key: 'role.name', label: 'Vai trò' },
       { key: 'region.name', label: 'Khu vực' },

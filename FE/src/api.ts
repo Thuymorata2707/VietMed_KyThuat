@@ -4,6 +4,7 @@ const TOKEN_KEY = 'vietmed_access_token';
 export type ApiUser = {
   id: string;
   email: string;
+  username?: string | null;
   fullName?: string;
   phone?: string | null;
   status?: string;
@@ -121,10 +122,10 @@ export async function apiFetchAllPages<T>(path: string, pageSize = 100): Promise
   return pages.flat();
 }
 
-export async function login(email: string, password: string) {
+export async function login(identifier: string, password: string) {
   const result = await apiFetch<{ accessToken: string; user: ApiUser }>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, password }),
   });
   setToken(result.accessToken);
   return result.user;
@@ -146,6 +147,7 @@ function toVietnameseApiError(message: string, statusCode: number) {
   const normalized = message.toLowerCase();
 
   if (normalized.includes('email already exists')) return 'Email đã tồn tại trong hệ thống.';
+  if (normalized.includes('username already exists')) return 'Tên đăng nhập đã tồn tại trong hệ thống.';
   if (normalized.includes('code already exists') || normalized.includes('already exists')) return 'Mã hoặc dữ liệu này đã tồn tại.';
   if (normalized.includes('password must be at least')) return 'Mật khẩu phải có ít nhất 6 ký tự.';
   if (normalized.includes('role does not exist')) return 'Vai trò không tồn tại.';

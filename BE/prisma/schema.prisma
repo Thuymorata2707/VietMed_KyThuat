@@ -241,7 +241,8 @@ model Role {
 model User {
   id String @id @default(cuid())
 
-  email    String @unique
+  email    String  @unique
+  username String? @unique
   password String
 
   fullName String
@@ -410,6 +411,7 @@ model Attachment {
   size         Int
   path         String
   url          String
+  fileData     Bytes? @db.LongBlob
 
   title       String?
   description String?

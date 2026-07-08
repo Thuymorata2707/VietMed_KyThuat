@@ -13,6 +13,7 @@ type AccountSettingsPageProps = {
 
 type AccountFormState = {
   email: string;
+  username: string;
   password: string;
   fullName: string;
   phone: string;
@@ -158,6 +159,15 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
               </label>
 
               <label>
+                Tên đăng nhập
+                <input
+                  onChange={(event) => updateField('username', event.target.value)}
+                  placeholder="nguyenvana"
+                  value={form.username}
+                />
+              </label>
+
+              <label>
                 Email đăng nhập
                 <input
                   onChange={(event) => updateField('email', event.target.value)}
@@ -282,6 +292,7 @@ function toFormState(user: ApiUser): AccountFormState {
 
   return {
     email: user.email,
+    username: user.username || '',
     password: '',
     fullName: user.fullName || '',
     phone: user.phone || '',
@@ -301,6 +312,7 @@ function toFormState(user: ApiUser): AccountFormState {
 function buildPayload(form: AccountFormState, includeEngineerProfile: boolean) {
   return {
     email: form.email.trim(),
+    username: form.username.trim() || null,
     fullName: form.fullName.trim(),
     phone: form.phone.trim() || null,
     password: form.password.trim() || undefined,

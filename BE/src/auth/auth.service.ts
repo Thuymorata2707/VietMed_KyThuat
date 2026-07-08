@@ -22,15 +22,21 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto, ip?: string) {
-    this.loginThrottle.assertCanAttempt(dto.email, ip);
+    const identifier = this.normalizeLoginIdentifier(dto.identifier || dto.email);
+    this.loginThrottle.assertCanAttempt(identifier, ip);
 
-    if (!dto.email || !dto.password) {
-      this.loginThrottle.recordFailure(dto.email, ip);
-      throw new UnauthorizedException('Email and password are required');
+    if (!identifier || !dto.password) {
+      this.loginThrottle.recordFailure(identifier, ip);
+      throw new UnauthorizedException('Login name and password are required');
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase().trim() },
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { username: identifier },
+        ],
+      },
       include: {
         role: true,
         region: true,
@@ -39,18 +45,18 @@ export class AuthService {
     });
 
     if (!user || user.status !== 'ACTIVE') {
-      this.loginThrottle.recordFailure(dto.email, ip);
+      this.loginThrottle.recordFailure(identifier, ip);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
 
     if (!isPasswordValid) {
-      this.loginThrottle.recordFailure(dto.email, ip);
+      this.loginThrottle.recordFailure(identifier, ip);
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    this.loginThrottle.recordSuccess(dto.email, ip);
+    this.loginThrottle.recordSuccess(identifier, ip);
 
     const requestUser = {
       id: user.id,
@@ -65,6 +71,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        username: user.username,
         fullName: user.fullName,
         phone: user.phone,
         status: user.status,
@@ -118,6 +125,10 @@ export class AuthService {
       }
     }
 
+    if (dto.username !== undefined) {
+      await this.ensureUsernameIsAvailable(dto.username, user.id);
+    }
+
     if (dto.engineerProfile?.employeeCode) {
       await this.ensureEmployeeCodeIsAvailable(
         dto.engineerProfile.employeeCode,
@@ -138,6 +149,10 @@ export class AuthService {
         where: { id: user.id },
         data: {
           email: dto.email ? this.normalizeEmail(dto.email) : undefined,
+          username:
+            dto.username === undefined
+              ? undefined
+              : this.normalizeOptionalUsername(dto.username),
           password: dto.password
             ? await bcrypt.hash(dto.password, 10)
             : undefined,
@@ -253,6 +268,31 @@ export class AuthService {
     return email.toLowerCase().trim();
   }
 
+  private normalizeLoginIdentifier(value?: string): string {
+    return value?.toLowerCase().trim() || '';
+  }
+
+  private normalizeOptionalUsername(username?: string | null): string | null {
+    const normalized = username?.toLowerCase().trim();
+    return normalized || null;
+  }
+
+  private async ensureUsernameIsAvailable(
+    username?: string | null,
+    userId?: string,
+  ) {
+    const normalized = this.normalizeOptionalUsername(username);
+    if (!normalized) return;
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { username: normalized },
+    });
+
+    if (existingUser && existingUser.id !== userId) {
+      throw new ConflictException('Username already exists');
+    }
+  }
+
   private withoutPassword<
     T extends User & {
       role: {
@@ -270,6 +310,7 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
+      username: user.username,
       fullName: user.fullName,
       phone: user.phone,
       status: user.status,
