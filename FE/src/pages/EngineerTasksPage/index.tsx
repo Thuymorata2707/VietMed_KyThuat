@@ -1496,61 +1496,40 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               <Search size={17} />
               <input onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã phiếu, mã máy, serial, khách hàng" value={query} />
             </div>
-            <div className="task-tabs">
-              {[
-                ['action', 'Cần xử lý'],
-                ['revision', 'Cần bổ sung'],
-                ['review', 'Chờ duyệt'],
-                ['progress', 'Đang làm'],
-                ['done', 'Hoàn tất'],
-                ['all', 'Tất cả'],
-              ].map(([value, label]) => (
-                <button
-                  className={filter === value ? 'active' : ''}
-                  key={value}
-                  onClick={() => setFilter(value as TaskFilter)}
-                  type="button"
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="task-toolbar__filters">
+              <label className="task-filter-select task-status-select">
+                <span>Trạng thái</span>
+                <select onChange={(event) => setFilter(event.target.value as TaskFilter)} value={filter}>
+                  <option value="action">Cần xử lý</option>
+                  <option value="revision">Cần bổ sung</option>
+                  <option value="review">Chờ duyệt</option>
+                  <option value="progress">Đang làm</option>
+                  <option value="done">Hoàn tất</option>
+                  <option value="all">Tất cả</option>
+                </select>
+              </label>
+              {businessTab === 'all' || businessTab === 'warranty' ? (
+                <label className="task-filter-select">
+                  <span>Loại công việc</span>
+                  <select onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
+                    {businessTab === 'all' ? (
+                      <>
+                        <option value="all">Tất cả loại việc</option>
+                        <option value="repair">Sửa chữa</option>
+                        <option value="maintenance">Bảo trì</option>
+                        <option value="installation">Lắp đặt</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="all">Tất cả bảo hành</option>
+                        <option value="repair">Sửa chữa bảo hành</option>
+                        <option value="maintenance">Bảo trì bảo hành</option>
+                      </>
+                    )}
+                  </select>
+                </label>
+              ) : null}
             </div>
-            <label className="task-filter-select">
-              <span>Loại công việc</span>
-              <select onChange={(event) => setKindFilter(event.target.value as KindFilter)} value={kindFilter}>
-                {businessTab === 'all' ? (
-                  <>
-                    <option value="all">Tất cả loại việc</option>
-                    <option value="repair">Sửa chữa</option>
-                    <option value="maintenance">Bảo trì</option>
-                    <option value="installation">Lắp đặt</option>
-                  </>
-                ) : businessTab === 'repair' ? (
-                  <>
-                    <option value="all">Sửa chữa</option>
-                    <option value="repair">Sửa chữa</option>
-                  </>
-                ) : businessTab === 'maintenance' ? (
-                  <>
-                    <option value="all">Bảo trì</option>
-                    <option value="maintenance">Bảo trì</option>
-                  </>
-                ) : businessTab === 'installation' ? (
-                  <>
-                    <option value="all">Lắp đặt</option>
-                    <option value="installation">Lắp đặt</option>
-                  </>
-                ) : businessTab === 'warranty' ? (
-                  <>
-                    <option value="all">Tất cả bảo hành</option>
-                    <option value="repair">Sửa chữa bảo hành</option>
-                    <option value="maintenance">Bảo trì bảo hành</option>
-                  </>
-                ) : (
-                  <option value="all">Lịch công việc</option>
-                )}
-              </select>
-            </label>
           </div>
 
           <div className="task-list">
