@@ -617,6 +617,7 @@ function WorkDispatchRow({
   const pendingReview = item.reviewStatus === 'PENDING';
   const lockedAssignment = closed || pendingReview;
   const workflowTone = workTone(item);
+  const workflowLabel = closed ? 'Hoàn tất' : pendingReview ? 'Chờ duyệt' : 'Đang mở';
 
   return (
     <article className={`grid items-start gap-3.5 border-b border-[#ededf0] px-4 py-4 last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(240px,330px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(150px,210px)_minmax(260px,330px)] ${workRowClass(workflowTone)}`}>
@@ -657,8 +658,28 @@ function WorkDispatchRow({
       </div>
       <div className="col-span-full grid gap-2.5 min-[821px]:col-start-3 min-[821px]:col-span-1 min-[821px]:row-span-2 min-[821px]:row-start-1 min-[1181px]:col-auto min-[1181px]:row-auto">
         {lockedAssignment ? (
-          <div className={`rounded-2xl border px-3 py-3 text-sm ${closed ? 'border-[#c9ead6] bg-[#eefaf3] text-[#177245]' : 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]'}`}>
-            {closed ? 'Việc đã hoàn thành. Không còn phân công lại ở dòng này.' : 'Việc đang chờ admin xác nhận, tạm khóa phân công.'}
+          <div className={`grid gap-2 rounded-2xl border px-3 py-3 ${closed ? 'border-[#c9ead6] bg-[#eefaf3]' : 'border-[#efd8a8] bg-[#fff8ed]'}`}>
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full bg-white ${closed ? 'text-[#177245]' : 'text-[#9b5a17]'}`}>
+                {closed ? <CheckCircle2 size={15} /> : <Archive size={15} />}
+              </span>
+              <div className="min-w-0">
+                <p className={`text-sm font-semibold ${closed ? 'text-[#177245]' : 'text-[#9b5a17]'}`}>{workflowLabel}</p>
+                <p className="text-[11px] leading-4 text-[#7b7b7b]">
+                  {closed ? 'Đã khóa thao tác' : 'Đang chờ admin duyệt hồ sơ'}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className={`inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold ${closed ? 'text-[#177245]' : 'text-[#9b5a17]'}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${closed ? 'bg-[#12b76a]' : 'bg-[#f79009]'}`} />
+                {workflowLabel}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#666666]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#8a8a8a]" />
+                {closed ? 'Khoá phân công' : 'Tạm khoá'}
+              </span>
+            </div>
           </div>
         ) : (
           <div className="grid gap-2 max-[560px]:grid-cols-1 min-[561px]:grid-cols-[minmax(0,1fr)_auto]">
@@ -1044,12 +1065,12 @@ function workTone(item: WorkItem): Tone {
 
 function workRowClass(tone: Tone) {
   const styles: Record<Tone, string> = {
-    good: 'border-l-[#b9e8ca] bg-white',
-    warn: 'border-l-[#efd8a8] bg-[#fffdf8]',
-    danger: 'border-l-[#fecdd3] bg-[#fffdfb]',
+    good: 'border-l-[#b9e8ca] bg-[linear-gradient(180deg,#ffffff,#fbfffd)]',
+    warn: 'border-l-[#efd8a8] bg-[linear-gradient(180deg,#fffefc,#fffdf8)]',
+    danger: 'border-l-[#fecdd3] bg-[linear-gradient(180deg,#ffffff,#fffdfb)]',
     neutral: 'border-l-transparent bg-white',
   };
-  return `border-l-4 ${styles[tone]}`;
+  return `border-l-4 shadow-[0_1px_0_rgba(24,24,27,0.02)] ${styles[tone]}`;
 }
 
 function reviewStatusLabel(value?: WorkReviewStatus | null) {
