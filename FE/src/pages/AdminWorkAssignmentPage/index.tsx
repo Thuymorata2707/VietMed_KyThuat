@@ -10,7 +10,7 @@ import { queryKeys } from '../../lib/queryKeys';
 import { isTechnicalUser, technicalUserName } from '../../utils/technicalUsers';
 
 type WorkKind = 'repair' | 'maintenance' | 'installation';
-type WorkFilter = 'action' | 'unassigned' | 'review' | 'active' | 'all';
+type WorkFilter = 'action' | 'unassigned' | 'review' | 'active' | 'closed' | 'all';
 type KindFilter = WorkKind | 'all';
 type WorkReviewStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'NEEDS_REVISION';
 type Tone = 'good' | 'warn' | 'danger' | 'neutral';
@@ -106,6 +106,7 @@ const filterOptions: Array<{ value: WorkFilter; label: string }> = [
   { value: 'unassigned', label: 'Chưa phân' },
   { value: 'review', label: 'Chờ xác nhận' },
   { value: 'active', label: 'Đang thực hiện' },
+  { value: 'closed', label: 'Đã hoàn thành' },
   { value: 'all', label: 'Tất cả' },
 ];
 
@@ -214,59 +215,16 @@ export function AdminWorkAssignmentPage() {
     return () => window.clearTimeout(timeout);
   }, [query]);
 
-  const items = useMemo(() => {
-    const nextItems: WorkItem[] = [
-      ...repairs.map((item) => ({
-        key: `repair:${item.id}`,
-        id: item.id,
-        kind: 'repair' as const,
-        code: item.code,
-        title: item.title,
-        status: item.status,
-        date: item.reportedAt,
-        engineer: item.engineer,
-        createdBy: item.createdBy,
-        machine: item.machine,
-        customer: item.machine?.customer,
-        reviewStatus: item.reviewStatus,
-        reviewNote: item.reviewNote,
-      })),
-      ...maintenances.map((item) => ({
-        key: `maintenance:${item.id}`,
-        id: item.id,
-        kind: 'maintenance' as const,
-        code: item.code,
-        title: item.title,
-        status: item.status,
-        date: item.scheduledDate,
-        engineer: item.engineer,
-        machine: item.machine,
-        customer: item.machine?.customer,
-        reviewStatus: item.reviewStatus,
-        reviewNote: item.reviewNote,
-      })),
-      ...installations.map((item) => ({
-        key: `installation:${item.id}`,
-        id: item.id,
-        kind: 'installation' as const,
-        code: item.code,
-        title: installationTitle(item),
-        status: item.status,
-        date: item.installedAt,
-        engineer: item.installedBy,
-        machine: item.machine,
-        customer: item.customer ?? item.machine?.customer,
-        reviewStatus: item.reviewStatus,
-        reviewNote: item.reviewNote,
-      })),
-    ];
+  const allItems = useMemo(() => buildWorkItems(repairs, maintenances, installations), [installations, maintenances, repairs]);
 
-    return nextItems
+  const items = useMemo(() => {
+    return allItems
       .filter((item) => {
         if (filter === 'action') return !item.engineer?.id || item.reviewStatus === 'PENDING';
         if (filter === 'unassigned') return !item.engineer?.id;
         if (filter === 'review') return item.reviewStatus === 'PENDING';
         if (filter === 'active') return !isClosed(item.status) && Boolean(item.engineer?.id) && item.reviewStatus !== 'PENDING';
+        if (filter === 'closed') return isClosed(item.status) && Boolean(item.engineer?.id) && item.reviewStatus !== 'PENDING';
         return true;
       })
       .filter((item) => kindFilter === 'all' || item.kind === kindFilter)
@@ -276,7 +234,7 @@ export function AdminWorkAssignmentPage() {
         return item.engineer?.id === engineerFilter;
       })
       .sort((left, right) => actionRank(left) - actionRank(right) || dateRank(right) - dateRank(left) || left.code.localeCompare(right.code));
-  }, [engineerFilter, filter, installations, kindFilter, maintenances, repairs]);
+  }, [allItems, engineerFilter, filter, kindFilter]);
 
   async function assignWork(item: WorkItem) {
     const engineerId = assignmentByKey[item.key];
@@ -326,12 +284,17 @@ export function AdminWorkAssignmentPage() {
     repairs.filter((item) => item.reviewStatus === 'PENDING').length +
     maintenances.filter((item) => item.reviewStatus === 'PENDING').length +
     installations.filter((item) => item.reviewStatus === 'PENDING').length;
+  const closedCount =
+    repairs.filter((item) => isClosed(item.status) && Boolean(item.engineer?.id) && item.reviewStatus !== 'PENDING').length +
+    maintenances.filter((item) => isClosed(item.status) && Boolean(item.engineer?.id) && item.reviewStatus !== 'PENDING').length +
+    installations.filter((item) => isClosed(item.status) && Boolean(item.installedBy?.id) && item.reviewStatus !== 'PENDING').length;
   const actionCount = unassignedCount + pendingReviewCount;
   const filterCounts: Record<WorkFilter, number> = {
     action: actionCount,
     unassigned: unassignedCount,
     review: pendingReviewCount,
     active: assignedActiveCount,
+    closed: closedCount,
     all: repairs.length + maintenances.length + installations.length,
   };
   const currentFilterLabel = filterOptions.find((option) => option.value === filter)?.label ?? 'Công việc';
@@ -407,7 +370,7 @@ export function AdminWorkAssignmentPage() {
             Refresh
           </button>
         </div>
-        <div className="relative mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="relative mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <button className={summaryCardClass(filter === 'action')} onClick={() => setFilter('action')} type="button">
             <span>Cần xử lý</span>
             <strong>{actionCount}</strong>
@@ -427,6 +390,11 @@ export function AdminWorkAssignmentPage() {
             <span>Đang thực hiện</span>
             <strong>{assignedActiveCount}</strong>
             <small>Đang chạy</small>
+          </button>
+          <button className={summaryCardClass(filter === 'closed')} onClick={() => setFilter('closed')} type="button">
+            <span>Đã hoàn thành</span>
+            <strong>{closedCount}</strong>
+            <small>Đã xong</small>
           </button>
         </div>
       </section>
@@ -558,6 +526,36 @@ export function AdminWorkAssignmentPage() {
                   </div>
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-[#1f1f1f]">Đã hoàn thành gần đây</h2>
+                <p className="mt-1 text-xs leading-5 text-[#8a8f99]">Xem nhanh các việc đã xong mà không phải kéo xuống cuối.</p>
+              </div>
+              <button className="secondary-button px-3 py-2 text-sm" onClick={() => setFilter('closed')} type="button">
+                Mở lọc
+              </button>
+            </div>
+            <div className="mt-3 grid gap-2">
+              {groupWorkItems(allItems, 'closed').slice(0, 4).map((group) => (
+                <div className="rounded-xl border border-[#ededf0] bg-[#fafafa] p-3" key={group.key}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[#1f1f1f]">{group.title}</p>
+                      <p className="mt-1 text-[11px] leading-4 text-[#8a8f99]">{group.items.length} việc trong cụm này</p>
+                    </div>
+                    <span className="rounded-full bg-[#eefaf3] px-2 py-1 text-[11px] font-semibold text-[#177245]">Xong</span>
+                  </div>
+                </div>
+              ))}
+              {closedCount === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#e4e4e7] px-3 py-4 text-sm text-[#8a8f99]">
+                  Chưa có việc hoàn thành để hiển thị.
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -719,6 +717,7 @@ function filterDescription(filter: WorkFilter) {
     unassigned: 'Chưa có người phụ trách.',
     review: 'Chờ admin xác nhận.',
     active: 'Đang được kỹ sư xử lý.',
+    closed: 'Các việc đã hoàn thành hoặc đã đóng.',
     all: 'Tất cả việc trong bộ lọc.',
   };
   return descriptions[filter];
@@ -759,6 +758,8 @@ function groupWorkItems(items: WorkItem[], filter: WorkFilter) {
         ? groups.filter((group) => group.key === 'unassigned' && group.items.length)
         : filter === 'active'
           ? groups.filter((group) => group.key === 'active' && group.items.length)
+          : filter === 'closed'
+            ? groups.filter((group) => group.key === 'closed' && group.items.length)
           : filter === 'action'
             ? groups.filter((group) => ['review', 'unassigned'].includes(group.key) && group.items.length)
             : groups.filter((group) => group.items.length);
@@ -799,6 +800,54 @@ function compareWorkGroupDateKeys(left: string, right: string) {
 
 function compareWorkItemsByDateDesc(left: WorkItem, right: WorkItem) {
   return dateRank(right) - dateRank(left) || left.code.localeCompare(right.code);
+}
+
+function buildWorkItems(repairs: RepairAssignment[], maintenances: MaintenanceAssignment[], installations: InstallationAssignment[]) {
+  return [
+    ...repairs.map((item) => ({
+      key: `repair:${item.id}`,
+      id: item.id,
+      kind: 'repair' as const,
+      code: item.code,
+      title: item.title,
+      status: item.status,
+      date: item.reportedAt,
+      engineer: item.engineer,
+      createdBy: item.createdBy,
+      machine: item.machine,
+      customer: item.machine?.customer,
+      reviewStatus: item.reviewStatus,
+      reviewNote: item.reviewNote,
+    })),
+    ...maintenances.map((item) => ({
+      key: `maintenance:${item.id}`,
+      id: item.id,
+      kind: 'maintenance' as const,
+      code: item.code,
+      title: item.title,
+      status: item.status,
+      date: item.scheduledDate,
+      engineer: item.engineer,
+      machine: item.machine,
+      customer: item.machine?.customer,
+      reviewStatus: item.reviewStatus,
+      reviewNote: item.reviewNote,
+    })),
+    ...installations.map((item) => ({
+      key: `installation:${item.id}`,
+      id: item.id,
+      kind: 'installation' as const,
+      code: item.code,
+      title: installationTitle(item),
+      status: item.status,
+      date: item.installedAt,
+      engineer: item.installedBy,
+      machine: item.machine,
+      customer: item.customer ?? item.machine?.customer,
+      reviewStatus: item.reviewStatus,
+      reviewNote: item.reviewNote,
+    })),
+  ] satisfies WorkItem[];
 }
 
 function buildEngineerLoads(engineers: ApiUser[], items: WorkItem[]) {
