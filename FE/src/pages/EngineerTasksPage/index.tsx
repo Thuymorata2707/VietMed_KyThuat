@@ -17,7 +17,6 @@ import { CreateModelDevicePicker } from './components/CreateModelDevicePicker';
 import { EngineerTaskRow } from './components/EngineerTaskRow';
 import { StatusActionPicker, TodayCommandCenter, TodayDailyWorkCard, WeeklyReportQuickCard } from './components/EngineerTaskPanels';
 import { InstallationHandoverForm } from './InstallationHandoverForm';
-import { SummaryTile } from './SummaryTile';
 import { attachmentOptionsByKind, installationStatusOptions, maintenanceStatusOptions, repairStatusOptions } from './constants';
 import type {
   AttachmentType,
@@ -958,55 +957,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
-
-      <section className="engineer-task-summary">
-        <SummaryTile
-          active={filter === 'action' && businessTab === 'all'}
-          description="Việc cần làm tiếp"
-          label="Cần xử lý"
-          onClick={() => focusTaskList('action')}
-          tone={taskStats.action > 0 ? 'warn' : 'neutral'}
-          value={taskStats.action}
-        />
-        <SummaryTile
-          active={filter === 'revision'}
-          description="Admin trả về"
-          label="Cần bổ sung"
-          onClick={() => focusTaskList('revision')}
-          tone={taskStats.revision > 0 ? 'danger' : 'neutral'}
-          value={taskStats.revision}
-        />
-        <SummaryTile
-          active={filter === 'review'}
-          description="Đã gửi, chờ duyệt"
-          label="Chờ admin xác nhận"
-          onClick={() => focusTaskList('review')}
-          tone={taskStats.review > 0 ? 'warn' : 'neutral'}
-          value={taskStats.review}
-        />
-        <SummaryTile
-          active={filter === 'today'}
-          description="Theo ngày hẹn"
-          label="Hôm nay"
-          onClick={() => focusTaskList('today')}
-          value={taskStats.today}
-        />
-        <SummaryTile
-          active={filter === 'overdue'}
-          description="Cần ưu tiên"
-          label="Quá hạn"
-          onClick={() => focusTaskList('overdue')}
-          tone={taskStats.overdue > 0 ? 'danger' : 'neutral'}
-          value={taskStats.overdue}
-        />
-        <SummaryTile
-          active={filter === 'progress'}
-          description="Đang cập nhật"
-          label="Đang xử lý"
-          onClick={() => focusTaskList('progress')}
-          value={taskStats.progress}
-        />
-      </section>
 
       <section className="grid grid-cols-1 gap-4 min-[1180px]:grid-cols-[minmax(0,1fr)_340px]">
         <TodayCommandCenter

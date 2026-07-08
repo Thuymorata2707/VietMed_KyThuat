@@ -98,12 +98,19 @@ export function TodayCommandCenter({
   };
   tasks: EngineerTask[];
 }) {
+  const quickFilters = [
+    { filter: 'revision' as TaskFilter, label: 'Cần bổ sung', value: stats.revision },
+    { filter: 'overdue' as TaskFilter, label: 'Quá hạn', value: stats.overdue },
+    { filter: 'today' as TaskFilter, label: 'Hôm nay', value: stats.today },
+    { filter: 'action' as TaskFilter, label: 'Thiếu hồ sơ', value: stats.missingMachine },
+  ];
+
   return (
-    <section className="grid gap-3.5 rounded-[18px] border border-[#e4e4e7] bg-[linear-gradient(180deg,#ffffff,#fbfcfd)] p-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
-      <div className="flex items-start justify-between gap-3.5">
+    <section className="today-command-center">
+      <div className="today-command-center__head">
         <div>
-          <span className="block text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#71717a]">Bảng việc hôm nay</span>
-          <h2 className="mt-1.5 text-[clamp(22px,3vw,34px)] font-[760] leading-[1.08] tracking-[-0.04em] text-[#18181b] [text-wrap:balance]">Mở app là biết việc cần làm trước.</h2>
+          <span>Ưu tiên hôm nay</span>
+          <h2>Việc cần xử lý trước</h2>
         </div>
         <button className="secondary-button flex-none" onClick={onCreate} type="button">
           <Plus size={16} />
@@ -111,26 +118,16 @@ export function TodayCommandCenter({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 min-[1180px]:grid-cols-4" aria-label="Bộ lọc nhanh">
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#e4e4e7] bg-white px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#18181b] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]" onClick={() => onFilter('revision')} type="button">
-          <span className="text-[12px] font-bold text-[#52525b]">Cần bổ sung</span>
-          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.revision}</strong>
-        </button>
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#e4e4e7] bg-white px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#18181b] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]" onClick={() => onFilter('overdue')} type="button">
-          <span className="text-[12px] font-bold text-[#52525b]">Quá hạn</span>
-          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.overdue}</strong>
-        </button>
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#e4e4e7] bg-white px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#18181b] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]" onClick={() => onFilter('today')} type="button">
-          <span className="text-[12px] font-bold text-[#52525b]">Hôm nay</span>
-          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.today}</strong>
-        </button>
-        <button className="flex min-h-[58px] cursor-pointer items-center justify-between rounded-[14px] border border-[#e4e4e7] bg-white px-3 py-2.5 text-[#18181b] transition duration-200 ease-out hover:-translate-y-px hover:border-[#18181b] hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]" onClick={() => onFilter('action')} type="button">
-          <span className="text-[12px] font-bold text-[#52525b]">Thiếu hồ sơ máy</span>
-          <strong className="text-2xl leading-none text-[#18181b] [font-variant-numeric:tabular-nums]">{stats.missingMachine}</strong>
-        </button>
+      <div className="today-command-center__filters" aria-label="Bộ lọc nhanh">
+        {quickFilters.map((item) => (
+          <button className="today-command-center__filter" key={item.filter} onClick={() => onFilter(item.filter)} type="button">
+            <strong>{item.value}</strong>
+            <span>{item.label}</span>
+          </button>
+        ))}
       </div>
 
-      <div className="grid gap-2.5">
+      <div className="today-command-center__list">
         {tasks.length ? (
           tasks.map((task) => <PriorityTaskCard key={`${task.kind}-${task.id}`} onOpen={onOpen} task={task} />)
         ) : (
