@@ -3,6 +3,7 @@ import { ArrowDownWideNarrow, Building2, CalendarDays, ChevronLeft, Download, Lo
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api';
+import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
@@ -375,30 +376,24 @@ export function ReportsPage() {
           </div>
 
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]">
-              Từ ngày
-              <input
-                className={reportFieldClass}
-                onChange={(event) => {
-                  setDraftFrom(event.target.value);
-                  updateReportFilter('from', event.target.value);
-                }}
-                type="date"
-                value={draftFrom}
-              />
-            </label>
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]">
-              Đến ngày
-              <input
-                className={reportFieldClass}
-                onChange={(event) => {
-                  setDraftTo(event.target.value);
-                  updateReportFilter('to', event.target.value);
-                }}
-                type="date"
-                value={draftTo}
-              />
-            </label>
+            <DateInput
+              className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]"
+              label="Từ ngày"
+              onChange={(value) => {
+                setDraftFrom(value);
+                updateReportFilter('from', value);
+              }}
+              value={draftFrom}
+            />
+            <DateInput
+              className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]"
+              label="Đến ngày"
+              onChange={(value) => {
+                setDraftTo(value);
+                updateReportFilter('to', value);
+              }}
+              value={draftTo}
+            />
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#71717a]">
               Kỹ sư
               <select

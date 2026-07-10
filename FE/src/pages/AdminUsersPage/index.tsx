@@ -4,6 +4,7 @@ import { Dispatch, FormEvent, ReactNode, SetStateAction, useEffect, useMemo, use
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
+import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
@@ -735,15 +736,9 @@ function UserForm({
                 <input onChange={(event) => onChange((current) => ({ ...current, certificateNo: event.target.value }))} value={form.certificateNo} />
               </label>
 
-              <label>
-                Ngày sinh
-                <input onChange={(event) => onChange((current) => ({ ...current, dateOfBirth: event.target.value }))} type="date" value={form.dateOfBirth} />
-              </label>
+              <DateInput label="Ngày sinh" onChange={(value) => onChange((current) => ({ ...current, dateOfBirth: value }))} value={form.dateOfBirth} />
 
-              <label>
-                Ngày bắt đầu làm
-                <input onChange={(event) => onChange((current) => ({ ...current, workStartDate: event.target.value }))} type="date" value={form.workStartDate} />
-              </label>
+              <DateInput label="Ngày bắt đầu làm" onChange={(value) => onChange((current) => ({ ...current, workStartDate: value }))} value={form.workStartDate} />
 
               <label className="wide-field">
                 Ảnh kỹ sư

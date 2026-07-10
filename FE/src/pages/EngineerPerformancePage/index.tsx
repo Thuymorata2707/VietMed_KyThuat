@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
+import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
@@ -232,23 +233,9 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
               <strong className="min-h-11 rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 py-2.5 text-[#1f1f1f]">{user.fullName || user.email}</strong>
             </div>
           )}
-          <label className="grid gap-1.5 text-sm font-medium text-[#333333]">
-            Từ ngày
-            <input className={fieldClass} onChange={(event) => setFrom(event.target.value)} type="date" value={from} />
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium text-[#333333]">
-            Đến ngày
-            <input className={fieldClass} onChange={(event) => setTo(event.target.value)} type="date" value={to} />
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium text-[#333333]">
-            Tuần báo cáo
-            <input
-              className={fieldClass}
-              onChange={(event) => setWeekStart(toDateInput(startOfWeek(new Date(`${event.target.value}T00:00:00`))))}
-              type="date"
-              value={weekStart}
-            />
-          </label>
+          <DateInput className="grid gap-1.5 text-sm font-medium text-[#333333]" label="Từ ngày" onChange={setFrom} value={from} />
+          <DateInput className="grid gap-1.5 text-sm font-medium text-[#333333]" label="Đến ngày" onChange={setTo} value={to} />
+          <DateInput className="grid gap-1.5 text-sm font-medium text-[#333333]" label="Tuần báo cáo" onChange={(value) => setWeekStart(value ? toDateInput(startOfWeek(new Date(`${value}T00:00:00`))) : '')} value={weekStart} />
           <div className="flex flex-wrap items-end justify-start gap-2 self-end lg:justify-end">
             <button className="secondary-button" disabled={loading} onClick={() => void summaryQuery.refetch()} type="button">
               {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}

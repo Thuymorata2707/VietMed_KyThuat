@@ -1143,12 +1143,12 @@ p {
 
 .machine-accessory-header,
 .machine-accessory-row {
-  align-items: end;
   display: grid;
   gap: 10px;
 }
 
 .machine-accessory-header {
+  align-items: end;
   grid-template-columns: 1fr auto;
 }
 
@@ -1164,7 +1164,8 @@ p {
 }
 
 .machine-accessory-row {
-  grid-template-columns: minmax(160px, 1.1fr) minmax(140px, 1fr) 38px;
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .machine-accessory-row label {

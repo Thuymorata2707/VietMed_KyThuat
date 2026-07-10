@@ -6,6 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ApiUser, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
+import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
@@ -198,18 +199,9 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
 
       <section className="operation-filter-panel">
         <div className="grid gap-3 min-[1180px]:grid-cols-[150px_150px_150px_minmax(190px,1fr)_minmax(190px,1fr)_170px]">
-          <label className="operation-filter-field">
-            <span>Từ ngày</span>
-            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => setFrom(event.target.value)} type="date" value={from} />
-          </label>
-          <label className="operation-filter-field">
-            <span>Đến ngày</span>
-            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => setTo(event.target.value)} type="date" value={to} />
-          </label>
-          <label className="operation-filter-field">
-            <span>Tuần báo cáo</span>
-            <input className="h-[42px] rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => setWeekStart(toDateInput(startOfWeek(new Date(`${event.target.value}T00:00:00`))))} type="date" value={weekStart} />
-          </label>
+          <DateInput className="operation-filter-field" label="Từ ngày" onChange={setFrom} value={from} />
+          <DateInput className="operation-filter-field" label="Đến ngày" onChange={setTo} value={to} />
+          <DateInput className="operation-filter-field" label="Tuần báo cáo" onChange={(value) => setWeekStart(value ? toDateInput(startOfWeek(new Date(`${value}T00:00:00`))) : '')} value={weekStart} />
           <label className="operation-filter-field">
             <span>Kỹ sư</span>
             {isAdmin ? (

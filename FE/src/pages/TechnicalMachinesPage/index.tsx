@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { Notice } from '../../components/Notice';
+import { DateInput } from '../../components/DateInput';
 import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -977,14 +978,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                   ))}
                 </select>
               </label>
-              <label className={editLabelClass}>
-                Ngày sản xuất
-                <input className={editFieldClass} onChange={(event) => updateEditForm({ manufacturingDate: event.target.value })} type="date" value={editForm.manufacturingDate} />
-              </label>
-              <label className={editLabelClass}>
-                Ngày nhập kho
-                <input className={editFieldClass} onChange={(event) => updateEditForm({ warehouseImportDate: event.target.value })} type="date" value={editForm.warehouseImportDate} />
-              </label>
+              <DateInput className={editLabelClass} label="Ngày sản xuất" onChange={(value) => updateEditForm({ manufacturingDate: value })} value={editForm.manufacturingDate} />
+              <DateInput className={editLabelClass} label="Ngày nhập kho" onChange={(value) => updateEditForm({ warehouseImportDate: value })} value={editForm.warehouseImportDate} />
               <label className={`${editLabelClass} md:col-span-2`}>
                 Khách hàng
                 <select className={editFieldClass} onChange={(event) => updateEditForm({ customerId: event.target.value })} value={editForm.customerId}>
@@ -994,18 +989,9 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                   ))}
                 </select>
               </label>
-              <label className={editLabelClass}>
-                Ngày lắp
-                <input className={editFieldClass} onChange={(event) => updateEditForm({ installDate: event.target.value })} type="date" value={editForm.installDate} />
-              </label>
-              <label className={editLabelClass}>
-                Bắt đầu bảo hành
-                <input className={editFieldClass} onChange={(event) => updateEditForm({ warrantyStartDate: event.target.value })} type="date" value={editForm.warrantyStartDate} />
-              </label>
-              <label className={editLabelClass}>
-                Hết bảo hành
-                <input className={editFieldClass} onChange={(event) => updateEditForm({ warrantyEndDate: event.target.value })} type="date" value={editForm.warrantyEndDate} />
-              </label>
+              <DateInput className={editLabelClass} label="Ngày lắp" onChange={(value) => updateEditForm({ installDate: value })} value={editForm.installDate} />
+              <DateInput className={editLabelClass} label="Bắt đầu bảo hành" onChange={(value) => updateEditForm({ warrantyStartDate: value })} value={editForm.warrantyStartDate} />
+              <DateInput className={editLabelClass} label="Hết bảo hành" onChange={(value) => updateEditForm({ warrantyEndDate: value })} value={editForm.warrantyEndDate} />
             </div>
 
             <section className="grid gap-3 border-t border-[#eeeeee] pt-4">
@@ -1147,14 +1133,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                   ))}
                 </select>
               </label>
-              <label className={editLabelClass}>
-                Ngày sản xuất
-                <input className={editFieldClass} onChange={(event) => updateBulkForm({ manufacturingDate: event.target.value })} type="date" value={bulkForm.manufacturingDate} />
-              </label>
-              <label className={editLabelClass}>
-                Ngày nhập kho
-                <input className={editFieldClass} onChange={(event) => updateBulkForm({ warehouseImportDate: event.target.value })} type="date" value={bulkForm.warehouseImportDate} />
-              </label>
+              <DateInput className={editLabelClass} label="Ngày sản xuất" onChange={(value) => updateBulkForm({ manufacturingDate: value })} value={bulkForm.manufacturingDate} />
+              <DateInput className={editLabelClass} label="Ngày nhập kho" onChange={(value) => updateBulkForm({ warehouseImportDate: value })} value={bulkForm.warehouseImportDate} />
               <label className={`${editLabelClass} md:col-span-2`}>
                 Danh sách serial
                 <textarea
@@ -1906,14 +1886,8 @@ function MachineEditForm({
             ))}
           </select>
         </label>
-        <label className={editLabelClass}>
-          Ngày sản xuất
-          <input className={editFieldClass} onChange={(event) => onUpdateForm({ manufacturingDate: event.target.value })} type="date" value={editForm.manufacturingDate} />
-        </label>
-        <label className={editLabelClass}>
-          Ngày nhập kho
-          <input className={editFieldClass} onChange={(event) => onUpdateForm({ warehouseImportDate: event.target.value })} type="date" value={editForm.warehouseImportDate} />
-        </label>
+        <DateInput className={editLabelClass} label="Ngày sản xuất" onChange={(value) => onUpdateForm({ manufacturingDate: value })} value={editForm.manufacturingDate} />
+        <DateInput className={editLabelClass} label="Ngày nhập kho" onChange={(value) => onUpdateForm({ warehouseImportDate: value })} value={editForm.warehouseImportDate} />
         <label className={`${editLabelClass} md:col-span-2`}>
           Khách hàng
           <select className={editFieldClass} onChange={(event) => onUpdateForm({ customerId: event.target.value })} value={editForm.customerId}>
@@ -1923,18 +1897,9 @@ function MachineEditForm({
             ))}
           </select>
         </label>
-        <label className={editLabelClass}>
-          Ngày lắp
-          <input className={editFieldClass} onChange={(event) => onUpdateForm({ installDate: event.target.value })} type="date" value={editForm.installDate} />
-        </label>
-        <label className={editLabelClass}>
-          Bắt đầu bảo hành
-          <input className={editFieldClass} onChange={(event) => onUpdateForm({ warrantyStartDate: event.target.value })} type="date" value={editForm.warrantyStartDate} />
-        </label>
-        <label className={editLabelClass}>
-          Hết bảo hành
-          <input className={editFieldClass} onChange={(event) => onUpdateForm({ warrantyEndDate: event.target.value })} type="date" value={editForm.warrantyEndDate} />
-        </label>
+        <DateInput className={editLabelClass} label="Ngày lắp" onChange={(value) => onUpdateForm({ installDate: value })} value={editForm.installDate} />
+        <DateInput className={editLabelClass} label="Bắt đầu bảo hành" onChange={(value) => onUpdateForm({ warrantyStartDate: value })} value={editForm.warrantyStartDate} />
+        <DateInput className={editLabelClass} label="Hết bảo hành" onChange={(value) => onUpdateForm({ warrantyEndDate: value })} value={editForm.warrantyEndDate} />
       </div>
 
       <section className="grid gap-4 border-t border-[#eeeeee] pt-5">

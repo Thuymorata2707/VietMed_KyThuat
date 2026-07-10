@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
+import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { queryKeys } from '../../lib/queryKeys';
 
@@ -532,10 +533,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
                 Tiêu đề công việc
                 <input onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required value={form.title} />
               </label>
-              <label>
-                Ngày
-                <input onChange={(event) => setForm((current) => ({ ...current, workDate: event.target.value }))} required type="date" value={form.workDate} />
-              </label>
+              <DateInput label="Ngày" onChange={(value) => setForm((current) => ({ ...current, workDate: value }))} required value={form.workDate} />
               <label>
                 Bắt đầu
                 <input onChange={(event) => setForm((current) => ({ ...current, startTime: event.target.value }))} type="time" value={form.startTime} />

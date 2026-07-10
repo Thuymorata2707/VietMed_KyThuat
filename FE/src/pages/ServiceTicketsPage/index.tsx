@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
+import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
@@ -539,14 +540,8 @@ function OperationsBoard({
                   ))}
                 </select>
               </label>
-              <label className="operation-filter-field">
-                <span>Từ ngày</span>
-                <input onChange={(event) => setDateFrom(event.target.value)} type="date" value={dateFrom} />
-              </label>
-              <label className="operation-filter-field">
-                <span>Đến ngày</span>
-                <input onChange={(event) => setDateTo(event.target.value)} type="date" value={dateTo} />
-              </label>
+              <DateInput className="operation-filter-field" label="Từ ngày" onChange={setDateFrom} value={dateFrom} />
+              <DateInput className="operation-filter-field" label="Đến ngày" onChange={setDateTo} value={dateTo} />
               <label className="operation-filter-field">
                 <span>Nhóm theo</span>
                 <select onChange={(event) => setGroupBy(event.target.value as GroupByKey)} value={groupBy}>

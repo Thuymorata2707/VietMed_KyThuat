@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
+import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
@@ -332,12 +333,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               <ChevronLeft size={16} />
               Tuần trước
             </button>
-            <input
-              className="min-h-10 rounded-lg border border-[#d6d6d6] px-3 text-[#1f1f1f]"
-              onChange={(event) => setWeekStart(toDateInput(startOfWeek(new Date(`${event.target.value}T00:00:00`))))}
-              type="date"
-              value={weekStart}
-            />
+            <DateInput className="min-w-[160px]" onChange={(value) => setWeekStart(value ? toDateInput(startOfWeek(new Date(`${value}T00:00:00`))) : '')} value={weekStart} />
             <button className="secondary-button" onClick={() => setWeekStart(toDateInput(addDays(new Date(`${weekStart}T00:00:00`), 7)))} type="button">
               Tuần sau
               <ChevronRight size={16} />
@@ -510,7 +506,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
                 {rows.map((row, index) => (
                   <tr className="align-top" key={`${row.id || 'new'}-${index}`}>
                     <td className="border-b border-[#eeeeee] p-2">
-                      <input className="weekly-cell" disabled={!canEdit || isAdmin} onChange={(event) => updateRow(index, { workDate: event.target.value })} type="date" value={toDateInput(new Date(row.workDate))} />
+                      <DateInput className="min-w-[150px]" disabled={!canEdit || isAdmin} onChange={(value) => updateRow(index, { workDate: value })} value={toDateInput(new Date(row.workDate))} />
                     </td>
                     <td className="border-b border-[#eeeeee] p-2">
                       <textarea className="weekly-cell" disabled={!canEdit || isAdmin} onChange={(event) => updateRow(index, { customer: event.target.value })} value={row.customer} />

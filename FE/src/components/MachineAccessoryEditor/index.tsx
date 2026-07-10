@@ -14,7 +14,7 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
   const items = parseMachineAccessoriesInput(value, [], { keepBlank: true });
   const isEndoscopy = mode === 'endoscopy';
   const fieldClass = 'h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
-  const labelClass = 'grid min-w-0 gap-2 text-sm font-medium text-[#333333]';
+  const labelClass = 'grid w-full min-w-0 gap-2 text-sm font-medium text-[#333333]';
 
   function setItems(nextItems: MachineAccessoryFormItem[]) {
     onChange(nextItems.length ? JSON.stringify(nextItems) : '');
@@ -78,16 +78,16 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
         </div>
       ) : null}
 
-      <div className="machine-accessory-list grid gap-3">
+      <div className="machine-accessory-list grid w-full gap-3">
         {items.map((item, index) => {
           const accessoryName = item.name || item.code || '';
           const hasModelField = isEndoscopy && endoscopyAccessoriesWithModel.has(accessoryName);
           const fieldsClass = hasModelField
-            ? 'grid min-w-0 gap-3 md:grid-cols-3'
-            : 'grid min-w-0 gap-3 md:grid-cols-2';
+            ? 'grid w-full min-w-0 gap-3 md:grid-cols-3'
+            : 'grid w-full min-w-0 gap-3 md:grid-cols-2';
 
           return (
-            <div className="machine-accessory-row grid min-w-0 gap-3 rounded-lg border border-[#eeeeee] bg-white p-3" key={`${item.id ?? 'new'}-${index}`}>
+            <div className="machine-accessory-row grid w-full min-w-0 gap-3 rounded-lg border border-[#eeeeee] bg-white p-3" key={`${item.id ?? 'new'}-${index}`}>
               <div className={fieldsClass}>
                 <label className={labelClass}>
                   {isEndoscopy ? 'Tên phụ kiện' : 'Ký hiệu đầu dò'}

@@ -3,6 +3,7 @@ import { FormEvent, useState } from 'react';
 import { ApiUser, apiFetch } from '../../api';
 import { getRoleName, roleLabel } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
+import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { initials } from '../../utils/format';
 
@@ -234,23 +235,9 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
                   </select>
                 </label>
 
-                <label>
-                  Ngày sinh
-                  <input
-                    onChange={(event) => updateField('dateOfBirth', event.target.value)}
-                    type="date"
-                    value={form.dateOfBirth}
-                  />
-                </label>
+                <DateInput label="Ngày sinh" onChange={(value) => updateField('dateOfBirth', value)} value={form.dateOfBirth} />
 
-                <label>
-                  Ngày bắt đầu làm
-                  <input
-                    onChange={(event) => updateField('workStartDate', event.target.value)}
-                    type="date"
-                    value={form.workStartDate}
-                  />
-                </label>
+                <DateInput label="Ngày bắt đầu làm" onChange={(value) => updateField('workStartDate', value)} value={form.workStartDate} />
 
                 <label>
                   Số chứng chỉ
