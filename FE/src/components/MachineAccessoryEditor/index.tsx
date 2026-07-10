@@ -82,38 +82,40 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
         {items.map((item, index) => {
           const accessoryName = item.name || item.code || '';
           const hasModelField = isEndoscopy && endoscopyAccessoriesWithModel.has(accessoryName);
-          const rowClass = hasModelField
-            ? 'machine-accessory-row grid min-w-0 gap-3 rounded-lg border border-[#eeeeee] bg-white p-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1fr)_auto]'
-            : 'machine-accessory-row grid min-w-0 gap-3 rounded-lg border border-[#eeeeee] bg-white p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]';
+          const fieldsClass = hasModelField
+            ? 'grid min-w-0 gap-3 md:grid-cols-3'
+            : 'grid min-w-0 gap-3 md:grid-cols-2';
 
           return (
-            <div className={rowClass} key={`${item.id ?? 'new'}-${index}`}>
-              <label className={labelClass}>
-                {isEndoscopy ? 'Tên phụ kiện' : 'Ký hiệu đầu dò'}
-                {isEndoscopy ? (
-                  <input className={fieldClass} onChange={(event) => updateItem(index, { code: event.target.value, name: event.target.value })} value={accessoryName} />
-                ) : (
-                  <select className={fieldClass} onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
-                    <option value="">Chọn đầu dò</option>
-                    {ultrasoundProbeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </label>
-              {hasModelField ? (
+            <div className="machine-accessory-row grid min-w-0 gap-3 rounded-lg border border-[#eeeeee] bg-white p-3" key={`${item.id ?? 'new'}-${index}`}>
+              <div className={fieldsClass}>
                 <label className={labelClass}>
-                  Model
-                  <input className={fieldClass} onChange={(event) => updateItem(index, { description: event.target.value })} value={item.description || ''} />
+                  {isEndoscopy ? 'Tên phụ kiện' : 'Ký hiệu đầu dò'}
+                  {isEndoscopy ? (
+                    <input className={fieldClass} onChange={(event) => updateItem(index, { code: event.target.value, name: event.target.value })} value={accessoryName} />
+                  ) : (
+                    <select className={fieldClass} onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
+                      <option value="">Chọn đầu dò</option>
+                      {ultrasoundProbeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </label>
-              ) : null}
-              <label className={labelClass}>
-                {isEndoscopy ? 'S/N hoặc số lượng/ghi chú' : 'S/N đầu dò'}
-                <input className={fieldClass} onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
-              </label>
-              <button className="icon-button danger self-end" onClick={() => removeItem(index)} title={isEndoscopy ? 'Delete accessory' : 'Delete probe'} type="button">
+                {hasModelField ? (
+                  <label className={labelClass}>
+                    Model
+                    <input className={fieldClass} onChange={(event) => updateItem(index, { description: event.target.value })} value={item.description || ''} />
+                  </label>
+                ) : null}
+                <label className={labelClass}>
+                  {isEndoscopy ? 'S/N hoặc số lượng/ghi chú' : 'S/N đầu dò'}
+                  <input className={fieldClass} onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
+                </label>
+              </div>
+              <button className="icon-button danger justify-self-start" onClick={() => removeItem(index)} title={isEndoscopy ? 'Delete accessory' : 'Delete probe'} type="button">
                 <Trash2 size={16} />
               </button>
             </div>
