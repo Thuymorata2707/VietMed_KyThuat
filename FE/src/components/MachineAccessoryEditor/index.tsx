@@ -13,6 +13,8 @@ type MachineAccessoryEditorProps = {
 export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe' }: MachineAccessoryEditorProps) {
   const items = parseMachineAccessoriesInput(value, [], { keepBlank: true });
   const isEndoscopy = mode === 'endoscopy';
+  const fieldClass = 'h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
+  const labelClass = 'grid min-w-0 gap-2 text-sm font-medium text-[#333333]';
 
   function setItems(nextItems: MachineAccessoryFormItem[]) {
     onChange(nextItems.length ? JSON.stringify(nextItems) : '');
@@ -81,17 +83,17 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
           const accessoryName = item.name || item.code || '';
           const hasModelField = isEndoscopy && endoscopyAccessoriesWithModel.has(accessoryName);
           const rowClass = hasModelField
-            ? 'machine-accessory-row grid gap-3 rounded-lg border border-[#eeeeee] bg-white p-3 md:grid-cols-[minmax(160px,1fr)_minmax(150px,0.8fr)_minmax(170px,1fr)_auto]'
-            : 'machine-accessory-row grid gap-3 rounded-lg border border-[#eeeeee] bg-white p-3 md:grid-cols-[minmax(190px,1fr)_minmax(180px,1fr)_auto]';
+            ? 'machine-accessory-row grid min-w-0 gap-3 rounded-lg border border-[#eeeeee] bg-white p-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1fr)_auto]'
+            : 'machine-accessory-row grid min-w-0 gap-3 rounded-lg border border-[#eeeeee] bg-white p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]';
 
           return (
             <div className={rowClass} key={`${item.id ?? 'new'}-${index}`}>
-              <label className="grid gap-2 text-sm font-medium text-[#333333]">
+              <label className={labelClass}>
                 {isEndoscopy ? 'Tên phụ kiện' : 'Ký hiệu đầu dò'}
                 {isEndoscopy ? (
-                  <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value, name: event.target.value })} value={accessoryName} />
+                  <input className={fieldClass} onChange={(event) => updateItem(index, { code: event.target.value, name: event.target.value })} value={accessoryName} />
                 ) : (
-                  <select className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
+                  <select className={fieldClass} onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
                     <option value="">Chọn đầu dò</option>
                     {ultrasoundProbeOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -102,14 +104,14 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
                 )}
               </label>
               {hasModelField ? (
-                <label className="grid gap-2 text-sm font-medium text-[#333333]">
+                <label className={labelClass}>
                   Model
-                  <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { description: event.target.value })} value={item.description || ''} />
+                  <input className={fieldClass} onChange={(event) => updateItem(index, { description: event.target.value })} value={item.description || ''} />
                 </label>
               ) : null}
-              <label className="grid gap-2 text-sm font-medium text-[#333333]">
+              <label className={labelClass}>
                 {isEndoscopy ? 'S/N hoặc số lượng/ghi chú' : 'S/N đầu dò'}
-                <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
+                <input className={fieldClass} onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
               </label>
               <button className="icon-button danger self-end" onClick={() => removeItem(index)} title={isEndoscopy ? 'Delete accessory' : 'Delete probe'} type="button">
                 <Trash2 size={16} />
