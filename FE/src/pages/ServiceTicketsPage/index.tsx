@@ -478,7 +478,7 @@ function OperationsBoard({
         </div>
       </div>
 
-      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#fafafa] p-4 shadow-[0_18px_46px_rgba(24,24,27,0.07)]">
+      <section className="relative overflow-visible rounded-[28px] border border-[#e4e4e7] bg-[#fafafa] p-4 shadow-[0_18px_46px_rgba(24,24,27,0.07)]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_0%,rgba(14,165,233,0.07),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.72),rgba(248,250,252,0.86))]" />
         <div className="relative grid gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">

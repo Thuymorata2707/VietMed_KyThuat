@@ -1164,8 +1164,8 @@ p {
 }
 
 .machine-accessory-row {
-  align-items: stretch;
-  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .machine-accessory-row label {
