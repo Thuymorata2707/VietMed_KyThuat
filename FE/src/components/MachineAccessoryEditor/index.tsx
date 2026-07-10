@@ -1,5 +1,5 @@
 import { Plus, ScanLine, Trash2 } from 'lucide-react';
-import { endoscopyAccessoryOptions } from '../../config/endoscopyAccessories';
+import { endoscopyAccessoriesWithModel, endoscopyAccessoryOptions } from '../../config/endoscopyAccessories';
 import { ultrasoundProbeOptions } from '../../config/ultrasoundProbes';
 import { MachineAccessoryFormItem, makeProbeAccessory, parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 
@@ -43,7 +43,7 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
       setItems(items.filter((item) => (item.name || item.code) !== name));
       return;
     }
-    setItems([...items.filter((item) => item.name), { code: name, name, serialNumber: '' }]);
+    setItems([...items.filter((item) => item.name), { code: name, name, serialNumber: '', description: '' }]);
   }
 
   return (
@@ -77,32 +77,46 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
       ) : null}
 
       <div className="machine-accessory-list grid gap-3">
-        {items.map((item, index) => (
-          <div className="machine-accessory-row grid gap-3 rounded-lg border border-[#eeeeee] bg-white p-3 md:grid-cols-[minmax(190px,1fr)_minmax(180px,1fr)_auto]" key={`${item.id ?? 'new'}-${index}`}>
-            <label className="grid gap-2 text-sm font-medium text-[#333333]">
-              {isEndoscopy ? 'Tên phụ kiện' : 'Ký hiệu đầu dò'}
-              {isEndoscopy ? (
-                <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value, name: event.target.value })} value={item.name || item.code || ''} />
-              ) : (
-                <select className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
-                  <option value="">Chọn đầu dò</option>
-                  {ultrasoundProbeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </label>
-            <label className="grid gap-2 text-sm font-medium text-[#333333]">
-              {isEndoscopy ? 'S/N hoặc số lượng/ghi chú' : 'S/N đầu dò'}
-              <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
-            </label>
-            <button className="icon-button danger self-end" onClick={() => removeItem(index)} title={isEndoscopy ? 'Delete accessory' : 'Delete probe'} type="button">
-              <Trash2 size={16} />
-            </button>
-          </div>
-        ))}
+        {items.map((item, index) => {
+          const accessoryName = item.name || item.code || '';
+          const hasModelField = isEndoscopy && endoscopyAccessoriesWithModel.has(accessoryName);
+          const rowClass = hasModelField
+            ? 'machine-accessory-row grid gap-3 rounded-lg border border-[#eeeeee] bg-white p-3 md:grid-cols-[minmax(160px,1fr)_minmax(150px,0.8fr)_minmax(170px,1fr)_auto]'
+            : 'machine-accessory-row grid gap-3 rounded-lg border border-[#eeeeee] bg-white p-3 md:grid-cols-[minmax(190px,1fr)_minmax(180px,1fr)_auto]';
+
+          return (
+            <div className={rowClass} key={`${item.id ?? 'new'}-${index}`}>
+              <label className="grid gap-2 text-sm font-medium text-[#333333]">
+                {isEndoscopy ? 'Tên phụ kiện' : 'Ký hiệu đầu dò'}
+                {isEndoscopy ? (
+                  <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value, name: event.target.value })} value={accessoryName} />
+                ) : (
+                  <select className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
+                    <option value="">Chọn đầu dò</option>
+                    {ultrasoundProbeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </label>
+              {hasModelField ? (
+                <label className="grid gap-2 text-sm font-medium text-[#333333]">
+                  Model
+                  <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { description: event.target.value })} value={item.description || ''} />
+                </label>
+              ) : null}
+              <label className="grid gap-2 text-sm font-medium text-[#333333]">
+                {isEndoscopy ? 'S/N hoặc số lượng/ghi chú' : 'S/N đầu dò'}
+                <input className="h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
+              </label>
+              <button className="icon-button danger self-end" onClick={() => removeItem(index)} title={isEndoscopy ? 'Delete accessory' : 'Delete probe'} type="button">
+                <Trash2 size={16} />
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {!items.length ? (

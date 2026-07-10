@@ -44,6 +44,12 @@ export const endoscopyAccessoryOptions = endoscopyAccessoryNames.map((name) => (
   value: name,
 }));
 
+export const endoscopyAccessoriesWithModel = new Set<string>([
+  'Bộ xử lý',
+  'Nguồn sáng',
+  'Màn hình',
+]);
+
 export function isEndoscopyMachineModel(model?: {
   code?: string | null;
   name?: string | null;

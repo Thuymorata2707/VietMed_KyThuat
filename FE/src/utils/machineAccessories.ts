@@ -4,6 +4,7 @@ export type MachineAccessoryFormItem = {
   code?: string;
   name: string;
   serialNumber?: string;
+  description?: string;
 };
 
 type AccessoryLike = Record<string, unknown>;
@@ -35,6 +36,7 @@ export function parseMachineAccessoriesInput(value: string, existingAccessories:
         code: code || undefined,
         name: name || '',
         serialNumber: item.serialNumber?.trim() || undefined,
+        description: item.description?.trim() || undefined,
       };
     });
   return options.keepBlank ? items : items.filter((item) => item.name);
@@ -66,6 +68,7 @@ function normalizeAccessoryItem(item: unknown): MachineAccessoryFormItem | null 
   const code = String(accessory.code ?? componentAccessory?.code ?? accessory.name ?? '').trim();
   const name = String(accessory.name ?? componentAccessory?.name ?? code).trim();
   const serialNumber = String(accessory.serialNumber ?? '').trim();
+  const description = String(accessory.description ?? '').trim();
 
   return {
     id: typeof accessory.id === 'string' ? accessory.id : undefined,
@@ -73,6 +76,7 @@ function normalizeAccessoryItem(item: unknown): MachineAccessoryFormItem | null 
     code: code || name,
     name: name || code,
     serialNumber,
+    description,
   };
 }
 
@@ -96,7 +100,7 @@ function parseLegacyAccessoryLines(value: string, existingAccessories: unknown[]
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line, index) => {
-      const [name = '', serialNumber = '', code = ''] = line.split('|').map((part) => part.trim());
+      const [name = '', serialNumber = '', code = '', description = ''] = line.split('|').map((part) => part.trim());
       const existing = existingAccessories[index] && typeof existingAccessories[index] === 'object'
         ? (existingAccessories[index] as AccessoryLike)
         : null;
@@ -109,6 +113,7 @@ function parseLegacyAccessoryLines(value: string, existingAccessories: unknown[]
         name,
         code: code || name,
         serialNumber,
+        description,
       };
     });
 }
