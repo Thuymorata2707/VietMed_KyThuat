@@ -125,11 +125,12 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
 
     try {
       const installation = await apiFetch<InstallationTask>(`/installations/${id}`);
+      const mainDeviceItem = getMainMachineDeviceItem(installation);
       setDetail(installation);
       setStatus(installation.status || 'PENDING');
       setInstalledAt(dateInputValue(installation.installedAt));
       setNote(installation.note || '');
-      setMachineSerialNumber(installation.machine?.serialNumber || '');
+      setMachineSerialNumber(installation.machine?.serialNumber || mainDeviceItem?.serialNumber || '');
       setMachineCode(installation.machine?.machineCode || '');
       setMachineAccessoriesText('');
       setInstalledById(installation.installedBy?.id || '');
@@ -878,8 +879,9 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 function buildForm(task: InstallationTask): CreateTicketForm {
   const installedAt = dateInputValue(task.installedAt);
   const warrantyStartDate = dateInputValue(task.warrantyStartDate || task.warrantyCard?.startDate) || installedAt;
+  const mainDeviceItem = getMainMachineDeviceItem(task);
   const installedDeviceItems = (task.installedDeviceItems || [])
-    .filter((item) => !isMainMachineItem(task, item))
+    .filter((item) => item !== mainDeviceItem && !isMainMachineItem(task, item))
     .map((item) => ({
         itemName: item.itemName || '',
         model: item.model || '',
@@ -894,6 +896,7 @@ function buildForm(task: InstallationTask): CreateTicketForm {
   return {
     ...emptyCreateTicketForm('installation'),
     machineId: task.machine?.id || '',
+    deviceName: task.machine?.name || mainDeviceItem?.itemName || '',
     workDate: warrantyStartDate,
     warrantyEndDate: dateInputValue(task.warrantyEndDate || task.warrantyCard?.endDate),
     description: task.warrantyNote || task.warrantyCard?.note || '',
@@ -911,14 +914,37 @@ function buildForm(task: InstallationTask): CreateTicketForm {
   };
 }
 
+function getMainMachineDeviceItem(task: InstallationTask) {
+  const items = task.installedDeviceItems || [];
+  if (!items.length) return null;
+
+  const exactMachineItem = items.find((item) => isMainMachineItem(task, item));
+  if (exactMachineItem) return exactMachineItem;
+
+  const plannedNames = mainMachineNames(task);
+  const plannedItem = items.find((item) => {
+    const itemName = normalizeText(item.itemName);
+    const itemModel = normalizeText(item.model);
+    return plannedNames.some((name) => name && (name === itemName || name === itemModel));
+  });
+  if (plannedItem) return plannedItem;
+
+  return !task.machine && items.length === 1 ? items[0] : null;
+}
+
 function isMainMachineItem(task: InstallationTask, item: InstallationDeviceItem) {
-  const machineSerial = task.machine?.serialNumber?.trim().toLowerCase();
-  const itemSerial = item.serialNumber?.trim().toLowerCase();
+  const machineSerial = normalizeText(task.machine?.serialNumber);
+  const itemSerial = normalizeText(item.serialNumber);
   if (machineSerial && itemSerial && machineSerial === itemSerial) return true;
 
-  const itemName = item.itemName?.trim().toLowerCase();
-  const itemModel = item.model?.trim().toLowerCase();
-  const mainNames = [
+  const itemName = normalizeText(item.itemName);
+  const itemModel = normalizeText(item.model);
+
+  return !itemSerial && mainMachineNames(task).some((value) => value && (value === itemName || value === itemModel));
+}
+
+function mainMachineNames(task: InstallationTask) {
+  return [
     task.machine?.name,
     task.machine?.modelName,
     task.plannedMachineModel?.displayName,
@@ -926,9 +952,11 @@ function isMainMachineItem(task: InstallationTask, item: InstallationDeviceItem)
     task.plannedModelName,
   ]
     .filter(Boolean)
-    .map((value) => String(value).trim().toLowerCase());
+    .map((value) => normalizeText(value));
+}
 
-  return !itemSerial && mainNames.some((value) => value && (value === itemName || value === itemModel));
+function normalizeText(value?: string | null) {
+  return String(value || '').trim().toLowerCase();
 }
 
 function dateInputValue(value?: string | null) {
