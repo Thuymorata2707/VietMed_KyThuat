@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarDays, Clock3, Download, FileText, FileUp, Loader2, MapPin, PhoneCall, Plus, Search, X } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock3, Download, Eye, FileText, FileUp, Loader2, MapPin, PhoneCall, Plus, Search, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
@@ -6,6 +6,7 @@ import { DateInput } from '../../components/DateInput';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { GoogleMapsDirectionsButton, VietnamAddressSelects, buildFullVietnamAddress } from '../../components/VietnamAddressSelects';
+import { checklistForCategory } from '../../config/medicalDeviceChecklists';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { Notice } from '../../components/Notice';
@@ -188,6 +189,82 @@ const drawerFieldClass = 'grid gap-[7px] font-semibold text-[#333333]';
 const drawerInputClass = 'min-h-[42px] rounded-xl border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
 const drawerTextareaClass = `${drawerInputClass} min-h-28 resize-y py-2.5`;
 
+function engineerChecklistForTask(task: EngineerTask) {
+  const category = task.machine?.productCategory || task.machine?.businessLine?.productIndustry?.name || taskModelText(task) || taskPrimaryMachineName(task);
+  return checklistForCategory(category, task.kind);
+}
+
+function buildStructuredEngineerNote(baseNote: string, checklistLines: string[], materialsText: string, workLogText: string) {
+  const sections = [baseNote.trim()].filter(Boolean);
+  if (checklistLines.length) sections.push(`[Checklist đã thực hiện]\n${checklistLines.map((line) => `- ${line}`).join('\n')}`);
+  if (materialsText.trim()) sections.push(`[Linh kiện/vật tư sử dụng]\n${materialsText.trim()}`);
+  if (workLogText.trim()) sections.push(`[Nhật ký xử lý]\n${workLogText.trim()}`);
+  return sections.join('\n\n');
+}
+
+function taskMachineIdentity(task: EngineerTask) {
+  return [
+    task.machine?.id,
+    task.machine?.machineCode,
+    task.machine?.serialNumber,
+    taskSerialText(task),
+  ].filter(Boolean);
+}
+
+function sameMachineHistory(task: EngineerTask, tasks: EngineerTask[]) {
+  const identities = new Set(taskMachineIdentity(task));
+  if (!identities.size) return [];
+
+  return tasks
+    .filter((item) => item.id !== task.id || item.kind !== task.kind)
+    .filter((item) => taskMachineIdentity(item).some((identity) => identities.has(identity)))
+    .sort((left, right) => new Date(taskDateValue(right) || 0).getTime() - new Date(taskDateValue(left) || 0).getTime())
+    .slice(0, 5);
+}
+
+function taskAddressForMap(task: EngineerTask) {
+  return taskLocation(task) || task.customer?.fullAddress || task.customer?.address || task.machine?.customer?.province || '';
+}
+
+function profileCompletenessForTask(
+  task: EngineerTask,
+  attachments: TaskAttachment[],
+  resultNote: string,
+  checklistLines: string[],
+  nextDueDate: string,
+  customerFeedback: string,
+  installationReceiverRepresentative: string,
+  installationReceiverPhone: string,
+) {
+  const checks = [
+    { label: 'Thiếu thông tin khách hàng', ok: Boolean(taskCustomer(task)) },
+    { label: 'Thiếu serial/mã máy', ok: Boolean(taskSerialText(task) || task.machine?.machineCode) },
+    { label: 'Thiếu ảnh/tài liệu hiện trường', ok: attachments.length > 0 },
+    { label: 'Thiếu kết quả kỹ thuật', ok: Boolean(resultNote.trim()) },
+    { label: 'Chưa tick checklist nghiệp vụ', ok: checklistLines.length > 0 },
+  ];
+
+  if (task.kind === 'repair') {
+    checks.push({ label: 'Thiếu phản hồi khách hàng', ok: Boolean(customerFeedback.trim() || task.customerFeedback || task.repairMethod || task.conditionAssessment) });
+  }
+  if (task.kind === 'maintenance') {
+    checks.push({ label: 'Thiếu lịch hẹn bảo trì lại', ok: Boolean(nextDueDate || task.nextDueDate) });
+  }
+  if (task.kind === 'installation') {
+    checks.push({ label: 'Thiếu serial/bàn giao lắp đặt', ok: Boolean(taskSerialText(task) || task.installedDeviceItems?.some((item) => item.serialNumber)) });
+    checks.push({
+      label: 'Thiếu thông tin người nhận bàn giao',
+      ok: Boolean(installationReceiverRepresentative.trim() || installationReceiverPhone.trim() || task.receiverRepresentative || task.receiverPhone),
+    });
+  }
+
+  const done = checks.filter((item) => item.ok).length;
+  return {
+    percent: Math.round((done / checks.length) * 100),
+    missing: checks.filter((item) => !item.ok).map((item) => item.label),
+  };
+}
+
 export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [tasks, setTasks] = useState<EngineerTask[]>([]);
   const [dailyWorkNotes, setDailyWorkNotes] = useState<DailyWorkNote[]>([]);
@@ -212,13 +289,17 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [attachmentType, setAttachmentType] = useState<AttachmentType>('MACHINE_PHOTO');
   const [attachmentTitle, setAttachmentTitle] = useState('');
   const [attachmentDescription, setAttachmentDescription] = useState('');
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [status, setStatus] = useState('');
   const [resultNote, setResultNote] = useState('');
   const [customerFeedback, setCustomerFeedback] = useState('');
   const [nextDueDate, setNextDueDate] = useState('');
   const [installationDate, setInstallationDate] = useState('');
+  const [checkedChecklist, setCheckedChecklist] = useState<Record<string, boolean>>({});
+  const [materialsText, setMaterialsText] = useState('');
+  const [workLogText, setWorkLogText] = useState('');
+  const [savingKnowledge, setSavingKnowledge] = useState(false);
   const [createForm, setCreateForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm());
   const [installationEditForm, setInstallationEditForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm('installation'));
   const [isQuickMachineOpen, setIsQuickMachineOpen] = useState(false);
@@ -324,6 +405,39 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       .filter((note) => note.workDate?.slice(0, 10) === todayKey)
       .sort((left, right) => (left.startTime || '99:99').localeCompare(right.startTime || '99:99'));
   }, [dailyWorkNotes]);
+
+  const selectedChecklistLines = useMemo(() => (selectedTask ? engineerChecklistForTask(selectedTask) : []), [selectedTask]);
+  const selectedCheckedChecklistLines = useMemo(
+    () => selectedChecklistLines.filter((line) => checkedChecklist[line]),
+    [checkedChecklist, selectedChecklistLines],
+  );
+  const selectedMachineHistory = useMemo(() => (selectedTask ? sameMachineHistory(selectedTask, tasks) : []), [selectedTask, tasks]);
+  const selectedMapAddress = useMemo(() => (selectedTask ? taskAddressForMap(selectedTask) : ''), [selectedTask]);
+  const selectedCompleteness = useMemo(
+    () =>
+      selectedTask
+        ? profileCompletenessForTask(
+            selectedTask,
+            attachments,
+            resultNote,
+            selectedCheckedChecklistLines,
+            nextDueDate,
+            customerFeedback,
+            installationEditForm.receiverRepresentative,
+            installationEditForm.receiverPhone,
+          )
+        : null,
+    [attachments, customerFeedback, installationEditForm.receiverPhone, installationEditForm.receiverRepresentative, nextDueDate, resultNote, selectedCheckedChecklistLines, selectedTask],
+  );
+  const todayTaskSummary = useMemo(() => {
+    const todayTasks = tasks.filter(isTodayTask);
+    return {
+      total: todayTasks.length,
+      done: todayTasks.filter((task) => ['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status)).length,
+      open: todayTasks.filter((task) => !['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status)).length,
+      items: todayTasks.sort(compareTasks).slice(0, 4),
+    };
+  }, [tasks]);
 
   async function loadTasks() {
     setLoading(true);
@@ -773,8 +887,11 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setAttachmentType(attachmentOptionsByKind[task.kind][0].value);
     setAttachmentTitle('');
     setAttachmentDescription('');
-    setAttachmentFile(null);
+    setAttachmentFiles([]);
     setFileInputKey((value) => value + 1);
+    setCheckedChecklist({});
+    setMaterialsText('');
+    setWorkLogText('');
     loadAttachments(task);
 
     if (task.kind === 'installation') {
@@ -813,30 +930,32 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   }
 
   async function handleAttachmentUpload() {
-    if (!selectedTask || !attachmentFile) return;
+    if (!selectedTask || !attachmentFiles.length) return;
 
     setUploadingAttachment(true);
     setError('');
     setSuccess('');
 
-    const formData = new FormData();
-    formData.append('entityType', entityTypeForTask(selectedTask.kind));
-    formData.append('entityId', selectedTask.id);
-    formData.append('type', attachmentType);
-    if (attachmentTitle.trim()) formData.append('title', attachmentTitle.trim());
-    if (attachmentDescription.trim()) formData.append('description', attachmentDescription.trim());
-    formData.append('file', attachmentFile);
-
     try {
-      await apiFetch('/attachments', {
-        method: 'POST',
-        body: formData,
-      });
+      for (const file of attachmentFiles) {
+        const formData = new FormData();
+        formData.append('entityType', entityTypeForTask(selectedTask.kind));
+        formData.append('entityId', selectedTask.id);
+        formData.append('type', attachmentType);
+        if (attachmentTitle.trim()) formData.append('title', attachmentFiles.length > 1 ? `${attachmentTitle.trim()} - ${file.name}` : attachmentTitle.trim());
+        if (attachmentDescription.trim()) formData.append('description', attachmentDescription.trim());
+        formData.append('file', file);
+
+        await apiFetch('/attachments', {
+          method: 'POST',
+          body: formData,
+        });
+      }
       setAttachmentTitle('');
       setAttachmentDescription('');
-      setAttachmentFile(null);
+      setAttachmentFiles([]);
       setFileInputKey((value) => value + 1);
-      setSuccess('Đã tải tài liệu lên phiếu.');
+      setSuccess(`Đã tải ${attachmentFiles.length} tài liệu lên phiếu.`);
       await loadAttachments(selectedTask);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được tài liệu lên.');
@@ -872,6 +991,28 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     }
   }
 
+  async function viewAttachment(attachment: TaskAttachment) {
+    setError('');
+
+    try {
+      const token = getToken();
+      const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      if (!response.ok) {
+        throw new Error('Không mở được file. Vui lòng đăng nhập lại hoặc thử lại sau.');
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không mở được tài liệu.');
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedTask) return;
@@ -881,6 +1022,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setSuccess('');
 
     try {
+      const enrichedResultNote = buildStructuredEngineerNote(resultNote, selectedCheckedChecklistLines, materialsText, workLogText);
       const endpoint =
         selectedTask.kind === 'installation'
           ? `/installations/${selectedTask.id}`
@@ -894,7 +1036,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               installedAt: installationDate || installationEditForm.workDate || undefined,
               warrantyStartDate: installationEditForm.workDate || installationDate || undefined,
               warrantyEndDate: installationEditForm.warrantyEndDate || undefined,
-              note: resultNote,
+              note: enrichedResultNote,
               warrantyNote: installationEditForm.description,
               handoverInstallerName: installationEditForm.handoverInstallerName,
               handoverInstallerPosition: installationEditForm.handoverInstallerPosition,
@@ -909,8 +1051,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               deviceConditionNote: installationEditForm.deviceConditionNote,
             }
           : selectedTask.kind === 'repair'
-          ? { status, resultNote, customerFeedback }
-          : { status, resultNote, nextDueDate: nextDueDate || undefined };
+          ? { status, resultNote: enrichedResultNote, customerFeedback }
+          : { status, resultNote: enrichedResultNote, nextDueDate: nextDueDate || undefined };
 
       await apiFetch(endpoint, {
         method: 'PATCH',
@@ -925,6 +1067,46 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function createKnowledgeFromTask() {
+    if (!selectedTask) return;
+
+    setSavingKnowledge(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const structuredNote = buildStructuredEngineerNote(resultNote, selectedCheckedChecklistLines, materialsText, workLogText);
+      const category = selectedTask.kind === 'repair' ? 'REPAIR' : selectedTask.kind === 'maintenance' ? 'MAINTENANCE' : 'INSTALLATION';
+      const modelHint = taskModelText(selectedTask) || taskPrimaryMachineName(selectedTask);
+      await apiFetch('/knowledge-articles', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: `Kinh nghiệm ${taskKindLabel(selectedTask.kind).toLowerCase()} - ${modelHint || selectedTask.code}`,
+          summary: taskDescription(selectedTask) || resultNote || `Tạo từ phiếu ${selectedTask.code}`,
+          content: structuredNote || taskDescription(selectedTask) || '',
+          modelHint,
+          ownerTeam: 'Kỹ thuật hiện trường',
+          category,
+          status: 'DRAFT',
+          tags: [taskKindLabel(selectedTask.kind), selectedTask.machine?.productCategory, selectedTask.machine?.businessLine?.productIndustry?.name, modelHint].filter(Boolean),
+          symptoms: selectedTask.kind === 'repair' ? splitLines(taskDescription(selectedTask) || taskTitle(selectedTask)) : [],
+          steps: splitLines(workLogText || resultNote),
+          checklist: selectedCheckedChecklistLines,
+          note: `Tạo nhanh từ phiếu ${selectedTask.code}. Admin duyệt trước khi đưa vào knowledge base.`,
+        }),
+      });
+      setSuccess('Đã tạo bài học kinh nghiệm dạng nháp để admin duyệt.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không tạo được bài học kinh nghiệm.');
+    } finally {
+      setSavingKnowledge(false);
+    }
+  }
+
+  function toggleChecklistLine(line: string, checked: boolean) {
+    setCheckedChecklist((current) => ({ ...current, [line]: checked }));
   }
 
   function focusTaskList(nextFilter: TaskFilter) {
@@ -1677,6 +1859,139 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               </div>
             ) : null}
 
+            <section className="mt-5 grid gap-4 rounded-[18px] border border-[#e4e4e7] bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
+              <div className="flex items-start justify-between gap-3 max-[760px]:flex-col">
+                <div>
+                  <span className="text-[12px] font-bold text-[#18181b]">Bàn làm việc kỹ sư</span>
+                  <h3 className="mt-[3px] text-[17px] text-[#1f1f1f]">Checklist, vật tư, nhật ký và hồ sơ máy</h3>
+                </div>
+                {selectedCompleteness ? (
+                  <div className="grid min-w-[140px] gap-1 rounded-xl border border-[#e4e4e7] bg-[#f8fafc] p-2.5 text-right max-[760px]:w-full max-[760px]:text-left">
+                    <span className="text-[11px] font-extrabold text-[#64748b]">Độ đầy đủ hồ sơ</span>
+                    <strong className="text-[22px] leading-none text-[#18181b]">{selectedCompleteness.percent}%</strong>
+                  </div>
+                ) : null}
+              </div>
+
+              {selectedCompleteness?.missing.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {selectedCompleteness.missing.map((item) => (
+                    <span className="rounded-full border border-[#fecdd3] bg-[#fff1f3] px-2.5 py-1 text-[12px] font-bold text-[#b5121b]" key={item}>
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[#b9e8ca] bg-[#eefaf3] px-3 py-2 text-[13px] font-bold text-[#177245]">
+                  Hồ sơ đã đủ thông tin chính để admin kiểm duyệt.
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3 max-[760px]:grid-cols-1">
+                <div className="grid gap-2 rounded-[14px] border border-[#e4e4e7] bg-[#fafafa] p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-[14px] text-[#18181b]">Checklist theo loại việc</strong>
+                    <span className="text-[12px] font-bold text-[#64748b]">{selectedCheckedChecklistLines.length}/{selectedChecklistLines.length}</span>
+                  </div>
+                  <div className="grid max-h-[250px] gap-2 overflow-auto pr-1">
+                    {selectedChecklistLines.map((line) => (
+                      <label className="grid grid-cols-[18px_minmax(0,1fr)] items-start gap-2 rounded-lg border border-[#ececec] bg-white p-2.5 text-[13px] font-semibold leading-snug text-[#333333]" key={line}>
+                        <input checked={Boolean(checkedChecklist[line])} className="mt-[2px]" onChange={(event) => toggleChecklistLine(line, event.target.checked)} type="checkbox" />
+                        <span>{line}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-3">
+                  <label className={drawerFieldClass}>
+                    Linh kiện/vật tư sử dụng
+                    <textarea
+                      className={drawerTextareaClass}
+                      onChange={(event) => setMaterialsText(event.target.value)}
+                      placeholder="Tên linh kiện | SL | Serial | Ghi chú"
+                      value={materialsText}
+                    />
+                  </label>
+                  <label className={drawerFieldClass}>
+                    Nhật ký xử lý theo bước
+                    <textarea
+                      className={drawerTextareaClass}
+                      onChange={(event) => setWorkLogText(event.target.value)}
+                      placeholder="09:00 - Kiểm tra nguồn&#10;09:20 - Xác định lỗi&#10;10:00 - Test lại và bàn giao"
+                      value={workLogText}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 max-[760px]:grid-cols-1">
+                <div className="grid gap-2 rounded-[14px] border border-[#e4e4e7] bg-[#fafafa] p-3">
+                  <strong className="text-[14px] text-[#18181b]">Hồ sơ máy mini</strong>
+                  <dl className="grid gap-2 text-[13px]">
+                    <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-2">
+                      <dt className="font-bold text-[#64748b]">Máy</dt>
+                      <dd className="[overflow-wrap:anywhere]">{taskPrimaryMachineName(selectedTask)}</dd>
+                    </div>
+                    <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-2">
+                      <dt className="font-bold text-[#64748b]">Model/SN</dt>
+                      <dd className="[overflow-wrap:anywhere]">{taskModelText(selectedTask) || '-'} / {taskSerialText(selectedTask) || selectedTask.machine?.serialNumber || '-'}</dd>
+                    </div>
+                    <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-2">
+                      <dt className="font-bold text-[#64748b]">Gần đây</dt>
+                      <dd>
+                        {selectedMachineHistory.length ? (
+                          <div className="grid gap-1.5">
+                            {selectedMachineHistory.map((item) => (
+                              <span className="rounded-lg border border-[#e4e4e7] bg-white px-2 py-1" key={`${item.kind}-${item.id}`}>
+                                {taskDate(item)} · {taskKindLabel(item.kind)} · {statusLabel(item.status)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          'Chưa có lịch sử gần đây'
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="grid gap-2 rounded-[14px] border border-[#e4e4e7] bg-[#fafafa] p-3">
+                  <strong className="text-[14px] text-[#18181b]">Tuyến đường và báo cáo ngày</strong>
+                  <div className="grid gap-2 text-[13px] text-[#333333]">
+                    <span className="inline-flex items-start gap-2">
+                      <MapPin className="mt-[1px] shrink-0 text-[#64748b]" size={15} />
+                      <span className="[overflow-wrap:anywhere]">{selectedMapAddress || 'Chưa có địa chỉ để mở bản đồ'}</span>
+                    </span>
+                    {selectedMapAddress ? <GoogleMapsDirectionsButton address={selectedMapAddress} className="task-secondary justify-self-start" /> : null}
+                    <div className="grid grid-cols-3 gap-2">
+                      <span className="rounded-lg border border-[#e4e4e7] bg-white p-2 text-center"><b>{todayTaskSummary.total}</b><br />việc hôm nay</span>
+                      <span className="rounded-lg border border-[#b9e8ca] bg-white p-2 text-center"><b>{todayTaskSummary.done}</b><br />đã xong</span>
+                      <span className="rounded-lg border border-[#efd8a8] bg-white p-2 text-center"><b>{todayTaskSummary.open}</b><br />còn lại</span>
+                    </div>
+                    {todayTaskSummary.items.length ? (
+                      <div className="grid gap-1">
+                        {todayTaskSummary.items.map((item) => (
+                          <span className="text-[12px] font-semibold text-[#666666]" key={`${item.kind}-${item.id}`}>{taskDate(item)} · {taskTitle(item)}</span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2.5 max-[760px]:flex-col">
+                <Link className="task-secondary" to={`/weekly-reports?weekStart=${toDateInput(startOfWeek(new Date()))}`}>
+                  <FileText size={16} />
+                  Báo cáo cuối ngày
+                </Link>
+                <button className="task-primary gap-2 disabled:cursor-not-allowed disabled:opacity-70" disabled={savingKnowledge} onClick={() => void createKnowledgeFromTask()} type="button">
+                  <Plus size={16} />
+                  {savingKnowledge ? 'Đang tạo' : 'Lưu thành kinh nghiệm'}
+                </button>
+              </div>
+            </section>
+
             {selectedTask.kind === 'repair' ? (
               <div className="task-info-block">
                 <h3>Thông tin phiếu sửa chữa tại chỗ</h3>
@@ -1963,9 +2278,14 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                           {attachment.originalName} · {formatFileSize(attachment.size)}
                         </small>
                       </div>
+                      <div className="flex gap-2">
+                      <button className="task-secondary icon-button" onClick={() => void viewAttachment(attachment)} title="Xem" type="button">
+                        <Eye size={16} />
+                      </button>
                       <button className="task-secondary icon-button" onClick={() => downloadAttachment(attachment)} title="Tải xuống" type="button">
                         <Download size={16} />
                       </button>
+                      </div>
                     </article>
                   ))}
               </div>
@@ -1995,14 +2315,20 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     accept="image/jpeg,image/png,image/webp,application/pdf"
                     className={`${drawerInputClass} flex items-center px-2.5 py-2`}
                     key={fileInputKey}
-                    onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)}
+                    multiple
+                    onChange={(event) => setAttachmentFiles(Array.from(event.target.files ?? []))}
                     required
                     type="file"
                   />
+                  {attachmentFiles.length ? (
+                    <span className="text-xs font-semibold text-[#666666]">
+                      Đã chọn {attachmentFiles.length} file
+                    </span>
+                  ) : null}
                 </label>
-                <button className="task-primary justify-self-end gap-2 disabled:cursor-not-allowed disabled:opacity-70" disabled={uploadingAttachment || !attachmentFile} onClick={() => void handleAttachmentUpload()} type="button">
+                <button className="task-primary justify-self-end gap-2 disabled:cursor-not-allowed disabled:opacity-70" disabled={uploadingAttachment || !attachmentFiles.length} onClick={() => void handleAttachmentUpload()} type="button">
                   <FileUp size={16} />
-                  {uploadingAttachment ? 'Đang tải lên' : 'Tải lên phiếu'}
+                  {uploadingAttachment ? 'Đang tải lên' : `Tải lên ${attachmentFiles.length || ''} file`}
                 </button>
               </div>
             </section>

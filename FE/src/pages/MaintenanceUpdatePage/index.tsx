@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Loader2, RefreshCw, Save } from 'lucide-react';
+import { ArrowLeft, Download, Eye, Loader2, RefreshCw, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
@@ -86,7 +86,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
   const [attachmentType, setAttachmentType] = useState<AttachmentType>('MAINTENANCE_FORM');
   const [attachmentTitle, setAttachmentTitle] = useState('');
   const [attachmentDescription, setAttachmentDescription] = useState('');
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const standardChecklist = checklistForCategory(detail?.machine?.productCategory || detail?.modelName || detail?.deviceName, 'maintenance');
 
   useEffect(() => {
@@ -213,29 +213,31 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
   }
 
   async function uploadAttachment() {
-    if (!attachmentFile) return;
+    if (!attachmentFiles.length) return;
 
     setUploadingAttachment(true);
     setError('');
     setSuccess('');
 
-    const body = new FormData();
-    body.append('entityType', 'Maintenance');
-    body.append('entityId', id);
-    body.append('type', attachmentType);
-    if (attachmentTitle.trim()) body.append('title', attachmentTitle.trim());
-    if (attachmentDescription.trim()) body.append('description', attachmentDescription.trim());
-    body.append('file', attachmentFile);
-
     try {
-      await apiFetch('/attachments', {
-        method: 'POST',
-        body,
-      });
+      for (const file of attachmentFiles) {
+        const body = new FormData();
+        body.append('entityType', 'Maintenance');
+        body.append('entityId', id);
+        body.append('type', attachmentType);
+        if (attachmentTitle.trim()) body.append('title', attachmentFiles.length > 1 ? `${attachmentTitle.trim()} - ${file.name}` : attachmentTitle.trim());
+        if (attachmentDescription.trim()) body.append('description', attachmentDescription.trim());
+        body.append('file', file);
+
+        await apiFetch('/attachments', {
+          method: 'POST',
+          body,
+        });
+      }
       setAttachmentTitle('');
       setAttachmentDescription('');
-      setAttachmentFile(null);
-      setSuccess('Đã tải ảnh/tài liệu lên phiếu bảo trì.');
+      setAttachmentFiles([]);
+      setSuccess(`Đã tải ${attachmentFiles.length} ảnh/tài liệu lên phiếu bảo trì.`);
       await loadAttachments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được ảnh/tài liệu.');
@@ -258,6 +260,20 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
       URL.revokeObjectURL(url);
     } catch {
       setError('Không tải được tệp đính kèm.');
+    }
+  }
+
+  async function viewAttachment(attachment: TaskAttachment) {
+    try {
+      const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
+        headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
+      });
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      setError('Không mở được tệp đính kèm.');
     }
   }
 
@@ -491,9 +507,14 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                             {attachment.originalName} - {formatFileSize(attachment.size)}
                           </small>
                         </div>
+                        <div className="flex gap-2">
+                        <button className="icon-button" onClick={() => void viewAttachment(attachment)} title="Xem" type="button">
+                          <Eye size={16} />
+                        </button>
                         <button className="icon-button" onClick={() => downloadAttachment(attachment)} title="Download" type="button">
                           <Download size={16} />
                         </button>
+                        </div>
                       </article>
                     ))
                   : null}
@@ -523,13 +544,15 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                   <input
                     accept="image/jpeg,image/png,image/webp,application/pdf"
                     className="w-full min-w-0 rounded-2xl border border-dashed border-[#ded8d8] bg-[#ffffff] px-4 py-3 text-sm font-semibold text-[#333333]"
-                    onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)}
+                    multiple
+                    onChange={(event) => setAttachmentFiles(Array.from(event.target.files ?? []))}
                     type="file"
                   />
+                  {attachmentFiles.length ? <span className="text-xs font-semibold text-[#666666]">Đã chọn {attachmentFiles.length} file</span> : null}
                 </label>
-                <button className="primary-button" disabled={uploadingAttachment || !attachmentFile} onClick={() => void uploadAttachment()} type="button">
+                <button className="primary-button" disabled={uploadingAttachment || !attachmentFiles.length} onClick={() => void uploadAttachment()} type="button">
                   {uploadingAttachment ? <Loader2 className="spin-icon" size={17} /> : null}
-                  {uploadingAttachment ? 'Đang tải lên' : 'Tải lên'}
+                  {uploadingAttachment ? 'Đang tải lên' : `Tải lên ${attachmentFiles.length || ''} file`}
                 </button>
               </div>
             </section>

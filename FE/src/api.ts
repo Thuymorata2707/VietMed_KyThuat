@@ -1,5 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 const TOKEN_KEY = 'vietmed_access_token';
+const USER_KEY = 'vietmed_current_user';
 
 export type ApiUser = {
   id: string;
@@ -62,6 +63,23 @@ export function setToken(token: string) {
 
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+export function getStoredUser(): ApiUser | null {
+  const raw = localStorage.getItem(USER_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as ApiUser;
+  } catch {
+    localStorage.removeItem(USER_KEY);
+    return null;
+  }
+}
+
+export function setStoredUser(user: ApiUser) {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -128,6 +146,7 @@ export async function login(identifier: string, password: string) {
     body: JSON.stringify({ identifier, password }),
   });
   setToken(result.accessToken);
+  setStoredUser(result.user);
   return result.user;
 }
 

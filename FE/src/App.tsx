@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { ApiRequestError, ApiUser, apiFetch, clearToken, getToken } from './api';
+import { ApiRequestError, ApiUser, apiFetch, clearToken, getStoredUser, getToken, setStoredUser } from './api';
 import { Splash } from './components/Splash';
 import { AppShell } from './layouts/AppShell';
 import { queryClient } from './lib/queryClient';
@@ -9,7 +9,7 @@ import { queryKeys } from './lib/queryKeys';
 import { LoginPage } from './pages/LoginPage';
 
 function App() {
-  const [user, setUser] = useState<ApiUser | null>(null);
+  const [user, setUser] = useState<ApiUser | null>(() => (getToken() ? getStoredUser() : null));
   const hasToken = Boolean(getToken());
   const currentUserQuery = useQuery({
     queryKey: queryKeys.auth.me,
@@ -25,6 +25,7 @@ function App() {
     }
 
     if (currentUserQuery.data) {
+      setStoredUser(currentUserQuery.data);
       setUser(currentUserQuery.data);
     }
 
@@ -51,7 +52,14 @@ function App() {
         path="/*"
         element={
           user ? (
-            <AppShell onLogout={() => setUser(null)} onUserUpdated={setUser} user={user} />
+            <AppShell
+              onLogout={() => setUser(null)}
+              onUserUpdated={(updatedUser) => {
+                setStoredUser(updatedUser);
+                setUser(updatedUser);
+              }}
+              user={user}
+            />
           ) : (
             <Navigate to="/login" replace />
           )

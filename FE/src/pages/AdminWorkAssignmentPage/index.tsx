@@ -961,9 +961,14 @@ function ReviewAttachmentsPanel({ item }: { item: WorkItem }) {
                   {[attachment.originalName, formatAttachmentSize(attachment.size), attachment.uploadedBy?.fullName || attachment.uploadedBy?.email].filter(Boolean).join(' - ')}
                 </small>
               </div>
-              <button className="secondary-button compact" onClick={() => void downloadReviewAttachment(attachment)} type="button">
-                Tải
-              </button>
+              <div className="flex gap-2">
+                <button className="secondary-button compact" onClick={() => void viewReviewAttachment(attachment)} type="button">
+                  Xem
+                </button>
+                <button className="secondary-button compact" onClick={() => void downloadReviewAttachment(attachment)} type="button">
+                  Tải
+                </button>
+              </div>
             </article>
           ))}
         </div>
@@ -1425,4 +1430,20 @@ async function downloadReviewAttachment(attachment: ReviewAttachment) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(blobUrl);
+}
+
+async function viewReviewAttachment(attachment: ReviewAttachment) {
+  const token = getToken();
+  const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
+  if (!response.ok) {
+    throw new Error('Không mở được tài liệu.');
+  }
+
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, '_blank', 'noopener,noreferrer');
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
 }
