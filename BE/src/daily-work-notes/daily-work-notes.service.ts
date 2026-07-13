@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DailyWorkStatus, DailyWorkType, Prisma } from '@prisma/client';
-import { isAdmin, isEngineer } from '../auth/access-scope';
+import { isAdmin, isEngineer, userAccessWhere } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -22,7 +22,7 @@ export class DailyWorkNotesService {
   ) {}
 
   async findAll(query: ListDailyWorkNotesQueryDto, user: RequestUser) {
-    const userId = this.resolveReadableUserId(query.userId, user);
+    const userId = await this.resolveReadableUserId(query.userId, user);
     const where: Prisma.DailyWorkNoteWhereInput = {
       userId,
       workDate:
@@ -55,7 +55,7 @@ export class DailyWorkNotesService {
     }
 
     const targetUserId = isAdmin(user) && dto.userId ? dto.userId : user.id;
-    await this.ensureUserExists(targetUserId);
+    await this.ensureUserExists(targetUserId, user);
     const type = dto.type || DailyWorkType.WORK;
     const status = this.resolveCreateStatus(dto.status, type, user);
     const reviewedByAdmin =
@@ -142,6 +142,7 @@ export class DailyWorkNotesService {
     }
 
     const current = await this.findNote(id);
+    await this.ensureUserExists(current.userId, user);
     const note = await this.prisma.dailyWorkNote.update({
       where: { id: current.id },
       data: {
@@ -188,10 +189,11 @@ export class DailyWorkNotesService {
     user: RequestUser,
   ) {
     if (isAdmin(user)) {
-      return queryUserId || user.id;
+      const targetUserId = queryUserId || user.id;
+      return this.ensureUserExists(targetUserId, user).then(() => targetUserId);
     }
 
-    return user.id;
+    return Promise.resolve(user.id);
   }
 
   private async findNote(id: string) {
@@ -209,6 +211,9 @@ export class DailyWorkNotesService {
 
     if (!isAdmin(user) && note.userId !== user.id) {
       throw new ForbiddenException('You can only edit your own notes');
+    }
+    if (isAdmin(user)) {
+      await this.ensureUserExists(note.userId, user);
     }
 
     return note;
@@ -296,9 +301,9 @@ export class DailyWorkNotesService {
     );
   }
 
-  private async ensureUserExists(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+  private async ensureUserExists(id: string, actor?: RequestUser) {
+    const user = await this.prisma.user.findFirst({
+      where: { AND: [{ id }, userAccessWhere(actor)] },
       select: { id: true },
     });
     if (!user) {

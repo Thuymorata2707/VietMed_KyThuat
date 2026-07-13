@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, TaskChecklistStatus, UsedPartStatus, WorkTaskKind } from '@prisma/client';
-import { isAdmin, installationAccessWhere, maintenanceAccessWhere, repairAccessWhere } from '../auth/access-scope';
+import { isAdmin, installationAccessWhere, maintenanceAccessWhere, repairAccessWhere, userAccessWhere } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { SyncTaskChecklistItemDto, SyncUsedPartDto, SyncWorkLogDto, SyncWorkOperationsDto } from './dto/sync-work-operations.dto';
@@ -109,6 +109,7 @@ export class WorkOperationsService {
       where: {
         usedAt: { gte: start, lte: end },
         createdById: engineerId || undefined,
+        createdBy: userAccessWhere(user),
       },
       include: {
         createdBy: { select: { id: true, fullName: true, email: true } },

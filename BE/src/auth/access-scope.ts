@@ -15,16 +15,19 @@ export function isEngineer(user?: RequestUser): boolean {
 }
 
 export function machineAccessWhere(user?: RequestUser): Prisma.MachineWhereInput {
-  if (!user || isAdmin(user)) {
+  if (!user) {
     return {};
   }
 
-  if (isManager(user)) {
+  if (isAdmin(user) || isManager(user)) {
     return {
       OR: [
         { customer: { regionId: user.regionId } },
         { installedBy: { regionId: user.regionId } },
         { primaryEngineer: { regionId: user.regionId } },
+        { repairs: { some: { engineer: { regionId: user.regionId } } } },
+        { maintenances: { some: { engineer: { regionId: user.regionId } } } },
+        { installations: { some: { installedBy: { regionId: user.regionId } } } },
       ],
     };
   }
@@ -48,11 +51,11 @@ export function machineAccessWhere(user?: RequestUser): Prisma.MachineWhereInput
 export function customerAccessWhere(
   user?: RequestUser,
 ): Prisma.CustomerWhereInput {
-  if (!user || isAdmin(user)) {
+  if (!user) {
     return {};
   }
 
-  if (isManager(user)) {
+  if (isAdmin(user) || isManager(user)) {
     return { regionId: user.regionId };
   }
 
@@ -73,13 +76,15 @@ export function customerAccessWhere(
 }
 
 export function repairAccessWhere(user?: RequestUser): Prisma.RepairWhereInput {
-  if (!user || isAdmin(user)) {
+  if (!user) {
     return {};
   }
 
-  if (isManager(user)) {
+  if (isAdmin(user) || isManager(user)) {
     return {
       OR: [
+        { engineer: { regionId: user.regionId } },
+        { createdBy: { regionId: user.regionId } },
         {
           customer: {
             regionId: user.regionId,
@@ -112,13 +117,14 @@ export function repairAccessWhere(user?: RequestUser): Prisma.RepairWhereInput {
 export function maintenanceAccessWhere(
   user?: RequestUser,
 ): Prisma.MaintenanceWhereInput {
-  if (!user || isAdmin(user)) {
+  if (!user) {
     return {};
   }
 
-  if (isManager(user)) {
+  if (isAdmin(user) || isManager(user)) {
     return {
       OR: [
+        { engineer: { regionId: user.regionId } },
         {
           customer: {
             regionId: user.regionId,
@@ -151,15 +157,17 @@ export function maintenanceAccessWhere(
 export function installationAccessWhere(
   user?: RequestUser,
 ): Prisma.MachineInstallationWhereInput {
-  if (!user || isAdmin(user)) {
+  if (!user) {
     return {};
   }
 
-  if (isManager(user)) {
+  if (isAdmin(user) || isManager(user)) {
     return {
-      customer: {
-        regionId: user.regionId,
-      },
+      OR: [
+        { customer: { regionId: user.regionId } },
+        { installedBy: { regionId: user.regionId } },
+        { machine: { customer: { regionId: user.regionId } } },
+      ],
     };
   }
 
@@ -178,13 +186,14 @@ export function installationAccessWhere(
 export function inventoryMovementAccessWhere(
   user?: RequestUser,
 ): Prisma.MachineInventoryMovementWhereInput {
-  if (!user || isAdmin(user)) {
+  if (!user) {
     return {};
   }
 
-  if (isManager(user)) {
+  if (isAdmin(user) || isManager(user)) {
     return {
       OR: [
+        { createdBy: { regionId: user.regionId } },
         { customer: { regionId: user.regionId } },
         { machine: { customer: { regionId: user.regionId } } },
       ],
@@ -198,6 +207,22 @@ export function inventoryMovementAccessWhere(
         { machine: machineAccessWhere(user) },
       ],
     };
+  }
+
+  return { id: '__no_access__' };
+}
+
+export function userAccessWhere(user?: RequestUser): Prisma.UserWhereInput {
+  if (!user) {
+    return {};
+  }
+
+  if (isAdmin(user) || isManager(user)) {
+    return { regionId: user.regionId };
+  }
+
+  if (isEngineer(user)) {
+    return { id: user.id };
   }
 
   return { id: '__no_access__' };

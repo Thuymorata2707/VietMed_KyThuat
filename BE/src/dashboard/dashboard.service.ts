@@ -10,6 +10,7 @@ import {
   machineAccessWhere,
   maintenanceAccessWhere,
   repairAccessWhere,
+  userAccessWhere,
 } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
@@ -1459,7 +1460,7 @@ export class DashboardService {
   private businessLineAccessWhere(
     user?: RequestUser,
   ): Prisma.BusinessLineWhereInput {
-    if (!user || isAdmin(user)) {
+    if (!user) {
       return {};
     }
 
@@ -1471,19 +1472,7 @@ export class DashboardService {
   }
 
   private userAccessWhere(user?: RequestUser): Prisma.UserWhereInput {
-    if (!user || isAdmin(user)) {
-      return {};
-    }
-
-    if (isManager(user)) {
-      return { regionId: user.regionId };
-    }
-
-    if (isEngineer(user)) {
-      return { id: user.id };
-    }
-
-    return { id: '__no_access__' };
+    return userAccessWhere(user);
   }
 
   private resolveStatisticsPeriod(query: Record<string, string | undefined>) {

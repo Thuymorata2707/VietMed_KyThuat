@@ -32,13 +32,13 @@ export class UsersController {
   }
 
   @Get()
-  findAll(@Query() query: ListUsersQueryDto) {
-    return this.usersService.findAll(query);
+  findAll(@Query() query: ListUsersQueryDto, @CurrentUser() user: RequestUser) {
+    return this.usersService.findAll(query, user);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.usersService.findOne(id, user);
   }
 
   @Patch(':id')

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,6 +12,7 @@ import { pickChangedFields } from '../common/audit-changes';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
+import { isAdmin, userAccessWhere } from '../auth/access-scope';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -40,6 +42,7 @@ export class UsersService {
     actor?: RequestUser,
   ): Promise<UserWithoutPassword> {
     this.validateCreateUser(dto);
+    this.assertCanManageRegion(dto.regionId, actor);
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email: this.normalizeEmail(dto.email) },
@@ -96,14 +99,15 @@ export class UsersService {
 
   async findAll(
     query?: ListUsersQueryDto,
+    actor?: RequestUser,
   ): Promise<UserWithoutPassword[] | PaginatedResult<UserWithoutPassword>> {
     if (!this.shouldPaginate(query)) {
-      return this.findAllLegacy();
+      return this.findAllLegacy(actor);
     }
 
     const page = query?.page ?? 1;
     const limit = query?.limit ?? 20;
-    const where = this.buildFindAllWhere(query);
+    const where = this.buildFindAllWhere(query, actor);
 
     const [users, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
@@ -133,8 +137,9 @@ export class UsersService {
     };
   }
 
-  private async findAllLegacy(): Promise<UserWithoutPassword[]> {
+  private async findAllLegacy(actor?: RequestUser): Promise<UserWithoutPassword[]> {
     const users = await this.prisma.user.findMany({
+      where: userAccessWhere(actor),
       include: {
         role: true,
         region: true,
@@ -148,7 +153,7 @@ export class UsersService {
     return users.map((user) => this.withoutPassword(user));
   }
 
-  async findOne(id: string): Promise<UserWithoutPassword> {
+  async findOne(id: string, actor?: RequestUser): Promise<UserWithoutPassword> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       include: {
@@ -161,6 +166,7 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
+    this.assertCanManageRegion(user.regionId, actor);
 
     return this.withoutPassword(user);
   }
@@ -170,7 +176,8 @@ export class UsersService {
     dto: UpdateUserDto,
     actor?: RequestUser,
   ): Promise<UserWithoutPassword> {
-    const current = await this.findOne(id);
+    const current = await this.findOne(id, actor);
+    this.assertCanManageRegion(dto.regionId, actor);
 
     if (dto.email) {
       const existingUser = await this.prisma.user.findUnique({
@@ -256,7 +263,7 @@ export class UsersService {
     status: UserStatus,
     actor?: RequestUser,
   ): Promise<UserWithoutPassword> {
-    const current = await this.findOne(id);
+    const current = await this.findOne(id, actor);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
@@ -296,7 +303,7 @@ export class UsersService {
       throw new BadRequestException('Cannot delete your own account');
     }
 
-    const user = await this.findOne(id);
+    const user = await this.findOne(id, actor);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.repair.updateMany({
@@ -419,7 +426,7 @@ export class UsersService {
     );
   }
 
-  private buildFindAllWhere(query?: ListUsersQueryDto): Prisma.UserWhereInput {
+  private buildFindAllWhere(query?: ListUsersQueryDto, actor?: RequestUser): Prisma.UserWhereInput {
     const search = query?.search?.trim();
     const roleName = query?.roleName?.trim();
     const conditions: Prisma.UserWhereInput[] = [];
@@ -474,11 +481,26 @@ export class UsersService {
       });
     }
 
+    const requestedRegionId = this.canUseRequestedRegion(query?.regionId, actor) ? query?.regionId : undefined;
+
     return {
       status: query?.status,
-      regionId: query?.regionId,
-      AND: conditions.length ? conditions : undefined,
+      regionId: requestedRegionId,
+      AND: [userAccessWhere(actor), ...conditions].filter((item) => Object.keys(item).length),
     };
+  }
+
+  private canUseRequestedRegion(regionId: string | undefined, actor?: RequestUser) {
+    if (!regionId) return false;
+    if (isAdmin(actor)) return regionId === actor.regionId;
+    return false;
+  }
+
+  private assertCanManageRegion(regionId: string | undefined, actor?: RequestUser) {
+    if (!actor || !isAdmin(actor) || !regionId) return;
+    if (regionId !== actor.regionId) {
+      throw new ForbiddenException('Bạn chỉ được quản lý nhân sự trong khu vực của mình.');
+    }
   }
 
   private isEngineerRoleName(roleName: string) {

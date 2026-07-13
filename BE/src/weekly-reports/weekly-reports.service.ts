@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DailyWorkStatus, DailyWorkType, WeeklyReportStatus } from '@prisma/client';
-import { isAdmin, isEngineer } from '../auth/access-scope';
+import { isAdmin, isEngineer, userAccessWhere } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -43,7 +43,7 @@ export class WeeklyReportsService {
   }) {
     this.assertCanUseWeeklyReports(user);
     const targetUserId = this.resolveTargetUserId(user, userId);
-    await this.ensureUserExists(targetUserId);
+    await this.ensureUserExists(targetUserId, user);
     const startDate = this.parseDate(from || this.currentWeekStart(), 'from');
     const endDate = this.endOfDay(this.parseDate(to || from || this.currentWeekStart(), 'to'));
 
@@ -296,6 +296,7 @@ export class WeeklyReportsService {
   }) {
     this.assertCanUseWeeklyReports(user);
     const targetUserId = this.resolveTargetUserId(user, userId);
+    await this.ensureUserExists(targetUserId, user);
     const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
 
     return this.prisma.weeklyReport.findUnique({
@@ -320,7 +321,7 @@ export class WeeklyReportsService {
   }) {
     this.assertCanUseWeeklyReports(user);
     const targetUserId = this.resolveTargetUserId(user, userId);
-    await this.ensureUserExists(targetUserId);
+    await this.ensureUserExists(targetUserId, user);
     const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
     const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 5));
 
@@ -385,7 +386,7 @@ export class WeeklyReportsService {
   }) {
     this.assertCanUseWeeklyReports(user);
     const targetUserId = this.resolveTargetUserId(user, userId);
-    await this.ensureUserExists(targetUserId);
+    await this.ensureUserExists(targetUserId, user);
     const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
     const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 5));
 
@@ -540,7 +541,7 @@ export class WeeklyReportsService {
   async save(dto: SaveWeeklyReportDto, user: RequestUser) {
     this.assertCanUseWeeklyReports(user);
     const targetUserId = this.resolveTargetUserId(user, dto.userId);
-    await this.ensureUserExists(targetUserId);
+    await this.ensureUserExists(targetUserId, user);
     const weekStart = this.parseDate(dto.weekStart, 'weekStart');
     const rows = this.normalizeRows(dto.rows || []);
 
@@ -705,6 +706,9 @@ export class WeeklyReportsService {
     if (!isAdmin(user) && report.userId !== user.id) {
       throw new ForbiddenException('You can only access your own weekly report');
     }
+    if (isAdmin(user)) {
+      await this.ensureUserExists(report.userId, user);
+    }
 
     return report;
   }
@@ -723,9 +727,9 @@ export class WeeklyReportsService {
     return user.id;
   }
 
-  private async ensureUserExists(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+  private async ensureUserExists(id: string, actor?: RequestUser) {
+    const user = await this.prisma.user.findFirst({
+      where: { AND: [{ id }, userAccessWhere(actor)] },
       select: { id: true },
     });
 

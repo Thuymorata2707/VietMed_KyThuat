@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { DailyReportStatus, DailyWorkStatus } from '@prisma/client';
-import { isAdmin, isEngineer } from '../auth/access-scope';
+import { isAdmin, isEngineer, userAccessWhere } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewDailyReportDto } from './dto/review-daily-report.dto';
@@ -13,6 +13,7 @@ export class DailyReportsService {
   async findByDate({ user, reportDate, userId }: { user: RequestUser; reportDate?: string; userId?: string }) {
     this.assertCanUseDailyReports(user);
     const targetUserId = this.resolveTargetUserId(user, userId);
+    await this.ensureUserExists(targetUserId, user);
     const date = this.startOfDay(this.parseDate(reportDate || new Date().toISOString(), 'reportDate'));
     const report = await this.prisma.dailyReport.findUnique({
       where: { userId_reportDate: { userId: targetUserId, reportDate: date } },
@@ -25,7 +26,7 @@ export class DailyReportsService {
   async save(dto: SaveDailyReportDto, user: RequestUser) {
     this.assertCanUseDailyReports(user);
     const targetUserId = this.resolveTargetUserId(user, dto.userId);
-    await this.ensureUserExists(targetUserId);
+    await this.ensureUserExists(targetUserId, user);
     const reportDate = this.startOfDay(this.parseDate(dto.reportDate, 'reportDate'));
 
     return this.prisma.dailyReport.upsert({
@@ -152,6 +153,7 @@ export class DailyReportsService {
     const report = await this.prisma.dailyReport.findUnique({ where: { id } });
     if (!report) throw new NotFoundException('Daily report not found');
     if (!isAdmin(user) && report.userId !== user.id) throw new NotFoundException('Daily report not found');
+    if (isAdmin(user)) await this.ensureUserExists(report.userId, user);
     return report;
   }
 
@@ -164,8 +166,8 @@ export class DailyReportsService {
     if (!isAdmin(user) && !isEngineer(user)) throw new ForbiddenException('You cannot use daily reports');
   }
 
-  private async ensureUserExists(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  private async ensureUserExists(userId: string, actor?: RequestUser) {
+    const user = await this.prisma.user.findFirst({ where: { AND: [{ id: userId }, userAccessWhere(actor)] }, select: { id: true } });
     if (!user) throw new NotFoundException('User not found');
   }
 
