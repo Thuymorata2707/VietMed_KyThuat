@@ -322,7 +322,7 @@ export class WeeklyReportsService {
     const targetUserId = this.resolveTargetUserId(user, userId);
     await this.ensureUserExists(targetUserId);
     const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
-    const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 6));
+    const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 5));
 
     const notes = await this.prisma.dailyWorkNote.findMany({
       where: {
@@ -387,7 +387,7 @@ export class WeeklyReportsService {
     const targetUserId = this.resolveTargetUserId(user, userId);
     await this.ensureUserExists(targetUserId);
     const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
-    const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 6));
+    const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 5));
 
     const [installations, repairs, maintenances] = await Promise.all([
       this.prisma.machineInstallation.findMany({

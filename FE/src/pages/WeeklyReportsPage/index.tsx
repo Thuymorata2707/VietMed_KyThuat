@@ -275,7 +275,9 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       const importedRows = imported
         .map(normalizeRow)
         .filter((row) => !existingKeys.has(rowKey(row)));
-      const nextRows = [...weekRows, ...importedRows].sort((a, b) => {
+      const importedDates = new Set(importedRows.map((row) => row.workDate));
+      const rowsWithoutDuplicateEmptyDates = weekRows.filter((row) => rowHasReportData(row) || !importedDates.has(row.workDate));
+      const nextRows = [...rowsWithoutDuplicateEmptyDates, ...importedRows].sort((a, b) => {
         const dateCompare = a.workDate.localeCompare(b.workDate);
         if (dateCompare !== 0) return dateCompare;
         return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
@@ -344,7 +346,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   }
 
   const selectedEngineer = engineers.find((engineer) => engineer.id === selectedEngineerId);
-  const weekEnd = useMemo(() => toDateInput(addDays(new Date(`${weekStart}T00:00:00`), 6)), [weekStart]);
+  const weekEnd = useMemo(() => toDateInput(addDays(new Date(`${weekStart}T00:00:00`), 5)), [weekStart]);
   const currentWeekStart = useMemo(() => toDateInput(startOfWeek(new Date())), []);
 
   return (
@@ -626,7 +628,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
 
 function defaultRows(weekStart: string): WeeklyReportRow[] {
   const start = new Date(`${weekStart}T00:00:00`);
-  return Array.from({ length: 7 }, (_, index) => emptyRow(addDays(start, index).toISOString()));
+  return Array.from({ length: 6 }, (_, index) => emptyRow(addDays(start, index).toISOString()));
 }
 
 function buildWeekRows(weekStart: string, savedRows: Array<WeeklyReportRow & { id?: string }>) {
