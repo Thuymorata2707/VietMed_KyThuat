@@ -34,6 +34,7 @@ export const navItems: NavItem[] = [
   { path: '/my-customers', label: 'Khách hàng phụ trách', icon: <Building2 size={18} />, roles: ['engineer'] },
   { path: '/service-tickets', label: 'Tổng hợp phiếu', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/daily-work', label: 'Lịch công việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
+  { path: '/daily-reports', label: 'Báo cáo ngày', icon: <FileBarChart2 size={18} />, roles: ['admin', 'engineer'] },
   { path: '/knowledge-base', label: 'Chia sẻ kinh nghiệm', icon: <BookOpenCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/technical-statistics', label: 'Thống kê kỹ thuật', icon: <BarChart3 size={18} />, roles: ['admin'] },
   { path: '/reports', label: 'Báo cáo', icon: <FileBarChart2 size={18} />, roles: ['admin', 'manager'] },
@@ -64,6 +65,7 @@ export const navGroups: NavGroup[] = [
       { path: '/my-tasks', label: 'Điều phối & duyệt', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
       { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
       { path: '/daily-work', label: 'Lịch công việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
+      { path: '/daily-reports', label: 'Báo cáo ngày', icon: <FileBarChart2 size={18} />, roles: ['admin', 'engineer'] },
     ],
   },
   {

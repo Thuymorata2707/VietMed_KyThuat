@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, MessageEvent, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { Observable, Subject } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 
 type CreateNotificationInput = {
@@ -14,6 +15,8 @@ type CreateNotificationInput = {
 
 @Injectable()
 export class NotificationsService {
+  private readonly streams = new Map<string, Set<Subject<MessageEvent>>>();
+
   constructor(private readonly prisma: PrismaService) {}
 
   findForUser(userId: string, limit = 10) {
@@ -68,10 +71,10 @@ export class NotificationsService {
     return { updated: true };
   }
 
-  create(input: CreateNotificationInput, tx?: Prisma.TransactionClient) {
+  async create(input: CreateNotificationInput, tx?: Prisma.TransactionClient) {
     const client = tx ?? this.prisma;
 
-    return client.notification.create({
+    const notification = await client.notification.create({
       data: {
         userId: input.userId,
         title: input.title.trim(),
@@ -82,6 +85,13 @@ export class NotificationsService {
         createdById: input.createdById || null,
       },
     });
+    this.emitToUser(input.userId, {
+      type: 'notification',
+      notification,
+      entityType: notification.entityType,
+      entityId: notification.entityId,
+    });
+    return notification;
   }
 
   async createForAdmins(
@@ -118,5 +128,33 @@ export class NotificationsService {
         ),
       ),
     );
+  }
+
+  streamForUser(userId: string): Observable<MessageEvent> {
+    return new Observable<MessageEvent>((subscriber) => {
+      const subject = new Subject<MessageEvent>();
+      const streams = this.streams.get(userId) ?? new Set<Subject<MessageEvent>>();
+      streams.add(subject);
+      this.streams.set(userId, streams);
+
+      const subscription = subject.subscribe(subscriber);
+      subject.next({ type: 'connected', data: { ok: true } });
+      const heartbeat = setInterval(() => {
+        subject.next({ type: 'heartbeat', data: { at: new Date().toISOString() } });
+      }, 25_000);
+
+      return () => {
+        clearInterval(heartbeat);
+        subscription.unsubscribe();
+        streams.delete(subject);
+        if (!streams.size) this.streams.delete(userId);
+      };
+    });
+  }
+
+  private emitToUser(userId: string, data: Record<string, unknown>) {
+    const streams = this.streams.get(userId);
+    if (!streams?.size) return;
+    streams.forEach((stream) => stream.next({ type: 'notification', data }));
   }
 }

@@ -2,7 +2,7 @@ import { Bell, ChevronsLeft, ChevronsRight, LogOut, Plus } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { ApiUser, apiFetch, clearToken, getApiBaseUrl } from '../../api';
+import { ApiUser, apiFetch, clearToken, getApiBaseUrl, getToken } from '../../api';
 import { getRoleName, roleLabel } from '../../auth/roles';
 import { Brand } from '../../components/Brand';
 import { RequireRole } from '../../components/RequireRole';
@@ -22,6 +22,7 @@ const AdminRolesPage = lazy(() => import('../../pages/AdminRolesPage').then((mod
 const AdminUsersPage = lazy(() => import('../../pages/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })));
 const AdminWorkAssignmentPage = lazy(() => import('../../pages/AdminWorkAssignmentPage').then((module) => ({ default: module.AdminWorkAssignmentPage })));
 const DashboardPage = lazy(() => import('../../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+const DailyReportsPage = lazy(() => import('../../pages/DailyReportsPage').then((module) => ({ default: module.DailyReportsPage })));
 const DailyWorkCalendarPage = lazy(() => import('../../pages/DailyWorkCalendarPage').then((module) => ({ default: module.DailyWorkCalendarPage })));
 const EngineerPerformancePage = lazy(() => import('../../pages/EngineerPerformancePage').then((module) => ({ default: module.EngineerPerformancePage })));
 const EngineerCustomersPage = lazy(() => import('../../pages/EngineerCustomersPage').then((module) => ({ default: module.EngineerCustomersPage })));
@@ -137,6 +138,37 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
   }, [location.pathname]);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    const url = `${getApiBaseUrl()}/notifications/stream?token=${encodeURIComponent(token)}`;
+    const events = new EventSource(url);
+
+    function refreshRealtimeQueries() {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard', 'overview'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-assignments', 'dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['daily-work', 'notes'] });
+      void queryClient.invalidateQueries({ queryKey: ['daily-reports', 'report'] });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'report'] });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'daily-rows'] });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'ticket-rows'] });
+      void queryClient.invalidateQueries({ queryKey: ['knowledge', 'articles'] });
+      void queryClient.invalidateQueries({ queryKey: ['work-operations', 'used-parts-summary'] });
+    }
+
+    events.addEventListener('notification', refreshRealtimeQueries);
+    events.onerror = () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list });
+    };
+
+    return () => {
+      events.removeEventListener('notification', refreshRealtimeQueries);
+      events.close();
+    };
+  }, [user.id]);
 
   useEffect(() => {
     if (!isNotificationOpen) {
@@ -356,6 +388,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           />
           <Route path="/account-settings" element={<AccountSettingsPage onUserUpdated={onUserUpdated} user={user} />} />
           <Route path="/daily-work" element={<DailyWorkCalendarPage currentRole={role} user={user} />} />
+          <Route
+            path="/daily-reports"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <DailyReportsPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
           <Route
             path="/weekly-reports"
             element={

@@ -121,6 +121,33 @@ type QuickMachineForm = {
   serialNumber: string;
 };
 
+type WorkOperationPart = {
+  name: string;
+  quantity?: number;
+  serialNumber?: string | null;
+  unitCost?: number | null;
+  status?: 'PLANNED' | 'USED' | 'WAITING' | 'RETURNED';
+  note?: string | null;
+};
+
+type WorkOperationLog = {
+  title: string;
+  note?: string | null;
+  sortOrder?: number;
+};
+
+type WorkOperationChecklistItem = {
+  label: string;
+  status: 'PENDING' | 'DONE' | 'SKIPPED';
+  sortOrder?: number;
+};
+
+type WorkOperationsResponse = {
+  workLogs: Array<WorkOperationLog & { id: string }>;
+  usedParts: Array<WorkOperationPart & { id: string; quantity: number; totalCost?: number | null }>;
+  checklistItems: Array<WorkOperationChecklistItem & { id: string }>;
+};
+
 const emptyQuickMachineForm = (): QuickMachineForm => ({
   accessoriesText: '',
   customerId: '',
@@ -263,6 +290,54 @@ function profileCompletenessForTask(
     percent: Math.round((done / checks.length) * 100),
     missing: checks.filter((item) => !item.ok).map((item) => item.label),
   };
+}
+
+function parseMaterialRows(value: string): WorkOperationPart[] {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, quantityText, serialNumber, unitCostText, note] = line.split('|').map((part) => part.trim());
+      const quantity = Number(quantityText || 1);
+      const unitCost = unitCostText ? Number(unitCostText.replaceAll(',', '')) : null;
+      const normalized = `${name} ${note || ''}`.toLowerCase();
+      const status: WorkOperationPart['status'] = normalized.includes('chờ') || normalized.includes('waiting') ? 'WAITING' : 'USED';
+      return {
+        name,
+        quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+        serialNumber: serialNumber || null,
+        unitCost: unitCost !== null && Number.isFinite(unitCost) ? unitCost : null,
+        status,
+        note: note || null,
+      };
+    })
+    .filter((item) => item.name);
+}
+
+function parseWorkLogRows(value: string): WorkOperationLog[] {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => {
+      const [title, ...noteParts] = line.split(' - ');
+      return {
+        title: title.trim() || line,
+        note: noteParts.join(' - ').trim() || null,
+        sortOrder: index,
+      };
+    });
+}
+
+function materialRowsToText(parts: WorkOperationsResponse['usedParts']) {
+  return parts
+    .map((part) => [part.name, part.quantity || 1, part.serialNumber || '', part.unitCost ?? '', part.note || ''].join(' | '))
+    .join('\n');
+}
+
+function workLogRowsToText(logs: WorkOperationsResponse['workLogs']) {
+  return logs.map((log) => (log.note ? `${log.title} - ${log.note}` : log.title)).join('\n');
 }
 
 export function EngineerTasksPage({ user }: { user: ApiUser }) {
@@ -893,6 +968,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setMaterialsText('');
     setWorkLogText('');
     loadAttachments(task);
+    loadWorkOperations(task);
 
     if (task.kind === 'installation') {
       setStatus(task.status === 'PENDING' ? 'INSTALLED' : task.status);
@@ -927,6 +1003,39 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     } finally {
       setLoadingAttachments(false);
     }
+  }
+
+  async function loadWorkOperations(task: EngineerTask) {
+    try {
+      const result = await apiFetch<WorkOperationsResponse>(`/work-operations/${task.kind}/${task.id}`);
+      setMaterialsText(materialRowsToText(result.usedParts ?? []));
+      setWorkLogText(workLogRowsToText(result.workLogs ?? []));
+      if (result.checklistItems?.length) {
+        const nextChecked: Record<string, boolean> = {};
+        result.checklistItems.forEach((item) => {
+          nextChecked[item.label] = item.status === 'DONE';
+        });
+        setCheckedChecklist(nextChecked);
+      }
+    } catch {
+      // Work operation tables may not exist until the new migration is applied.
+    }
+  }
+
+  async function syncWorkOperations(task: EngineerTask) {
+    const checklistItems = engineerChecklistForTask(task).map((line, index) => ({
+      label: line,
+      status: checkedChecklist[line] ? 'DONE' : 'PENDING',
+      sortOrder: index,
+    }));
+    await apiFetch(`/work-operations/${task.kind}/${task.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        workLogs: parseWorkLogRows(workLogText),
+        usedParts: parseMaterialRows(materialsText),
+        checklistItems,
+      }),
+    });
   }
 
   async function handleAttachmentUpload() {
@@ -1058,6 +1167,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         method: 'PATCH',
         body: JSON.stringify(payload),
       });
+      await syncWorkOperations(selectedTask);
 
       setSuccess('Đã cập nhật trạng thái công việc.');
       setSelectedTask(null);
@@ -1909,7 +2019,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     <textarea
                       className={drawerTextareaClass}
                       onChange={(event) => setMaterialsText(event.target.value)}
-                      placeholder="Tên linh kiện | SL | Serial | Ghi chú"
+                      placeholder="Tên linh kiện | SL | Serial | Đơn giá | Ghi chú"
                       value={materialsText}
                     />
                   </label>
@@ -1981,7 +2091,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               </div>
 
               <div className="flex justify-end gap-2.5 max-[760px]:flex-col">
-                <Link className="task-secondary" to={`/weekly-reports?weekStart=${toDateInput(startOfWeek(new Date()))}`}>
+                <Link className="task-secondary" to="/daily-reports">
                   <FileText size={16} />
                   Báo cáo cuối ngày
                 </Link>

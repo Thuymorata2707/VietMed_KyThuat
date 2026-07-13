@@ -128,6 +128,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const reportQuery = useQuery({
     enabled: !isAdmin || Boolean(selectedEngineerId),
     queryKey: queryKeys.weeklyReports.report(reportParams),
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const result = await apiFetch<WeeklyReport | null>(`/weekly-reports?${reportParams}`);
       return result ?? null;
@@ -137,6 +138,8 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const dailyWorkRowsQuery = useQuery({
     enabled: !isAdmin || Boolean(selectedEngineerId),
     queryKey: queryKeys.weeklyReports.dailyRows(reportParams),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const result = await apiFetch<DailyWorkRowsResponse | null>(`/weekly-reports/daily-work-rows?${reportParams}`);
       return result ?? null;
@@ -146,6 +149,8 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const ticketRowsQuery = useQuery({
     enabled: !isAdmin || Boolean(selectedEngineerId),
     queryKey: queryKeys.weeklyReports.ticketRows(reportParams),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const result = await apiFetch<TicketRowsResponse | null>(`/weekly-reports/ticket-rows?${reportParams}`);
       return result ?? null;
@@ -254,7 +259,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   function importDailyWorkRows() {
     if (!dailyWorkRows?.rows.length) return;
     mergeImportedRows(dailyWorkRows.rows);
-    setSuccess('Đã đưa lịch trong tuần vào báo cáo nháp.');
+    setSuccess('Đã đưa lịch trong tuần vào báo cáo nháp và giữ nguyên đủ các ngày trong tuần.');
   }
 
   function importTicketRows() {
@@ -265,17 +270,17 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
 
   function mergeImportedRows(imported: WeeklyReportRow[]) {
     setRows((current) => {
-      const filledRows = current.filter(rowHasReportData);
-      const existingKeys = new Set(filledRows.map(rowKey));
+      const weekRows = buildWeekRows(weekStart, current);
+      const existingKeys = new Set(weekRows.filter(rowHasReportData).map(rowKey));
       const importedRows = imported
         .map(normalizeRow)
         .filter((row) => !existingKeys.has(rowKey(row)));
-      const nextRows = [...filledRows, ...importedRows].sort((a, b) => {
+      const nextRows = [...weekRows, ...importedRows].sort((a, b) => {
         const dateCompare = a.workDate.localeCompare(b.workDate);
         if (dateCompare !== 0) return dateCompare;
         return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
       });
-      return nextRows.length ? nextRows : defaultRows(weekStart);
+      return buildWeekRows(weekStart, nextRows);
     });
   }
 
@@ -340,6 +345,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
 
   const selectedEngineer = engineers.find((engineer) => engineer.id === selectedEngineerId);
   const weekEnd = useMemo(() => toDateInput(addDays(new Date(`${weekStart}T00:00:00`), 6)), [weekStart]);
+  const currentWeekStart = useMemo(() => toDateInput(startOfWeek(new Date())), []);
 
   return (
     <PageFrame>
@@ -369,6 +375,9 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               Tuần trước
             </button>
             <DateInput className="min-w-[160px]" onChange={(value) => setWeekStart(value ? toDateInput(startOfWeek(new Date(`${value}T00:00:00`))) : '')} value={weekStart} />
+            <button className="secondary-button" onClick={() => setWeekStart(currentWeekStart)} type="button">
+              Tuần này
+            </button>
             <button className="secondary-button" onClick={() => setWeekStart(toDateInput(addDays(new Date(`${weekStart}T00:00:00`), 7)))} type="button">
               Tuần sau
               <ChevronRight size={16} />
@@ -522,7 +531,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
           <div className="grid gap-2">
             <button className="secondary-button justify-center" disabled={saving || !canEdit || !dailyWorkRows?.rows.length} onClick={importDailyWorkRows} type="button">
               <CalendarCheck size={16} />
-              Lấy từ lịch tuần
+              Lấy từ lịch tuần, giữ đủ ngày
             </button>
             <button className="primary-button justify-center" disabled={saving || !canEdit || !ticketRows?.rows.length} onClick={importTicketRows} type="button">
               <Sparkles size={16} />
@@ -617,7 +626,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
 
 function defaultRows(weekStart: string): WeeklyReportRow[] {
   const start = new Date(`${weekStart}T00:00:00`);
-  return Array.from({ length: 5 }, (_, index) => emptyRow(addDays(start, index).toISOString()));
+  return Array.from({ length: 7 }, (_, index) => emptyRow(addDays(start, index).toISOString()));
 }
 
 function buildWeekRows(weekStart: string, savedRows: Array<WeeklyReportRow & { id?: string }>) {

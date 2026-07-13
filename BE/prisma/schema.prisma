@@ -213,6 +213,32 @@ enum KnowledgeArticleStatus {
   ARCHIVED
 }
 
+enum WorkTaskKind {
+  REPAIR
+  MAINTENANCE
+  INSTALLATION
+}
+
+enum UsedPartStatus {
+  PLANNED
+  USED
+  WAITING
+  RETURNED
+}
+
+enum TaskChecklistStatus {
+  PENDING
+  DONE
+  SKIPPED
+}
+
+enum DailyReportStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  NEEDS_REVISION
+}
+
 model Region {
   id String @id @default(cuid())
 
@@ -275,11 +301,16 @@ model User {
   engineerProfile       EngineerProfile?
   dailyWorkNotes        DailyWorkNote[]            @relation("DailyWorkNoteUser")
   reviewedDailyWorkNotes DailyWorkNote[]           @relation("DailyWorkNoteReviewer")
+  dailyReports          DailyReport[]              @relation("DailyReportUser")
+  reviewedDailyReports  DailyReport[]              @relation("DailyReportReviewer")
   weeklyReports         WeeklyReport[]             @relation("WeeklyReportUser")
   reviewedWeeklyReports WeeklyReport[]             @relation("WeeklyReportReviewer")
   primaryCustomers      Customer[]                 @relation("CustomerPrimaryEngineer")
   createdKnowledgeArticles KnowledgeArticle[]      @relation("KnowledgeArticleCreatedBy")
   updatedKnowledgeArticles KnowledgeArticle[]      @relation("KnowledgeArticleUpdatedBy")
+  createdWorkLogs       WorkLog[]                  @relation("WorkLogCreatedBy")
+  createdUsedParts      UsedPart[]                 @relation("UsedPartCreatedBy")
+  updatedTaskChecklistItems TaskChecklistItem[]     @relation("TaskChecklistUpdatedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -396,6 +427,33 @@ model WeeklyReportRow {
 
   @@index([reportId, sortOrder])
   @@index([workDate])
+}
+
+model DailyReport {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation("DailyReportUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  reportDate DateTime
+  status     DailyReportStatus @default(DRAFT)
+  summary    String? @db.Text
+  pending    String? @db.Text
+  proposal   String? @db.Text
+
+  submittedAt DateTime?
+  reviewedAt  DateTime?
+  reviewNote  String? @db.Text
+  reviewerId  String?
+  reviewer    User?   @relation("DailyReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, reportDate])
+  @@index([reportDate])
+  @@index([status])
+  @@index([reviewerId])
 }
 
 model Attachment {
@@ -755,6 +813,9 @@ model MachineInstallation {
   reviewer     User?            @relation("InstallationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
 
   warrantyCard WarrantyCard?
+  workLogs      WorkLog[]
+  usedParts     UsedPart[]
+  checklistItems TaskChecklistItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -871,6 +932,10 @@ model Maintenance {
   modelName       String?
   serialNumber    String?
 
+  workLogs       WorkLog[]
+  usedParts      UsedPart[]
+  checklistItems TaskChecklistItem[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -927,6 +992,10 @@ model Repair {
   conditionAssessment String?
   repairMethod        String?
 
+  workLogs       WorkLog[]
+  usedParts      UsedPart[]
+  checklistItems TaskChecklistItem[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -934,6 +1003,114 @@ model Repair {
   @@index([reviewStatus])
   @@index([reviewerId])
   @@index([customerId])
+}
+
+model WorkLog {
+  id String @id @default(cuid())
+
+  kind WorkTaskKind
+
+  repairId String?
+  repair   Repair? @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  maintenanceId String?
+  maintenance   Maintenance? @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+
+  installationId String?
+  installation   MachineInstallation? @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  stepTime DateTime?
+  title    String
+  note     String? @db.Text
+  sortOrder Int @default(0)
+
+  createdById String?
+  createdBy   User?   @relation("WorkLogCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+  @@index([repairId])
+  @@index([maintenanceId])
+  @@index([installationId])
+  @@index([createdById])
+  @@index([stepTime])
+}
+
+model UsedPart {
+  id String @id @default(cuid())
+
+  kind WorkTaskKind
+
+  repairId String?
+  repair   Repair? @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  maintenanceId String?
+  maintenance   Maintenance? @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+
+  installationId String?
+  installation   MachineInstallation? @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  name         String
+  quantity     Decimal @default(1) @db.Decimal(12, 2)
+  unit         String?
+  serialNumber String?
+  unitCost     Decimal? @db.Decimal(15, 2)
+  totalCost    Decimal? @db.Decimal(15, 2)
+  status       UsedPartStatus @default(USED)
+  inventoryItemId String?
+  note         String? @db.Text
+  usedAt       DateTime?
+
+  createdById String?
+  createdBy   User?   @relation("UsedPartCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+  @@index([repairId])
+  @@index([maintenanceId])
+  @@index([installationId])
+  @@index([createdById])
+  @@index([status])
+  @@index([usedAt])
+  @@index([inventoryItemId])
+}
+
+model TaskChecklistItem {
+  id String @id @default(cuid())
+
+  kind WorkTaskKind
+
+  repairId String?
+  repair   Repair? @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  maintenanceId String?
+  maintenance   Maintenance? @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+
+  installationId String?
+  installation   MachineInstallation? @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  label    String
+  status   TaskChecklistStatus @default(PENDING)
+  note     String? @db.Text
+  sortOrder Int @default(0)
+  checkedAt DateTime?
+
+  updatedById String?
+  updatedBy   User?   @relation("TaskChecklistUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+  @@index([repairId])
+  @@index([maintenanceId])
+  @@index([installationId])
+  @@index([status])
+  @@index([updatedById])
 }
 
 model Notification {

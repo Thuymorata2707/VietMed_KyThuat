@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Patch, Query, Sse, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -13,6 +13,11 @@ export class NotificationsController {
   @Get()
   findMine(@CurrentUser() user: RequestUser, @Query('limit') limit?: string) {
     return this.notificationsService.findForUser(user.id, Number(limit) || 10);
+  }
+
+  @Sse('stream')
+  streamMine(@CurrentUser() user: RequestUser) {
+    return this.notificationsService.streamForUser(user.id);
   }
 
   @Patch(':id/read')

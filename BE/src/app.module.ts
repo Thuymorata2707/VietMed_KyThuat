@@ -9,6 +9,7 @@ import { BusinessLinesModule } from './business-lines/business-lines.module';
 import { CustomersModule } from './customers/customers.module';
 import { AppConfigModule } from './config/app-config.module';
 import { DailyWorkNotesModule } from './daily-work-notes/daily-work-notes.module';
+import { DailyReportsModule } from './daily-reports/daily-reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { EngineerProfilesModule } from './engineer-profiles/engineer-profiles.module';
 import { InventoryMovementsModule } from './inventory-movements/inventory-movements.module';
@@ -28,6 +29,7 @@ import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
 import { WeeklyReportsModule } from './weekly-reports/weekly-reports.module';
 import { HttpCacheInterceptor } from './common/interceptors/http-cache.interceptor';
+import { WorkOperationsModule } from './work-operations/work-operations.module';
 
 @Module({
   imports: [
@@ -42,6 +44,7 @@ import { HttpCacheInterceptor } from './common/interceptors/http-cache.intercept
     RegionsModule,
     CustomersModule,
     DailyWorkNotesModule,
+    DailyReportsModule,
     MachinesModule,
     DashboardModule,
     RepairsModule,
@@ -56,6 +59,7 @@ import { HttpCacheInterceptor } from './common/interceptors/http-cache.intercept
     ProductIndustriesModule,
     WeeklyReportsModule,
     ReportsModule,
+    WorkOperationsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -137,6 +137,33 @@ type ReviewMachine = {
   createdAt?: string | null;
 };
 
+type UsedPartsSummary = {
+  totals: {
+    parts: number;
+    totalCost: number;
+    waiting: number;
+    used: number;
+  };
+  byEngineer: Array<{
+    engineerId: string;
+    engineerName: string;
+    quantity: number;
+    totalCost: number;
+    waiting: number;
+    used: number;
+  }>;
+  parts: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    unitCost?: number | null;
+    totalCost?: number | null;
+    status: 'PLANNED' | 'USED' | 'WAITING' | 'RETURNED';
+    task?: { kind: WorkKind; id: string; code: string; title: string } | null;
+    createdBy?: { fullName?: string | null; email?: string | null } | null;
+  }>;
+};
+
 const filterOptions: Array<{ value: WorkFilter; label: string }> = [
   { value: 'action', label: 'Cần xử lý' },
   { value: 'unassigned', label: 'Chưa phân' },
@@ -183,6 +210,14 @@ export function AdminWorkAssignmentPage() {
         installations: nextInstallations,
       };
     },
+  });
+
+  const currentWeekStart = useMemo(() => toDateInput(startOfWeek(new Date())), []);
+  const usedPartsSummaryQuery = useQuery({
+    queryKey: ['work-operations', 'used-parts-summary', currentWeekStart],
+    queryFn: () => apiFetch<UsedPartsSummary>(`/work-operations/used-parts/summary?weekStart=${currentWeekStart}`),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   const engineers = workAssignmentsQuery.data?.engineers ?? [];
@@ -555,6 +590,8 @@ export function AdminWorkAssignmentPage() {
         <aside className="grid content-start gap-4">
           <PendingMachineReviewPanel machines={pendingMachines} />
 
+          <UsedPartsSummaryPanel loading={usedPartsSummaryQuery.isLoading || usedPartsSummaryQuery.isFetching} summary={usedPartsSummaryQuery.data ?? null} />
+
           <div className="rounded-[24px] border border-[#e4e4e7] bg-[#f4f4f5] p-4 shadow-[0_18px_48px_rgba(24,24,27,0.08)]">
             <h2 className="text-base font-semibold text-[#1f1f1f]">Tải việc theo kỹ sư</h2>
             <div className="mt-4 grid gap-3">
@@ -689,6 +726,64 @@ function SlaMetric({ label, tone, value }: { label: string; tone: Tone; value: n
     <div className={`rounded-2xl border p-3 ${slaMetricToneClass(tone)}`}>
       <span className="text-xs font-semibold text-[#666666]">{label}</span>
       <strong className="mt-1 block text-2xl leading-none text-[#1f1f1f]">{value}</strong>
+    </div>
+  );
+}
+
+function UsedPartsSummaryPanel({ loading, summary }: { loading: boolean; summary: UsedPartsSummary | null }) {
+  const topParts = summary?.parts.slice(0, 4) ?? [];
+
+  return (
+    <div className="rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_18px_48px_rgba(24,24,27,0.08)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#64748b]">Vật tư phát sinh</span>
+          <h2 className="mt-1 text-base font-semibold text-[#1f1f1f]">Tuần này</h2>
+        </div>
+        {loading ? <Loader2 className="spin-icon text-[#64748b]" size={17} /> : <PackageCheck className="text-[#177245]" size={18} />}
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <MiniMetric label="Dòng" value={summary?.totals.parts ?? 0} />
+        <MiniMetric label="Chờ" value={summary?.totals.waiting ?? 0} />
+        <MiniMetric label="Chi phí" value={formatMoney(summary?.totals.totalCost ?? 0)} />
+      </div>
+
+      <div className="mt-3 grid gap-2">
+        {summary?.byEngineer.slice(0, 3).map((engineer) => (
+          <div className="rounded-xl border border-[#e4e4e7] bg-[#fafafa] p-2.5" key={engineer.engineerId}>
+            <div className="flex items-center justify-between gap-2 text-sm font-bold text-[#18181b]">
+              <span className="min-w-0 truncate">{engineer.engineerName}</span>
+              <span>{formatMoney(engineer.totalCost)}</span>
+            </div>
+            <p className="mt-1 text-xs font-semibold text-[#666666]">{engineer.quantity} SL · {engineer.waiting} chờ linh kiện</p>
+          </div>
+        ))}
+        {!loading && !summary?.byEngineer.length ? (
+          <div className="rounded-xl border border-dashed border-[#d6d6d6] bg-[#fafafa] p-3 text-sm font-semibold text-[#666666]">
+            Chưa có vật tư phát sinh trong tuần.
+          </div>
+        ) : null}
+      </div>
+
+      {topParts.length ? (
+        <div className="mt-3 grid gap-1.5 border-t border-[#eeeeee] pt-3">
+          {topParts.map((part) => (
+            <div className="text-xs font-semibold leading-5 text-[#666666]" key={part.id}>
+              <span className="text-[#18181b]">{part.name}</span> · {part.task?.code || 'Chưa rõ phiếu'} · {part.status === 'WAITING' ? 'Chờ linh kiện' : 'Đã dùng'}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="grid gap-1 rounded-xl border border-[#e4e4e7] bg-[#fafafa] p-2 text-center">
+      <strong className="text-[15px] text-[#18181b]">{value}</strong>
+      <span className="text-[11px] font-bold text-[#64748b]">{label}</span>
     </div>
   );
 }
@@ -1381,6 +1476,27 @@ function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN');
+}
+
+function startOfWeek(value: Date) {
+  const date = new Date(value);
+  const day = date.getDay() || 7;
+  date.setDate(date.getDate() - day + 1);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function toDateInput(value: Date) {
+  if (Number.isNaN(value.getTime())) return '';
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatMoney(value: number) {
+  if (!value) return '0';
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value);
 }
 
 function machineText(item: WorkItem) {
