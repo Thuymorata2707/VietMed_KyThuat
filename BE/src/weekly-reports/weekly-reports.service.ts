@@ -374,6 +374,169 @@ export class WeeklyReportsService {
     };
   }
 
+  async getTicketRows({
+    user,
+    weekStart,
+    userId,
+  }: {
+    user: RequestUser;
+    weekStart?: string;
+    userId?: string;
+  }) {
+    this.assertCanUseWeeklyReports(user);
+    const targetUserId = this.resolveTargetUserId(user, userId);
+    await this.ensureUserExists(targetUserId);
+    const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
+    const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 6));
+
+    const [installations, repairs, maintenances] = await Promise.all([
+      this.prisma.machineInstallation.findMany({
+        where: {
+          installedById: targetUserId,
+          status: 'INSTALLED',
+          installedAt: { gte: parsedWeekStart, lte: weekEnd },
+        },
+        include: {
+          customer: true,
+          machine: true,
+          businessLine: true,
+          plannedMachineModel: true,
+        },
+        orderBy: { installedAt: 'asc' },
+      }),
+      this.prisma.repair.findMany({
+        where: {
+          engineerId: targetUserId,
+          status: 'COMPLETED',
+          completedAt: { gte: parsedWeekStart, lte: weekEnd },
+        },
+        include: {
+          customer: true,
+          machine: {
+            include: {
+              customer: true,
+              businessLine: true,
+            },
+          },
+        },
+        orderBy: { completedAt: 'asc' },
+      }),
+      this.prisma.maintenance.findMany({
+        where: {
+          engineerId: targetUserId,
+          status: 'COMPLETED',
+          completedAt: { gte: parsedWeekStart, lte: weekEnd },
+        },
+        include: {
+          customer: true,
+          machine: {
+            include: {
+              customer: true,
+              businessLine: true,
+            },
+          },
+        },
+        orderBy: { completedAt: 'asc' },
+      }),
+    ]);
+
+    const rows = [
+      ...installations.map((item, index) => {
+        const customer = this.customerSummary(item.customer);
+        const machine = this.machineSummary(item.machine, {
+          modelName:
+            item.machine?.modelName ??
+            item.plannedMachineModel?.displayName ??
+            item.plannedMachineModel?.name ??
+            item.plannedModelName,
+          serialNumber: item.machine?.serialNumber,
+          productCategory:
+            item.machine?.productCategory ??
+            item.businessLine?.productCategory ??
+            item.plannedMachineModel?.productCategory,
+        });
+
+        return {
+          sourceId: item.id,
+          sourceType: 'MachineInstallation' as const,
+          workDate: item.installedAt,
+          customer: customer.name,
+          machine: this.formatMachineForReport(machine),
+          content: `Lắp đặt ${machine.modelName || machine.name || 'thiết bị'} (${item.code})`,
+          result: item.note || 'Đã lắp đặt và bàn giao.',
+          pending: item.reviewStatus === 'NEEDS_REVISION' ? item.reviewNote || 'Cần bổ sung hồ sơ lắp đặt.' : '',
+          proposal: item.warrantyEndDate ? `Theo dõi bảo hành đến ${this.formatDate(item.warrantyEndDate)}.` : '',
+          sortOrder: index,
+        };
+      }),
+      ...repairs.map((item, index) => {
+        const customer = this.customerSummary(item.customer ?? item.machine?.customer, {
+          name: item.representative || item.usingDepartment,
+          phone: item.contactPhone,
+          address: item.address,
+        });
+        const machine = this.machineSummary(item.machine, {
+          modelName: item.modelName,
+          serialNumber: item.serialNumber,
+          name: item.deviceName,
+        });
+
+        return {
+          sourceId: item.id,
+          sourceType: 'Repair' as const,
+          workDate: item.completedAt ?? item.reportedAt,
+          customer: customer.name,
+          machine: this.formatMachineForReport(machine),
+          content: `Sửa chữa ${item.title} (${item.code})`,
+          result: item.resultNote || item.repairMethod || item.customerFeedback || 'Đã hoàn thành sửa chữa.',
+          pending: item.reviewStatus === 'NEEDS_REVISION' ? item.reviewNote || 'Cần bổ sung hồ sơ sửa chữa.' : '',
+          proposal: item.customerFeedback || '',
+          sortOrder: installations.length + index,
+        };
+      }),
+      ...maintenances.map((item, index) => {
+        const customer = this.customerSummary(item.customer ?? item.machine?.customer, {
+          name: item.representative || item.usingDepartment,
+          phone: item.contactPhone,
+          address: item.address,
+        });
+        const machine = this.machineSummary(item.machine, {
+          modelName: item.modelName,
+          serialNumber: item.serialNumber,
+          name: item.deviceName,
+        });
+
+        return {
+          sourceId: item.id,
+          sourceType: 'Maintenance' as const,
+          workDate: item.completedAt ?? item.scheduledDate,
+          customer: customer.name,
+          machine: this.formatMachineForReport(machine),
+          content: `Bảo trì ${item.title} (${item.code})`,
+          result: item.resultNote || 'Đã hoàn thành bảo trì.',
+          pending: item.reviewStatus === 'NEEDS_REVISION' ? item.reviewNote || 'Cần bổ sung hồ sơ bảo trì.' : '',
+          proposal: item.nextDueDate ? `Lịch bảo trì tiếp theo: ${this.formatDate(item.nextDueDate)}.` : '',
+          sortOrder: installations.length + repairs.length + index,
+        };
+      }),
+    ].sort((left, right) => left.workDate.getTime() - right.workDate.getTime());
+
+    return {
+      weekStart: parsedWeekStart,
+      weekEnd,
+      counts: {
+        total: rows.length,
+        installations: installations.length,
+        repairs: repairs.length,
+        maintenances: maintenances.length,
+      },
+      rows: rows.map((row, index) => ({
+        ...row,
+        sortOrder: index,
+      })),
+    };
+  }
+
   async save(dto: SaveWeeklyReportDto, user: RequestUser) {
     this.assertCanUseWeeklyReports(user);
     const targetUserId = this.resolveTargetUserId(user, dto.userId);
@@ -701,6 +864,21 @@ export class WeeklyReportsService {
       productCategory: machine?.productCategory ?? fallback.productCategory ?? null,
       businessLine: machine?.businessLine?.name ?? null,
     };
+  }
+
+  private formatMachineForReport(machine: {
+    code?: string | null;
+    serialNumber?: string | null;
+    modelName?: string | null;
+    name?: string | null;
+  }) {
+    return [
+      machine.code,
+      machine.modelName || machine.name,
+      machine.serialNumber ? `S/N ${machine.serialNumber}` : '',
+    ]
+      .filter(Boolean)
+      .join(' - ');
   }
 
   private formatDate(value: Date) {

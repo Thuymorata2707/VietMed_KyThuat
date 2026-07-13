@@ -50,6 +50,7 @@ export const queryKeys = {
     engineers: ['weekly-reports', 'engineers'] as const,
     report: (params: string) => ['weekly-reports', 'report', params] as const,
     dailyRows: (params: string) => ['weekly-reports', 'daily-rows', params] as const,
+    ticketRows: (params: string) => ['weekly-reports', 'ticket-rows', params] as const,
   },
   engineerPerformance: {
     engineers: ['engineer-performance', 'engineers'] as const,

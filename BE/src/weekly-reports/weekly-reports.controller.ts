@@ -31,6 +31,15 @@ export class WeeklyReportsController {
     return this.weeklyReportsService.getDailyWorkRows({ user, weekStart, userId });
   }
 
+  @Get('ticket-rows')
+  getTicketRows(
+    @CurrentUser() user: RequestUser,
+    @Query('weekStart') weekStart?: string,
+    @Query('userId') userId?: string,
+  ) {
+    return this.weeklyReportsService.getTicketRows({ user, weekStart, userId });
+  }
+
   @Get()
   findByWeek(
     @CurrentUser() user: RequestUser,

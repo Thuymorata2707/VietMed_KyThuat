@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { ApiUser, apiFetch, clearToken, getToken } from './api';
+import { ApiRequestError, ApiUser, apiFetch, clearToken, getToken } from './api';
 import { Splash } from './components/Splash';
 import { AppShell } from './layouts/AppShell';
 import { queryClient } from './lib/queryClient';
@@ -28,12 +28,15 @@ function App() {
       setUser(currentUserQuery.data);
     }
 
-    if (currentUserQuery.isError) {
+    if (
+      currentUserQuery.error instanceof ApiRequestError &&
+      [401, 403].includes(currentUserQuery.error.statusCode)
+    ) {
       clearToken();
       queryClient.clear();
       setUser(null);
     }
-  }, [currentUserQuery.data, currentUserQuery.isError, hasToken]);
+  }, [currentUserQuery.data, currentUserQuery.error, hasToken]);
 
   const checkingSession = hasToken && currentUserQuery.isPending && !user;
 

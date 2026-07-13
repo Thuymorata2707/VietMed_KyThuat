@@ -1,7 +1,8 @@
-import { Archive, CheckCircle2, ClipboardCheck, Loader2, PackageCheck, RefreshCw, Search, UserCheck, Wrench } from 'lucide-react';
+import { AlertTriangle, Archive, CheckCircle2, ClipboardCheck, Clock3, Eye, Loader2, PackageCheck, RefreshCw, Search, UserCheck, Wrench } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { ApiUser, Paginated, apiFetch } from '../../api';
+import { Link } from 'react-router-dom';
+import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -94,11 +95,46 @@ type WorkItem = {
   reviewNote?: string | null;
 };
 
+type ReviewAttachment = {
+  id: string;
+  type: string;
+  title?: string | null;
+  originalName: string;
+  size: number;
+  url: string;
+  uploadedBy?: {
+    fullName?: string | null;
+    email?: string | null;
+  } | null;
+  createdAt?: string | null;
+};
+
 type WorkAssignmentsData = {
   engineers: ApiUser[];
+  pendingMachines: ReviewMachine[];
   repairs: RepairAssignment[];
   maintenances: MaintenanceAssignment[];
   installations: InstallationAssignment[];
+};
+
+type ReviewMachine = {
+  id: string;
+  machineCode?: string | null;
+  serialNumber: string;
+  modelName: string;
+  manufacturer?: string | null;
+  productCategory?: string | null;
+  inventoryStatus?: string | null;
+  dataStatus?: string | null;
+  createdSource?: string | null;
+  customer?: {
+    name?: string | null;
+    hospitalName?: string | null;
+    province?: string | null;
+  } | null;
+  primaryEngineer?: ApiUser | null;
+  installedBy?: ApiUser | null;
+  createdAt?: string | null;
 };
 
 const filterOptions: Array<{ value: WorkFilter; label: string }> = [
@@ -127,11 +163,12 @@ export function AdminWorkAssignmentPage() {
   const workAssignmentsQuery = useQuery({
     queryKey: queryKeys.workAssignments.dashboard(debouncedQuery),
     queryFn: async (): Promise<WorkAssignmentsData> => {
-      const [userResult, repairResult, maintenanceResult, installationResult] = await Promise.all([
+      const [userResult, repairResult, maintenanceResult, installationResult, pendingMachineResult] = await Promise.all([
         apiFetch<Paginated<ApiUser> | ApiUser[]>('/users?limit=100&status=ACTIVE'),
         apiFetch<Paginated<RepairAssignment> | RepairAssignment[]>(withQueryParams('/repairs?limit=100', { search: debouncedQuery })),
         apiFetch<Paginated<MaintenanceAssignment> | MaintenanceAssignment[]>(withQueryParams('/maintenance?limit=100', { search: debouncedQuery })),
         apiFetch<Paginated<InstallationAssignment> | InstallationAssignment[]>(withQueryParams('/installations?limit=100', { search: debouncedQuery })),
+        apiFetch<Paginated<ReviewMachine> | ReviewMachine[]>(withQueryParams('/machines?limit=12&dataStatus=PENDING_REVIEW', { search: debouncedQuery })),
       ]);
 
       const nextRepairs = unpack(repairResult);
@@ -140,6 +177,7 @@ export function AdminWorkAssignmentPage() {
 
       return {
         engineers: unpack(userResult).filter(isTechnicalUser),
+        pendingMachines: unpack(pendingMachineResult),
         repairs: nextRepairs,
         maintenances: nextMaintenances,
         installations: nextInstallations,
@@ -148,6 +186,7 @@ export function AdminWorkAssignmentPage() {
   });
 
   const engineers = workAssignmentsQuery.data?.engineers ?? [];
+  const pendingMachines = workAssignmentsQuery.data?.pendingMachines ?? [];
   const repairs = workAssignmentsQuery.data?.repairs ?? [];
   const maintenances = workAssignmentsQuery.data?.maintenances ?? [];
   const installations = workAssignmentsQuery.data?.installations ?? [];
@@ -297,6 +336,7 @@ export function AdminWorkAssignmentPage() {
     closed: closedCount,
     all: repairs.length + maintenances.length + installations.length,
   };
+  const slaSummary = useMemo(() => buildSlaSummary(allItems), [allItems]);
   const currentFilterLabel = filterOptions.find((option) => option.value === filter)?.label ?? 'Công việc';
   const groupedItems = useMemo(() => groupWorkItems(items, filter), [filter, items]);
   const engineerLoads = useMemo(() => buildEngineerLoads(engineers, [
@@ -405,6 +445,13 @@ export function AdminWorkAssignmentPage() {
       {error ? <Notice message={error} /> : null}
       {success ? <Notice message={success} /> : null}
 
+      <SlaCommandPanel
+        pendingMachinesCount={pendingMachines.length}
+        summary={slaSummary}
+        onShowAction={() => setFilter('action')}
+        onShowReview={() => setFilter('review')}
+      />
+
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_8px_24px_rgba(24,24,27,0.05)]">
           <div className="grid gap-4 border-b border-[#ededf0] bg-[#fafafa] p-4">
@@ -506,6 +553,8 @@ export function AdminWorkAssignmentPage() {
         </div>
 
         <aside className="grid content-start gap-4">
+          <PendingMachineReviewPanel machines={pendingMachines} />
+
           <div className="rounded-[24px] border border-[#e4e4e7] bg-[#f4f4f5] p-4 shadow-[0_18px_48px_rgba(24,24,27,0.08)]">
             <h2 className="text-base font-semibold text-[#1f1f1f]">Tải việc theo kỹ sư</h2>
             <div className="mt-4 grid gap-3">
@@ -586,6 +635,122 @@ function summaryCardClass(active: boolean) {
     'grid min-h-[106px] gap-1.5 rounded-2xl border bg-white/90 p-4 text-left transition hover:-translate-y-[1px] hover:border-[#18181b] hover:shadow-[0_14px_32px_rgba(24,24,27,0.10)] [&>small]:text-[11px] [&>small]:font-medium [&>small]:leading-4 [&>small]:text-[#8a8f99] [&>span]:text-[13px] [&>span]:font-semibold [&>span]:text-[#666666] [&>strong]:text-[32px] [&>strong]:font-semibold [&>strong]:leading-none [&>strong]:text-[#1f1f1f]',
     active ? 'border-[#18181b] shadow-[0_14px_32px_rgba(24,24,27,0.12)]' : 'border-white/80',
   ].join(' ');
+}
+
+function SlaCommandPanel({
+  onShowAction,
+  onShowReview,
+  pendingMachinesCount,
+  summary,
+}: {
+  onShowAction: () => void;
+  onShowReview: () => void;
+  pendingMachinesCount: number;
+  summary: ReturnType<typeof buildSlaSummary>;
+}) {
+  const hasRisk = summary.overdue.length || summary.dueSoon.length || summary.waitingParts.length || pendingMachinesCount;
+
+  return (
+    <section className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_8px_24px_rgba(24,24,27,0.05)] xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${hasRisk ? 'bg-[#fff1f3] text-[#b5121b]' : 'bg-[#eefaf3] text-[#177245]'}`}>
+            {hasRisk ? <AlertTriangle size={18} /> : <Clock3 size={18} />}
+          </span>
+          <div>
+            <span className="text-xs font-semibold text-[#666666]">SLA vận hành</span>
+            <h2 className="text-lg font-semibold text-[#1f1f1f]">Cảnh báo điều phối trong ngày</h2>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <SlaMetric label="Quá hạn SLA" tone={summary.overdue.length ? 'danger' : 'good'} value={summary.overdue.length} />
+          <SlaMetric label="Cần xử lý 24h" tone={summary.dueSoon.length ? 'warn' : 'good'} value={summary.dueSoon.length} />
+          <SlaMetric label="Chờ linh kiện" tone={summary.waitingParts.length ? 'danger' : 'neutral'} value={summary.waitingParts.length} />
+          <SlaMetric label="Chờ duyệt hồ sơ" tone={summary.pendingReview.length ? 'warn' : 'good'} value={summary.pendingReview.length} />
+          <SlaMetric label="Máy chờ xác minh" tone={pendingMachinesCount ? 'warn' : 'good'} value={pendingMachinesCount} />
+        </div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+        <button className="primary-button justify-center" onClick={onShowAction} type="button">
+          <AlertTriangle size={16} />
+          Xem việc cần xử lý
+        </button>
+        <button className="secondary-button justify-center" onClick={onShowReview} type="button">
+          <ClipboardCheck size={16} />
+          Xem hồ sơ chờ duyệt
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function SlaMetric({ label, tone, value }: { label: string; tone: Tone; value: number }) {
+  return (
+    <div className={`rounded-2xl border p-3 ${slaMetricToneClass(tone)}`}>
+      <span className="text-xs font-semibold text-[#666666]">{label}</span>
+      <strong className="mt-1 block text-2xl leading-none text-[#1f1f1f]">{value}</strong>
+    </div>
+  );
+}
+
+function PendingMachineReviewPanel({ machines }: { machines: ReviewMachine[] }) {
+  return (
+    <section className="rounded-[24px] border border-[#efd8a8] bg-[#fff8ed] p-4 shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className="text-xs font-semibold text-[#9b5a17]">Xác minh dữ liệu</span>
+          <h2 className="mt-1 text-base font-semibold text-[#1f1f1f]">Máy kỹ sư tạo chờ duyệt</h2>
+        </div>
+        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#9b5a17]">{machines.length}</span>
+      </div>
+
+      <div className="mt-3 grid gap-2">
+        {machines.map((machine) => {
+          const gaps = machineReviewGaps(machine);
+          const customerName = machine.customer?.hospitalName || machine.customer?.name;
+          return (
+            <article className="grid gap-3 rounded-2xl border border-[#efd8a8] bg-white p-3" key={machine.id}>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-[#9b5a17]">
+                  <span>{machine.createdSource === 'ENGINEER' ? 'Kỹ sư tạo' : machine.createdSource || 'Chờ xác minh'}</span>
+                  {machine.createdAt ? <span>{formatDate(machine.createdAt)}</span> : null}
+                </div>
+                <h3 className="mt-1 break-words text-sm font-semibold leading-snug text-[#1f1f1f]">{machine.serialNumber}</h3>
+                <p className="mt-1 break-words text-xs leading-5 text-[#666666]">
+                  {[machine.machineCode, machine.modelName, customerName, machine.customer?.province].filter(Boolean).join(' - ') || 'Chưa có thông tin khách hàng'}
+                </p>
+              </div>
+              {gaps.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {gaps.slice(0, 3).map((gap) => (
+                    <span className="rounded-full bg-[#fff8ed] px-2 py-1 text-[11px] font-semibold text-[#9b5a17]" key={gap}>{gap}</span>
+                  ))}
+                  {gaps.length > 3 ? <span className="rounded-full bg-[#f4f4f5] px-2 py-1 text-[11px] font-semibold text-[#666666]">+{gaps.length - 3}</span> : null}
+                </div>
+              ) : (
+                <span className="rounded-full bg-[#eefaf3] px-2 py-1 text-[11px] font-semibold text-[#177245]">Đủ thông tin chính</span>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Link className="primary-button compact" to={`/technical-machines/${machine.id}`}>
+                  <Eye size={15} />
+                  Mở hồ sơ
+                </Link>
+                <Link className="secondary-button compact" to={`/technical-machines/${machine.id}/edit`}>
+                  <ClipboardCheck size={15} />
+                  Xác minh
+                </Link>
+              </div>
+            </article>
+          );
+        })}
+        {!machines.length ? (
+          <div className="rounded-2xl border border-dashed border-[#efd8a8] bg-white/70 px-3 py-4 text-sm text-[#9b5a17]">
+            Không có máy nào đang chờ xác minh.
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
 }
 
 const metaClass = 'flex flex-wrap items-center gap-[7px] text-[13px] text-[#666666] [&>span]:[overflow-wrap:anywhere]';
@@ -709,6 +874,7 @@ function WorkDispatchRow({
         )}
         {pendingReview ? (
           <div className="col-span-full grid gap-2 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3">
+            <ReviewAttachmentsPanel item={item} />
             <QualityReviewChecklist item={item} />
             <textarea
               className="form-input min-h-16"
@@ -749,6 +915,65 @@ function QualityReviewChecklist({ item }: { item: WorkItem }) {
           </label>
         ))}
       </div>
+    </div>
+  );
+}
+
+function ReviewAttachmentsPanel({ item }: { item: WorkItem }) {
+  const entityType = attachmentEntityType(item.kind);
+  const attachmentsQuery = useQuery({
+    enabled: item.reviewStatus === 'PENDING',
+    queryKey: ['review-attachments', entityType, item.id],
+    queryFn: async () => {
+      const result = await apiFetch<Paginated<ReviewAttachment>>(`/attachments?entityType=${entityType}&entityId=${item.id}&limit=100`);
+      return result.data ?? [];
+    },
+  });
+  const attachments = attachmentsQuery.data ?? [];
+
+  return (
+    <div className="grid gap-2 rounded-lg border border-[#dbe5ef] bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <strong className="text-sm text-[#1f1f1f]">Ảnh và tài liệu kỹ sư đã tải lên</strong>
+          <p className="mt-1 text-xs leading-5 text-[#666666]">Admin xem file tại đây trước khi duyệt hoặc trả về bổ sung.</p>
+        </div>
+        <span className="rounded-full bg-[#f4f4f5] px-2.5 py-1 text-xs font-semibold text-[#18181b]">
+          {attachmentsQuery.isLoading ? '...' : attachments.length}
+        </span>
+      </div>
+
+      {attachmentsQuery.isLoading ? (
+        <div className="flex min-h-14 items-center gap-2 rounded-lg border border-dashed border-[#d6d6d6] bg-[#fafafa] p-3 text-sm text-[#666666]">
+          <Loader2 className="spin-icon" size={16} />
+          Đang tải tài liệu...
+        </div>
+      ) : null}
+
+      {!attachmentsQuery.isLoading && attachments.length ? (
+        <div className="grid gap-2">
+          {attachments.map((attachment) => (
+            <article className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-2.5" key={attachment.id}>
+              <div className="min-w-0">
+                <span className="text-[11px] font-semibold text-[#666666]">{attachment.type}</span>
+                <strong className="mt-0.5 block truncate text-sm text-[#1f1f1f]">{attachment.title || attachment.originalName}</strong>
+                <small className="block truncate text-xs text-[#666666]">
+                  {[attachment.originalName, formatAttachmentSize(attachment.size), attachment.uploadedBy?.fullName || attachment.uploadedBy?.email].filter(Boolean).join(' - ')}
+                </small>
+              </div>
+              <button className="secondary-button compact" onClick={() => void downloadReviewAttachment(attachment)} type="button">
+                Tải
+              </button>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {!attachmentsQuery.isLoading && !attachments.length ? (
+        <div className="rounded-lg border border-dashed border-[#e4e4e7] bg-[#fafafa] px-3 py-3 text-sm text-[#666666]">
+          Chưa có ảnh hoặc tài liệu đính kèm cho phiếu này.
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -921,6 +1146,9 @@ function dateRank(item: WorkItem) {
 }
 
 function actionLabel(item: WorkItem) {
+  const slaState = slaStateForItem(item);
+  if (slaState === 'overdue') return 'Quá hạn SLA';
+  if (slaState === 'due-soon') return 'Sắp đến hạn SLA';
   if (item.reviewStatus === 'PENDING') return 'Cần xác nhận báo cáo';
   if (item.reviewStatus === 'APPROVED' && isClosed(item.status)) return 'Đã hoàn tất';
   if (item.reviewStatus === 'APPROVED') return 'Đã duyệt';
@@ -930,6 +1158,9 @@ function actionLabel(item: WorkItem) {
 }
 
 function actionTone(item: WorkItem): Tone {
+  const slaState = slaStateForItem(item);
+  if (slaState === 'overdue') return 'danger';
+  if (slaState === 'due-soon') return 'warn';
   if (item.reviewStatus === 'PENDING') return 'warn';
   if (item.reviewStatus === 'APPROVED') return 'good';
   if (!item.engineer?.id) return 'danger';
@@ -1057,6 +1288,7 @@ function statusTone(value: string, reviewStatus?: WorkReviewStatus | null): Tone
 }
 
 function workTone(item: WorkItem): Tone {
+  if (slaStateForItem(item) === 'overdue') return 'danger';
   if (item.reviewStatus === 'PENDING') return 'warn';
   if (item.reviewStatus === 'APPROVED' || isClosed(item.status)) return 'good';
   if (!item.engineer?.id) return 'danger';
@@ -1087,6 +1319,55 @@ function reviewStatusTone(value?: WorkReviewStatus | null): Tone {
   return 'neutral';
 }
 
+function buildSlaSummary(items: WorkItem[]) {
+  const openItems = items.filter((item) => !isClosed(item.status));
+  return {
+    overdue: openItems.filter((item) => slaStateForItem(item) === 'overdue'),
+    dueSoon: openItems.filter((item) => slaStateForItem(item) === 'due-soon'),
+    waitingParts: openItems.filter((item) => item.status === 'WAITING_PARTS'),
+    pendingReview: items.filter((item) => item.reviewStatus === 'PENDING'),
+  };
+}
+
+function slaStateForItem(item: WorkItem): 'overdue' | 'due-soon' | 'ok' {
+  if (isClosed(item.status)) return 'ok';
+  if (item.status === 'WAITING_PARTS') return 'overdue';
+  if (!item.date) return item.engineer?.id ? 'ok' : 'due-soon';
+
+  const ageDays = Math.max(0, Math.floor((Date.now() - dateRank(item)) / 86_400_000));
+  const threshold = slaThresholdDays(item);
+  if (ageDays > threshold) return 'overdue';
+  if (ageDays >= Math.max(0, threshold - 1)) return 'due-soon';
+  return 'ok';
+}
+
+function slaThresholdDays(item: WorkItem) {
+  if (!item.engineer?.id) return 1;
+  if (item.kind === 'repair') return 3;
+  if (item.kind === 'maintenance') return 1;
+  return 2;
+}
+
+function slaMetricToneClass(tone: Tone) {
+  const tones: Record<Tone, string> = {
+    good: 'border-[#b9e8ca] bg-[#eefaf3]',
+    warn: 'border-[#efd8a8] bg-[#fff8ed]',
+    danger: 'border-[#fecdd3] bg-[#fff1f3]',
+    neutral: 'border-[#e5e5e5] bg-[#fafafa]',
+  };
+  return tones[tone];
+}
+
+function machineReviewGaps(machine: ReviewMachine) {
+  return [
+    !machine.machineCode ? 'Thiếu mã máy' : '',
+    !machine.manufacturer ? 'Thiếu hãng' : '',
+    !machine.customer ? 'Chưa gắn khách hàng' : '',
+    !machine.primaryEngineer && !machine.installedBy ? 'Chưa có kỹ sư phụ trách' : '',
+    !machine.productCategory || machine.productCategory === 'OTHER' ? 'Chưa rõ loại thiết bị' : '',
+  ].filter(Boolean);
+}
+
 function isClosed(status: string) {
   return ['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(status);
 }
@@ -1107,4 +1388,41 @@ function machineText(item: WorkItem) {
 function customerText(item: WorkItem) {
   const customer = item.customer ?? item.machine?.customer;
   return [customer?.name, customer?.province].filter(Boolean).join(' - ') || 'Chưa có khách hàng';
+}
+
+function attachmentEntityType(kind: WorkKind) {
+  const entityTypes: Record<WorkKind, string> = {
+    installation: 'MachineInstallation',
+    maintenance: 'Maintenance',
+    repair: 'Repair',
+  };
+  return entityTypes[kind];
+}
+
+function formatAttachmentSize(size: number) {
+  if (!Number.isFinite(size)) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function downloadReviewAttachment(attachment: ReviewAttachment) {
+  const token = getToken();
+  const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
+  if (!response.ok) {
+    throw new Error('Không tải được tài liệu.');
+  }
+
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = blobUrl;
+  anchor.download = attachment.originalName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(blobUrl);
 }

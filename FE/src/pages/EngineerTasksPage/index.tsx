@@ -812,8 +812,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     }
   }
 
-  async function handleAttachmentUpload(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleAttachmentUpload() {
     if (!selectedTask || !attachmentFile) return;
 
     setUploadingAttachment(true);
@@ -1971,7 +1970,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   ))}
               </div>
 
-              <form className="grid grid-cols-2 gap-3 rounded-[14px] border border-[#e4e4e7] bg-[#f8fafc] p-3.5 max-[760px]:grid-cols-1" onSubmit={handleAttachmentUpload}>
+              <div className="grid grid-cols-2 gap-3 rounded-[14px] border border-[#e4e4e7] bg-[#f8fafc] p-3.5 max-[760px]:grid-cols-1">
                 <label className={drawerFieldClass}>
                   Loại tài liệu
                   <select className={drawerInputClass} onChange={(event) => setAttachmentType(event.target.value as AttachmentType)} value={attachmentType}>
@@ -2001,11 +2000,11 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                     type="file"
                   />
                 </label>
-                <button className="task-primary justify-self-end gap-2 disabled:cursor-not-allowed disabled:opacity-70" disabled={uploadingAttachment || !attachmentFile} type="submit">
+                <button className="task-primary justify-self-end gap-2 disabled:cursor-not-allowed disabled:opacity-70" disabled={uploadingAttachment || !attachmentFile} onClick={() => void handleAttachmentUpload()} type="button">
                   <FileUp size={16} />
                   {uploadingAttachment ? 'Đang tải lên' : 'Tải lên phiếu'}
                 </button>
-              </form>
+              </div>
             </section>
           </aside>
         </div>

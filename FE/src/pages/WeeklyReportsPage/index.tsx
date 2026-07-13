@@ -58,6 +58,19 @@ type DailyWorkRowsResponse = {
   }>;
 };
 
+type TicketRowsResponse = {
+  counts: {
+    total: number;
+    installations: number;
+    repairs: number;
+    maintenances: number;
+  };
+  rows: Array<WeeklyReportRow & {
+    sourceId: string;
+    sourceType: 'MachineInstallation' | 'Repair' | 'Maintenance';
+  }>;
+};
+
 const statusLabels: Record<WeeklyReportStatus, string> = {
   DRAFT: 'Nháp',
   SUBMITTED: 'Đã gửi',
@@ -130,6 +143,15 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     },
   });
 
+  const ticketRowsQuery = useQuery({
+    enabled: !isAdmin || Boolean(selectedEngineerId),
+    queryKey: queryKeys.weeklyReports.ticketRows(reportParams),
+    queryFn: async () => {
+      const result = await apiFetch<TicketRowsResponse | null>(`/weekly-reports/ticket-rows?${reportParams}`);
+      return result ?? null;
+    },
+  });
+
   useEffect(() => {
     if (!reportQuery.isSuccess) return;
     const nextReport = reportQuery.data ?? null;
@@ -140,8 +162,10 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   }, [reportQuery.data, reportQuery.isSuccess, weekStart]);
 
   const dailyWorkRows = dailyWorkRowsQuery.data ?? null;
+  const ticketRows = ticketRowsQuery.data ?? null;
   const loading = reportQuery.isLoading || reportQuery.isFetching || engineersQuery.isFetching;
   const loadingDailyWorkRows = dailyWorkRowsQuery.isLoading || dailyWorkRowsQuery.isFetching;
+  const loadingTicketRows = ticketRowsQuery.isLoading || ticketRowsQuery.isFetching;
 
   useEffect(() => {
     if (isAdmin && !selectedEngineerId) return;
@@ -212,6 +236,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     (engineersQuery.error instanceof Error ? engineersQuery.error.message : '') ||
     (reportQuery.error instanceof Error ? reportQuery.error.message : '') ||
     (dailyWorkRowsQuery.error instanceof Error ? dailyWorkRowsQuery.error.message : '') ||
+    (ticketRowsQuery.error instanceof Error ? ticketRowsQuery.error.message : '') ||
     (mutationError instanceof Error ? mutationError.message : '');
 
   function updateRow(index: number, patch: Partial<WeeklyReportRow>) {
@@ -228,10 +253,21 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
 
   function importDailyWorkRows() {
     if (!dailyWorkRows?.rows.length) return;
+    mergeImportedRows(dailyWorkRows.rows);
+    setSuccess('Đã đưa lịch trong tuần vào báo cáo nháp.');
+  }
+
+  function importTicketRows() {
+    if (!ticketRows?.rows.length) return;
+    mergeImportedRows(ticketRows.rows);
+    setSuccess('Đã đưa phiếu hoàn thành trong tuần vào báo cáo nháp.');
+  }
+
+  function mergeImportedRows(imported: WeeklyReportRow[]) {
     setRows((current) => {
       const filledRows = current.filter(rowHasReportData);
       const existingKeys = new Set(filledRows.map(rowKey));
-      const importedRows = dailyWorkRows.rows
+      const importedRows = imported
         .map(normalizeRow)
         .filter((row) => !existingKeys.has(rowKey(row)));
       const nextRows = [...filledRows, ...importedRows].sort((a, b) => {
@@ -241,7 +277,6 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       });
       return nextRows.length ? nextRows : defaultRows(weekStart);
     });
-    setSuccess('Đã đưa lịch trong tuần vào báo cáo nháp.');
   }
 
   async function saveReport() {
@@ -447,19 +482,31 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               <CalendarCheck size={18} />
             </span>
             <div>
-              <span className="text-xs font-semibold text-[#18181b]">Lịch trong tuần</span>
-              <h2 className="text-lg font-semibold text-[#1f1f1f]">Dùng lịch để lập báo cáo</h2>
+              <span className="text-xs font-semibold text-[#18181b]">Dữ liệu trong tuần</span>
+              <h2 className="text-lg font-semibold text-[#1f1f1f]">Tự lập báo cáo từ lịch và phiếu hoàn thành</h2>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
             <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 font-medium text-[#333333]">
               {loadingDailyWorkRows ? 'Đang tải lịch...' : `${dailyWorkRows?.counts.total ?? 0} lịch`}
             </span>
+            <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 font-medium text-[#333333]">
+              {loadingTicketRows ? 'Đang tải phiếu...' : `${ticketRows?.counts.total ?? 0} phiếu hoàn thành`}
+            </span>
             <span className="rounded-lg border border-[#b9e8ca] bg-[#eefaf3] px-3 py-2 font-medium text-[#177245]">
               Đã duyệt: {dailyWorkRows?.counts.byStatus.APPROVED ?? 0}
             </span>
             <span className="rounded-lg border border-[#efd8a8] bg-[#fffaeb] px-3 py-2 font-medium text-[#9b5a17]">
               Chờ duyệt: {dailyWorkRows?.counts.byStatus.PENDING ?? 0}
+            </span>
+            <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
+              Lắp đặt: {ticketRows?.counts.installations ?? 0}
+            </span>
+            <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
+              Sửa chữa: {ticketRows?.counts.repairs ?? 0}
+            </span>
+            <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
+              Bảo trì: {ticketRows?.counts.maintenances ?? 0}
             </span>
             {Object.entries(dailyWorkRows?.counts.byType ?? {}).slice(0, 4).map(([type, count]) => (
               <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]" key={type}>
@@ -468,14 +515,20 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             ))}
           </div>
           <p className="mt-3 max-w-[760px] text-sm leading-6 text-[#666666]">
-            Các lịch đã đăng ký trong tuần sẽ được đưa vào bảng. Kỹ sư chỉ cần bổ sung kết quả, tồn đọng và đề xuất.
+            Lịch giúp ghi kế hoạch, phiếu hoàn thành giúp lấy kết quả thực tế. Kỹ sư chỉ cần rà lại tồn đọng và đề xuất trước khi gửi admin.
           </p>
         </div>
         {!isAdmin ? (
-          <button className="primary-button justify-center" disabled={saving || !canEdit || !dailyWorkRows?.rows.length} onClick={importDailyWorkRows} type="button">
-            <Sparkles size={16} />
-            Lấy từ lịch tuần
-          </button>
+          <div className="grid gap-2">
+            <button className="secondary-button justify-center" disabled={saving || !canEdit || !dailyWorkRows?.rows.length} onClick={importDailyWorkRows} type="button">
+              <CalendarCheck size={16} />
+              Lấy từ lịch tuần
+            </button>
+            <button className="primary-button justify-center" disabled={saving || !canEdit || !ticketRows?.rows.length} onClick={importTicketRows} type="button">
+              <Sparkles size={16} />
+              Lấy từ phiếu hoàn thành
+            </button>
+          </div>
         ) : null}
       </section>
 

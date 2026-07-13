@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Edit3, Eye, Loader2, PackageSearch, Plus, RotateCcw, Save, Search, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Edit3, Eye, Loader2, PackageSearch, Plus, RotateCcw, Save, Search, ShieldCheck, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch, apiFetchAllPages } from '../../api';
@@ -153,6 +153,20 @@ type MachineLifecycleEvent = {
   date?: string | null;
   description?: string;
   meta?: string;
+};
+
+type MachineBusinessSignal = {
+  id: string;
+  label: string;
+  value: string;
+  tone: 'good' | 'info' | 'warning' | 'danger' | 'neutral';
+  href?: string;
+};
+
+type MachineProfileGap = {
+  id: string;
+  label: string;
+  done: boolean;
 };
 
 type EditMachineForm = {
@@ -657,6 +671,30 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     }
   }
 
+  async function verifyMachineProfile(machine: DashboardMachine) {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiFetch(`/machines/${machine.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          dataStatus: 'VERIFIED',
+        }),
+      });
+      setSuccess('Đã xác minh hồ sơ máy.');
+      await loadMachineDetail(machine.id);
+      if (!machineId) {
+        await loadTechnicalMachines();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không xác minh được hồ sơ máy.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const selectedEditModel = machineModels.find((model) => model.id === editForm.machineModelId);
   const isEditingUltrasound = isUltrasoundMachine(editingMachine) || editForm.productCategory === 'ULTRASOUND' || selectedEditModel?.productCategory === 'ULTRASOUND';
   const isEditingEndoscopy = isEndoscopyMachine(editingMachine) || editForm.productCategory === 'ENDOSCOPY' || isEndoscopyMachineModel(selectedEditModel);
@@ -713,6 +751,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             loading={loadingMachineDetail}
             machine={recordMachine}
             onEdit={openEditMachine}
+            onVerify={verifyMachineProfile}
+            verifying={saving}
           />
         )}
       </PageFrame>
@@ -1170,11 +1210,15 @@ function MachineDetailPanel({
   loading,
   machine,
   onEdit,
+  onVerify,
+  verifying,
 }: {
   canEdit: boolean;
   loading: boolean;
   machine: DashboardMachine | null;
   onEdit: (machine: DashboardMachine) => void;
+  onVerify: (machine: DashboardMachine) => void;
+  verifying: boolean;
 }) {
   if (!machine) {
     return (
@@ -1196,6 +1240,9 @@ function MachineDetailPanel({
   const warrantyCards = machine.warrantyCards ?? [];
   const warrantyEndDate = machine.warrantyEndDate ?? warrantyCards[0]?.endDate ?? latestInstallation?.warrantyCard?.endDate;
   const lifecycleEvents = buildMachineLifecycleEvents(machine);
+  const businessSignals = buildMachineBusinessSignals(machine, warrantyEndDate);
+  const profileGaps = buildMachineProfileGaps(machine);
+  const completedGaps = profileGaps.filter((gap) => gap.done).length;
 
   return (
     <aside className="grid min-w-0 gap-4 self-start">
@@ -1214,10 +1261,18 @@ function MachineDetailPanel({
               {displayLabel(machine.inventoryStatus || machine.status || '')}
             </span>
             {canEdit ? (
+              <>
+              {machine.dataStatus === 'PENDING_REVIEW' ? (
+                <button className="primary-button" disabled={verifying} onClick={() => onVerify(machine)} type="button">
+                  {verifying ? <Loader2 className="spin-icon" size={16} /> : <ClipboardCheck size={16} />}
+                  Xác minh hồ sơ
+                </button>
+              ) : null}
               <button className="secondary-button" onClick={() => onEdit(machine)} type="button">
                 <Edit3 size={16} />
                 Edit
               </button>
+              </>
             ) : null}
           </div>
         </div>
@@ -1227,6 +1282,9 @@ function MachineDetailPanel({
           <ProfileStat label="Luân chuyển kho" value={movements.length} />
           <ProfileStat label="Phụ kiện" value={accessories.length} />
         </div>
+
+        <MachineBusinessSignalPanel signals={businessSignals} />
+
         <div className="grid min-w-0 gap-4 md:grid-cols-2 2xl:grid-cols-3">
           <InfoItem label="Model" value={machine.modelName} />
           <InfoItem label="Mã máy" value={machine.machineCode} />
@@ -1240,6 +1298,8 @@ function MachineDetailPanel({
           <InfoItem label="Kỹ sư lắp đặt" value={machine.installedBy?.fullName} />
           <InfoItem label="Kỹ sư phụ trách" value={machine.primaryEngineer?.fullName} />
         </div>
+
+        <MachineProfileCompletenessCard completed={completedGaps} gaps={profileGaps} total={profileGaps.length} />
 
         <div className="mt-6 border-t border-[#eeeeee] pt-5">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -1357,6 +1417,89 @@ function ProfileStat({ label, value }: { label: string; value: number }) {
       <span className="text-xs font-medium text-[#666666]">{label}</span>
       <strong className="mt-1 block text-2xl leading-none text-[#1f1f1f]">{value}</strong>
     </div>
+  );
+}
+
+function MachineBusinessSignalPanel({ signals }: { signals: MachineBusinessSignal[] }) {
+  const prioritySignals = signals.filter((signal) => signal.tone === 'danger' || signal.tone === 'warning');
+
+  return (
+    <section className="mb-5 grid gap-3 rounded-lg border border-[#d8e0ea] bg-[#f8fafc] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span className="text-[12px] font-semibold text-[#666666]">Tín hiệu nghiệp vụ</span>
+          <h3 className="mt-1 text-lg font-semibold leading-tight text-[#1f1f1f]">Việc cần chú ý trên máy này</h3>
+        </div>
+        <span className={`inline-flex min-h-8 items-center gap-2 rounded-lg border px-2.5 text-sm font-semibold ${prioritySignals.length ? 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]' : 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]'}`}>
+          {prioritySignals.length ? <AlertTriangle size={16} /> : <ShieldCheck size={16} />}
+          {prioritySignals.length ? `${prioritySignals.length} cảnh báo` : 'Ổn định'}
+        </span>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-4">
+        {signals.map((signal) => {
+          const content = (
+            <>
+              <span className="text-[12px] font-medium text-[#666666]">{signal.label}</span>
+              <strong className="mt-1 block break-words text-base font-semibold leading-snug text-[#1f1f1f]">{signal.value}</strong>
+            </>
+          );
+
+          if (signal.href) {
+            return (
+              <Link className={`grid min-h-[82px] gap-1 rounded-lg border p-3 transition hover:-translate-y-px hover:shadow-[0_8px_22px_rgba(24,24,27,0.08)] ${businessSignalToneClass(signal.tone)}`} key={signal.id} to={signal.href}>
+                {content}
+              </Link>
+            );
+          }
+
+          return (
+            <div className={`grid min-h-[82px] gap-1 rounded-lg border p-3 ${businessSignalToneClass(signal.tone)}`} key={signal.id}>
+              {content}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function MachineProfileCompletenessCard({
+  completed,
+  gaps,
+  total,
+}: {
+  completed: number;
+  gaps: MachineProfileGap[];
+  total: number;
+}) {
+  const percent = total ? Math.round((completed / total) * 100) : 100;
+  const missing = gaps.filter((gap) => !gap.done);
+
+  return (
+    <section className="mt-5 rounded-lg border border-[#e5e5e5] bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span className="text-[12px] font-semibold text-[#666666]">Độ đầy đủ hồ sơ</span>
+          <h3 className="mt-1 text-lg font-semibold text-[#1f1f1f]">{percent}% đã hoàn thiện</h3>
+        </div>
+        <span className={`inline-flex min-h-8 items-center gap-2 rounded-lg border px-2.5 text-sm font-semibold ${missing.length ? 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]' : 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]'}`}>
+          <ClipboardCheck size={16} />
+          {completed}/{total}
+        </span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#eeeeee]">
+        <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${percent}%` }} />
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {gaps.map((gap) => (
+          <div className="flex min-h-9 items-center gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] px-3 py-2 text-sm" key={gap.id}>
+            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${gap.done ? 'bg-[#177245]' : 'bg-[#d97706]'}`} />
+            <span className={gap.done ? 'font-medium text-[#333333]' : 'font-semibold text-[#9b5a17]'}>{gap.label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1626,6 +1769,142 @@ function statusPillTone(value: string) {
   return 'border-[#e5e5e5] bg-[#fafafa] text-[#333333]';
 }
 
+function buildMachineBusinessSignals(machine: DashboardMachine, warrantyEndDate?: string | null): MachineBusinessSignal[] {
+  const repairs = machine.repairs ?? [];
+  const maintenances = machine.maintenances ?? [];
+  const installations = machine.installations ?? [];
+  const openRepairs = repairs.filter((repair) => !['COMPLETED', 'CANCELLED'].includes(repair.status));
+  const waitingParts = repairs.filter((repair) => repair.status === 'WAITING_PARTS');
+  const openMaintenances = maintenances.filter((maintenance) => !['COMPLETED', 'CANCELLED'].includes(maintenance.status));
+  const overdueMaintenances = openMaintenances.filter((maintenance) => isPastDate(maintenance.scheduledDate));
+  const pendingInstallations = installations.filter((installation) => installation.status === 'PENDING');
+  const nextMaintenance = findNextMaintenance(maintenances);
+  const warrantySignal = buildWarrantySignal(warrantyEndDate);
+  const operationSignal = buildOperationSignal(openRepairs.length, waitingParts.length, overdueMaintenances.length, pendingInstallations.length);
+  const nextMaintenanceSignal: MachineBusinessSignal = nextMaintenance
+    ? {
+        id: 'next-maintenance',
+        label: 'Bảo trì tiếp theo',
+        value: `${formatDashboardDate(nextMaintenance.date)}${nextMaintenance.source === 'nextDueDate' ? ' - lịch hẹn lại' : ' - lịch đang mở'}`,
+        tone: isPastDate(nextMaintenance.date) ? 'danger' : daysUntil(nextMaintenance.date) <= 14 ? 'warning' : 'info',
+      }
+    : {
+        id: 'next-maintenance',
+        label: 'Bảo trì tiếp theo',
+        value: maintenances.length ? 'Chưa có lịch tiếp theo' : 'Chưa từng bảo trì',
+        tone: maintenances.length ? 'warning' : 'neutral',
+      };
+  const ownerSignal: MachineBusinessSignal = machine.primaryEngineer || machine.installedBy
+    ? {
+        id: 'owner',
+        label: 'Kỹ sư phụ trách',
+        value: machine.primaryEngineer?.fullName || machine.installedBy?.fullName || machine.primaryEngineer?.email || machine.installedBy?.email || 'Đã phân công',
+        tone: 'good',
+      }
+    : {
+        id: 'owner',
+        label: 'Kỹ sư phụ trách',
+        value: 'Chưa phân công',
+        tone: 'warning',
+      };
+
+  return [warrantySignal, operationSignal, nextMaintenanceSignal, ownerSignal];
+}
+
+function buildWarrantySignal(warrantyEndDate?: string | null): MachineBusinessSignal {
+  if (!warrantyEndDate) {
+    return {
+      id: 'warranty',
+      label: 'Bảo hành',
+      value: 'Chưa có hạn bảo hành',
+      tone: 'warning',
+    };
+  }
+
+  const left = daysUntil(warrantyEndDate);
+  if (left < 0) {
+    return {
+      id: 'warranty',
+      label: 'Bảo hành',
+      value: `Đã hết hạn ${Math.abs(left)} ngày`,
+      tone: 'danger',
+    };
+  }
+
+  if (left <= 30) {
+    return {
+      id: 'warranty',
+      label: 'Bảo hành',
+      value: `Còn ${left} ngày`,
+      tone: 'warning',
+    };
+  }
+
+  return {
+    id: 'warranty',
+    label: 'Bảo hành',
+    value: `Còn ${left} ngày`,
+    tone: 'good',
+  };
+}
+
+function buildOperationSignal(openRepairs: number, waitingParts: number, overdueMaintenances: number, pendingInstallations: number): MachineBusinessSignal {
+  const parts = [
+    openRepairs ? `${openRepairs} sửa chữa mở` : '',
+    waitingParts ? `${waitingParts} chờ linh kiện` : '',
+    overdueMaintenances ? `${overdueMaintenances} bảo trì quá hạn` : '',
+    pendingInstallations ? `${pendingInstallations} lắp đặt chờ` : '',
+  ].filter(Boolean);
+
+  if (!parts.length) {
+    return {
+      id: 'operation',
+      label: 'Vận hành',
+      value: 'Không có việc mở',
+      tone: 'good',
+      href: '/service-tickets',
+    };
+  }
+
+  return {
+    id: 'operation',
+    label: 'Vận hành',
+    value: parts.join(' - '),
+    tone: overdueMaintenances || waitingParts ? 'danger' : 'warning',
+    href: '/service-tickets',
+  };
+}
+
+function buildMachineProfileGaps(machine: DashboardMachine): MachineProfileGap[] {
+  const customer = machine.customer ?? machine.installations?.[0]?.customer ?? null;
+  const isInstalledLike = ['INSTALLED', 'RESERVED', 'SOLD'].includes(machine.inventoryStatus || '');
+
+  return [
+    { id: 'serial', label: 'Có serial máy', done: Boolean(machine.serialNumber) },
+    { id: 'model', label: 'Có model/hãng thiết bị', done: Boolean(machine.modelName && machine.manufacturer) },
+    { id: 'customer', label: 'Gắn khách hàng khi máy đã giao/lắp', done: !isInstalledLike || Boolean(customer) },
+    { id: 'install-date', label: 'Có ngày lắp đặt', done: !isInstalledLike || Boolean(machine.installDate || machine.installation?.installedAt) },
+    { id: 'warranty', label: 'Có thời hạn bảo hành', done: !isInstalledLike || Boolean(machine.warrantyEndDate || machine.warrantyCards?.[0]?.endDate || machine.installation?.warrantyCard?.endDate) },
+    { id: 'engineer', label: 'Có kỹ sư phụ trách', done: Boolean(machine.primaryEngineer || machine.installedBy) },
+    { id: 'accessories', label: 'Khai báo phụ kiện/đầu dò', done: Boolean(machine.accessories?.length) || machine.productCategory === 'OTHER' },
+    { id: 'data-review', label: 'Dữ liệu đã xác minh', done: machine.dataStatus !== 'PENDING_REVIEW' },
+  ];
+}
+
+function findNextMaintenance(maintenances: NonNullable<DashboardMachine['maintenances']>) {
+  const candidates = maintenances
+    .flatMap((maintenance) => [
+      maintenance.nextDueDate ? { date: maintenance.nextDueDate, source: 'nextDueDate' as const } : null,
+      !['COMPLETED', 'CANCELLED'].includes(maintenance.status) && maintenance.scheduledDate
+        ? { date: maintenance.scheduledDate, source: 'scheduledDate' as const }
+        : null,
+    ])
+    .filter((item): item is { date: string; source: 'nextDueDate' | 'scheduledDate' } => Boolean(item?.date))
+    .sort((left, right) => Math.abs(daysUntil(left.date)) - Math.abs(daysUntil(right.date)));
+
+  return candidates[0] ?? null;
+}
+
 function buildMachineLifecycleEvents(machine: DashboardMachine): MachineLifecycleEvent[] {
   const events: MachineLifecycleEvent[] = [];
 
@@ -1696,6 +1975,32 @@ function lifecycleDateValue(value?: string | null) {
   if (!value) return 0;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function daysUntil(value?: string | null) {
+  if (!value) return 0;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+  return Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
+}
+
+function isPastDate(value?: string | null) {
+  return daysUntil(value) < 0;
+}
+
+function businessSignalToneClass(tone: MachineBusinessSignal['tone']) {
+  const classes: Record<MachineBusinessSignal['tone'], string> = {
+    good: 'border-[#b9e8ca] bg-[#eefaf3]',
+    info: 'border-[#b8cbe1] bg-[#eef6ff]',
+    warning: 'border-[#efd8a8] bg-[#fff8ed]',
+    danger: 'border-[#fecdd3] bg-[#fff1f3]',
+    neutral: 'border-[#e5e5e5] bg-white',
+  };
+  return classes[tone];
 }
 
 function lifecycleKindLabel(kind: MachineLifecycleEvent['kind']) {

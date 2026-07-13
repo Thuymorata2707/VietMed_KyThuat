@@ -261,8 +261,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
     }
   }
 
-  async function uploadAttachment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function uploadAttachment() {
     if (!attachmentFile) return;
 
     setUploadingAttachment(true);
@@ -744,7 +743,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   : null}
               </div>
 
-              <form className="mt-4 grid min-w-0 gap-3 border-t border-[#eeeeee] pt-4" onSubmit={uploadAttachment}>
+              <div className="mt-4 grid min-w-0 gap-3 border-t border-[#eeeeee] pt-4">
                 <label className={labelClass}>
                   Loại tài liệu
                   <select className={fieldClass} onChange={(event) => setAttachmentType(event.target.value as AttachmentType)} value={attachmentType}>
@@ -772,11 +771,11 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                     type="file"
                   />
                 </label>
-                <button className="primary-button" disabled={uploadingAttachment || !attachmentFile} type="submit">
+                <button className="primary-button" disabled={uploadingAttachment || !attachmentFile} onClick={() => void uploadAttachment()} type="button">
                   {uploadingAttachment ? <Loader2 className="spin-icon" size={17} /> : null}
                   {uploadingAttachment ? 'Đang tải lên' : 'Tải lên'}
                 </button>
-              </form>
+              </div>
             </section>
 
             <div className={sidePanelClass}>
