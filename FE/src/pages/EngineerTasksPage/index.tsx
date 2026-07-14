@@ -2091,7 +2091,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               </div>
 
               <div className="flex justify-end gap-2.5 max-[760px]:flex-col">
-                <Link className="task-secondary" to="/daily-reports">
+                <Link className="task-secondary" to="/daily-work?tab=daily">
                   <FileText size={16} />
                   Báo cáo cuối ngày
                 </Link>

@@ -22,8 +22,6 @@ const AdminRolesPage = lazy(() => import('../../pages/AdminRolesPage').then((mod
 const AdminUsersPage = lazy(() => import('../../pages/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })));
 const AdminWorkAssignmentPage = lazy(() => import('../../pages/AdminWorkAssignmentPage').then((module) => ({ default: module.AdminWorkAssignmentPage })));
 const DashboardPage = lazy(() => import('../../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
-const DailyReportsPage = lazy(() => import('../../pages/DailyReportsPage').then((module) => ({ default: module.DailyReportsPage })));
-const DailyWorkCalendarPage = lazy(() => import('../../pages/DailyWorkCalendarPage').then((module) => ({ default: module.DailyWorkCalendarPage })));
 const EngineerPerformancePage = lazy(() => import('../../pages/EngineerPerformancePage').then((module) => ({ default: module.EngineerPerformancePage })));
 const EngineerCustomersPage = lazy(() => import('../../pages/EngineerCustomersPage').then((module) => ({ default: module.EngineerCustomersPage })));
 const EngineerTasksPage = lazy(() => import('../../pages/EngineerTasksPage').then((module) => ({ default: module.EngineerTasksPage })));
@@ -44,7 +42,7 @@ const ServiceTicketsPage = lazy(() => import('../../pages/ServiceTicketsPage').t
 const InstallationsPage = lazy(() => import('../../pages/ServiceTicketsPage').then((module) => ({ default: module.InstallationsPage })));
 const TechnicalMachinesPage = lazy(() => import('../../pages/TechnicalMachinesPage').then((module) => ({ default: module.TechnicalMachinesPage })));
 const TechnicalStatisticsPage = lazy(() => import('../../pages/TechnicalStatisticsPage').then((module) => ({ default: module.TechnicalStatisticsPage })));
-const WeeklyReportsPage = lazy(() => import('../../pages/WeeklyReportsPage').then((module) => ({ default: module.WeeklyReportsPage })));
+const WorkReportsPage = lazy(() => import('../../pages/WorkReportsPage').then((module) => ({ default: module.WorkReportsPage })));
 
 type AppShellProps = {
   user: ApiUser;
@@ -126,6 +124,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Chia sẻ kinh nghiệm'
     : location.pathname.startsWith('/technical-statistics')
       ? 'Thống kê kỹ thuật'
+    : location.pathname.startsWith('/daily-work') || location.pathname.startsWith('/daily-reports') || location.pathname.startsWith('/weekly-reports')
+      ? 'Lịch & báo cáo'
     : location.pathname.startsWith('/reports')
       ? 'Báo cáo'
     : location.pathname.startsWith('/my-reports')
@@ -387,7 +387,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             }
           />
           <Route path="/account-settings" element={<AccountSettingsPage onUserUpdated={onUserUpdated} user={user} />} />
-          <Route path="/daily-work" element={<DailyWorkCalendarPage currentRole={role} user={user} />} />
+          <Route path="/daily-work" element={<WorkReportsPage currentRole={role} user={user} />} />
           <Route
             path="/daily-reports"
             element={
@@ -396,7 +396,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <DailyReportsPage currentRole={role} user={user} />
+                <WorkReportsPage currentRole={role} initialTab="daily" user={user} />
               </RequireRole>
             }
           />
@@ -408,7 +408,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <WeeklyReportsPage currentRole={role} user={user} />
+                <WorkReportsPage currentRole={role} initialTab="weekly" user={user} />
               </RequireRole>
             }
           />
