@@ -1,5 +1,6 @@
 import { CalendarDays, ClipboardCheck, FileBarChart2 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ApiUser } from '../../api';
 import { RoleName } from '../../auth/roles';
@@ -39,9 +40,14 @@ const tabs: Array<{ value: WorkReportTab; label: string; description: string; ic
 
 export function WorkReportsPage({ currentRole, initialTab = 'calendar', user }: WorkReportsPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const currentTab = normalizeTab(searchParams.get('tab') || initialTab);
+  const [currentTab, setCurrentTab] = useState<WorkReportTab>(() => normalizeTab(searchParams.get('tab') || initialTab));
+
+  useEffect(() => {
+    setCurrentTab(normalizeTab(searchParams.get('tab') || initialTab));
+  }, [initialTab]);
 
   function selectTab(tab: WorkReportTab) {
+    setCurrentTab(tab);
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
     setSearchParams(next, { replace: true });
