@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { DailyReportStatus, DailyWorkStatus } from '@prisma/client';
+import { DailyReportStatus, DailyWorkStatus, Prisma, WeeklyReportStatus } from '@prisma/client';
 import { isAdmin, isEngineer, userAccessWhere } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,28 +29,40 @@ export class DailyReportsService {
     await this.ensureUserExists(targetUserId, user);
     const reportDate = this.startOfDay(this.parseDate(dto.reportDate, 'reportDate'));
 
-    return this.prisma.dailyReport.upsert({
-      where: { userId_reportDate: { userId: targetUserId, reportDate } },
-      create: {
+    return this.prisma.$transaction(async (tx) => {
+      const report = await tx.dailyReport.upsert({
+        where: { userId_reportDate: { userId: targetUserId, reportDate } },
+        create: {
+          userId: targetUserId,
+          reportDate,
+          status: DailyReportStatus.DRAFT,
+          summary: this.cleanOptional(dto.summary),
+          pending: this.cleanOptional(dto.pending),
+          proposal: this.cleanOptional(dto.proposal),
+        },
+        update: {
+          status: DailyReportStatus.DRAFT,
+          summary: this.cleanOptional(dto.summary),
+          pending: this.cleanOptional(dto.pending),
+          proposal: this.cleanOptional(dto.proposal),
+          submittedAt: null,
+          reviewedAt: null,
+          reviewerId: null,
+          reviewNote: null,
+        },
+        include: this.defaultInclude(),
+      });
+
+      await this.syncDraftToWeeklyReport(tx, {
         userId: targetUserId,
         reportDate,
-        status: DailyReportStatus.DRAFT,
-        summary: this.cleanOptional(dto.summary),
-        pending: this.cleanOptional(dto.pending),
-        proposal: this.cleanOptional(dto.proposal),
-      },
-      update: {
-        status: DailyReportStatus.DRAFT,
-        summary: this.cleanOptional(dto.summary),
-        pending: this.cleanOptional(dto.pending),
-        proposal: this.cleanOptional(dto.proposal),
-        submittedAt: null,
-        reviewedAt: null,
-        reviewerId: null,
-        reviewNote: null,
-      },
-      include: this.defaultInclude(),
-    });
+        summary: report.summary,
+        pending: report.pending,
+        proposal: report.proposal,
+      });
+
+      return report;
+    }, { timeout: 20_000 });
   }
 
   async submit(id: string, user: RequestUser) {
@@ -137,7 +149,16 @@ export class DailyReportsService {
 
     return {
       reportDate: start,
-      summary: lines.join('\n'),
+      summary: lines.length
+        ? [
+            '1. Lịch trình và công việc thực tế:',
+            ...lines,
+            '',
+            '2. Hồ sơ kỹ thuật cần rà soát:',
+            '- Model/serial, ảnh trước-sau, biên bản, chữ ký bàn giao.',
+            '- Test chức năng, cảnh báo lỗi, vật tư/linh kiện đã sử dụng.',
+          ].join('\n')
+        : '',
       pending: pending.join('\n'),
       proposal: '',
       counts: {
@@ -171,6 +192,78 @@ export class DailyReportsService {
     if (!user) throw new NotFoundException('User not found');
   }
 
+  private async syncDraftToWeeklyReport(
+    tx: Prisma.TransactionClient,
+    report: {
+      userId: string;
+      reportDate: Date;
+      summary?: string | null;
+      pending?: string | null;
+      proposal?: string | null;
+    },
+  ) {
+    const hasContent = [report.summary, report.pending, report.proposal].some((value) => value?.trim());
+    const weekStart = this.startOfWeek(report.reportDate);
+    const marker = this.dailyWeeklyMarker(report.reportDate);
+
+    const weeklyReport = await tx.weeklyReport.upsert({
+      where: {
+        userId_weekStart: {
+          userId: report.userId,
+          weekStart,
+        },
+      },
+      create: {
+        userId: report.userId,
+        weekStart,
+        status: WeeklyReportStatus.DRAFT,
+        note: 'Tự tổng hợp từ báo cáo ngày.',
+      },
+      update: {
+        status: WeeklyReportStatus.DRAFT,
+        submittedAt: null,
+        reviewedAt: null,
+        reviewerId: null,
+        reviewNote: null,
+      },
+    });
+
+    await tx.weeklyReportRow.deleteMany({
+      where: {
+        reportId: weeklyReport.id,
+        workDate: report.reportDate,
+        content: { startsWith: marker },
+      },
+    });
+
+    if (!hasContent) return;
+
+    await tx.weeklyReportRow.create({
+      data: {
+        reportId: weeklyReport.id,
+        workDate: report.reportDate,
+        customer: 'Báo cáo ngày',
+        machine: 'Tổng hợp thiết bị y tế',
+        content: this.truncateWeeklyCell(
+          [marker, report.summary?.trim()].filter(Boolean).join('\n'),
+        ),
+        result: 'Đã lưu nháp cuối ngày.',
+        pending: this.truncateWeeklyCell(report.pending),
+        proposal: this.truncateWeeklyCell(report.proposal),
+        sortOrder: this.weekdaySortOrder(report.reportDate),
+      },
+    });
+  }
+
+  private truncateWeeklyCell(value?: string | null) {
+    const cleaned = this.cleanOptional(value);
+    if (!cleaned) return null;
+    const maxLength = 180;
+    return cleaned.length > maxLength
+      ? `${cleaned.slice(0, maxLength - 1)}…`
+      : cleaned;
+  }
+
   private defaultInclude() {
     return {
       user: { select: { id: true, fullName: true, email: true } },
@@ -194,9 +287,27 @@ export class DailyReportsService {
     return date;
   }
 
+  private startOfWeek(value: Date) {
+    const date = this.startOfDay(value);
+    const day = date.getDay() || 7;
+    date.setDate(date.getDate() - day + 1);
+    return date;
+  }
+
   private endOfDay(value: Date) {
     const date = new Date(value);
     date.setHours(23, 59, 59, 999);
     return date;
+  }
+
+  private weekdaySortOrder(value: Date) {
+    return (value.getDay() || 7) - 1;
+  }
+
+  private dailyWeeklyMarker(value: Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `[Báo cáo ngày ${year}-${month}-${day}]`;
   }
 }

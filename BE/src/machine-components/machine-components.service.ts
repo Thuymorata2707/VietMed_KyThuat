@@ -273,7 +273,7 @@ export class MachineComponentsService {
   private componentInclude() {
     return {
       machineModel: { include: { businessLine: true } },
-      accessories: {
+      ComponentAccessory: {
         orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }],
       },
     };

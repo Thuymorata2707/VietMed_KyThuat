@@ -161,7 +161,7 @@ export class RepairsService {
       }
 
       return repair;
-    });
+    }, { timeout: 20_000 });
   }
 
   async findAll(
@@ -375,7 +375,7 @@ export class RepairsService {
       }
 
       return updated;
-    });
+    }, { timeout: 20_000 });
   }
 
   async remove(id: string, actor: RequestUser) {
@@ -470,7 +470,7 @@ export class RepairsService {
       }
 
       return updated;
-    });
+    }, { timeout: 20_000 });
   }
 
   async updateStatus(
@@ -564,7 +564,7 @@ export class RepairsService {
       );
 
       return updated;
-    });
+    }, { timeout: 20_000 });
 
     if (dto.status === RepairStatus.COMPLETED && isEngineer(actor)) {
       await this.notificationsService

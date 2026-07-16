@@ -215,7 +215,7 @@ export class InstallationsService {
           where: { id: installation.id },
           include: this.defaultInclude(),
         });
-    });
+    }, { timeout: 20_000 });
   }
 
   async findAll(
@@ -1084,7 +1084,7 @@ export class InstallationsService {
       );
 
       return updated;
-    });
+    }, { timeout: 20_000 });
   }
 
   async review(id: string, dto: ReviewWorkTaskDto, actor: RequestUser) {

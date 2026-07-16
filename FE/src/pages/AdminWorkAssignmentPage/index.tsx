@@ -487,8 +487,8 @@ export function AdminWorkAssignmentPage() {
         onShowReview={() => setFilter('review')}
       />
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_8px_24px_rgba(24,24,27,0.05)]">
+      <section className="grid min-w-0 gap-5 min-[1420px]:grid-cols-[minmax(0,1fr)_minmax(300px,320px)]">
+        <div className="min-w-0 overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_8px_24px_rgba(24,24,27,0.05)]">
           <div className="grid gap-4 border-b border-[#ededf0] bg-[#fafafa] p-4">
             <div className="grid gap-1">
               <h2 className="text-lg font-semibold text-[#1f1f1f]">{currentFilterLabel}</h2>
@@ -587,12 +587,12 @@ export function AdminWorkAssignmentPage() {
           </div>
         </div>
 
-        <aside className="grid content-start gap-4">
+        <aside className="grid min-w-0 content-start gap-4">
           <PendingMachineReviewPanel machines={pendingMachines} />
 
           <UsedPartsSummaryPanel loading={usedPartsSummaryQuery.isLoading || usedPartsSummaryQuery.isFetching} summary={usedPartsSummaryQuery.data ?? null} />
 
-          <div className="rounded-[24px] border border-[#e4e4e7] bg-[#f4f4f5] p-4 shadow-[0_18px_48px_rgba(24,24,27,0.08)]">
+          <div className="min-w-0 overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-[#f4f4f5] p-4 shadow-[0_18px_48px_rgba(24,24,27,0.08)]">
             <h2 className="text-base font-semibold text-[#1f1f1f]">Tải việc theo kỹ sư</h2>
             <div className="mt-4 grid gap-3">
               {engineerLoads.map((engineer) => (
@@ -618,7 +618,7 @@ export function AdminWorkAssignmentPage() {
             </div>
           </div>
 
-          <div className="rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
+          <div className="min-w-0 overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#c9ead6] bg-[#eefaf3] text-[#177245]">
@@ -653,7 +653,7 @@ export function AdminWorkAssignmentPage() {
             </div>
           </div>
 
-          <div className="rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
+          <div className="min-w-0 overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
             <h2 className="text-base font-semibold text-[#1f1f1f]">Luồng nhanh</h2>
             <div className="mt-3 grid gap-2 text-xs font-medium leading-5 text-[#6f7784]">
               <p><strong>1.</strong> Chọn kỹ sư.</p>
@@ -734,16 +734,16 @@ function UsedPartsSummaryPanel({ loading, summary }: { loading: boolean; summary
   const topParts = summary?.parts.slice(0, 4) ?? [];
 
   return (
-    <div className="rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_18px_48px_rgba(24,24,27,0.08)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <div className="min-w-0 overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_18px_48px_rgba(24,24,27,0.08)]">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
           <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#64748b]">Vật tư phát sinh</span>
           <h2 className="mt-1 text-base font-semibold text-[#1f1f1f]">Tuần này</h2>
         </div>
         {loading ? <Loader2 className="spin-icon text-[#64748b]" size={17} /> : <PackageCheck className="text-[#177245]" size={18} />}
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid min-w-0 grid-cols-3 gap-2">
         <MiniMetric label="Dòng" value={summary?.totals.parts ?? 0} />
         <MiniMetric label="Chờ" value={summary?.totals.waiting ?? 0} />
         <MiniMetric label="Chi phí" value={formatMoney(summary?.totals.totalCost ?? 0)} />
@@ -751,10 +751,10 @@ function UsedPartsSummaryPanel({ loading, summary }: { loading: boolean; summary
 
       <div className="mt-3 grid gap-2">
         {summary?.byEngineer.slice(0, 3).map((engineer) => (
-          <div className="rounded-xl border border-[#e4e4e7] bg-[#fafafa] p-2.5" key={engineer.engineerId}>
+          <div className="min-w-0 rounded-xl border border-[#e4e4e7] bg-[#fafafa] p-2.5" key={engineer.engineerId}>
             <div className="flex items-center justify-between gap-2 text-sm font-bold text-[#18181b]">
               <span className="min-w-0 truncate">{engineer.engineerName}</span>
-              <span>{formatMoney(engineer.totalCost)}</span>
+              <span className="shrink-0">{formatMoney(engineer.totalCost)}</span>
             </div>
             <p className="mt-1 text-xs font-semibold text-[#666666]">{engineer.quantity} SL · {engineer.waiting} chờ linh kiện</p>
           </div>
@@ -769,7 +769,7 @@ function UsedPartsSummaryPanel({ loading, summary }: { loading: boolean; summary
       {topParts.length ? (
         <div className="mt-3 grid gap-1.5 border-t border-[#eeeeee] pt-3">
           {topParts.map((part) => (
-            <div className="text-xs font-semibold leading-5 text-[#666666]" key={part.id}>
+            <div className="min-w-0 break-words text-xs font-semibold leading-5 text-[#666666]" key={part.id}>
               <span className="text-[#18181b]">{part.name}</span> · {part.task?.code || 'Chưa rõ phiếu'} · {part.status === 'WAITING' ? 'Chờ linh kiện' : 'Đã dùng'}
             </div>
           ))}
@@ -781,8 +781,8 @@ function UsedPartsSummaryPanel({ loading, summary }: { loading: boolean; summary
 
 function MiniMetric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="grid gap-1 rounded-xl border border-[#e4e4e7] bg-[#fafafa] p-2 text-center">
-      <strong className="text-[15px] text-[#18181b]">{value}</strong>
+    <div className="grid min-w-0 gap-1 rounded-xl border border-[#e4e4e7] bg-[#fafafa] p-2 text-center">
+      <strong className="min-w-0 break-words text-[15px] text-[#18181b]">{value}</strong>
       <span className="text-[11px] font-bold text-[#64748b]">{label}</span>
     </div>
   );
@@ -790,9 +790,9 @@ function MiniMetric({ label, value }: { label: string; value: string | number })
 
 function PendingMachineReviewPanel({ machines }: { machines: ReviewMachine[] }) {
   return (
-    <section className="rounded-[24px] border border-[#efd8a8] bg-[#fff8ed] p-4 shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <section className="min-w-0 overflow-hidden rounded-[24px] border border-[#efd8a8] bg-[#fff8ed] p-4 shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
           <span className="text-xs font-semibold text-[#9b5a17]">Xác minh dữ liệu</span>
           <h2 className="mt-1 text-base font-semibold text-[#1f1f1f]">Máy kỹ sư tạo chờ duyệt</h2>
         </div>
@@ -880,7 +880,7 @@ function WorkDispatchRow({
   const workflowLabel = closed ? 'Hoàn tất' : pendingReview ? 'Chờ duyệt' : 'Đang mở';
 
   return (
-    <article className={`grid items-start gap-3.5 border-b border-[#ededf0] px-4 py-4 last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(240px,330px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(150px,210px)_minmax(260px,330px)] ${workRowClass(workflowTone)}`}>
+    <article className={`grid min-w-0 items-start gap-3.5 border-b border-[#ededf0] px-4 py-4 last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(220px,300px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(130px,190px)_minmax(220px,280px)] ${workRowClass(workflowTone)}`}>
       <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
       <div className="grid min-w-0 gap-[7px]">
         <div className={metaClass}>
@@ -942,10 +942,10 @@ function WorkDispatchRow({
             </div>
           </div>
         ) : (
-          <div className="grid gap-2 max-[560px]:grid-cols-1 min-[561px]:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="grid min-w-0 gap-2 max-[560px]:grid-cols-1 min-[561px]:grid-cols-[minmax(0,1fr)_auto] min-[821px]:grid-cols-1 min-[1181px]:grid-cols-[minmax(0,1fr)_auto]">
             <select
               aria-label={`Chọn kỹ sư cho ${item.code}`}
-              className="form-input h-10"
+              className="form-input h-10 min-w-0"
               onChange={(event) => onSelectEngineer(event.target.value)}
               value={assignmentByKey[item.key] ?? ''}
             >
@@ -957,7 +957,7 @@ function WorkDispatchRow({
               ))}
             </select>
             <button
-              className="primary-button w-full min-[561px]:w-auto"
+              className="primary-button w-full min-[561px]:w-auto min-[821px]:w-full min-[1181px]:w-auto"
               disabled={!assignmentByKey[item.key] || assigningKey === item.key}
               onClick={() => onAssign(item)}
               type="button"

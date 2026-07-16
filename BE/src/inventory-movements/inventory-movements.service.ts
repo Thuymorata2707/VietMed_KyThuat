@@ -49,67 +49,70 @@ export class InventoryMovementsService {
       dto.customerId || machine.customerId,
     );
 
-    return this.prisma.$transaction(async (tx) => {
-      const movement = await tx.machineInventoryMovement.create({
-        data: {
-          code: await this.generateMovementCode(),
-          type: dto.type,
-          machineId: dto.machineId,
-          fromStatus: machine.inventoryStatus,
-          toStatus: dto.toStatus,
-          occurredAt: this.parseOptionalDate(dto.occurredAt) ?? new Date(),
-          note: dto.note?.trim() || null,
-          customerId: dto.customerId || null,
-          createdById: currentUser?.id || null,
-        },
-        include: this.defaultInclude(),
-      });
-
-      await tx.machine.update({
-        where: { id: dto.machineId },
-        data: {
-          inventoryStatus: dto.toStatus,
-          customerId: this.getNextMachineCustomerId(
-            dto.toStatus,
-            dto.customerId,
-            machine.customerId,
-          ),
-          installDate:
-            dto.toStatus === MachineInventoryStatus.INSTALLED
-              ? movement.occurredAt
-              : this.shouldClearInstallationFields(dto.toStatus)
-                ? null
-                : undefined,
-          warrantyStartDate: this.shouldClearInstallationFields(dto.toStatus)
-            ? null
-            : undefined,
-          warrantyEndDate: this.shouldClearInstallationFields(dto.toStatus)
-            ? null
-            : undefined,
-          status: getMachineStatusForInventoryStatus(dto.toStatus),
-        },
-      });
-
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.CREATE,
-          entityType: 'MachineInventoryMovement',
-          entityId: movement.id,
-          actor: currentUser,
-          metadata: {
-            code: movement.code,
-            machineId: movement.machineId,
-            type: movement.type,
-            fromStatus: movement.fromStatus,
-            toStatus: movement.toStatus,
-            customerId: movement.customerId,
+    return this.prisma.$transaction(
+      async (tx) => {
+        const movement = await tx.machineInventoryMovement.create({
+          data: {
+            code: await this.generateMovementCode(),
+            type: dto.type,
+            machineId: dto.machineId,
+            fromStatus: machine.inventoryStatus,
+            toStatus: dto.toStatus,
+            occurredAt: this.parseOptionalDate(dto.occurredAt) ?? new Date(),
+            note: dto.note?.trim() || null,
+            customerId: dto.customerId || null,
+            createdById: currentUser?.id || null,
           },
-        },
-        tx,
-      );
+          include: this.defaultInclude(),
+        });
 
-      return movement;
-    });
+        await tx.machine.update({
+          where: { id: dto.machineId },
+          data: {
+            inventoryStatus: dto.toStatus,
+            customerId: this.getNextMachineCustomerId(
+              dto.toStatus,
+              dto.customerId,
+              machine.customerId,
+            ),
+            installDate:
+              dto.toStatus === MachineInventoryStatus.INSTALLED
+                ? movement.occurredAt
+                : this.shouldClearInstallationFields(dto.toStatus)
+                  ? null
+                  : undefined,
+            warrantyStartDate: this.shouldClearInstallationFields(dto.toStatus)
+              ? null
+              : undefined,
+            warrantyEndDate: this.shouldClearInstallationFields(dto.toStatus)
+              ? null
+              : undefined,
+            status: getMachineStatusForInventoryStatus(dto.toStatus),
+          },
+        });
+
+        await this.auditLogsService.create(
+          {
+            action: AUDIT_ACTIONS.CREATE,
+            entityType: 'MachineInventoryMovement',
+            entityId: movement.id,
+            actor: currentUser,
+            metadata: {
+              code: movement.code,
+              machineId: movement.machineId,
+              type: movement.type,
+              fromStatus: movement.fromStatus,
+              toStatus: movement.toStatus,
+              customerId: movement.customerId,
+            },
+          },
+          tx,
+        );
+
+        return movement;
+      },
+      { timeout: 20_000 },
+    );
   }
 
   findAll(user?: RequestUser) {

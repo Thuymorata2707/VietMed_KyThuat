@@ -140,7 +140,10 @@ export class NotificationsService {
       const subscription = subject.subscribe(subscriber);
       subject.next({ type: 'connected', data: { ok: true } });
       const heartbeat = setInterval(() => {
-        subject.next({ type: 'heartbeat', data: { at: new Date().toISOString() } });
+        subject.next({
+          type: 'heartbeat',
+          data: { at: new Date().toISOString() },
+        });
       }, 25_000);
 
       return () => {

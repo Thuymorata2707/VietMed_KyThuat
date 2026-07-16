@@ -75,79 +75,82 @@ export class MachinesService {
 
     validateMachineState(status, inventoryStatus, customerId);
 
-    return this.prisma.$transaction(async (tx) => {
-      const created = await tx.machine.create({
-        data: {
-          machineCode: input.machineCode?.trim() || null,
-          serialNumber: this.normalizeSerialNumber(input.serialNumber),
-          name: input.name?.trim() || null,
-          imageUrl: input.imageUrl?.trim() || null,
-          modelName: machineModel?.name ?? input.modelName?.trim() ?? input.name?.trim() ?? 'Chưa xác định',
-          version: input.version?.trim() || null,
-          manufacturer:
-            machineModel?.manufacturer ?? input.manufacturer?.trim() ?? '',
-          productCategory:
-            machineModel?.productCategory ??
-            input.productCategory ??
-            MachineProductCategory.OTHER,
-          productLine:
-            machineModel?.productLine ?? input.productLine?.trim() ?? null,
-          status,
-          inventoryStatus,
-          dataStatus: reviewFields.dataStatus,
-          createdSource: reviewFields.createdSource,
-          manufacturingDate: this.parseOptionalDate(input.manufacturingDate),
-          warehouseImportDate: this.parseOptionalDate(input.warehouseImportDate),
-          installDate: this.parseOptionalDate(input.installDate),
-          warrantyStartDate: this.parseOptionalDate(input.warrantyStartDate),
-          warrantyEndDate: this.parseOptionalDate(input.warrantyEndDate),
-          businessLineId:
-            machineModel?.businessLineId ?? input.businessLineId ?? null,
-          machineModelId: machineModel?.id ?? null,
-          customerId,
-          installedById: input.installedById || null,
-          primaryEngineerId: input.primaryEngineerId || null,
-        },
-        include: this.defaultInclude(),
-      });
-
-      if (accessoryInputs.length) {
-        await tx.machineAccessory.createMany({
-          data: accessoryInputs.map((accessory) => ({
-            ...accessory,
-            machineId: created.id,
-          })),
-        });
-      }
-      await this.refreshMachineAccessoriesSnapshot(tx, created.id);
-
-      await this.auditLogsService.create(
-        {
-          action: 'CREATE',
-          entityType: 'Machine',
-          entityId: created.id,
-          actor,
-          metadata: {
-            machineCode: created.machineCode,
-            serialNumber: created.serialNumber,
-            customerId: created.customerId,
-            status: created.status,
-            inventoryStatus: created.inventoryStatus,
-            dataStatus: created.dataStatus,
-            createdSource: created.createdSource,
+    return this.prisma.$transaction(
+      async (tx) => {
+        const created = await tx.machine.create({
+          data: {
+            machineCode: input.machineCode?.trim() || null,
+            serialNumber: this.normalizeSerialNumber(input.serialNumber),
+            name: input.name?.trim() || null,
+            imageUrl: input.imageUrl?.trim() || null,
+            modelName: machineModel?.name ?? input.modelName?.trim() ?? input.name?.trim() ?? 'Chưa xác định',
+            version: input.version?.trim() || null,
+            manufacturer:
+              machineModel?.manufacturer ?? input.manufacturer?.trim() ?? '',
+            productCategory:
+              machineModel?.productCategory ??
+              input.productCategory ??
+              MachineProductCategory.OTHER,
+            productLine:
+              machineModel?.productLine ?? input.productLine?.trim() ?? null,
+            status,
+            inventoryStatus,
+            dataStatus: reviewFields.dataStatus,
+            createdSource: reviewFields.createdSource,
+            manufacturingDate: this.parseOptionalDate(input.manufacturingDate),
+            warehouseImportDate: this.parseOptionalDate(input.warehouseImportDate),
+            installDate: this.parseOptionalDate(input.installDate),
+            warrantyStartDate: this.parseOptionalDate(input.warrantyStartDate),
+            warrantyEndDate: this.parseOptionalDate(input.warrantyEndDate),
+            businessLineId:
+              machineModel?.businessLineId ?? input.businessLineId ?? null,
+            machineModelId: machineModel?.id ?? null,
+            customerId,
+            installedById: input.installedById || null,
+            primaryEngineerId: input.primaryEngineerId || null,
           },
-        },
-        tx,
-      );
+          include: this.defaultInclude(),
+        });
 
-      return tx.machine.findUnique({
-        where: { id: created.id },
-        include: {
-          ...this.defaultInclude(),
-          accessories: this.machineAccessoriesRelationInclude(),
-        },
-      });
-    });
+        if (accessoryInputs.length) {
+          await tx.machineAccessory.createMany({
+            data: accessoryInputs.map((accessory) => ({
+              ...accessory,
+              machineId: created.id,
+            })),
+          });
+        }
+        await this.refreshMachineAccessoriesSnapshot(tx, created.id);
+
+        await this.auditLogsService.create(
+          {
+            action: 'CREATE',
+            entityType: 'Machine',
+            entityId: created.id,
+            actor,
+            metadata: {
+              machineCode: created.machineCode,
+              serialNumber: created.serialNumber,
+              customerId: created.customerId,
+              status: created.status,
+              inventoryStatus: created.inventoryStatus,
+              dataStatus: created.dataStatus,
+              createdSource: created.createdSource,
+            },
+          },
+          tx,
+        );
+
+        return tx.machine.findUnique({
+          where: { id: created.id },
+          include: {
+            ...this.defaultInclude(),
+            accessories: this.machineAccessoriesRelationInclude(),
+          },
+        });
+      },
+      { timeout: 20_000 },
+    );
   }
 
   async findAll(

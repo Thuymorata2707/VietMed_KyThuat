@@ -752,7 +752,8 @@ export class WeeklyReportsService {
   }
 
   private parseDate(value: string, fieldName: string) {
-    const date = new Date(`${value.slice(0, 10)}T00:00:00.000Z`);
+    const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     if (Number.isNaN(date.getTime())) {
       throw new BadRequestException(`Invalid ${fieldName}`);
     }
@@ -761,13 +762,13 @@ export class WeeklyReportsService {
 
   private endOfDay(date: Date) {
     const next = new Date(date);
-    next.setUTCHours(23, 59, 59, 999);
+    next.setHours(23, 59, 59, 999);
     return next;
   }
 
   private addDays(value: Date, days: number) {
     const date = new Date(value);
-    date.setUTCDate(date.getUTCDate() + days);
+    date.setDate(date.getDate() + days);
     return date;
   }
 

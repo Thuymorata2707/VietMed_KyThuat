@@ -153,7 +153,7 @@ export class MaintenanceService {
       }
 
       return maintenance;
-    });
+    }, { timeout: 20_000 });
   }
 
   async findAll(
@@ -374,7 +374,7 @@ export class MaintenanceService {
       }
 
       return updated;
-    });
+    }, { timeout: 20_000 });
   }
 
   async remove(id: string, actor: RequestUser) {
@@ -470,7 +470,7 @@ export class MaintenanceService {
       }
 
       return updated;
-    });
+    }, { timeout: 20_000 });
   }
 
   async updateStatus(
@@ -568,7 +568,7 @@ export class MaintenanceService {
       );
 
       return updated;
-    });
+    }, { timeout: 20_000 });
 
     if (
       updatedMaintenance.status === MaintenanceStatus.COMPLETED &&

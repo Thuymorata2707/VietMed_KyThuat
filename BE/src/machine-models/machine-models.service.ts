@@ -30,77 +30,80 @@ export class MachineModelsService {
     );
     await this.ensureCodeIsAvailable(dto.businessLineId, dto.code);
 
-    return this.prisma.$transaction(async (tx) => {
-      const created = await tx.machineModel.create({
-        data: {
-          businessLineId: dto.businessLineId,
-          code: this.normalizeCode(dto.code),
-          name: dto.name.trim(),
-          displayName: dto.displayName?.trim() || null,
-          status: dto.status ?? BusinessLineStatus.ACTIVE,
-          manufacturer:
-            dto.manufacturer?.trim() || businessLine.manufacturer || null,
-          countryOfOrigin:
-            dto.countryOfOrigin?.trim() || businessLine.countryOfOrigin || null,
-          productCategory: dto.productCategory ?? businessLine.productCategory,
-          productLine: dto.productLine?.trim() || null,
-          description: dto.description?.trim() || null,
-          note: dto.note?.trim() || null,
-        },
-        include: this.defaultInclude(),
-      });
-
-      for (const [componentIndex, component] of (
-        dto.components ?? []
-      ).entries()) {
-        const createdComponent = await tx.machineComponent.create({
+    return this.prisma.$transaction(
+      async (tx) => {
+        const created = await tx.machineModel.create({
           data: {
-            machineModelId: created.id,
-            code: this.normalizeCode(component.code),
-            name: component.name.trim(),
-            description: component.description?.trim() || null,
-            sortOrder: componentIndex,
-            status: BusinessLineStatus.ACTIVE,
+            businessLineId: dto.businessLineId,
+            code: this.normalizeCode(dto.code),
+            name: dto.name.trim(),
+            displayName: dto.displayName?.trim() || null,
+            status: dto.status ?? BusinessLineStatus.ACTIVE,
+            manufacturer:
+              dto.manufacturer?.trim() || businessLine.manufacturer || null,
+            countryOfOrigin:
+              dto.countryOfOrigin?.trim() || businessLine.countryOfOrigin || null,
+            productCategory: dto.productCategory ?? businessLine.productCategory,
+            productLine: dto.productLine?.trim() || null,
+            description: dto.description?.trim() || null,
+            note: dto.note?.trim() || null,
           },
+          include: this.defaultInclude(),
         });
 
-        for (const [accessoryIndex, accessory] of (
-          component.accessories ?? []
+        for (const [componentIndex, component] of (
+          dto.components ?? []
         ).entries()) {
-          await tx.componentAccessory.create({
+          const createdComponent = await tx.machineComponent.create({
             data: {
-              componentId: createdComponent.id,
-              code: this.normalizeCode(accessory.code),
-              name: accessory.name.trim(),
-              description: accessory.description?.trim() || null,
-              requiresSerial: accessory.requiresSerial ?? true,
-              sortOrder: accessoryIndex,
+              machineModelId: created.id,
+              code: this.normalizeCode(component.code),
+              name: component.name.trim(),
+              description: component.description?.trim() || null,
+              sortOrder: componentIndex,
               status: BusinessLineStatus.ACTIVE,
             },
           });
+
+          for (const [accessoryIndex, accessory] of (
+            component.accessories ?? []
+          ).entries()) {
+            await tx.componentAccessory.create({
+              data: {
+                componentId: createdComponent.id,
+                code: this.normalizeCode(accessory.code),
+                name: accessory.name.trim(),
+                description: accessory.description?.trim() || null,
+                requiresSerial: accessory.requiresSerial ?? true,
+                sortOrder: accessoryIndex,
+                status: BusinessLineStatus.ACTIVE,
+              },
+            });
+          }
         }
-      }
 
-      await this.auditLogsService.create(
-        {
-          action: 'CREATE',
-          entityType: 'MachineModel',
-          entityId: created.id,
-          actor,
-          metadata: {
-            code: created.code,
-            name: created.name,
-            businessLineId: created.businessLineId,
+        await this.auditLogsService.create(
+          {
+            action: 'CREATE',
+            entityType: 'MachineModel',
+            entityId: created.id,
+            actor,
+            metadata: {
+              code: created.code,
+              name: created.name,
+              businessLineId: created.businessLineId,
+            },
           },
-        },
-        tx,
-      );
+          tx,
+        );
 
-      return tx.machineModel.findUnique({
-        where: { id: created.id },
-        include: this.defaultInclude(),
-      });
-    });
+        return tx.machineModel.findUnique({
+          where: { id: created.id },
+          include: this.defaultInclude(),
+        });
+      },
+      { timeout: 20_000 },
+    );
   }
 
   async findAll(
