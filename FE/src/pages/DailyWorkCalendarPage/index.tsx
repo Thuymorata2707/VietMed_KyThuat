@@ -315,7 +315,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
         <div className="relative z-10 min-w-0">
           <span className="relative mb-2 inline-flex items-center gap-2 rounded-xl border border-[#e4e4e7] bg-white/75 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#18181b]"><CalendarDays size={15} /> Lịch kỹ sư</span>
           <h1 className="relative mb-2.5 text-[clamp(30px,4vw,46px)] font-extrabold leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Lịch làm việc của tôi'}</h1>
-          <p className="relative max-w-3xl text-sm font-semibold leading-6 text-[#666666]">{isAdmin ? 'Xem lịch công tác, nghỉ phép và việc trong ngày của kỹ sư.' : 'Đăng ký lịch đi công tác, nghỉ phép và ghi chú việc trong ngày.'}</p>
+          <p className="relative max-w-3xl text-sm font-semibold leading-6 text-[#666666]">{isAdmin ? 'Lịch kỹ sư.' : 'Lịch của tôi.'}</p>
         </div>
         {isAdmin ? (
           <label className="relative z-10 grid min-w-0 gap-2 text-sm font-bold text-[#333333] min-[1180px]:min-w-[min(360px,100%)]">

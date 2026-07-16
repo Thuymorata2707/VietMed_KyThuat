@@ -343,7 +343,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
           <PageTitle
             eyebrow="Admin"
             title={formMode === 'edit' ? 'Sửa nhân sự' : 'Thêm nhân sự'}
-            description="Tài khoản, quyền và hồ sơ kỹ thuật."
+            description="Tài khoản & quyền."
           />
           <button className="secondary-button" onClick={closeForm} type="button">
             <ArrowLeft size={17} />
@@ -391,7 +391,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
         <PageTitle
           eyebrow="Admin"
           title="Nhân sự"
-          description="Quản lý tài khoản, quyền truy cập và hồ sơ kỹ sư."
+          description="Tài khoản & hồ sơ."
         />
         <div className="flex flex-wrap justify-end gap-2">
           <Link className="secondary-button" to="/audit-logs">

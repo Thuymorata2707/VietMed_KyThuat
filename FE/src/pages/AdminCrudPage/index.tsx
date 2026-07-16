@@ -1190,17 +1190,17 @@ function GroupedCustomerFields({
   const groups = [
     {
       title: 'Thông tin chính',
-      description: 'Tên khách hàng, mã nội bộ, trạng thái và người phụ trách.',
+      description: 'Tên, mã, phụ trách.',
       fields: ['name', 'hospitalName', 'shortName', 'customerCode', 'customerType', 'status', 'regionId', 'primaryEngineerId'],
     },
     {
       title: 'Liên hệ',
-      description: 'Thông tin để kỹ sư và admin liên lạc khi cần xử lý máy.',
+      description: 'Kênh liên hệ.',
       fields: ['phone', 'email', 'taxCode', 'contactPerson', 'contactPhone', 'contactEmail'],
     },
     {
       title: 'Địa chỉ',
-      description: 'Dùng cho lắp đặt, bảo trì và điều phối lịch công tác.',
+      description: 'Địa chỉ làm việc.',
       fields: ['province', 'district', 'ward', 'address', 'fullAddress'],
     },
     {

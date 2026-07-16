@@ -173,7 +173,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
         <PageTitle
           eyebrow="Báo cáo kỹ thuật"
           title="Thống kê kỹ thuật"
-          description={isAdmin ? 'Thống kê theo khoảng ngày, kỹ sư và ngành hàng.' : 'Thống kê theo khoảng ngày.'}
+          description={isAdmin ? 'Theo ngày & kỹ sư.' : 'Theo khoảng ngày.'}
         />
         <div className="flex flex-wrap gap-2">
           {returnTo ? (
@@ -263,7 +263,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
-            <Panel title="Theo kỹ sư" subtitle="Số việc trong tháng theo loại">
+            <Panel title="Theo kỹ sư" subtitle="Theo loại việc">
               {data.byEngineer.length ? (
                 <div className="grid gap-4">
                   {data.byEngineer.slice(0, 10).map((item) => (
@@ -289,7 +289,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <Panel title="Theo ngành hàng" subtitle="Ngành hàng nhiều việc nhất">
+            <Panel title="Theo ngành hàng" subtitle="Nhiều việc nhất">
               {data.byIndustry.length ? (
                 <div className="grid gap-3">
                   {data.byIndustry.map((item) => (
@@ -301,7 +301,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
               )}
             </Panel>
 
-            <Panel title="Xu hướng trong tháng" subtitle="Khối lượng việc theo ngày">
+            <Panel title="Xu hướng trong tháng" subtitle="Theo ngày">
               <TrendBars max={maxTrendTotal} trend={data.trend} />
             </Panel>
           </section>
@@ -309,7 +309,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
           <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
             <div className="border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
               <h2 className="text-base font-semibold text-[#1f1f1f]">Bảng hiệu suất kỹ sư</h2>
-              <p className="mt-1 text-sm text-[#666666]">Dùng để so sánh khối lượng việc, khách hàng phục vụ và tỷ lệ hoàn tất.</p>
+              <p className="mt-1 text-sm text-[#666666]">So sánh hiệu suất.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[920px] border-collapse text-left text-sm">

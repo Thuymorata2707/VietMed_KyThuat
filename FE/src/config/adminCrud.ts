@@ -128,7 +128,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   customers: {
     title: 'Khách hàng',
     entityLabel: 'khách hàng',
-    description: 'Quản lý hồ sơ bệnh viện, phòng khám, labo và người phụ trách kỹ thuật.',
+    description: 'Khách hàng & phụ trách.',
     endpoint: '/customers',
     icon: null,
     searchPlaceholder: 'Tìm tên, mã, email, điện thoại',
@@ -180,7 +180,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   'business-lines': {
     title: 'Nhóm sản phẩm',
     entityLabel: 'nhóm sản phẩm',
-    description: 'Tạo và cập nhật nhóm sản phẩm trong từng ngành lớn. Hãng sản xuất nằm ở từng model máy.',
+    description: 'Nhóm sản phẩm.',
     endpoint: '/business-lines',
     icon: null,
     searchPlaceholder: 'Tìm sản phẩm hoặc mã',
@@ -227,7 +227,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   'product-industries': {
     title: 'Ngành hàng',
     entityLabel: 'ngành hàng',
-    description: '4 ngành hàng lớn của hệ thống. Đây là tầng cố định, chỉ nên sửa tên/thứ tự khi thật sự cần.',
+    description: 'Ngành hàng chính.',
     endpoint: '/product-industries',
     icon: null,
     searchPlaceholder: 'Tìm ngành hàng',
@@ -253,7 +253,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   'machine-models': {
     title: 'Sản phẩm / Model máy',
     entityLabel: 'sản phẩm/model máy',
-    description: 'Danh mục model cố định của công ty. Máy nhập kho có S/N và phụ kiện riêng sẽ nằm ở bảng Thiết bị.',
+    description: 'Model chuẩn.',
     endpoint: '/machine-models',
     icon: null,
     searchPlaceholder: 'Tìm model hoặc mã',
@@ -293,7 +293,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   'machine-components': {
     title: 'Thành phần máy',
     entityLabel: 'thành phần máy',
-    description: 'Khai báo thành phần chuẩn thuộc từng model sản phẩm để dùng khi nhập/lắp đặt.',
+    description: 'Thành phần model.',
     endpoint: '/machine-components',
     icon: null,
     searchPlaceholder: 'Tìm thành phần, model hoặc mã',
@@ -324,7 +324,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   'component-accessories': {
     title: 'Phụ kiện',
     entityLabel: 'phụ kiện',
-    description: 'Khai báo phụ kiện thuộc thành phần máy và yêu cầu nhập serial khi bàn giao.',
+    description: 'Phụ kiện chuẩn.',
     endpoint: '/component-accessories',
     icon: null,
     searchPlaceholder: 'Tìm phụ kiện, thành phần hoặc mã',
@@ -357,7 +357,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   machines: {
     title: 'Thiết bị',
     entityLabel: 'thiết bị',
-    description: 'Tạo, cập nhật và xóa từng máy thực tế theo model, serial và phụ kiện đi kèm.',
+    description: 'Máy & serial.',
     endpoint: '/machines',
     icon: null,
     searchPlaceholder: 'Tìm mã máy, serial, model',
@@ -423,7 +423,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   repairs: {
     title: 'Sửa chữa',
     entityLabel: 'phiếu sửa chữa',
-    description: 'Tạo, cập nhật, phân kỹ sư và xóa phiếu sửa chữa.',
+    description: 'Phiếu sửa chữa.',
     endpoint: '/repairs',
     icon: null,
     searchPlaceholder: 'Tìm tiêu đề, mã máy, kỹ sư',
@@ -490,7 +490,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   maintenance: {
     title: 'Bảo trì',
     entityLabel: 'phiếu bảo trì',
-    description: 'Tạo, cập nhật, phân kỹ sư và xóa lịch bảo trì.',
+    description: 'Phiếu bảo trì.',
     endpoint: '/maintenance',
     icon: null,
     searchPlaceholder: 'Tìm tiêu đề, mã máy, kỹ sư',
@@ -540,7 +540,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   installations: {
     title: 'Lắp đặt',
     entityLabel: 'phiếu lắp đặt',
-    description: 'Tạo, cập nhật kỹ sư/ngày lắp/bảo hành và xóa phiếu lắp đặt.',
+    description: 'Phiếu lắp đặt.',
     endpoint: '/installations',
     icon: null,
     searchPlaceholder: 'Tìm mã máy, khách hàng, kỹ sư',
@@ -609,7 +609,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   'inventory-movements': {
     title: 'Kho máy',
     entityLabel: 'phiếu kho',
-    description: 'Tạo phiếu điều chuyển trạng thái kho. Hệ thống hiện chỉ hỗ trợ tạo và xem.',
+    description: 'Điều chuyển kho.',
     endpoint: '/inventory-movements',
     icon: null,
     searchPlaceholder: 'Tìm mã phiếu, serial, người tạo',

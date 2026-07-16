@@ -218,7 +218,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       <PageTitle
         eyebrow="Kho kỹ thuật"
         title="Kho máy"
-        description="Máy trong kho, đã lắp và lịch sử điều chuyển."
+        description="Tồn kho & điều chuyển."
       />
 
       {error ? <Notice message={error} /> : null}
@@ -632,9 +632,7 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
 
               <section className="rounded-[18px] border border-[#e4e4e7] bg-[#f4f4f5] p-4">
                 <h3 className="font-semibold text-[#182033]">Gợi ý thao tác</h3>
-                <p className="mt-2 text-sm leading-6 text-[#667085]">
-                  Xem nhanh thông tin trước khi tạo phiếu, tránh chọn nhầm máy hoặc nhầm khách hàng.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-[#667085]">Kiểm tra trước khi tạo phiếu.</p>
               </section>
             </aside>
           </div>

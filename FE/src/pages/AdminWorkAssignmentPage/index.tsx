@@ -429,7 +429,7 @@ export function AdminWorkAssignmentPage() {
         <PageTitle
             eyebrow="Điều phối kỹ thuật"
             title="Điều phối & duyệt"
-            description="Phân công, duyệt và trả lại hồ sơ kỹ sư."
+            description="Phân công & duyệt."
         />
           <button
             className="secondary-button bg-white/90"
@@ -626,7 +626,7 @@ export function AdminWorkAssignmentPage() {
                 </span>
                 <div className="min-w-0">
                 <h2 className="text-base font-semibold text-[#1f1f1f]">Đã hoàn thành gần đây</h2>
-                <p className="mt-1 text-xs leading-5 text-[#8a8f99]">Xem nhanh các việc đã xong mà không phải kéo xuống cuối.</p>
+                <p className="mt-1 text-xs leading-5 text-[#8a8f99]">Việc vừa xong.</p>
                 </div>
               </div>
               <button className="secondary-button px-3 py-2 text-sm" onClick={() => setFilter('closed')} type="button">
@@ -1000,7 +1000,7 @@ function QualityReviewChecklist({ item }: { item: WorkItem }) {
     <div className="grid gap-2 rounded-lg border border-[#dbe5ef] bg-white p-3">
       <div>
         <strong className="text-sm text-[#1f1f1f]">Điểm cần kiểm tra trước khi xác nhận</strong>
-        <p className="mt-1 text-xs leading-5 text-[#666666]">Loại việc: {kindLabel(item.kind)}. Checklist này giúp admin rà đủ hồ sơ trước khi duyệt.</p>
+        <p className="mt-1 text-xs leading-5 text-[#666666]">Loại việc: {kindLabel(item.kind)}.</p>
       </div>
       <div className="grid gap-1.5">
         {checks.map((check) => (
@@ -1031,7 +1031,7 @@ function ReviewAttachmentsPanel({ item }: { item: WorkItem }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <strong className="text-sm text-[#1f1f1f]">Ảnh và tài liệu kỹ sư đã tải lên</strong>
-          <p className="mt-1 text-xs leading-5 text-[#666666]">Admin xem file tại đây trước khi duyệt hoặc trả về bổ sung.</p>
+          <p className="mt-1 text-xs leading-5 text-[#666666]">File đính kèm.</p>
         </div>
         <span className="rounded-full bg-[#f4f4f5] px-2.5 py-1 text-xs font-semibold text-[#18181b]">
           {attachmentsQuery.isLoading ? '...' : attachments.length}
@@ -1083,8 +1083,8 @@ function filterDescription(filter: WorkFilter) {
     action: 'Việc cần admin xử lý.',
     unassigned: 'Chưa có người phụ trách.',
     review: 'Chờ admin xác nhận.',
-    active: 'Đang được kỹ sư xử lý.',
-    closed: 'Các việc đã hoàn thành hoặc đã đóng.',
+    active: 'Kỹ sư đang xử lý.',
+    closed: 'Đã xong hoặc đã đóng.',
     all: 'Tất cả việc trong bộ lọc.',
   };
   return descriptions[filter];

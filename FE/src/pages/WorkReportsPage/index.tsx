@@ -21,19 +21,19 @@ const tabs: Array<{ value: WorkReportTab; label: string; description: string; ic
   {
     value: 'calendar',
     label: 'Lịch công việc',
-    description: 'Lên lịch tuần/ngày, công tác, nghỉ phép',
+    description: 'Lịch tuần/ngày',
     icon: <CalendarDays size={17} />,
   },
   {
     value: 'daily',
     label: 'Xác nhận cuối ngày',
-    description: 'Tự gom việc hôm nay rồi gửi admin',
+    description: 'Việc hôm nay',
     icon: <ClipboardCheck size={17} />,
   },
   {
     value: 'weekly',
     label: 'Báo cáo tuần',
-    description: 'Gom lịch và phiếu hoàn thành trong tuần',
+    description: 'Tổng hợp tuần',
     icon: <FileBarChart2 size={17} />,
   },
 ];
@@ -62,7 +62,7 @@ export function WorkReportsPage({ currentRole, initialTab = 'calendar', user }: 
               <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-[#64748b]">Công việc & báo cáo</span>
               <h1 className="mt-1 text-[clamp(24px,2.6vw,34px)] font-bold leading-tight tracking-[-0.03em] text-[#18181b]">Lịch & báo cáo kỹ thuật</h1>
               <p className="mt-1 max-w-[760px] text-sm leading-6 text-[#666666]">
-                Một luồng duy nhất: lập lịch, xác nhận cuối ngày, rồi tổng hợp thành báo cáo tuần.
+                Lịch, ngày, tuần.
               </p>
             </div>
           </div>

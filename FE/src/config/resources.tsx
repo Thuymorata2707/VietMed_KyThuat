@@ -29,7 +29,7 @@ export type ResourceConfig = {
 export const resources: Record<string, ResourceConfig> = {
   customers: {
     title: 'Khách hàng',
-    description: 'Theo dõi bệnh viện, phòng khám, labo và nhà phân phối.',
+    description: 'Khách hàng & liên hệ.',
     endpoint: '/customers',
     icon: <Building2 size={20} />,
     searchPlaceholder: 'Tìm theo tên, mã, email, điện thoại',
@@ -44,7 +44,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   machines: {
     title: 'Thiết bị',
-    description: 'Quản lý vòng đời máy, serial, tồn kho và tình trạng vận hành.',
+    description: 'Máy, serial, trạng thái.',
     endpoint: '/machines',
     icon: <Stethoscope size={20} />,
     searchPlaceholder: 'Tìm mã máy, serial, model',
@@ -60,7 +60,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   installations: {
     title: 'Lắp đặt',
-    description: 'Theo dõi bàn giao, kỹ sư phụ trách và trạng thái nghiệm thu.',
+    description: 'Bàn giao & nghiệm thu.',
     endpoint: '/installations',
     icon: <PackageCheck size={20} />,
     searchPlaceholder: 'Tìm theo mã máy, khách hàng',
@@ -75,7 +75,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   repairs: {
     title: 'Sửa chữa',
-    description: 'Điều phối yêu cầu sửa chữa, ưu tiên và tiến độ xử lý.',
+    description: 'Lỗi máy & xử lý.',
     endpoint: '/repairs',
     icon: <Wrench size={20} />,
     searchPlaceholder: 'Tìm theo mã máy, lỗi, khách hàng',
@@ -90,7 +90,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   maintenance: {
     title: 'Bảo trì',
-    description: 'Lịch bảo trì định kỳ, hợp đồng, bảo hành và quá hạn.',
+    description: 'Lịch & kết quả.',
     endpoint: '/maintenance',
     icon: <ClipboardCheck size={20} />,
     searchPlaceholder: 'Tìm theo mã máy, khách hàng',
@@ -105,7 +105,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   users: {
     title: 'Nhân sự',
-    description: 'Danh sách tài khoản, vai trò, vùng phụ trách và trạng thái.',
+    description: 'Tài khoản & vai trò.',
     endpoint: '/users',
     icon: <Users size={20} />,
     searchPlaceholder: 'Tìm tên, username, email, số điện thoại',
@@ -121,7 +121,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   roles: {
     title: 'Vai trò',
-    description: 'Các vai trò hệ thống đang được backend dùng để kiểm soát quyền.',
+    description: 'Phân quyền hệ thống.',
     endpoint: '/roles',
     icon: <ShieldCheck size={20} />,
     searchPlaceholder: 'Tìm vai trò',
@@ -134,7 +134,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   regions: {
     title: 'Khu vực',
-    description: 'Vùng phụ trách dùng cho scope dữ liệu của manager và kỹ sư.',
+    description: 'Vùng dữ liệu.',
     endpoint: '/regions',
     icon: <MapPinned size={20} />,
     searchPlaceholder: 'Tìm tên hoặc mã khu vực',
@@ -148,7 +148,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   'business-lines': {
     title: 'Sản phẩm & Thiết bị',
-    description: 'Quản lý ngành hàng, nhóm sản phẩm, model và từng máy có serial trong cùng một luồng.',
+    description: 'Ngành, model, serial.',
     endpoint: '/business-lines',
     icon: <BriefcaseBusiness size={20} />,
     searchPlaceholder: 'Tìm sản phẩm hoặc mã',
@@ -165,7 +165,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   'product-industries': {
     title: 'Ngành hàng',
-    description: '4 ngành hàng lớn cố định trong danh mục sản phẩm.',
+    description: 'Ngành hàng chính.',
     endpoint: '/product-industries',
     icon: <BriefcaseBusiness size={20} />,
     searchPlaceholder: 'Tìm ngành hàng',
@@ -179,7 +179,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   'machine-models': {
     title: 'Sản phẩm / Model',
-    description: 'Danh mục sản phẩm cố định của công ty theo nhóm sản phẩm, hãng sản xuất và dòng model.',
+    description: 'Model & hãng.',
     endpoint: '/machine-models',
     icon: <Layers3 size={20} />,
     searchPlaceholder: 'Bộ lọc sản phẩm/model đang được làm ở bước tiếp theo',
@@ -195,7 +195,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   'machine-components': {
     title: 'Thành phần máy',
-    description: 'Thành phần cấu thành từng model máy.',
+    description: 'Cấu hình model.',
     endpoint: '/machine-components',
     icon: <Layers3 size={20} />,
     searchPlaceholder: 'Tìm thành phần hoặc model',
@@ -210,7 +210,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   'component-accessories': {
     title: 'Phụ kiện',
-    description: 'Phụ kiện theo từng thành phần máy.',
+    description: 'Phụ kiện máy.',
     endpoint: '/component-accessories',
     icon: <Boxes size={20} />,
     searchPlaceholder: 'Tìm phụ kiện hoặc thành phần',
@@ -225,7 +225,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   'inventory-movements': {
     title: 'Kho máy',
-    description: 'Lịch sử nhập kho, tách phụ kiện, giữ hàng, lắp đặt, trả hoặc bán máy.',
+    description: 'Luồng kho.',
     endpoint: '/inventory-movements',
     icon: <Boxes size={20} />,
     searchPlaceholder: 'Tìm theo mã máy hoặc ghi chú',
@@ -240,7 +240,7 @@ export const resources: Record<string, ResourceConfig> = {
   },
   'audit-logs': {
     title: 'Audit log',
-    description: 'Lịch sử thay đổi dữ liệu quan trọng trong hệ thống.',
+    description: 'Lịch sử thay đổi.',
     endpoint: '/audit-logs',
     icon: <History size={20} />,
     searchPlaceholder: 'Bộ lọc audit sẽ tách riêng theo action/entity',

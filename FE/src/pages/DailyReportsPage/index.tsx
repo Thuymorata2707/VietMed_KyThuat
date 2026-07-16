@@ -195,7 +195,7 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
 
   return (
     <PageFrame>
-      <PageTitle eyebrow="Kỹ sư thiết bị y tế" title="Báo cáo ngày" description="Sổ nháp cuối ngày: ghi đủ kỹ thuật, tồn đọng, vật tư và tự cập nhật vào báo cáo tuần." />
+      <PageTitle eyebrow="Kỹ sư thiết bị y tế" title="Báo cáo ngày" description="Nháp cuối ngày." />
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
@@ -268,7 +268,7 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
               <h2 className="text-lg font-semibold text-[#1f1f1f]">Lịch, phiếu và hồ sơ thiết bị trong ngày</h2>
             </div>
           </div>
-          <p className="mt-3 text-sm leading-6 text-[#666666]">Báo cáo ngày không gửi admin riêng. Khi lưu, hệ thống giữ bản nháp tại đây và đẩy nội dung sang dòng tương ứng trong báo cáo tuần.</p>
+          <p className="mt-3 text-sm leading-6 text-[#666666]">Lưu nháp và cập nhật tuần.</p>
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <DailyMetric label="Lịch" value={suggested?.counts.dailyNotes ?? 0} />
@@ -286,7 +286,7 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
           <div>
             <h2 className="text-lg font-semibold text-[#1f1f1f]">Checklist nên có trong báo cáo ngày</h2>
             <p className="mt-1 text-sm leading-6 text-[#666666]">
-              Lịch trình, khách hàng/khoa phòng, model/serial, lỗi ban đầu, bước xử lý, test sau xử lý, vật tư sử dụng, ảnh/biên bản/chữ ký, bàn giao, tồn đọng và lịch hẹn lại.
+              Lịch, máy, xử lý, vật tư, ảnh, tồn đọng.
             </p>
           </div>
         </div>

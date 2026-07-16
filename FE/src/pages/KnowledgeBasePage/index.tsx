@@ -300,9 +300,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
               Kinh nghiệm kỹ thuật
             </span>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-[#1f1f1f] md:text-4xl">Sổ tay chia sẻ giữa các kỹ sư</h1>
-            <p className="mt-3 max-w-2xl text-[15px] leading-7 text-[#555555]">
-              Lỗi thường gặp, quy trình và bàn giao cho đội kỹ thuật.
-            </p>
+            <p className="mt-3 max-w-2xl text-[15px] leading-7 text-[#555555]">Lỗi, quy trình, bàn giao.</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <KnowledgeMetric label="Chủ đề" value={categoryOptions.length} />
@@ -353,7 +351,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
 
           <div className="rounded-2xl border border-dashed border-[#e4e4e7] bg-[#fafafa] p-4 text-sm text-[#666666]">
             <strong className="block text-[#1f1f1f]">{canApprove ? 'Admin duyệt nội dung' : 'Đóng góp kinh nghiệm'}</strong>
-            {canApprove ? 'Admin có thể duyệt Published hoặc đưa bài về Draft/Archived.' : 'Kỹ sư thêm/sửa bài của mình, admin duyệt thì bài mới hiển thị cho mọi người.'}
+            {canApprove ? 'Duyệt bài kỹ thuật.' : 'Tạo bài chờ duyệt.'}
           </div>
         </aside>
 
@@ -399,7 +397,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
             <div className="flex items-start justify-between gap-4 border-b border-[#ededf0] p-5">
               <div>
                 <h2 className="text-xl font-semibold text-[#1f1f1f]">{editingArticle ? 'Edit Article' : 'Add Article'}</h2>
-                <p className="mt-1 text-sm text-[#666666]">Mỗi dòng trong Tags, dấu hiệu, quy trình và checklist sẽ thành một mục riêng.</p>
+                <p className="mt-1 text-sm text-[#666666]">Mỗi dòng là một mục.</p>
               </div>
               <button className="secondary-button compact" onClick={() => setIsFormOpen(false)} type="button">
                 <X size={16} />

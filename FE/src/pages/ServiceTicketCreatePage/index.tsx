@@ -547,7 +547,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         <PageTitle
           eyebrow="Phiếu dịch vụ"
           title="Tạo phiếu"
-          description="Tạo phiếu nghiệp vụ, dữ liệu mới sẽ chờ admin kiểm tra."
+          description="Tạo phiếu mới."
         />
         <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
           <ArrowLeft size={17} />
@@ -560,7 +560,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
       {role === 'engineer' ? (
         <div className="rounded-lg border border-[#efd8a8] bg-[#fffbeb] px-4 py-3 text-sm font-semibold leading-relaxed text-[#92400e]">
-          Phiếu mới sẽ được lưu để admin kiểm tra và phân công khi cần.
+          Chờ admin kiểm tra.
         </div>
       ) : null}
 
@@ -732,7 +732,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 <div>
                   <span className={eyebrowClass}>Dữ liệu chưa có</span>
                   <h2 className={sectionTitleClass}>Tạo nhanh khi cần</h2>
-                  <p className={sectionDescriptionClass}>Tạo nhanh khi không tìm thấy dữ liệu.</p>
+                  <p className={sectionDescriptionClass}>Khi thiếu dữ liệu.</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -982,7 +982,7 @@ function InstallationFields({
             <span className="rounded-xl bg-white px-3 py-2">{selectedMachine?.modelName || selectedMachine?.name || form.modelName || 'Chưa có model'}</span>
             <span className="rounded-xl bg-white px-3 py-2">{selectedMachine?.serialNumber ? `S/N ${selectedMachine.serialNumber}` : 'Chưa có S/N'}</span>
           </div>
-          <p className="mt-2 text-xs font-medium text-[#64748b]">Đã chọn máy có hồ sơ nên không cần chọn model hoặc nhập S/N máy chính ở dưới.</p>
+          <p className="mt-2 text-xs font-medium text-[#64748b]">Đã có hồ sơ máy.</p>
         </div>
       ) : (
         <>
@@ -997,7 +997,7 @@ function InstallationFields({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-bold text-[#172033]">Thiết bị bàn giao thêm</h3>
-            <p className="mt-1 text-xs font-medium text-[#64748b]">Chỉ thêm thiết bị/phụ kiện bàn giao kèm, không nhập lại máy chính.</p>
+            <p className="mt-1 text-xs font-medium text-[#64748b]">Không nhập lại máy chính.</p>
           </div>
           <button className="secondary-button compact" onClick={addDeviceItem} type="button">
             Thêm thiết bị
@@ -1006,7 +1006,7 @@ function InstallationFields({
         <div className="grid gap-3">
           {form.installedDeviceItems.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-4 py-5 text-sm font-medium text-[#64748b]">
-              Chưa có thiết bị bàn giao thêm. Khi cần bàn giao thêm máy/phụ kiện, bấm “Thêm thiết bị”.
+              Chưa có thiết bị kèm.
             </div>
           ) : null}
           {form.installedDeviceItems.map((item, index) => (

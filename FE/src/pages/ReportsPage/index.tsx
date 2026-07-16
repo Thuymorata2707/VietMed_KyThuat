@@ -344,7 +344,7 @@ export function ReportsPage() {
       <div className="grid gap-5 rounded-[28px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_12px_30px_rgba(24,24,27,0.05)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
-            description="Lắp đặt theo kỹ sư, khách hàng, model và tỉnh."
+            description="Lắp đặt theo kỳ."
             eyebrow="Báo cáo kỹ thuật"
             title="Báo cáo vận hành kỹ thuật"
           />
@@ -365,7 +365,7 @@ export function ReportsPage() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4e4e7] pb-3">
             <div>
               <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#18181b]">Bộ lọc báo cáo</span>
-              <p className="mt-0.5 text-xs font-semibold text-[#666666]">Chọn điều kiện, dữ liệu tự tải lại.</p>
+              <p className="mt-0.5 text-xs font-semibold text-[#666666]">Tự tải lại.</p>
             </div>
             <div className="flex items-center gap-2">
               {hasAdvancedFilters ? <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-1 text-xs font-semibold text-[#9b5a17]">Đang lọc nâng cao</span> : null}
@@ -532,7 +532,7 @@ function ReportScopeInsight({ labels, report }: { labels: Record<FilterKey, stri
           <span className="text-xs font-semibold text-[#18181b]">{focusTitle}</span>
           <h2 className="mt-1 text-lg font-semibold text-[#18212f]">{activeFilters.join(' | ')}</h2>
           <p className="mt-1 text-sm text-[#71717a]">
-            Đang có {report.summary.totalInstallations} phiếu, {report.summary.totalMachines} máy, {report.summary.totalCustomers} khách hàng, {report.byModel.length} model và {report.summary.totalProvinces} tỉnh trong phạm vi này.
+            {report.summary.totalInstallations} phiếu · {report.summary.totalMachines} máy · {report.summary.totalCustomers} khách.
           </p>
         </div>
       </div>
@@ -566,7 +566,7 @@ function ReportExecutiveSummary({ from, report, to }: { from: string; report: In
             {report.summary.totalInstallations} phiếu lắp đặt trong kỳ {formatDate(from)} - {formatDate(to)}
           </h2>
           <p className="mt-2 max-w-[760px] text-sm font-semibold leading-6 text-[#666666]">
-            Phạm vi hiện tại bao gồm {coverage}. Dữ liệu bên dưới được xếp theo mức đóng góp để đọc nhanh điểm nổi bật trước khi xem chi tiết.
+            Phạm vi: {coverage}.
           </p>
         </div>
         <div className="rounded-2xl border border-[#e4e4e7] bg-white px-4 py-3 text-right shadow-[0_12px_28px_rgba(24,24,27,0.06)]">

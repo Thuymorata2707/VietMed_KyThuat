@@ -415,7 +415,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Lắp đặt"
           title="Cập nhật phiếu lắp đặt"
-          description="Nhập dữ liệu lắp đặt thực tế."
+          description="Dữ liệu thực tế."
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
@@ -440,7 +440,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Thời gian và bảo hành</span>
                   <h2 className={sectionTitleClass}>Thông tin lắp đặt</h2>
-                  <p className={sectionDescriptionClass}>Ngày lắp, bảo hành và ghi chú.</p>
+                  <p className={sectionDescriptionClass}>Ngày & bảo hành.</p>
                 </div>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
@@ -464,7 +464,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Bên bàn giao</span>
                   <h2 className={sectionTitleClass}>Thông tin kỹ sư</h2>
-                  <p className={sectionDescriptionClass}>Kỹ sư và phương tiện di chuyển.</p>
+                  <p className={sectionDescriptionClass}>Kỹ sư & phương tiện.</p>
                 </div>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
@@ -495,7 +495,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Bên nhận bàn giao</span>
                   <h2 className={sectionTitleClass}>Thông tin khách hàng</h2>
-                  <p className={sectionDescriptionClass}>Địa chỉ, người đại diện và liên hệ.</p>
+                  <p className={sectionDescriptionClass}>Địa chỉ & liên hệ.</p>
                 </div>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
@@ -529,7 +529,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Máy & thiết bị</span>
                   <h2 className={sectionTitleClass}>Máy và thiết bị lắp đặt</h2>
-                  <p className={sectionDescriptionClass}>S/N thực tế và thiết bị bàn giao.</p>
+                  <p className={sectionDescriptionClass}>S/N & bàn giao.</p>
                 </div>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
@@ -592,7 +592,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-bold text-[#1f1f1f]">Thiết bị bàn giao thêm</h3>
-                    <p className="text-xs font-medium text-[#8a8f99]">Thêm thiết bị bàn giao kèm nếu có.</p>
+                    <p className="text-xs font-medium text-[#8a8f99]">Thiết bị kèm.</p>
                   </div>
                   <button className="secondary-button" onClick={addDeviceItem} type="button">
                     Thêm thiết bị
@@ -679,7 +679,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   <div>
                     <span className={eyebrowClass}>Kiểm tra cuối</span>
                   <h2 className={sectionTitleClass}>Tình trạng thiết bị</h2>
-                  <p className={sectionDescriptionClass}>Xác nhận tình trạng bàn giao.</p>
+                  <p className={sectionDescriptionClass}>Xác nhận bàn giao.</p>
                 </div>
               </div>
               <div className="grid gap-5 md:grid-cols-2">
@@ -705,7 +705,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               <span className={eyebrowClass}>Biên bản</span>
               <h2 className={sectionTitleClass}>Xuất Word</h2>
               <p className="mt-2 text-sm leading-6 text-[#666666]">
-                Lưu phiếu trước khi tải để file có dữ liệu mới nhất.
+                Lưu trước khi tải.
               </p>
               <button
                 className="secondary-button mt-4 w-full justify-center border-[#e4e4e7] bg-white text-[#b5121b]"

@@ -169,7 +169,7 @@ export function AdminRegionsPage() {
         <PageTitle
           eyebrow="Admin"
           title="Khu vực"
-          description="Quản lý vùng phụ trách dùng cho scope dữ liệu của manager và kỹ sư."
+          description="Vùng dữ liệu."
         />
         <button className="secondary-button" disabled={loading} onClick={() => void regionsQuery.refetch()} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}

@@ -69,7 +69,7 @@ export function CustomerDetailView({
       </div>
 
       <section className={panelClass}>
-        <PanelTitle title="Việc đang mở" subtitle="Phiếu cần xử lý hoặc chờ xác nhận" />
+        <PanelTitle title="Việc đang mở" subtitle="Cần xử lý" />
         {detailLoading ? (
           <EmptyState title="Đang tải việc đang mở..." />
         ) : openTasks.length ? (
@@ -145,7 +145,7 @@ export function CustomerDetailView({
       </div>
 
       <section className={panelClass}>
-        <PanelTitle title="Linh kiện và phụ kiện liên quan" subtitle="Phụ kiện gắn trên máy và bàn giao" />
+        <PanelTitle title="Linh kiện và phụ kiện liên quan" subtitle="Theo máy" />
         {detailLoading ? (
           <EmptyState title="Đang tải phụ kiện..." />
         ) : accessories.length || installationAccessories.length ? (

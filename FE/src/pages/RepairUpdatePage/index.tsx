@@ -282,7 +282,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Sửa chữa"
           title="Cập nhật phiếu sửa chữa"
-          description="Tình trạng, phương án xử lý và kết quả sửa chữa."
+          description="Tình trạng & kết quả."
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
@@ -423,7 +423,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Khách hàng</span>
                   <h2 className={sectionTitleClass}>Thông tin tại điểm sửa chữa</h2>
-                  <p className={sectionDescriptionClass}>Người liên hệ và địa chỉ thực tế.</p>
+                  <p className={sectionDescriptionClass}>Liên hệ & địa chỉ.</p>
                 </div>
               </div>
               <div className="grid min-w-0 gap-5 md:grid-cols-2">
@@ -457,7 +457,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Kết quả</span>
                   <h2 className={sectionTitleClass}>Ghi nhận sau xử lý</h2>
-                  <p className={sectionDescriptionClass}>Lỗi, cách xử lý và phản hồi khách hàng.</p>
+                  <p className={sectionDescriptionClass}>Xử lý & phản hồi.</p>
                 </div>
               </div>
               <div className="grid min-w-0 gap-5">
@@ -689,7 +689,7 @@ function StandardRepairChecklist({
       <div className="mb-4 border-b border-[#eeeeee] pb-4">
         <span className="text-xs font-medium text-[#18181b]">Chuẩn kỹ thuật</span>
         <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Checklist sửa chữa</h2>
-        <p className="mt-1 text-sm leading-6 text-[#666666]">Admin sẽ dựa vào các mục này để xác nhận phiếu sau khi kỹ sư hoàn tất.</p>
+        <p className="mt-1 text-sm leading-6 text-[#666666]">Dùng khi duyệt phiếu.</p>
       </div>
       <div className="grid gap-2">
         {items.map((item) => (

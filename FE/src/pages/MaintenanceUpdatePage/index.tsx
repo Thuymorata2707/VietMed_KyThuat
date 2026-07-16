@@ -283,7 +283,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Bảo trì"
           title="Cập nhật phiếu bảo trì"
-          description="Checklist, kết quả và lịch bảo trì."
+          description="Checklist & kết quả."
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
@@ -434,7 +434,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Khách hàng</span>
                   <h2 className={sectionTitleClass}>Thông tin tại điểm bảo trì</h2>
-                  <p className={sectionDescriptionClass}>Người đại diện và địa chỉ thực tế.</p>
+                  <p className={sectionDescriptionClass}>Liên hệ & địa chỉ.</p>
                 </div>
               </div>
               <div className="grid min-w-0 gap-5 md:grid-cols-2">
@@ -665,7 +665,7 @@ function StandardChecklistPanel({ items, onApply, title }: { items: string[]; on
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <strong className="text-sm text-[#1f1f1f]">{title}</strong>
-          <p className="mt-1 text-xs leading-5 text-[#666666]">Dùng để chuẩn hóa thao tác bảo trì, kỹ sư có thể bổ sung thêm dòng riêng nếu cần.</p>
+          <p className="mt-1 text-xs leading-5 text-[#666666]">Checklist mẫu.</p>
         </div>
         <button className="secondary-button compact" onClick={onApply} type="button">
           Add to checklist

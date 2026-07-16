@@ -354,7 +354,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       <PageTitle
         eyebrow="Kỹ sư"
         title="Báo cáo tuần"
-        description="Ghi việc trong tuần, lưu nháp rồi gửi admin."
+        description="Tổng hợp tuần."
       />
 
       {error ? <Notice message={error} /> : null}
@@ -525,9 +525,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               </span>
             ))}
           </div>
-          <p className="mt-3 max-w-[760px] text-sm leading-6 text-[#666666]">
-            Lịch giúp ghi kế hoạch, phiếu hoàn thành giúp lấy kết quả thực tế. Kỹ sư chỉ cần rà lại tồn đọng và đề xuất trước khi gửi admin.
-          </p>
+          <p className="mt-3 max-w-[760px] text-sm leading-6 text-[#666666]">Rà tồn đọng trước khi gửi.</p>
         </div>
         {!isAdmin ? (
           <div className="grid gap-2">

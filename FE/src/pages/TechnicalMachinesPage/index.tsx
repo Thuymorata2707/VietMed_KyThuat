@@ -765,7 +765,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         <PageTitle
           eyebrow="Phòng kỹ thuật"
           title="Danh sách máy quản lý"
-          description="Tra cứu máy theo ngành hàng, S/N và khách hàng."
+          description="Tra cứu máy."
         />
           <button className="secondary-button" onClick={() => navigate('/')} type="button">
             <ArrowLeft size={17} />
@@ -801,7 +801,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-3 py-2">
               <div>
                 <strong className="block text-sm text-[#18181b]">Nhập máy theo lô</strong>
-                <span className="text-xs font-medium text-[#64748b]">Dán nhiều serial, hệ thống sẽ tạo nhiều hồ sơ máy cùng model.</span>
+                <span className="text-xs font-medium text-[#64748b]">Dán nhiều serial.</span>
               </div>
               <button className="primary-button bg-[#2563eb] hover:bg-[#1d4ed8]" onClick={openBulkCreate} type="button">
                 <Plus size={17} />
@@ -1131,7 +1131,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               <div>
                 <span className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#2563eb]">Nhập lô máy</span>
                 <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#18181b]">Tạo nhiều hồ sơ máy cùng lúc</h2>
-                <p className="mt-1 text-sm text-[#64748b]">Mỗi dòng là Serial, hoặc Serial | Mã máy | Tên máy.</p>
+                <p className="mt-1 text-sm text-[#64748b]">Serial hoặc Serial | Mã | Tên.</p>
               </div>
               <button className="icon-button" onClick={() => setBulkOpen(false)} title="Đóng" type="button">
                 <X size={16} />
@@ -1512,7 +1512,7 @@ function MachineLifecycleTimeline({ events }: { events: MachineLifecycleEvent[] 
         <div>
           <span className="text-[12px] font-semibold text-[#666666]">Vòng đời thiết bị</span>
           <h2 className="mt-1 text-2xl font-medium leading-tight text-[#1f1f1f]">Timeline hồ sơ máy</h2>
-          <p className="mt-1 text-sm leading-6 text-[#666666]">Lịch sử vòng đời thiết bị theo thời gian.</p>
+          <p className="mt-1 text-sm leading-6 text-[#666666]">Lịch sử thiết bị.</p>
         </div>
         <span className="inline-flex min-h-9 items-center rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-sm font-semibold text-[#18181b]">
           {events.length} sự kiện
@@ -1586,7 +1586,7 @@ function MachineListActionPanel({ canEdit, machine }: { canEdit: boolean; machin
         <span className="text-[12px] font-medium text-[#666666]">Thao tác hồ sơ</span>
         <h2 className="mt-1 text-2xl font-medium leading-tight text-[#1f1f1f]">Mở trang riêng để xem hoặc sửa</h2>
         <p className="mt-2 text-sm leading-6 text-[#666666]">
-          Hồ sơ máy, lịch sử kho, sửa chữa và phụ kiện sẽ hiển thị trên một trang riêng để dễ đọc hơn.
+          Mở hồ sơ chi tiết.
         </p>
       </div>
 
@@ -2316,7 +2316,7 @@ function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <span className="text-sm font-semibold text-[#333333]">Add probe</span>
-          <p className="mt-1 text-xs leading-5 text-[#666666]">Chọn model đầu dò từ danh sách chuẩn, sau đó nhập S/N thực tế ở dòng bên dưới.</p>
+          <p className="mt-1 text-xs leading-5 text-[#666666]">Chọn model, nhập S/N.</p>
         </div>
         <select
           className={`${editFieldClass} max-w-[260px]`}
@@ -2359,7 +2359,7 @@ function EndoscopyAccessoryChecklist({
     <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fafafa] p-4">
       <div>
         <span className="text-sm font-semibold text-[#333333]">Checklist phụ kiện nội soi tiêu hóa</span>
-        <p className="mt-1 text-xs leading-5 text-[#666666]">Tích vật tư có theo máy. Nếu checklist chưa có, dùng Add accessory.</p>
+        <p className="mt-1 text-xs leading-5 text-[#666666]">Tích phụ kiện theo máy.</p>
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {endoscopyAccessoryOptions.map((option) => (

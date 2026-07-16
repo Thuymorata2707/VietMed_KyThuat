@@ -270,7 +270,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Sản phẩm & Thiết bị"
           title="Danh sách sản phẩm"
-          description="Model theo ngành hàng, tồn kho và serial máy."
+          description="Model & tồn kho."
         />
         <div className="flex flex-wrap justify-end gap-2">
           {canAddProduct ? (
@@ -297,10 +297,10 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
                 Catalog overview
               </span>
               <h2 className="mt-4 max-w-3xl text-[clamp(26px,3.2vw,42px)] font-semibold leading-[1.04] tracking-[-0.035em] text-[#1f1f1f]">
-                Danh mục sản phẩm theo ngành hàng, nhìn nhanh được kho và model.
+                Danh mục sản phẩm theo ngành hàng.
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#667985]">
-                Tổng hợp model, số máy và tồn kho theo ngành hàng.
+                Model, máy, tồn kho.
               </p>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
@@ -478,7 +478,7 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Sản phẩm & Thiết bị"
           title={detail ? modelShortLabel(detail) : 'Chi tiết model'}
-          description="Danh sách máy và phụ kiện theo model."
+          description="Máy & phụ kiện."
         />
         <div className="flex flex-wrap justify-end gap-2">
           {detail && canAddProduct ? (
@@ -694,7 +694,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2563eb]">Sản phẩm & Thiết bị</span>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#172033] md:text-4xl">Nhập máy vào kho</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-[#64748b]">
-              Chọn model, nhập serial và phụ kiện theo từng máy.
+              Model, serial, phụ kiện.
             </p>
           </div>
           <button className="secondary-button bg-white/80" onClick={() => navigate('/product-catalog')} type="button">

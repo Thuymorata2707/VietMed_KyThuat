@@ -80,7 +80,7 @@ export function AdminRolesPage() {
         <PageTitle
           eyebrow="Admin"
           title="Vai trò"
-          description="Quản lý danh sách role dùng cho phân quyền backend và điều hướng giao diện."
+          description="Phân quyền."
         />
         <button className="secondary-button" disabled={loading} onClick={() => void rolesQuery.refetch()} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}

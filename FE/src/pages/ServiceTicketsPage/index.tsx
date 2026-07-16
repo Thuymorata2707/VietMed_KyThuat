@@ -150,7 +150,7 @@ const serviceTicketOptions: TicketPortalCard[] = [
   {
     actionLabel: 'Mở phiếu sửa chữa',
     countKey: 'repairs',
-    description: 'Tổng hợp lỗi máy, bảo hành, chờ linh kiện và kết quả sửa chữa.',
+    description: 'Lỗi máy & linh kiện.',
     icon: <Wrench size={23} />,
     label: 'Sửa chữa',
     meta: 'Lỗi máy, bảo hành',
@@ -159,7 +159,7 @@ const serviceTicketOptions: TicketPortalCard[] = [
   {
     actionLabel: 'Mở phiếu bảo trì',
     countKey: 'maintenance',
-    description: 'Theo dõi lịch định kỳ, quá hạn, lịch hẹn lại và nghiệm thu bảo trì.',
+    description: 'Lịch & nghiệm thu.',
     icon: <ClipboardCheck size={23} />,
     label: 'Bảo trì',
     meta: 'Lịch định kỳ',
@@ -168,7 +168,7 @@ const serviceTicketOptions: TicketPortalCard[] = [
   {
     actionLabel: 'Mở phiếu lắp đặt',
     countKey: 'installations',
-    description: 'Quản lý bàn giao, bảo hành thiết bị và phiếu lắp đặt theo khách hàng.',
+    description: 'Bàn giao & bảo hành.',
     icon: <Stethoscope size={23} />,
     label: 'Lắp đặt',
     meta: 'Bàn giao, bảo hành',
@@ -177,7 +177,7 @@ const serviceTicketOptions: TicketPortalCard[] = [
   {
     actionLabel: 'Để trống',
     countKey: 'receiving',
-    description: 'Giữ chỗ cho nghiệp vụ nhận thiết bị. Chưa ghi nhận dữ liệu ở phiên bản này.',
+    description: 'Chờ bổ sung.',
     disabled: true,
     icon: <Archive size={23} />,
     label: 'Phiếu nhận thiết bị',
@@ -245,7 +245,7 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
 export function InstallationsPage({ user }: { user: ApiUser }) {
   return (
     <OperationsBoard
-      description="Kế hoạch lắp đặt và bảo hành theo ngành hàng."
+      description="Lắp đặt & bảo hành."
       kind="installations"
       reportHref="/technical-statistics?workType=installation&returnTo=/installations"
       title="Kế hoạch lắp đặt"
@@ -289,7 +289,7 @@ function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh:
             Tổng hợp phiếu
           </h1>
           <p className="mt-4 max-w-2xl text-[15px] font-semibold leading-7 text-[#667985]">
-            Tạo hoặc tra cứu phiếu. Admin duyệt tại Điều phối & duyệt.
+            Tạo, tra cứu, duyệt phiếu.
           </p>
         </div>
         <button className="secondary-button bg-white/86" disabled={loading} onClick={onRefresh} type="button">
@@ -348,7 +348,7 @@ function ReceivingPlaceholder({ onBack }: { onBack: () => void }) {
           <span className="text-sm font-black text-[#18181b]">Để trống nghiệp vụ</span>
           <h1 className="mt-2 text-[clamp(30px,5vw,52px)] font-black tracking-[-0.045em] text-[#1f1f1f]">Phiếu nhận thiết bị</h1>
           <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-7 text-[#667985]">
-            Mục này đã được đặt chỗ trong luồng tổng hợp. Khi chốt nghiệp vụ nhận thiết bị, mình sẽ nối form, danh sách và báo cáo vào đúng vị trí này.
+            Chờ bổ sung nghiệp vụ.
           </p>
         </div>
         <button className="secondary-button" onClick={onBack} type="button">
@@ -1128,7 +1128,7 @@ function ticketScopeLabel(kind: BoardKind) {
 }
 
 function ticketScopeDescription(kind: BoardKind) {
-  if (kind === 'maintenance') return 'Tổng hợp riêng các phiếu bảo trì: lịch hẹn, quá hạn, kỹ sư phụ trách và kết quả nghiệm thu.';
-  if (kind === 'installations') return 'Tổng hợp riêng các phiếu lắp đặt: bàn giao, bảo hành, khách hàng và thiết bị đã lắp.';
-  return 'Tổng hợp riêng các phiếu sửa chữa: lỗi máy, bảo hành, chờ linh kiện và kết quả xử lý.';
+  if (kind === 'maintenance') return 'Lịch hẹn & nghiệm thu.';
+  if (kind === 'installations') return 'Bàn giao & bảo hành.';
+  return 'Lỗi máy & linh kiện.';
 }
