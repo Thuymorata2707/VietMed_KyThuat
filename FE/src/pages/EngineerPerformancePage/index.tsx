@@ -99,7 +99,6 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const [engineerId, setEngineerId] = useState(() => searchParams.get('engineerId') || searchParams.get('userId') || (isAdmin ? '' : user.id));
   const [from, setFrom] = useState(() => searchParams.get('from') || defaultFrom);
   const [to, setTo] = useState(() => searchParams.get('to') || defaultTo);
-  const [weekStart, setWeekStart] = useState(() => searchParams.get('weekStart') || toDateInput(startOfWeek(new Date(`${searchParams.get('from') || defaultFrom}T00:00:00`))));
 
   const engineersQuery = useQuery({
     enabled: isAdmin,
@@ -141,7 +140,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   useEffect(() => {
     if (isAdmin && !engineerId) return;
     syncUrl();
-  }, [engineerId, from, to, weekStart, isAdmin]);
+  }, [engineerId, from, to, isAdmin]);
 
   const selectedEngineer = engineers.find((engineer) => engineer.id === engineerId);
   const workMix = [
@@ -151,7 +150,6 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   ];
   const maxWorkValue = Math.max(1, ...workMix.map((item) => item.value));
   const selectedEngineerName = selectedEngineer?.fullName || summary?.engineer?.fullName || summary?.engineer?.email || user.fullName || user.email;
-  const weeklyRowCount = summary?.weeklyReports?.reduce((sum, report) => sum + report.rows.length, 0) ?? 0;
   const weeklyNeedsRevision = summary?.weeklyReports?.filter((report) => report.status === 'NEEDS_REVISION').length ?? 0;
   const weeklySubmitted = summary?.weeklyReports?.filter((report) => report.status === 'SUBMITTED').length ?? 0;
   const weeklyApproved = summary?.weeklyReports?.filter((report) => report.status === 'APPROVED').length ?? 0;
@@ -159,13 +157,8 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const unresolvedActivities = Math.max((summary?.activities.length ?? 0) - closedActivities, 0);
   const completionRate = summary?.activities.length ? Math.round((closedActivities / summary.activities.length) * 100) : 0;
   const reportHomePath = isAdmin ? '/engineer-performance' : '/my-reports';
-  const currentWeeklyReportHref = buildWeeklyReportHref(weekStart, isAdmin ? engineerId : '');
   const currentTechnicalReportHref = buildTechnicalReportHref(from, to, isAdmin ? engineerId : user.id, isAdmin, reportHomePath);
-  const sortedWeeklyReports = useMemo(
-    () => [...(summary?.weeklyReports ?? [])].sort((left, right) => right.weekStart.localeCompare(left.weekStart)),
-    [summary],
-  );
-  const currentWeekReport = sortedWeeklyReports.find((report) => toDateInput(startOfWeek(new Date(`${report.weekStart}T00:00:00`))) === weekStart);
+  const busiestWorkType = [...workMix].sort((left, right) => right.value - left.value)[0];
   const recentActivities = useMemo(
     () =>
       [...(summary?.activities ?? [])]
@@ -186,7 +179,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   );
 
   function syncUrl() {
-    const next = new URLSearchParams({ from, to, weekStart });
+    const next = new URLSearchParams({ from, to });
     if (isAdmin && engineerId) next.set('engineerId', engineerId);
     setSearchParams(next, { replace: true });
   }
@@ -219,13 +212,13 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       <PageTitle
         eyebrow={isAdmin ? 'Báo cáo vận hành' : 'Báo cáo cá nhân'}
         title={isAdmin ? 'Hiệu suất kỹ sư' : 'Báo cáo của tôi'}
-        description={isAdmin ? 'Theo dõi tải việc, chất lượng báo cáo và khách hàng theo từng kỹ sư.' : 'Một màn hình để xem việc đã làm, báo cáo tuần và các điểm cần xử lý.'}
+        description={isAdmin ? 'Theo dõi tải việc, chất lượng và khách hàng theo từng kỹ sư.' : 'Tổng hợp việc đã làm, khách hàng và các điểm cần xử lý trong kỳ.'}
       />
 
       {error ? <Notice message={error} /> : null}
 
       <section className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-white/92 p-4 shadow-[0_18px_44px_rgba(15,23,42,0.06)] backdrop-blur">
-        <div className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_150px_150px_150px_auto]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_170px_170px_auto]">
           {isAdmin ? (
             <label className="grid gap-1.5 text-sm font-medium text-[#333333]">
               Kỹ sư
@@ -245,36 +238,15 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
           )}
           <DateInput className="grid gap-1.5 text-sm font-medium text-[#333333]" label="Từ ngày" onChange={setFrom} value={from} />
           <DateInput className="grid gap-1.5 text-sm font-medium text-[#333333]" label="Đến ngày" onChange={setTo} value={to} />
-          <DateInput className="grid gap-1.5 text-sm font-medium text-[#333333]" label="Tuần báo cáo" onChange={(value) => setWeekStart(value ? toDateInput(startOfWeek(new Date(`${value}T00:00:00`))) : '')} value={weekStart} />
           <div className="flex flex-wrap items-end justify-start gap-2 self-end lg:justify-end">
             <button className="secondary-button" disabled={loading} onClick={() => void summaryQuery.refetch()} type="button">
               {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
               Cập nhật
             </button>
-            {currentWeeklyReportHref ? (
-              <Link className="secondary-button" to={currentWeeklyReportHref}>
-                <FileText size={16} />
-                Báo cáo tuần
-              </Link>
-            ) : null}
-            {currentTechnicalReportHref ? (
-              <Link className="secondary-button" to={currentTechnicalReportHref}>
-                <FileText size={16} />
-                Thống kê kỹ thuật
-              </Link>
-            ) : null}
             <button className="secondary-button" disabled={!summary?.activities.length} onClick={exportCsv} type="button">
               <Download size={16} />
               CSV
             </button>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eeeeee] pt-3">
-          <span className="text-xs font-semibold text-[#71717a]">Khoảng xem nhanh</span>
-          <div className="flex flex-wrap gap-2">
-            <button className="secondary-button" onClick={() => setDateRange(addDays(today, -60), today)} type="button">60 ngày</button>
-            <button className="secondary-button" onClick={() => setDateRange(startOfMonth(today), today)} type="button">Tháng này</button>
-            <button className="secondary-button" onClick={() => setDateRange(new Date('2026-05-01T00:00:00'), new Date('2026-05-31T00:00:00'))} type="button">Dữ liệu T05/2026</button>
           </div>
         </div>
       </section>
@@ -338,25 +310,11 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
         <div className="grid gap-4">
           <div className="rounded-[22px] border border-[#e5e5e5] bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.045)]">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <PanelHeader eyebrow="Tuần đang xem" title={currentWeekReport ? `Báo cáo tuần ${formatDate(currentWeekReport.weekStart)}` : 'Chưa có báo cáo tuần'} subtitle={`${weeklyApproved} tuần đã duyệt, ${weeklyRowCount} dòng báo cáo trong kỳ.`} />
-              <Link className="primary-button" to={currentWeeklyReportHref}>
-                <FileText size={16} />
-                Mở báo cáo
-              </Link>
-            </div>
-            <div className="mt-4 rounded-[16px] border border-[#eeeeee] bg-[#fafafa] p-4">
-              {currentWeekReport ? (
-                <div className="grid gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-lg bg-white px-2 py-1 text-xs font-semibold text-[#333333]">{weeklyStatusLabel(currentWeekReport.status)}</span>
-                    <span className="text-xs font-medium text-[#666666]">{currentWeekReport.rows.length} dòng công việc</span>
-                  </div>
-                  <p className="line-clamp-3 text-sm leading-6 text-[#4b5563]">{currentWeekReport.note || firstWeeklyReportSummary(currentWeekReport) || 'Chưa có ghi chú hoặc nội dung báo cáo.'}</p>
-                </div>
-              ) : (
-                <EmptyState text="Tuần đang chọn chưa có báo cáo. Mở báo cáo tuần để cập nhật nội dung." />
-              )}
+            <PanelHeader eyebrow="Điểm nổi bật" title="Tóm tắt kỳ đang xem" subtitle="Chỉ giữ các tín hiệu giúp kỹ sư đọc nhanh tình hình." />
+            <div className="mt-4 grid gap-2">
+              <InsightRow label="Loại việc nhiều nhất" value={busiestWorkType?.value ? `${busiestWorkType.label} (${busiestWorkType.value})` : 'Chưa có dữ liệu'} />
+              <InsightRow label="Khách hàng phát sinh nhiều nhất" value={topCustomers[0] ? `${topCustomers[0].name} (${topCustomers[0].installationCount + topCustomers[0].repairCount + topCustomers[0].maintenanceCount} việc)` : 'Chưa có dữ liệu'} />
+              <InsightRow label="Báo cáo đã duyệt trong kỳ" value={`${weeklyApproved} báo cáo`} />
             </div>
           </div>
 
@@ -431,11 +389,6 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
     </PageFrame>
   );
 
-  function setDateRange(nextFrom: Date, nextTo: Date) {
-    setFrom(toDateInput(nextFrom));
-    setTo(toDateInput(nextTo));
-    setWeekStart(toDateInput(startOfWeek(nextFrom)));
-  }
 }
 
 function MiniMetric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
@@ -477,6 +430,15 @@ function PanelHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: str
       <span className="text-[12px] font-medium text-[#666666]">{eyebrow}</span>
       <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">{title}</h2>
       {subtitle ? <p className="mt-1 line-clamp-1 text-xs font-medium text-[#8a8f99]">{subtitle}</p> : null}
+    </div>
+  );
+}
+
+function InsightRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[14px] bg-[#fafafa] px-3 py-3 text-sm">
+      <span className="font-medium text-[#666666]">{label}</span>
+      <strong className="max-w-[56%] text-right font-semibold text-[#1f1f1f]">{value}</strong>
     </div>
   );
 }
@@ -574,22 +536,6 @@ function displayCustomerStatus(value?: string | null) {
   return value ? labels[value] ?? value : 'Chưa rõ';
 }
 
-function weeklyStatusLabel(value: EngineerWorkSummary['weeklyReports'][number]['status']) {
-  const labels: Record<EngineerWorkSummary['weeklyReports'][number]['status'], string> = {
-    DRAFT: 'Nháp',
-    SUBMITTED: 'Đã gửi',
-    APPROVED: 'Đã duyệt',
-    NEEDS_REVISION: 'Cần sửa',
-  };
-  return labels[value] ?? value;
-}
-
-function buildWeeklyReportHref(weekStart: string, engineerId?: string) {
-  const params = new URLSearchParams({ weekStart: toDateInput(startOfWeek(new Date(`${weekStart}T00:00:00`))) });
-  if (engineerId) params.set('userId', engineerId);
-  return `/weekly-reports?${params.toString()}`;
-}
-
 function buildTechnicalReportHref(from: string, to: string, engineerId: string, includeEngineerId: boolean, returnBasePath: string) {
   if (!from || !to || !engineerId) return '';
   const params = new URLSearchParams({ from, to, returnTo: `${returnBasePath}?from=${from}&to=${to}` });
@@ -618,22 +564,10 @@ function toneHex(tone: 'good' | 'warn' | 'neutral') {
   return '#18181b';
 }
 
-function startOfWeek(value: Date) {
-  const date = new Date(value);
-  const day = date.getDay() || 7;
-  date.setDate(date.getDate() - day + 1);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
 function addDays(value: Date, days: number) {
   const date = new Date(value);
   date.setDate(date.getDate() + days);
   return date;
-}
-
-function startOfMonth(value: Date) {
-  return new Date(value.getFullYear(), value.getMonth(), 1);
 }
 
 function toDateInput(value: Date) {
@@ -652,11 +586,6 @@ function formatDate(value: string) {
 
 function csvCell(value: string) {
   return `"${value.replaceAll('"', '""')}"`;
-}
-
-function firstWeeklyReportSummary(report: EngineerWorkSummary['weeklyReports'][number]) {
-  const row = report.rows.find((item) => item.content || item.result || item.pending || item.proposal);
-  return [row?.content, row?.result, row?.pending, row?.proposal].filter(Boolean).join(' - ');
 }
 
 const fieldClass = 'min-h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
