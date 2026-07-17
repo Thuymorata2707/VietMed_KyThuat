@@ -124,6 +124,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Chia sẻ kinh nghiệm'
     : location.pathname.startsWith('/technical-statistics')
       ? 'Thống kê kỹ thuật'
+    : location.pathname.startsWith('/machine-components') || location.pathname.startsWith('/component-accessories')
+      ? 'Model & phụ kiện'
     : location.pathname.startsWith('/daily-work') || location.pathname.startsWith('/daily-reports') || location.pathname.startsWith('/weekly-reports')
       ? 'Lịch & báo cáo'
     : location.pathname.startsWith('/reports')
@@ -781,7 +783,10 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                   ) : key === 'installations' ? (
                     <InstallationsPage user={user} />
                   ) : role === 'admin' && adminCrudConfigs[key] ? (
-                    <AdminCrudPage config={adminCrudConfigs[key]} />
+                    <AdminCrudPage
+                      config={adminCrudConfigs[key]}
+                      headerControl={key === 'machine-components' || key === 'component-accessories' ? <ComponentAccessoryTabs activeKey={key} /> : undefined}
+                    />
                   ) : (
                     <ResourcePage config={resources[key]} />
                   )}
@@ -793,6 +798,19 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
         </Routes>
         </Suspense>
       </main>
+    </div>
+  );
+}
+
+function ComponentAccessoryTabs({ activeKey }: { activeKey: string }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Link className={activeKey === 'machine-components' ? 'primary-button compact' : 'secondary-button compact'} to="/machine-components">
+        Thành phần
+      </Link>
+      <Link className={activeKey === 'component-accessories' ? 'primary-button compact' : 'secondary-button compact'} to="/component-accessories">
+        Phụ kiện
+      </Link>
     </div>
   );
 }

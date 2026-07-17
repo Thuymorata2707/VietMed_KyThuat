@@ -1138,6 +1138,15 @@ export class RepairsService {
               productIndustry: true,
             },
           },
+          machineModel: {
+            include: {
+              businessLine: {
+                include: {
+                  productIndustry: true,
+                },
+              },
+            },
+          },
           customer: {
             include: {
               region: true,

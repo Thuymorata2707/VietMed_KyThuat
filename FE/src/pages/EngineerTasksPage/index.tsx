@@ -130,6 +130,21 @@ type WorkOperationPart = {
   note?: string | null;
 };
 
+type ComponentAccessoryOption = {
+  id: string;
+  code?: string | null;
+  name: string;
+  requiresSerial?: boolean | null;
+  component?: {
+    name?: string | null;
+    machineModel?: {
+      code?: string | null;
+      name?: string | null;
+      displayName?: string | null;
+    } | null;
+  } | null;
+};
+
 type WorkOperationLog = {
   title: string;
   note?: string | null;
@@ -373,6 +388,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [installationDate, setInstallationDate] = useState('');
   const [checkedChecklist, setCheckedChecklist] = useState<Record<string, boolean>>({});
   const [materialsText, setMaterialsText] = useState('');
+  const [accessoryOptions, setAccessoryOptions] = useState<ComponentAccessoryOption[]>([]);
+  const [loadingAccessoryOptions, setLoadingAccessoryOptions] = useState(false);
   const [workLogText, setWorkLogText] = useState('');
   const [savingKnowledge, setSavingKnowledge] = useState(false);
   const [createForm, setCreateForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm());
@@ -966,9 +983,11 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     setFileInputKey((value) => value + 1);
     setCheckedChecklist({});
     setMaterialsText('');
+    setAccessoryOptions([]);
     setWorkLogText('');
     loadAttachments(task);
     loadWorkOperations(task);
+    loadAccessoryOptions(task);
 
     if (task.kind === 'installation') {
       setStatus(task.status === 'PENDING' ? 'INSTALLED' : task.status);
@@ -1020,6 +1039,45 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     } catch {
       // Work operation tables may not exist until the new migration is applied.
     }
+  }
+
+  async function loadAccessoryOptions(task: EngineerTask) {
+    if (!['repair', 'maintenance'].includes(task.kind)) return;
+
+    setLoadingAccessoryOptions(true);
+
+    try {
+      const params = new URLSearchParams({ limit: '100', status: 'ACTIVE' });
+      const machineModelId = task.machine?.machineModel?.id;
+      const modelSearch = task.machine?.machineModel?.code || task.machine?.machineModel?.name || taskModelText(task);
+
+      if (machineModelId) {
+        params.set('machineModelId', machineModelId);
+      } else if (modelSearch) {
+        params.set('search', modelSearch);
+      }
+
+      const result = await apiFetch<Paginated<ComponentAccessoryOption>>(`/component-accessories?${params.toString()}`);
+      setAccessoryOptions(result.data ?? []);
+    } catch {
+      setAccessoryOptions([]);
+    } finally {
+      setLoadingAccessoryOptions(false);
+    }
+  }
+
+  function appendAccessoryMaterial(accessoryId: string) {
+    const accessory = accessoryOptions.find((item) => item.id === accessoryId);
+    if (!accessory) return;
+
+    const note = [
+      accessory.code ? `Mã ${accessory.code}` : '',
+      accessory.component?.name ? `Thành phần: ${accessory.component.name}` : '',
+      accessory.component?.machineModel?.code ? `Model: ${accessory.component.machineModel.code}` : '',
+    ].filter(Boolean).join('; ');
+    const line = [accessory.name, '1', '', '', note].join(' | ');
+
+    setMaterialsText((current) => [current.trim(), line].filter(Boolean).join('\n'));
   }
 
   async function syncWorkOperations(task: EngineerTask) {
@@ -2016,6 +2074,30 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <div className="grid gap-3">
                   <label className={drawerFieldClass}>
                     Linh kiện/vật tư sử dụng
+                    {selectedTask.kind === 'repair' || selectedTask.kind === 'maintenance' ? (
+                      <select
+                        className={drawerInputClass}
+                        disabled={loadingAccessoryOptions || accessoryOptions.length === 0}
+                        onChange={(event) => {
+                          appendAccessoryMaterial(event.target.value);
+                          event.target.value = '';
+                        }}
+                        value=""
+                      >
+                        <option value="">
+                          {loadingAccessoryOptions
+                            ? 'Đang tải phụ kiện theo model...'
+                            : accessoryOptions.length
+                              ? 'Chọn phụ kiện từ danh mục'
+                              : 'Chưa có phụ kiện theo model này'}
+                        </option>
+                        {accessoryOptions.map((accessory) => (
+                          <option key={accessory.id} value={accessory.id}>
+                            {[accessory.name, accessory.code, accessory.component?.name, accessory.component?.machineModel?.code].filter(Boolean).join(' - ')}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
                     <textarea
                       className={drawerTextareaClass}
                       onChange={(event) => setMaterialsText(event.target.value)}

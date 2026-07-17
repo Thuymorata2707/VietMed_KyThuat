@@ -145,12 +145,18 @@ export class MachineComponentsService {
     const search = query.search?.trim();
     const where: Prisma.ComponentAccessoryWhereInput = {
       componentId: query.componentId,
+      component: query.machineModelId
+        ? { machineModelId: query.machineModelId }
+        : undefined,
       status: query.status,
       OR: search
         ? [
             { code: { contains: search } },
             { name: { contains: search } },
             { component: { name: { contains: search } } },
+            { component: { machineModel: { code: { contains: search } } } },
+            { component: { machineModel: { name: { contains: search } } } },
+            { component: { machineModel: { displayName: { contains: search } } } },
           ]
         : undefined,
     };

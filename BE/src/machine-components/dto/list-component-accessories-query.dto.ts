@@ -8,6 +8,10 @@ export class ListComponentAccessoriesQueryDto extends PaginationQueryDto {
   componentId?: string;
 
   @IsOptional()
+  @IsString()
+  machineModelId?: string;
+
+  @IsOptional()
   @IsEnum(BusinessLineStatus)
   status?: BusinessLineStatus;
 

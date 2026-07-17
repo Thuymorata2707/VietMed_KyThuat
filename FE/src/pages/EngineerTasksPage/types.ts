@@ -64,6 +64,13 @@ export type TaskMachine = {
       expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
     } | null;
   } | null;
+  machineModel?: {
+    id?: string | null;
+    code?: string | null;
+    name?: string | null;
+    displayName?: string | null;
+    manufacturer?: string | null;
+  } | null;
 };
 
 export type PickerMachine = TaskMachine & {
