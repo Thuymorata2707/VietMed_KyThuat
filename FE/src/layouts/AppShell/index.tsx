@@ -216,8 +216,9 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   return (
     <div className={`app-shell grid min-h-screen w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
       <aside className={`app-sidebar flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#e4e4e7] px-4 py-5 shadow-[1px_0_0_rgba(24,24,27,0.03)] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-5 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-5 max-[980px]:gap-4'}`}>
-        <div className={`flex min-w-0 items-center gap-2.5 ${isSidebarCollapsed ? 'grid justify-items-center' : 'justify-between'} max-[980px]:flex max-[980px]:justify-between`}>
-          <Brand compact={isSidebarCollapsed} />
+        <div className={`min-w-0 items-center gap-2.5 ${isSidebarCollapsed ? 'grid justify-items-center' : 'grid grid-cols-[34px_minmax(0,1fr)_34px]'} max-[980px]:flex max-[980px]:justify-between`}>
+          {!isSidebarCollapsed ? <span aria-hidden="true" className="block h-[34px] w-[34px] max-[980px]:hidden" /> : null}
+          <Brand compact={isSidebarCollapsed} logoOnly />
           <button
             aria-label={isSidebarCollapsed ? 'Mở rộng thanh menu' : 'Thu gọn thanh menu'}
             className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#333333] shadow-[0_1px_2px_rgba(24,24,27,0.05)] hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b] max-[980px]:hidden"
