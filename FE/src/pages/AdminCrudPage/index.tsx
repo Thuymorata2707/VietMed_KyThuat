@@ -285,17 +285,17 @@ export function AdminCrudPage({
             serviceCreateHref(config.endpoint) ? (
               <Link className="primary-button compact" to={serviceCreateHref(config.endpoint)!}>
                 <Plus size={17} />
-                Add Ticket
+                Tạo phiếu
               </Link>
             ) : adminCrudFormCreateHref(config.endpoint) ? (
               <Link className="primary-button compact" to={adminCrudFormCreateHref(config.endpoint)!}>
                 <Plus size={17} />
-                Add
+                Thêm mới
               </Link>
             ) : (
               <button className="primary-button compact" onClick={startCreate} type="button">
                 <Plus size={17} />
-                Add
+                Thêm mới
               </button>
             )
           ) : null}
@@ -358,7 +358,7 @@ export function AdminCrudPage({
                               <Link
                                 className="icon-button"
                                 onClick={(event) => event.stopPropagation()}
-                                title="Edit"
+                                title="Sửa"
                                 to={adminCrudFormEditHref(config.endpoint, row)!}
                               >
                                 <Edit3 size={16} />
@@ -367,7 +367,7 @@ export function AdminCrudPage({
                               <button
                                 className="icon-button"
                                 onClick={(event) => handleActionClick(event, () => startEdit(row))}
-                                title="Edit"
+                                title="Sửa"
                                 type="button"
                               >
                                 <Edit3 size={16} />
@@ -378,7 +378,7 @@ export function AdminCrudPage({
                             <button
                               className="icon-button danger"
                               onClick={(event) => handleActionClick(event, () => setDeletingRow(row))}
-                              title="Delete"
+                              title="Xóa"
                               type="button"
                             >
                               <Trash2 size={16} />
@@ -475,7 +475,7 @@ export function AdminCrudPage({
                 <span>Chi tiết</span>
                 <h2>{formatValue(readPath(selectedRow, config.columns[0]?.key || 'id'))}</h2>
               </div>
-              <button className="icon-button" onClick={() => setSelectedRow(null)} title="Close" type="button">
+              <button className="icon-button" onClick={() => setSelectedRow(null)} title="Đóng" type="button">
                 <X size={16} />
               </button>
             </div>
@@ -494,23 +494,23 @@ export function AdminCrudPage({
                 adminCrudFormEditHref(config.endpoint, selectedRow) ? (
                   <Link className="primary-button" to={adminCrudFormEditHref(config.endpoint, selectedRow)!}>
                     <Edit3 size={17} />
-                    Edit
+                    Sửa
                   </Link>
                 ) : (
                   <button className="primary-button" onClick={() => startEdit(selectedRow)} type="button">
                     <Edit3 size={17} />
-                    Edit
+                    Sửa
                   </button>
                 )
               ) : null}
               {config.canDelete !== false ? (
                 <button className="danger-button" onClick={() => setDeletingRow(selectedRow)} type="button">
                   <Trash2 size={17} />
-                  Delete
+                  Xóa
                 </button>
               ) : null}
               <button className="secondary-button" onClick={() => setSelectedRow(null)} type="button">
-                Close
+                Đóng
               </button>
             </div>
           </aside>
@@ -522,10 +522,10 @@ export function AdminCrudPage({
           <section aria-modal="true" className="crud-modal expanded-crud-modal" role="dialog">
             <div className="form-panel-heading">
               <div>
-                <span>{editingRow ? 'Edit' : 'Add'}</span>
+                <span>{editingRow ? 'Sửa' : 'Thêm mới'}</span>
                 <h2>{editingRow ? String(readPath(editingRow, config.columns[0]?.key || 'id')) : config.title}</h2>
               </div>
-              <button className="icon-button" onClick={closeModal} title="Close" type="button">
+              <button className="icon-button" onClick={closeModal} title="Đóng" type="button">
                 <X size={16} />
               </button>
             </div>
@@ -547,10 +547,10 @@ export function AdminCrudPage({
 
               <div className="modal-actions">
                 <button className="secondary-button" onClick={closeModal} type="button">
-                  Cancel
+                  Hủy
                 </button>
                 <button className="primary-button" disabled={saving} type="submit">
-                  {saving ? 'Saving' : 'Save'}
+                  {saving ? 'Đang lưu' : 'Lưu'}
                 </button>
               </div>
             </form>
@@ -562,16 +562,16 @@ export function AdminCrudPage({
         <div className="crud-modal-backdrop" role="presentation">
           <section aria-modal="true" className="confirm-modal" role="dialog">
             <div>
-              <span className="confirm-eyebrow">Delete</span>
+              <span className="confirm-eyebrow">Xóa</span>
               <h2>{formatValue(readPath(deletingRow, config.columns[0]?.key || 'id'))}</h2>
-              <p>Delete this {config.entityLabel} if backend allows.</p>
+              <p>Xóa {config.entityLabel} này nếu dữ liệu chưa bị ràng buộc.</p>
             </div>
             <div className="modal-actions">
               <button className="secondary-button" onClick={() => setDeletingRow(null)} type="button">
-                Cancel
+                Hủy
               </button>
               <button className="danger-button" onClick={removeRow} type="button">
-                Delete
+                Xóa
               </button>
             </div>
           </section>
@@ -674,12 +674,12 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle
           eyebrow="Quản trị"
-          title={isEditing ? `Edit ${config.entityLabel}` : `Add ${config.entityLabel}`}
+          title={isEditing ? `Sửa ${config.entityLabel}` : `Thêm ${config.entityLabel}`}
           description={config.description}
         />
         <button className="secondary-button" onClick={() => navigate(listPath)} type="button">
           <ArrowLeft size={17} />
-          Back
+          Quay lại
         </button>
       </div>
 
@@ -689,7 +689,7 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
       <section className={isCustomerForm ? 'crud-form-page customer-form-page' : 'crud-form-page'}>
         <div className="form-panel-heading">
           <div>
-            <span>{isEditing ? 'Edit' : 'Add'}</span>
+            <span>{isEditing ? 'Sửa' : 'Thêm mới'}</span>
             <h2>{isEditing ? String(readPath(row ?? {}, config.columns[0]?.key || 'id') || config.title) : config.title}</h2>
           </div>
         </div>
@@ -727,11 +727,11 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
 
             <div className="modal-actions">
               <button className="secondary-button" onClick={() => navigate(listPath)} type="button">
-                Cancel
+                Hủy
               </button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-                {saving ? 'Saving' : 'Save'}
+                {saving ? 'Đang lưu' : 'Lưu'}
               </button>
             </div>
           </form>
@@ -1015,7 +1015,7 @@ function CustomerQuickViewModal({
             <h2>{name}</h2>
             <p>{[code !== '-' ? code : '', type].filter(Boolean).join(' - ') || 'Chưa phân loại'}</p>
           </div>
-          <button className="icon-button" onClick={onClose} title="Close" type="button">
+          <button className="icon-button" onClick={onClose} title="Đóng" type="button">
             <X size={17} />
           </button>
         </header>
@@ -1053,13 +1053,13 @@ function CustomerQuickViewModal({
           {canUpdate ? (
             <button className="secondary-button" onClick={onEdit} type="button">
               <Edit3 size={16} />
-              Edit
+              Sửa
             </button>
           ) : null}
           {canDelete ? (
             <button className="danger-button" onClick={onDelete} type="button">
               <Trash2 size={16} />
-              Delete
+              Xóa
             </button>
           ) : null}
         </footer>
@@ -1151,17 +1151,17 @@ function CustomerCard({
             </Link>
             {canUpdate ? (
               editHref ? (
-                <Link className="icon-button" title="Edit" to={editHref}>
+                <Link className="icon-button" title="Sửa" to={editHref}>
                   <Edit3 size={16} />
                 </Link>
               ) : (
-                <button className="icon-button" onClick={onEdit} title="Edit" type="button">
+                <button className="icon-button" onClick={onEdit} title="Sửa" type="button">
                   <Edit3 size={16} />
                 </button>
               )
             ) : null}
             {canDelete ? (
-              <button className="icon-button danger" onClick={onDelete} title="Delete" type="button">
+              <button className="icon-button danger" onClick={onDelete} title="Xóa" type="button">
                 <Trash2 size={16} />
               </button>
             ) : null}
@@ -1689,6 +1689,9 @@ function serviceCreateHref(endpoint?: string) {
 
 function adminCrudFormCreateHref(endpoint?: string) {
   if (endpoint === '/customers') return '/customers/new';
+  if (endpoint === '/product-industries') return '/product-industries/new';
+  if (endpoint === '/machine-components') return '/machine-components/new';
+  if (endpoint === '/component-accessories') return '/component-accessories/new';
   return '';
 }
 
@@ -1696,6 +1699,11 @@ function adminCrudFormEditHref(endpoint: string | undefined, row: TableRow) {
   if (endpoint === '/customers') {
     const customerId = readPath(row, 'id');
     return customerId ? `/customers/${String(customerId)}/edit` : '';
+  }
+
+  if (['/product-industries', '/machine-components', '/component-accessories'].includes(endpoint || '')) {
+    const id = readPath(row, 'id');
+    return id ? `${endpoint}/${String(id)}/edit` : '';
   }
 
   const serviceUpdate = serviceUpdateHref(endpoint, row);

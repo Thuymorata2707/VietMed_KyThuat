@@ -645,6 +645,78 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             }
           />
           <Route
+            path="/product-industries/new"
+            element={
+              <RequireRole
+                allowedRoles={adminCrudConfigs['product-industries'].roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminCrudFormPage config={adminCrudConfigs['product-industries']} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/product-industries/:id/edit"
+            element={
+              <RequireRole
+                allowedRoles={adminCrudConfigs['product-industries'].roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminCrudFormPage config={adminCrudConfigs['product-industries']} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/machine-components/new"
+            element={
+              <RequireRole
+                allowedRoles={adminCrudConfigs['machine-components'].roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminCrudFormPage config={adminCrudConfigs['machine-components']} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/machine-components/:id/edit"
+            element={
+              <RequireRole
+                allowedRoles={adminCrudConfigs['machine-components'].roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminCrudFormPage config={adminCrudConfigs['machine-components']} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/component-accessories/new"
+            element={
+              <RequireRole
+                allowedRoles={adminCrudConfigs['component-accessories'].roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminCrudFormPage config={adminCrudConfigs['component-accessories']} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/component-accessories/:id/edit"
+            element={
+              <RequireRole
+                allowedRoles={adminCrudConfigs['component-accessories'].roles}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AdminCrudFormPage config={adminCrudConfigs['component-accessories']} />
+              </RequireRole>
+            }
+          />
+          <Route
             path="/product-catalog"
             element={
               <RequireRole

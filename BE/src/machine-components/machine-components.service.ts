@@ -114,7 +114,22 @@ export class MachineComponentsService {
   }
 
   async removeComponent(id: string) {
-    await this.findComponent(id);
+    const component = await this.prisma.machineComponent.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            ComponentAccessory: true,
+          },
+        },
+      },
+    });
+
+    if (!component) throw new NotFoundException('Machine component not found');
+    if (component._count.ComponentAccessory > 0) {
+      throw new BadRequestException('Cannot delete component with accessories');
+    }
+
     await this.prisma.machineComponent.delete({ where: { id } });
     return { deleted: true };
   }
@@ -223,7 +238,23 @@ export class MachineComponentsService {
   }
 
   async removeAccessory(id: string) {
-    await this.findAccessory(id);
+    const accessory = await this.prisma.componentAccessory.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            machineAccessories: true,
+          },
+        },
+      },
+    });
+
+    if (!accessory)
+      throw new NotFoundException('Component accessory not found');
+    if (accessory._count.machineAccessories > 0) {
+      throw new BadRequestException('Cannot delete accessory used by machines');
+    }
+
     await this.prisma.componentAccessory.delete({ where: { id } });
     return { deleted: true };
   }
@@ -282,6 +313,11 @@ export class MachineComponentsService {
       ComponentAccessory: {
         orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }],
       },
+      _count: {
+        select: {
+          ComponentAccessory: true,
+        },
+      },
     };
   }
 
@@ -290,6 +326,11 @@ export class MachineComponentsService {
       component: {
         include: {
           machineModel: { include: { businessLine: true } },
+        },
+      },
+      _count: {
+        select: {
+          machineAccessories: true,
         },
       },
     };

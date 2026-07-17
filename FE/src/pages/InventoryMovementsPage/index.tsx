@@ -140,6 +140,10 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
   );
   const inventorySearch = buildInventorySearch(tab, query);
   const returnToInventory = encodeURIComponent(`/inventory-movements${inventorySearch}`);
+  const splitAccessoryMachineIds = useMemo(
+    () => new Set(movements.filter((movement) => movement.type === 'SPLIT_ACCESSORY' && movement.machine?.id).map((movement) => movement.machine!.id)),
+    [movements],
+  );
 
   async function loadData() {
     setLoading(true);
@@ -295,6 +299,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
             mode={tab}
             canManageInventory={currentRole === 'admin'}
             returnTo={returnToInventory}
+            splitAccessoryMachineIds={splitAccessoryMachineIds}
             onMove={openMovement}
             onView={setSelectedMachine}
           />
@@ -414,6 +419,7 @@ function MachineTable({
   mode,
   canManageInventory,
   returnTo,
+  splitAccessoryMachineIds,
   onMove,
   onView,
 }: {
@@ -422,6 +428,7 @@ function MachineTable({
   mode: 'stock' | 'installed';
   canManageInventory: boolean;
   returnTo: string;
+  splitAccessoryMachineIds: Set<string>;
   onMove: (machine: Machine, action: MovementAction) => void;
   onView: (machine: Machine) => void;
 }) {
@@ -537,11 +544,16 @@ function MachineTable({
                           Tách phụ kiện
                         </button>
                       ) : null}
-                      {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RESERVED') ? (
+                      {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RESERVED') && !splitAccessoryMachineIds.has(machine.id) ? (
                         <button className="secondary-button" onClick={() => onMove(machine, movementActions.sell)} type="button">
                           <ShoppingCart size={15} />
                           Bán
                         </button>
+                      ) : null}
+                      {splitAccessoryMachineIds.has(machine.id) ? (
+                        <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-2 text-xs font-bold text-[#9b5a17]">
+                          Đã tách phụ kiện, không xuất bán
+                        </span>
                       ) : null}
                     </>
                   )}

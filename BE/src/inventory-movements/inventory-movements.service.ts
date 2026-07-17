@@ -38,6 +38,8 @@ export class InventoryMovementsService {
       throw new NotFoundException('Machine not found');
     }
 
+    await this.ensureMachineCanMove(dto.machineId, dto.type);
+
     if (dto.customerId) {
       await this.ensureCustomerExists(dto.customerId);
     }
@@ -183,6 +185,21 @@ export class InventoryMovementsService {
       throw new BadRequestException(
         'machineId, type and toStatus are required',
       );
+    }
+  }
+
+  private async ensureMachineCanMove(machineId: string, type: InventoryMovementType) {
+    if (type !== InventoryMovementType.SELL) return;
+
+    const splitCount = await this.prisma.machineInventoryMovement.count({
+      where: {
+        machineId,
+        type: InventoryMovementType.SPLIT_ACCESSORY,
+      },
+    });
+
+    if (splitCount > 0) {
+      throw new BadRequestException('Cannot sell a machine after accessories have been split');
     }
   }
 
