@@ -1,4 +1,4 @@
-import { Bell, ChevronsLeft, ChevronsRight, LogOut, Plus } from 'lucide-react';
+import { Bell, ChevronDown, ChevronsLeft, ChevronsRight, LogOut, Plus } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -227,10 +227,10 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           </button>
         </div>
 
-        <nav className={`${isSidebarCollapsed ? 'grid w-full justify-items-center gap-2' : 'grid gap-4'} max-[980px]:flex max-[980px]:justify-start max-[980px]:gap-2.5 max-[980px]:overflow-x-auto`}>
-          {visibleNavGroups.map((group) => (
-            <div className={`${isSidebarCollapsed ? 'contents' : 'grid gap-1.5'} max-[980px]:contents`} key={group.label}>
-              <span className={`${isSidebarCollapsed ? 'hidden' : 'px-3 text-[12px] font-medium text-[#8a8a8a]'} max-[980px]:hidden`}>{group.label}</span>
+        <nav className={`${isSidebarCollapsed ? 'grid w-full justify-items-center gap-2' : 'grid gap-3'} max-[980px]:flex max-[980px]:justify-start max-[980px]:gap-2.5 max-[980px]:overflow-x-auto`}>
+          {visibleNavGroups.map((group) => {
+            const groupIsActive = group.items.some((item) => item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path));
+            const itemList = (
               <div className={`${isSidebarCollapsed ? 'contents' : 'grid gap-1'} max-[980px]:flex max-[980px]:gap-2`}>
                 {group.items.map((item) => {
                   const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
@@ -249,13 +249,38 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                   );
                 })}
               </div>
-            </div>
-          ))}
+            );
+
+            if (group.defaultCollapsed && !isSidebarCollapsed) {
+              return (
+                <details className="group grid gap-1.5 max-[980px]:contents" key={group.label} open={groupIsActive ? true : undefined}>
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[#8a8a8a] transition hover:bg-[#f4f4f5] hover:text-[#333333] marker:hidden max-[980px]:hidden">
+                    <span>{group.label}</span>
+                    <ChevronDown className="transition group-open:rotate-180" size={14} />
+                  </summary>
+                  {itemList}
+                </details>
+              );
+            }
+
+            return (
+              <div className={`${isSidebarCollapsed ? 'contents' : 'grid gap-1.5'} max-[980px]:contents`} key={group.label}>
+                <span className={`${isSidebarCollapsed ? 'hidden' : 'px-3 text-[12px] font-medium text-[#8a8a8a]'} max-[980px]:hidden`}>{group.label}</span>
+                {itemList}
+              </div>
+            );
+          })}
         </nav>
 
         <div className={`mt-auto grid gap-2 border-t border-[#e5e5e5] pt-[18px] max-[980px]:hidden ${isSidebarCollapsed ? 'w-full justify-items-center' : ''}`}>
           <Link className={`grid items-center gap-2.5 rounded-lg p-1.5 hover:bg-white ${isSidebarCollapsed ? 'flex h-[42px] w-[42px] justify-center p-0' : 'grid-cols-[40px_minmax(0,1fr)]'}`} title="Thiết lập tài khoản" to="/account-settings">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#e5e5e5] bg-white text-[13px] font-medium text-[#1f1f1f]">{initials(user.fullName || user.email)}</div>
+            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-[#e5e5e5] bg-white text-[13px] font-medium text-[#1f1f1f]">
+              {user.engineerProfile?.photoUrl ? (
+                <img alt={user.fullName || user.email} className="h-full w-full object-cover" src={user.engineerProfile.photoUrl} />
+              ) : (
+                initials(user.fullName || user.email)
+              )}
+            </div>
             <div>
               <strong className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-[#1f1f1f] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{user.fullName || user.email}</strong>
               <span className={`block overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium text-[#666666] ${isSidebarCollapsed ? 'w-0 opacity-0' : ''}`}>{roleLabel(role)}</span>
