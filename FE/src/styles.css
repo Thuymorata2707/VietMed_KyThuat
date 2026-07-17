@@ -402,33 +402,42 @@ p {
 
 .form-panel-heading {
   align-items: flex-start;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-radius: 22px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.045);
   display: flex;
   gap: 12px;
   justify-content: space-between;
+  padding: 22px;
 }
 
 .form-panel-heading span {
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
 .form-panel-heading h2 {
-  color: var(--color-text);
-  font-size: 20px;
-  line-height: 1.25;
-  margin-top: 4px;
+  color: #111827;
+  font-size: 25px;
+  font-weight: 820;
+  line-height: 1.12;
+  margin-top: 6px;
+  text-wrap: balance;
 }
 
 .crud-form-page {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88)),
+    repeating-linear-gradient(135deg, rgba(15, 23, 42, 0.018) 0, rgba(15, 23, 42, 0.018) 1px, transparent 1px, transparent 18px);
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 28px;
+  box-shadow: 0 20px 54px rgba(15, 23, 42, 0.06);
   display: grid;
-  gap: 18px;
-  padding: 18px;
+  gap: 20px;
+  padding: 28px;
 }
 
 .user-form-page-grid {
@@ -438,16 +447,16 @@ p {
 
 .form-grid {
   display: grid;
-  gap: 13px;
+  gap: 18px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .form-grid label {
-  color: var(--color-muted-strong);
+  color: #334155;
   display: grid;
-  font-size: 13px;
-  font-weight: 700;
-  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 720;
+  gap: 8px;
   line-height: 1.25;
   min-width: 0;
 }
@@ -456,13 +465,15 @@ p {
 .form-grid select,
 .form-grid textarea {
   background: #ffffff;
-  border: 1px solid var(--color-field-border);
-  border-radius: var(--radius-sm);
+  border: 1px solid #dbe3ec;
+  border-radius: 18px;
   color: var(--color-text);
-  min-height: 42px;
+  font-size: 14px;
+  font-weight: 560;
+  min-height: 52px;
   min-width: 0;
   outline: none;
-  padding: 0 12px;
+  padding: 0 16px;
   transition:
     background-color 140ms ease,
     border-color 140ms ease,
@@ -488,8 +499,8 @@ p {
 
 .form-grid textarea {
   line-height: 1.45;
-  min-height: 104px;
-  padding: 10px 12px;
+  min-height: 126px;
+  padding: 14px 16px;
   resize: vertical;
 }
 
@@ -606,11 +617,13 @@ p {
 }
 
 .modal-actions {
-  border-top: 1px solid var(--color-border-soft);
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
   display: flex;
   gap: 10px;
   justify-content: flex-end;
   padding-top: 16px;
+  backdrop-filter: blur(10px);
 }
 
 .pagination-bar {

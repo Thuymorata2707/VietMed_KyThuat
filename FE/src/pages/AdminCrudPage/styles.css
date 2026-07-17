@@ -837,65 +837,71 @@
 }
 
 .crud-form-page {
-  background: #ffffff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88)),
+    repeating-linear-gradient(135deg, rgba(15, 23, 42, 0.018) 0, rgba(15, 23, 42, 0.018) 1px, transparent 1px, transparent 18px);
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 28px;
+  box-shadow: 0 20px 54px rgba(15, 23, 42, 0.06);
   display: grid;
-  gap: 18px;
-  padding: 22px;
+  gap: 20px;
+  padding: 28px;
   width: 100%;
 }
 
 .customer-form-page {
-  border-radius: 12px;
-  gap: 20px;
-  padding: 24px;
+  gap: 22px;
+  padding: 28px;
 }
 
 .customer-form-page .form-panel-heading {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(250, 250, 250, 0.96)),
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.07), transparent 36%);
-  border-color: #eeeeee;
-  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-radius: 22px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.045);
 }
 
 .customer-form-sections {
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 .customer-form-section {
-  border: 1px solid #eeeeee;
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 22px;
   display: grid;
-  gap: 16px;
-  padding: 18px;
+  gap: 18px;
+  padding: 22px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.035);
 }
 
 .customer-form-section-heading {
-  border-bottom: 1px solid #eeeeee;
+  align-items: end;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.86);
   display: grid;
-  gap: 4px;
+  gap: 5px;
+  grid-template-columns: minmax(0, 1fr);
   padding-bottom: 14px;
 }
 
 .customer-form-section-heading h3 {
   color: #1f1f1f;
-  font-size: 16.5px;
-  font-weight: 650;
-  line-height: 1.35;
+  font-size: 18px;
+  font-weight: 760;
+  line-height: 1.25;
+  text-wrap: balance;
 }
 
 .customer-form-section-heading p {
-  color: #666666;
+  color: #64748b;
   font-size: 13.5px;
-  line-height: 1.65;
+  line-height: 1.55;
   max-width: 680px;
 }
 
 .customer-form-page .form-grid {
-  gap: 14px;
+  gap: 18px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -905,9 +911,9 @@
 
 .customer-form-page .admin-crud-form label,
 .customer-form-page .searchable-field {
-  color: #333333;
+  color: #334155;
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 720;
   line-height: 1.45;
 }
 
@@ -915,60 +921,73 @@
 .customer-form-page .admin-crud-form select,
 .customer-form-page .admin-crud-form textarea,
 .customer-form-page .searchable-select input {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: #dbe3ec;
+  border-radius: 18px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 560;
   line-height: 1.5;
-  min-height: 48px;
+  min-height: 52px;
+  padding-inline: 16px;
 }
 
 .customer-form-page .admin-crud-form textarea {
-  min-height: 120px;
+  min-height: 128px;
+  padding-block: 14px;
 }
 
 .customer-form-page .modal-actions {
-  background: #ffffff;
-  border-top: 1px solid #eeeeee;
-  bottom: 0;
-  margin-top: 2px;
-  padding-top: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  bottom: -28px;
+  margin: 4px -28px -28px;
+  padding: 16px 28px 20px;
   position: sticky;
+  backdrop-filter: blur(10px);
 }
 
 .crud-form-page .form-panel-heading {
-  background: #fafafa;
-  border: 1px solid #eeeeee;
-  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-radius: 22px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.045);
   margin-bottom: 0;
-  padding: 18px;
+  padding: 22px;
 }
 
 .crud-form-page .form-panel-heading span {
-  color: #18181b;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform:;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
 .crud-form-page .form-panel-heading h2 {
-  font-size: 24px;
-  line-height: 1.18;
+  color: #111827;
+  font-size: 25px;
+  font-weight: 820;
+  line-height: 1.12;
+  margin-top: 6px;
+  text-wrap: balance;
 }
 
 .crud-form-page .admin-crud-form,
 .user-form-page-grid {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .crud-form-page .form-grid {
-  gap: 16px;
+  gap: 18px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .crud-form-page .form-grid label,
 .crud-form-page .searchable-field,
 .user-form-page-grid label {
+  color: #334155;
+  font-size: 13.5px;
+  font-weight: 720;
   gap: 8px;
 }
 
@@ -976,32 +995,52 @@
 .crud-form-page .form-grid select,
 .crud-form-page .form-grid textarea,
 .crud-form-page .searchable-select input {
-  min-height: 46px;
+  border-color: #dbe3ec;
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 560;
+  min-height: 52px;
+  padding-inline: 16px;
+}
+
+.crud-form-page .form-grid textarea {
+  min-height: 126px;
+  padding-block: 14px;
+}
+
+.crud-form-page .modal-actions {
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  bottom: -28px;
+  margin: 4px -28px -28px;
+  padding: 16px 28px 20px;
+  position: sticky;
+  backdrop-filter: blur(10px);
 }
 
 .user-form-page-grid input,
 .user-form-page-grid select,
 .user-form-page-grid textarea {
-  border: 1px solid #d6d6d6;
-  border-radius: 8px;
+  border: 1px solid #dbe3ec;
+  border-radius: 18px;
   color: #1f1f1f;
-  min-height: 46px;
+  min-height: 52px;
   min-width: 0;
   outline: none;
-  padding: 0 12px;
+  padding: 0 16px;
 }
 
 .user-form-page-grid textarea {
-  min-height: 92px;
-  padding: 10px 12px;
+  min-height: 126px;
+  padding: 14px 16px;
   resize: vertical;
 }
 
 .user-form-page-grid label {
-  color: #333333;
+  color: #334155;
   display: grid;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 13.5px;
+  font-weight: 720;
   min-width: 0;
 }
 
