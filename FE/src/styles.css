@@ -611,18 +611,18 @@ p {
 }
 
 .user-form-page-grid .modal-actions {
-  background: #ffffff;
-  margin: 0 -18px -18px;
-  padding: 16px 18px 18px;
+  margin-top: 4px;
 }
 
 .modal-actions {
   background: rgba(255, 255, 255, 0.92);
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 22px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
   display: flex;
   gap: 10px;
   justify-content: flex-end;
-  padding-top: 16px;
+  padding: 14px;
   backdrop-filter: blur(10px);
 }
 

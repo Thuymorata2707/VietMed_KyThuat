@@ -938,10 +938,12 @@
 
 .customer-form-page .modal-actions {
   background: rgba(255, 255, 255, 0.92);
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
-  bottom: -28px;
-  margin: 4px -28px -28px;
-  padding: 16px 28px 20px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 22px;
+  bottom: 0;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
+  margin-top: 4px;
+  padding: 14px;
   position: sticky;
   backdrop-filter: blur(10px);
 }
@@ -1010,10 +1012,12 @@
 
 .crud-form-page .modal-actions {
   background: rgba(255, 255, 255, 0.92);
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
-  bottom: -28px;
-  margin: 4px -28px -28px;
-  padding: 16px 28px 20px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 22px;
+  bottom: 0;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
+  margin-top: 4px;
+  padding: 14px;
   position: sticky;
   backdrop-filter: blur(10px);
 }
