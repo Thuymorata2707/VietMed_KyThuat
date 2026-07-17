@@ -466,13 +466,13 @@ export function AdminWorkAssignmentPage() {
             <strong>{assignedActiveCount}</strong>
             <small>Đang chạy</small>
           </button>
-          <button className={summaryCardClass(filter === 'closed')} onClick={() => setFilter('closed')} type="button">
+          <button className={summaryCardClass(filter === 'all')} onClick={() => setFilter('all')} type="button">
             <span className="inline-flex items-center gap-1.5">
               <CheckCircle2 size={14} />
-              Đã hoàn thành
+              Tất cả
             </span>
-            <strong>{closedCount}</strong>
-            <small>Đã xong</small>
+            <strong>{filterCounts.all}</strong>
+            <small>Toàn bộ việc</small>
           </button>
         </div>
       </section>
@@ -483,8 +483,6 @@ export function AdminWorkAssignmentPage() {
       <SlaCommandPanel
         pendingMachinesCount={pendingMachines.length}
         summary={slaSummary}
-        onShowAction={() => setFilter('action')}
-        onShowReview={() => setFilter('review')}
       />
 
       <section className="grid min-w-0 gap-5 min-[1420px]:grid-cols-[minmax(0,1fr)_minmax(300px,320px)]">
@@ -494,27 +492,11 @@ export function AdminWorkAssignmentPage() {
               <h2 className="text-lg font-semibold text-[#1f1f1f]">{currentFilterLabel}</h2>
               <p className="text-xs font-medium leading-5 text-[#8a8f99]">{filterDescription(filter)}</p>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-[#e4e4e7] bg-[#f4f4f5] p-1" aria-label="Lọc công việc">
-                {filterOptions.map((option) => (
-                  <button
-                    className={`inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-semibold ${
-                      filter === option.value
-                        ? 'bg-white text-[#18181b] shadow-[0_8px_20px_rgba(24,24,27,0.10)]'
-                        : 'bg-transparent text-[#444444] hover:bg-white/70 hover:text-[#18181b]'
-                    }`}
-                    key={option.value}
-                    onClick={() => setFilter(option.value)}
-                    type="button"
-                  >
-                    {option.label}
-                    <span className={`rounded-md px-1.5 py-0.5 text-[11px] ${filter === option.value ? 'bg-[#fff1f3] text-[#b5121b]' : 'bg-white text-[#666666]'}`}>
-                      {filterCounts[option.value]}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <span className="text-[13px] font-semibold text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} việc đang hiển thị`}</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#ededf0] bg-white px-3 py-2">
+              <span className="text-[13px] font-semibold text-[#666666]">
+                Đang xem: <strong className="text-[#18181b]">{currentFilterLabel}</strong>
+              </span>
+              <span className="text-[13px] font-semibold text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} việc hiển thị`}</span>
             </div>
             <div className="grid gap-2 min-[861px]:grid-cols-[minmax(260px,1fr)_190px_220px]">
               <label className="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-[#d4d4d8] bg-white px-3 text-[#666666] focus-within:border-[#18181b] focus-within:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]">
@@ -675,47 +657,33 @@ function summaryCardClass(active: boolean) {
 }
 
 function SlaCommandPanel({
-  onShowAction,
-  onShowReview,
   pendingMachinesCount,
   summary,
 }: {
-  onShowAction: () => void;
-  onShowReview: () => void;
   pendingMachinesCount: number;
   summary: ReturnType<typeof buildSlaSummary>;
 }) {
   const hasRisk = summary.overdue.length || summary.dueSoon.length || summary.waitingParts.length || pendingMachinesCount;
+  if (!hasRisk) return null;
 
   return (
-    <section className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_8px_24px_rgba(24,24,27,0.05)] xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+    <section className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_8px_24px_rgba(24,24,27,0.05)]">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${hasRisk ? 'bg-[#fff1f3] text-[#b5121b]' : 'bg-[#eefaf3] text-[#177245]'}`}>
-            {hasRisk ? <AlertTriangle size={18} /> : <Clock3 size={18} />}
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff1f3] text-[#b5121b]">
+            <AlertTriangle size={18} />
           </span>
           <div>
             <span className="text-xs font-semibold text-[#666666]">SLA vận hành</span>
-            <h2 className="text-lg font-semibold text-[#1f1f1f]">Cảnh báo điều phối trong ngày</h2>
+            <h2 className="text-lg font-semibold text-[#1f1f1f]">Cảnh báo cần chú ý</h2>
           </div>
         </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-          <SlaMetric label="Quá hạn SLA" tone={summary.overdue.length ? 'danger' : 'good'} value={summary.overdue.length} />
-          <SlaMetric label="Cần xử lý 24h" tone={summary.dueSoon.length ? 'warn' : 'good'} value={summary.dueSoon.length} />
-          <SlaMetric label="Chờ linh kiện" tone={summary.waitingParts.length ? 'danger' : 'neutral'} value={summary.waitingParts.length} />
-          <SlaMetric label="Chờ duyệt hồ sơ" tone={summary.pendingReview.length ? 'warn' : 'good'} value={summary.pendingReview.length} />
-          <SlaMetric label="Máy chờ xác minh" tone={pendingMachinesCount ? 'warn' : 'good'} value={pendingMachinesCount} />
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {summary.overdue.length ? <SlaMetric label="Quá hạn SLA" tone="danger" value={summary.overdue.length} /> : null}
+          {summary.dueSoon.length ? <SlaMetric label="Cần xử lý 24h" tone="warn" value={summary.dueSoon.length} /> : null}
+          {summary.waitingParts.length ? <SlaMetric label="Chờ linh kiện" tone="danger" value={summary.waitingParts.length} /> : null}
+          {pendingMachinesCount ? <SlaMetric label="Máy chờ xác minh" tone="warn" value={pendingMachinesCount} /> : null}
         </div>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-        <button className="primary-button justify-center" onClick={onShowAction} type="button">
-          <AlertTriangle size={16} />
-          Xem việc cần xử lý
-        </button>
-        <button className="secondary-button justify-center" onClick={onShowReview} type="button">
-          <ClipboardCheck size={16} />
-          Xem hồ sơ chờ duyệt
-        </button>
       </div>
     </section>
   );
