@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, Download, FileText, Loader2, RefreshCw, Users } from 'lucide-react';
+import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, Download, FileText, Loader2, RefreshCw, Wrench } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -154,13 +154,23 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const weeklyRowCount = summary?.weeklyReports?.reduce((sum, report) => sum + report.rows.length, 0) ?? 0;
   const weeklyNeedsRevision = summary?.weeklyReports?.filter((report) => report.status === 'NEEDS_REVISION').length ?? 0;
   const weeklySubmitted = summary?.weeklyReports?.filter((report) => report.status === 'SUBMITTED').length ?? 0;
+  const weeklyApproved = summary?.weeklyReports?.filter((report) => report.status === 'APPROVED').length ?? 0;
   const closedActivities = summary?.activities?.filter((activity) => ['COMPLETED', 'INSTALLED', 'APPROVED'].includes(activity.status)).length ?? 0;
   const unresolvedActivities = Math.max((summary?.activities.length ?? 0) - closedActivities, 0);
+  const completionRate = summary?.activities.length ? Math.round((closedActivities / summary.activities.length) * 100) : 0;
   const reportHomePath = isAdmin ? '/engineer-performance' : '/my-reports';
   const currentWeeklyReportHref = buildWeeklyReportHref(weekStart, isAdmin ? engineerId : '');
   const currentTechnicalReportHref = buildTechnicalReportHref(from, to, isAdmin ? engineerId : user.id, isAdmin, reportHomePath);
   const sortedWeeklyReports = useMemo(
     () => [...(summary?.weeklyReports ?? [])].sort((left, right) => right.weekStart.localeCompare(left.weekStart)),
+    [summary],
+  );
+  const currentWeekReport = sortedWeeklyReports.find((report) => toDateInput(startOfWeek(new Date(`${report.weekStart}T00:00:00`))) === weekStart);
+  const recentActivities = useMemo(
+    () =>
+      [...(summary?.activities ?? [])]
+        .sort((left, right) => right.date.localeCompare(left.date))
+        .slice(0, 10),
     [summary],
   );
   const topCustomers = useMemo(
@@ -209,12 +219,12 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       <PageTitle
         eyebrow={isAdmin ? 'Báo cáo vận hành' : 'Báo cáo cá nhân'}
         title={isAdmin ? 'Hiệu suất kỹ sư' : 'Báo cáo của tôi'}
-        description={isAdmin ? 'Khối lượng công việc theo khoảng thời gian.' : 'Việc đã làm, báo cáo và hiệu suất cá nhân.'}
+        description={isAdmin ? 'Theo dõi tải việc, chất lượng báo cáo và khách hàng theo từng kỹ sư.' : 'Một màn hình để xem việc đã làm, báo cáo tuần và các điểm cần xử lý.'}
       />
 
       {error ? <Notice message={error} /> : null}
 
-      <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
+      <section className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-white/92 p-4 shadow-[0_18px_44px_rgba(15,23,42,0.06)] backdrop-blur">
         <div className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_150px_150px_150px_auto]">
           {isAdmin ? (
             <label className="grid gap-1.5 text-sm font-medium text-[#333333]">
@@ -259,39 +269,57 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 border-t border-[#eeeeee] pt-3">
-          <button className="secondary-button" onClick={() => setDateRange(addDays(today, -60), today)} type="button">60 ngày</button>
-          <button className="secondary-button" onClick={() => setDateRange(startOfMonth(today), today)} type="button">Tháng này</button>
-          <button className="secondary-button" onClick={() => setDateRange(new Date('2026-05-01T00:00:00'), new Date('2026-05-31T00:00:00'))} type="button">Dữ liệu T05/2026</button>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eeeeee] pt-3">
+          <span className="text-xs font-semibold text-[#71717a]">Khoảng xem nhanh</span>
+          <div className="flex flex-wrap gap-2">
+            <button className="secondary-button" onClick={() => setDateRange(addDays(today, -60), today)} type="button">60 ngày</button>
+            <button className="secondary-button" onClick={() => setDateRange(startOfMonth(today), today)} type="button">Tháng này</button>
+            <button className="secondary-button" onClick={() => setDateRange(new Date('2026-05-01T00:00:00'), new Date('2026-05-31T00:00:00'))} type="button">Dữ liệu T05/2026</button>
+          </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-6 gap-3 max-[1180px]:grid-cols-3 max-sm:grid-cols-2">
-        <MetricCard icon={<BarChart3 size={18} />} label="Tổng việc" value={summary?.totals.activities ?? 0} />
-        <MetricCard icon={<CalendarDays size={18} />} label="Lắp đặt" value={summary?.totals.installations ?? 0} />
-        <MetricCard icon={<BarChart3 size={18} />} label="Sửa chữa" value={summary?.totals.repairs ?? 0} />
-        <MetricCard icon={<BarChart3 size={18} />} label="Bảo trì" value={summary?.totals.maintenances ?? 0} />
-        <MetricCard icon={<Users size={18} />} label="Khách hàng" value={summary?.totals.customers ?? 0} />
-        <MetricCard icon={<BarChart3 size={18} />} label="Máy tác động" value={summary?.totals.machines ?? 0} />
+      <section className="grid grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-4 max-[1120px]:grid-cols-1">
+        <article className="relative overflow-hidden rounded-[28px] bg-[#18181b] p-5 text-white shadow-[0_22px_54px_rgba(15,23,42,0.2)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(20,184,166,0.22),transparent_32%),radial-gradient(circle_at_85%_15%,rgba(255,255,255,0.12),transparent_26%)]" />
+          <div className="relative grid gap-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <span className="text-[12px] font-semibold text-white/62">Tổng quan kỳ báo cáo</span>
+                <h2 className="mt-2 text-[clamp(30px,4vw,46px)] font-extrabold leading-none tracking-[-0.04em]">{summary?.totals.activities ?? 0} việc</h2>
+                <p className="mt-2 max-w-[560px] text-sm leading-6 text-white/68">
+                  {selectedEngineerName} đã xử lý {summary?.totals.machines ?? 0} máy tại {summary?.totals.customers ?? 0} khách hàng trong khoảng {formatDate(from)} - {formatDate(to)}.
+                </p>
+              </div>
+              <div className="rounded-[18px] border border-white/12 bg-white/10 px-4 py-3 text-right backdrop-blur">
+                <span className="block text-xs font-semibold text-white/62">Hoàn tất</span>
+                <strong className="mt-1 block text-3xl leading-none">{completionRate}%</strong>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <MiniMetric icon={<CalendarDays size={16} />} label="Lắp đặt" value={summary?.totals.installations ?? 0} />
+              <MiniMetric icon={<Wrench size={16} />} label="Sửa chữa" value={summary?.totals.repairs ?? 0} />
+              <MiniMetric icon={<BarChart3 size={16} />} label="Bảo trì" value={summary?.totals.maintenances ?? 0} />
+            </div>
+          </div>
+        </article>
+
+        <aside className="grid gap-3">
+          <FocusCard
+            icon={weeklyNeedsRevision > 0 ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+            label="Báo cáo cần sửa"
+            tone={weeklyNeedsRevision > 0 ? 'danger' : 'good'}
+            value={weeklyNeedsRevision}
+          />
+          <FocusCard icon={<FileText size={18} />} label="Báo cáo chờ duyệt" tone={weeklySubmitted > 0 ? 'warn' : 'good'} value={weeklySubmitted} />
+          <FocusCard icon={<CheckCircle2 size={18} />} label="Việc đã đóng / chưa đóng" note={`${unresolvedActivities} việc chưa đóng`} tone={unresolvedActivities > 0 ? 'warn' : 'good'} value={closedActivities} />
+        </aside>
       </section>
 
-      <section className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-        <PanelHeader
-          eyebrow={isAdmin ? 'Chất lượng kỹ thuật' : 'Việc cần chú ý'}
-          title={isAdmin ? 'Rủi ro báo cáo và hoàn tất' : 'Báo cáo và phiếu cần xử lý'}
-          subtitle={isAdmin ? 'Báo cáo bị trả về, chờ duyệt và việc chưa đóng.' : 'Báo cáo bị trả về, chờ duyệt và việc chưa đóng.'}
-        />
-        <div className="grid gap-3 md:grid-cols-4">
-          <QualityCard label="Báo cáo cần sửa" value={weeklyNeedsRevision} tone={weeklyNeedsRevision > 0 ? 'danger' : 'good'} />
-          <QualityCard label="Báo cáo chờ duyệt" value={weeklySubmitted} tone={weeklySubmitted > 0 ? 'warn' : 'good'} />
-          <QualityCard label="Việc đã đóng" value={closedActivities} tone="good" />
-          <QualityCard label="Việc chưa đóng" value={unresolvedActivities} tone={unresolvedActivities > 0 ? 'warn' : 'good'} />
-        </div>
-      </section>
-
-      <section className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-4 max-[1120px]:grid-cols-1">
-        <div className="rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-          <PanelHeader eyebrow="Cơ cấu công việc" title="Tỷ trọng theo loại việc" subtitle={selectedEngineerName || ''} />
+      <section className="grid grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-4 max-[1120px]:grid-cols-1">
+        <div className="rounded-[22px] border border-[#e5e5e5] bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.045)]">
+          <PanelHeader eyebrow="Cơ cấu công việc" title="Tỷ trọng theo loại việc" subtitle="Nhìn nhanh loại việc chiếm nhiều thời gian nhất." />
           <div className="mt-4 grid gap-3">
             {workMix.map((item) => (
               <div className="grid gap-1.5" key={item.label}>
@@ -308,64 +336,64 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
           <WorkDonut items={workMix} />
         </div>
 
-        <div className="rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-          <PanelHeader eyebrow="Khách hàng" title="Khách hàng xử lý nhiều nhất" subtitle={`${summary?.totals.customers ?? 0} khách trong khoảng này`} />
-          <div className="mt-4 grid gap-2">
-            {topCustomers.length ? topCustomers.map((customer) => {
-              const total = customer.installationCount + customer.repairCount + customer.maintenanceCount;
-              const maxCustomer = Math.max(1, ...topCustomers.map((item) => item.installationCount + item.repairCount + item.maintenanceCount));
-
-              return (
-                <div className="grid gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3" key={customer.id || customer.name}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="text-sm text-[#1f1f1f]">{customer.name}</strong>
-                    <span className="rounded-lg bg-white px-2 py-1 text-xs font-medium text-[#333333]">{displayCustomerStatus(customer.status)}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-[#eeeeee]">
-                    <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${Math.round((total / maxCustomer) * 100)}%` }} />
-                  </div>
-                  <span className="text-xs text-[#666666]">{total} việc, {customer.machineCount} máy - {[customer.code, customer.province, customer.phone].filter(Boolean).join(' - ') || '-'}</span>
-                </div>
-              );
-            }) : <EmptyState text="Chưa có khách hàng trong khoảng này." />}
-          </div>
-        </div>
-      </section>
-
-      <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
-          <PanelHeader eyebrow="Báo cáo tuần" title="Theo dõi báo cáo đã gửi" subtitle={`${sortedWeeklyReports.length} tuần, ${weeklyRowCount} dòng báo cáo trong khoảng này`} />
-          <Link className="primary-button" to={currentWeeklyReportHref}>
-            <FileText size={16} />
-            Mở tuần đang xem
-          </Link>
-        </div>
-        <div className="grid gap-3 p-4">
-          {sortedWeeklyReports.length ? sortedWeeklyReports.map((report) => (
-            <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto]" key={report.id}>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <strong className="text-sm text-[#1f1f1f]">Tuần {formatDate(report.weekStart)}</strong>
-                  <span className="rounded-lg bg-[#fafafa] px-2 py-1 text-xs font-medium text-[#333333]">{weeklyStatusLabel(report.status)}</span>
-                  <span className="text-xs text-[#666666]">{report.rows.length} dòng</span>
-                </div>
-                <p className="mt-1 line-clamp-2 text-sm text-[#666666]">
-                  {report.note || firstWeeklyReportSummary(report) || 'Chưa có ghi chú hoặc nội dung báo cáo.'}
-                </p>
-                {report.submittedAt ? <span className="mt-1 block text-xs text-[#8a8a8a]">Gửi ngày {formatDate(report.submittedAt)}</span> : null}
-              </div>
-              <Link className="secondary-button self-center" to={buildWeeklyReportHref(report.weekStart, isAdmin ? engineerId : '')}>
+        <div className="grid gap-4">
+          <div className="rounded-[22px] border border-[#e5e5e5] bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.045)]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <PanelHeader eyebrow="Tuần đang xem" title={currentWeekReport ? `Báo cáo tuần ${formatDate(currentWeekReport.weekStart)}` : 'Chưa có báo cáo tuần'} subtitle={`${weeklyApproved} tuần đã duyệt, ${weeklyRowCount} dòng báo cáo trong kỳ.`} />
+              <Link className="primary-button" to={currentWeeklyReportHref}>
                 <FileText size={16} />
                 Mở báo cáo
               </Link>
             </div>
-          )) : <EmptyState text="Chưa có dòng báo cáo tuần trong khoảng này." />}
+            <div className="mt-4 rounded-[16px] border border-[#eeeeee] bg-[#fafafa] p-4">
+              {currentWeekReport ? (
+                <div className="grid gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-lg bg-white px-2 py-1 text-xs font-semibold text-[#333333]">{weeklyStatusLabel(currentWeekReport.status)}</span>
+                    <span className="text-xs font-medium text-[#666666]">{currentWeekReport.rows.length} dòng công việc</span>
+                  </div>
+                  <p className="line-clamp-3 text-sm leading-6 text-[#4b5563]">{currentWeekReport.note || firstWeeklyReportSummary(currentWeekReport) || 'Chưa có ghi chú hoặc nội dung báo cáo.'}</p>
+                </div>
+              ) : (
+                <EmptyState text="Tuần đang chọn chưa có báo cáo. Mở báo cáo tuần để cập nhật nội dung." />
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[22px] border border-[#e5e5e5] bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.045)]">
+            <PanelHeader eyebrow="Khách hàng nổi bật" title="Nơi phát sinh nhiều việc" subtitle={`${summary?.totals.customers ?? 0} khách hàng trong khoảng này`} />
+            <div className="mt-4 grid gap-2">
+              {topCustomers.length ? topCustomers.slice(0, 5).map((customer) => {
+                const total = customer.installationCount + customer.repairCount + customer.maintenanceCount;
+                const maxCustomer = Math.max(1, ...topCustomers.map((item) => item.installationCount + item.repairCount + item.maintenanceCount));
+
+                return (
+                  <div className="grid gap-2 rounded-[14px] bg-[#fafafa] p-3" key={customer.id || customer.name}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <strong className="text-sm text-[#1f1f1f]">{customer.name}</strong>
+                      <span className="text-xs font-semibold text-[#333333]">{total} việc</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[#eeeeee]">
+                      <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${Math.round((total / maxCustomer) * 100)}%` }} />
+                    </div>
+                    <span className="text-xs text-[#666666]">{[customer.code, customer.province, customer.phone].filter(Boolean).join(' - ') || displayCustomerStatus(customer.status)}</span>
+                  </div>
+                );
+              }) : <EmptyState text="Chưa có khách hàng trong khoảng này." />}
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-        <div className="border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
-          <PanelHeader eyebrow="Timeline" title="Công việc đã hoàn thành" subtitle={`${summary?.activities.length ?? 0} đầu việc`} />
+      <section className="overflow-hidden rounded-[22px] border border-[#e5e5e5] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.045)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
+          <PanelHeader eyebrow="Nhật ký gần đây" title="Công việc trong kỳ" subtitle={`${summary?.activities.length ?? 0} đầu việc, hiển thị 10 dòng mới nhất`} />
+          {currentTechnicalReportHref ? (
+            <Link className="secondary-button" to={currentTechnicalReportHref}>
+              <BarChart3 size={16} />
+              Xem thống kê
+            </Link>
+          ) : null}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] border-collapse text-left text-sm">
@@ -378,7 +406,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             </thead>
             <tbody>
               {loading ? <LoadingRows /> : null}
-              {!loading && summary?.activities.length ? summary.activities.map((activity) => (
+              {!loading && recentActivities.length ? recentActivities.map((activity) => (
                 <tr key={`${activity.kind}-${activity.id}`}>
                   <td className={cellClass}>{formatDate(activity.date)}</td>
                   <td className={cellClass}><span className="rounded-lg bg-[#fafafa] px-2 py-1 text-xs font-medium text-[#333333]">{activityKindLabel(activity.kind)}</span></td>
@@ -391,7 +419,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
                   <td className={cellClass}>{activity.result || activity.title}</td>
                 </tr>
               )) : null}
-              {!loading && !summary?.activities.length ? (
+              {!loading && !recentActivities.length ? (
                 <tr>
                   <td className="px-4 py-8 text-center text-sm text-[#666666]" colSpan={6}>Chưa có công việc hoàn thành trong khoảng này.</td>
                 </tr>
@@ -410,19 +438,19 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   }
 }
 
-function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
+function MiniMetric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
   return (
-    <div className="grid min-h-[104px] gap-2 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-[#666666]">{label}</span>
-        <span className="text-[#18181b]">{icon}</span>
+    <div className="rounded-[18px] border border-white/12 bg-white/10 p-4 backdrop-blur">
+      <div className="flex items-center justify-between gap-3 text-white/70">
+        <span className="text-sm font-semibold">{label}</span>
+        {icon}
       </div>
-      <strong className="text-3xl leading-none text-[#1f1f1f]">{value}</strong>
+      <strong className="mt-3 block text-3xl leading-none tracking-[-0.03em] text-white">{value}</strong>
     </div>
   );
 }
 
-function QualityCard({ label, tone, value }: { label: string; tone: 'good' | 'warn' | 'danger'; value: number }) {
+function FocusCard({ icon, label, note, tone, value }: { icon: ReactNode; label: string; note?: string; tone: 'good' | 'warn' | 'danger'; value: number }) {
   const toneClass = tone === 'good'
     ? 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]'
     : tone === 'danger'
@@ -430,9 +458,15 @@ function QualityCard({ label, tone, value }: { label: string; tone: 'good' | 'wa
       : 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]';
 
   return (
-    <div className={`grid min-h-[96px] gap-2 rounded-lg border p-4 ${toneClass}`}>
-      <span className="text-sm font-semibold">{label}</span>
-      <strong className="text-3xl leading-none">{value}</strong>
+    <div className={`grid min-h-[118px] content-between gap-3 rounded-[20px] border p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] ${toneClass}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold">{label}</span>
+        {icon}
+      </div>
+      <div>
+        <strong className="block text-3xl leading-none tracking-[-0.03em]">{value}</strong>
+        {note ? <span className="mt-1 block text-xs font-semibold opacity-75">{note}</span> : null}
+      </div>
     </div>
   );
 }
