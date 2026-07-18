@@ -21,6 +21,7 @@ const AdminRegionsPage = lazy(() => import('../../pages/AdminRegionsPage').then(
 const AdminRolesPage = lazy(() => import('../../pages/AdminRolesPage').then((module) => ({ default: module.AdminRolesPage })));
 const AdminUsersPage = lazy(() => import('../../pages/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })));
 const AdminWorkAssignmentPage = lazy(() => import('../../pages/AdminWorkAssignmentPage').then((module) => ({ default: module.AdminWorkAssignmentPage })));
+const ApplicationSupportPage = lazy(() => import('../../pages/ApplicationSupportPage').then((module) => ({ default: module.ApplicationSupportPage })));
 const DashboardPage = lazy(() => import('../../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const EngineerPerformancePage = lazy(() => import('../../pages/EngineerPerformancePage').then((module) => ({ default: module.EngineerPerformancePage })));
 const EngineerCustomersPage = lazy(() => import('../../pages/EngineerCustomersPage').then((module) => ({ default: module.EngineerCustomersPage })));
@@ -122,6 +123,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Hồ sơ khách hàng'
     : location.pathname.startsWith('/knowledge-base')
       ? 'Chia sẻ kinh nghiệm'
+    : location.pathname.startsWith('/application-support')
+      ? 'Hỗ trợ app'
     : location.pathname.startsWith('/technical-statistics')
       ? 'Thống kê kỹ thuật'
     : location.pathname.startsWith('/machine-components') || location.pathname.startsWith('/component-accessories')
@@ -416,6 +419,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           />
           <Route path="/account-settings" element={<AccountSettingsPage onUserUpdated={onUserUpdated} user={user} />} />
           <Route path="/daily-work" element={<WorkReportsPage currentRole={role} user={user} />} />
+          <Route
+            path="/application-support"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <ApplicationSupportPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
           <Route
             path="/daily-reports"
             element={

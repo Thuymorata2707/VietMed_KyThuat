@@ -71,6 +71,19 @@ type TicketRowsResponse = {
   }>;
 };
 
+type ApplicationSupportRowsResponse = {
+  counts: {
+    total: number;
+    resolved: number;
+    followUp: number;
+    knowledgeCandidate: number;
+  };
+  rows: Array<WeeklyReportRow & {
+    sourceId: string;
+    sourceType: 'ApplicationSupportCase';
+  }>;
+};
+
 const statusLabels: Record<WeeklyReportStatus, string> = {
   DRAFT: 'Nháp',
   SUBMITTED: 'Đã gửi',
@@ -157,6 +170,17 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     },
   });
 
+  const applicationSupportRowsQuery = useQuery({
+    enabled: !isAdmin || Boolean(selectedEngineerId),
+    queryKey: queryKeys.weeklyReports.applicationSupportRows(reportParams),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const result = await apiFetch<ApplicationSupportRowsResponse | null>(`/application-support/weekly-report-rows?${reportParams}`);
+      return result ?? null;
+    },
+  });
+
   useEffect(() => {
     if (!reportQuery.isSuccess) return;
     const nextReport = reportQuery.data ?? null;
@@ -168,9 +192,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
 
   const dailyWorkRows = dailyWorkRowsQuery.data ?? null;
   const ticketRows = ticketRowsQuery.data ?? null;
+  const applicationSupportRows = applicationSupportRowsQuery.data ?? null;
   const loading = reportQuery.isLoading || reportQuery.isFetching || engineersQuery.isFetching;
   const loadingDailyWorkRows = dailyWorkRowsQuery.isLoading || dailyWorkRowsQuery.isFetching;
   const loadingTicketRows = ticketRowsQuery.isLoading || ticketRowsQuery.isFetching;
+  const loadingApplicationSupportRows = applicationSupportRowsQuery.isLoading || applicationSupportRowsQuery.isFetching;
 
   useEffect(() => {
     if (isAdmin && !selectedEngineerId) return;
@@ -242,6 +268,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     (reportQuery.error instanceof Error ? reportQuery.error.message : '') ||
     (dailyWorkRowsQuery.error instanceof Error ? dailyWorkRowsQuery.error.message : '') ||
     (ticketRowsQuery.error instanceof Error ? ticketRowsQuery.error.message : '') ||
+    (applicationSupportRowsQuery.error instanceof Error ? applicationSupportRowsQuery.error.message : '') ||
     (mutationError instanceof Error ? mutationError.message : '');
 
   function updateRow(index: number, patch: Partial<WeeklyReportRow>) {
@@ -266,6 +293,12 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     if (!ticketRows?.rows.length) return;
     mergeImportedRows(ticketRows.rows);
     setSuccess('Đã đưa phiếu hoàn thành trong tuần vào báo cáo nháp.');
+  }
+
+  function importApplicationSupportRows() {
+    if (!applicationSupportRows?.rows.length) return;
+    mergeImportedRows(applicationSupportRows.rows);
+    setSuccess('Đã đưa ca hỗ trợ app trong tuần vào báo cáo nháp.');
   }
 
   function mergeImportedRows(imported: WeeklyReportRow[]) {
@@ -504,6 +537,9 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 font-medium text-[#333333]">
               {loadingTicketRows ? 'Đang tải phiếu...' : `${ticketRows?.counts.total ?? 0} phiếu hoàn thành`}
             </span>
+            <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 font-medium text-[#333333]">
+              {loadingApplicationSupportRows ? 'Đang tải hỗ trợ app...' : `${applicationSupportRows?.counts.total ?? 0} hỗ trợ app`}
+            </span>
             <span className="rounded-lg border border-[#b9e8ca] bg-[#eefaf3] px-3 py-2 font-medium text-[#177245]">
               Đã duyệt: {dailyWorkRows?.counts.byStatus.APPROVED ?? 0}
             </span>
@@ -518,6 +554,12 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             </span>
             <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
               Bảo trì: {ticketRows?.counts.maintenances ?? 0}
+            </span>
+            <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
+              App đã xử lý: {applicationSupportRows?.counts.resolved ?? 0}
+            </span>
+            <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
+              App follow-up: {applicationSupportRows?.counts.followUp ?? 0}
             </span>
             {Object.entries(dailyWorkRows?.counts.byType ?? {}).slice(0, 4).map(([type, count]) => (
               <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]" key={type}>
@@ -536,6 +578,10 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             <button className="primary-button justify-center" disabled={saving || !canEdit || !ticketRows?.rows.length} onClick={importTicketRows} type="button">
               <Sparkles size={16} />
               Lấy từ phiếu hoàn thành
+            </button>
+            <button className="secondary-button justify-center" disabled={saving || !canEdit || !applicationSupportRows?.rows.length} onClick={importApplicationSupportRows} type="button">
+              <Sparkles size={16} />
+              Lấy hỗ trợ app
             </button>
           </div>
         ) : null}

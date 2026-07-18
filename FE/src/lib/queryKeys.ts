@@ -55,6 +55,11 @@ export const queryKeys = {
     report: (params: string) => ['weekly-reports', 'report', params] as const,
     dailyRows: (params: string) => ['weekly-reports', 'daily-rows', params] as const,
     ticketRows: (params: string) => ['weekly-reports', 'ticket-rows', params] as const,
+    applicationSupportRows: (params: string) => ['weekly-reports', 'application-support-rows', params] as const,
+  },
+  applicationSupport: {
+    list: (params: string) => ['application-support', 'list', params] as const,
+    options: ['application-support', 'options'] as const,
   },
   engineerPerformance: {
     engineers: ['engineer-performance', 'engineers'] as const,

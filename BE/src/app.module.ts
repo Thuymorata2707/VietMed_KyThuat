@@ -3,6 +3,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ApplicationSupportModule } from './application-support/application-support.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { AuthModule } from './auth/auth.module';
 import { BusinessLinesModule } from './business-lines/business-lines.module';
@@ -35,6 +36,7 @@ import { WorkOperationsModule } from './work-operations/work-operations.module';
   imports: [
     PrismaModule,
     AppConfigModule,
+    ApplicationSupportModule,
     AuditLogsModule,
     AttachmentsModule,
     AuthModule,
