@@ -17,6 +17,9 @@ export class ApplicationSupportService {
 
   async findMany(query: ApplicationSupportQueryDto, user: RequestUser) {
     this.assertCanUse(user);
+    if (isEngineer(user)) {
+      await this.ensureApplicationSpecialist(user.id);
+    }
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const where: Prisma.ApplicationSupportCaseWhereInput = {
@@ -50,8 +53,10 @@ export class ApplicationSupportService {
 
   async create(dto: SaveApplicationSupportCaseDto, user: RequestUser) {
     this.assertCanUse(user);
+    this.assertCanManageCase(user);
     const engineerId = this.resolveEngineerId(dto.engineerId, user);
     await this.ensureEngineer(engineerId, user);
+    await this.ensureApplicationSpecialist(engineerId);
     await this.ensureLinkedEntities(dto, user);
 
     return this.prisma.applicationSupportCase.create({
@@ -62,8 +67,10 @@ export class ApplicationSupportService {
 
   async update(id: string, dto: SaveApplicationSupportCaseDto, user: RequestUser) {
     const current = await this.findAccessible(id, user);
+    this.assertCanManageCase(user);
     const engineerId = this.resolveEngineerId(dto.engineerId ?? current.engineerId, user);
     await this.ensureEngineer(engineerId, user);
+    await this.ensureApplicationSpecialist(engineerId);
     await this.ensureLinkedEntities(dto, user);
 
     return this.prisma.applicationSupportCase.update({
@@ -75,6 +82,7 @@ export class ApplicationSupportService {
 
   async remove(id: string, user: RequestUser) {
     await this.findAccessible(id, user);
+    this.assertCanManageCase(user);
     await this.prisma.applicationSupportCase.delete({ where: { id } });
     return { ok: true };
   }
@@ -122,6 +130,12 @@ export class ApplicationSupportService {
   private assertCanUse(user: RequestUser) {
     if (!isAdmin(user) && !isManager(user) && !isEngineer(user)) {
       throw new ForbiddenException('Forbidden');
+    }
+  }
+
+  private assertCanManageCase(user: RequestUser) {
+    if (!isEngineer(user)) {
+      throw new ForbiddenException('Only lab application engineers can manage application support cases');
     }
   }
 
@@ -198,6 +212,16 @@ export class ApplicationSupportService {
     }
     if ((isAdmin(user) || isManager(user)) && engineer.regionId !== user.regionId) {
       throw new ForbiddenException('Engineer is outside your region');
+    }
+  }
+
+  private async ensureApplicationSpecialist(engineerId: string) {
+    const engineer = await this.prisma.user.findUnique({
+      where: { id: engineerId },
+      include: { engineerProfile: true, role: true },
+    });
+    if (!engineer || engineer.engineerProfile?.expertiseGroup !== 'LAB_TESTING') {
+      throw new ForbiddenException('Only lab application engineers can use application support');
     }
   }
 

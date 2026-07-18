@@ -51,7 +51,7 @@ export const navItems: NavItem[] = [
   { path: '/audit-logs', label: 'Audit log', icon: <ShieldCheck size={18} />, roles: ['admin'] },
   { path: '/my-tasks', label: 'Điều phối & duyệt', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
   { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
-  { path: '/application-support', label: 'Hỗ trợ app', icon: <Headphones size={18} />, roles: ['admin', 'engineer'] },
+  { path: '/application-support', label: 'Hỗ trợ app', icon: <Headphones size={18} />, roles: ['engineer'] },
 ];
 
 export const navGroups: NavGroup[] = [
@@ -61,7 +61,7 @@ export const navGroups: NavGroup[] = [
       { path: '/', label: 'Tổng quan', icon: <Gauge size={18} />, roles: ['admin', 'manager', 'engineer'] },
       { path: '/my-tasks', label: 'Điều phối & duyệt', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
       { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
-      { path: '/application-support', label: 'Hỗ trợ app', icon: <Headphones size={18} />, roles: ['admin', 'engineer'] },
+      { path: '/application-support', label: 'Hỗ trợ app', icon: <Headphones size={18} />, roles: ['engineer'] },
       { path: '/service-tickets', label: 'Phiếu dịch vụ', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
     ],
   },

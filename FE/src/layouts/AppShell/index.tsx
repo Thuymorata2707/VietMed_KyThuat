@@ -110,8 +110,14 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     },
   });
   const role = getRoleName(user);
-  const visibleNavItems = navItemsForRole(role);
-  const visibleNavGroups = navGroupsForRole(role);
+  const userCanUseApplicationSupport = role === 'engineer' && user.engineerProfile?.expertiseGroup === 'LAB_TESTING';
+  const visibleNavItems = navItemsForRole(role).filter((item) => item.path !== '/application-support' || userCanUseApplicationSupport);
+  const visibleNavGroups = navGroupsForRole(role)
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.path !== '/application-support' || userCanUseApplicationSupport),
+    }))
+    .filter((group) => group.items.length > 0);
   const activeNavItem = visibleNavItems.find((item) =>
     item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path),
   );
@@ -423,11 +429,15 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/application-support"
             element={
               <RequireRole
-                allowedRoles={['admin', 'engineer']}
+                allowedRoles={['engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <ApplicationSupportPage currentRole={role} user={user} />
+                {userCanUseApplicationSupport ? (
+                  <ApplicationSupportPage currentRole={role} user={user} />
+                ) : (
+                  <AccessDeniedPage message="Chỉ kỹ sư xét nghiệm/application specialist được dùng chức năng hỗ trợ app." />
+                )}
               </RequireRole>
             }
           />
