@@ -54,6 +54,7 @@ export class InstallationsService {
     assertPermission(actor, PERMISSIONS.INSTALLATION_CREATE);
     this.validateCreate(dto);
 
+    const createdByEngineer = isEngineer(actor);
     const installedById = isEngineer(actor) ? actor.id : dto.installedById;
 
     const [selectedMachine, customer, engineer, businessLine, machineModel] = await Promise.all([
@@ -112,7 +113,9 @@ export class InstallationsService {
         const installation = await tx.machineInstallation.create({
           data: {
             code: installationCode,
-            status: InstallationStatus.PENDING,
+            status: createdByEngineer
+              ? InstallationStatus.INSTALLED
+              : InstallationStatus.PENDING,
             machineId: machine?.id ?? null,
             plannedMachineModelId: machineModel?.id ?? null,
             plannedModelName:
@@ -156,8 +159,60 @@ export class InstallationsService {
             deviceConditionNote: this.cleanOptionalString(
               dto.deviceConditionNote,
             ),
+            reviewStatus: WorkReviewStatus.NOT_REQUIRED,
           },
         });
+
+        if (createdByEngineer && machine) {
+          validateInventoryMovement(
+            InventoryMovementType.INSTALL,
+            machine.inventoryStatus,
+            MachineInventoryStatus.INSTALLED,
+            customer.id,
+          );
+
+          const machineUpdate = await tx.machine.updateMany({
+            where: {
+              id: machine.id,
+              inventoryStatus: machine.inventoryStatus,
+            },
+            data: {
+              customerId: customer.id,
+              businessLineId:
+                businessLine?.id ??
+                machine.businessLineId ??
+                machineModel?.businessLineId ??
+                null,
+              installedById: engineer.id,
+              primaryEngineerId: engineer.id,
+              installDate: installedAt,
+              warrantyStartDate,
+              warrantyEndDate: warrantyEndDate ?? null,
+              inventoryStatus: MachineInventoryStatus.INSTALLED,
+              status: MachineStatus.ACTIVE,
+            },
+          });
+
+          if (machineUpdate.count !== 1) {
+            throw new BadRequestException(
+              'Machine has already been installed or changed status',
+            );
+          }
+
+          await tx.machineInventoryMovement.create({
+            data: {
+              code: await this.generateMovementCode(tx),
+              type: InventoryMovementType.INSTALL,
+              machineId: machine.id,
+              fromStatus: machine.inventoryStatus,
+              toStatus: MachineInventoryStatus.INSTALLED,
+              occurredAt: installedAt,
+              note: `Engineer created urgent installation ${installationCode}`,
+              customerId: customer.id,
+              createdById: actor?.id || null,
+            },
+          });
+        }
 
         if (machine && warrantyEndDate) {
           await tx.warrantyCard.create({
@@ -191,7 +246,9 @@ export class InstallationsService {
                 machineModel?.name ?? dto.plannedModelName?.trim() ?? null,
               customerId: customer.id,
               installedById: engineer.id,
-              status: InstallationStatus.PENDING,
+              status: createdByEngineer
+                ? InstallationStatus.INSTALLED
+                : InstallationStatus.PENDING,
             },
           },
           tx,
@@ -201,7 +258,7 @@ export class InstallationsService {
           await this.notificationsService.createForAdmins(
             {
               title: 'Kỹ sư tạo phiếu lắp đặt mới',
-              message: `${actor.email} đã tạo phiếu ${installationCode}. Vui lòng kiểm tra và duyệt dữ liệu liên quan.`,
+              message: `${actor.email} đã tạo phiếu lắp đặt khẩn ${installationCode}. Phiếu đã được ghi nhận để admin hậu kiểm dữ liệu.`,
               href: '/installations',
               entityType: 'MachineInstallation',
               entityId: installation.id,
@@ -668,12 +725,12 @@ export class InstallationsService {
       const updated = await tx.machineInstallation.update({
         where: { id },
         data: {
-          status: isAssignedEngineerCompleting ? installation.status : dto.status,
+          status: dto.status,
           machineId: completedMachineId ?? dto.machineId ?? undefined,
           installedAt: installedAt ?? undefined,
           installedById: installedBy?.id,
           reviewStatus: isAssignedEngineerCompleting
-            ? WorkReviewStatus.PENDING
+            ? WorkReviewStatus.NOT_REQUIRED
             : isAdminApprovingInstallation
               ? WorkReviewStatus.APPROVED
               : dto.status
@@ -686,12 +743,12 @@ export class InstallationsService {
           reviewedAt: isAdminApprovingInstallation
             ? new Date()
             : isAssignedEngineerCompleting
-              ? null
+              ? undefined
               : undefined,
           reviewerId: isAdminApprovingInstallation
             ? actor.id
             : isAssignedEngineerCompleting
-              ? null
+              ? undefined
               : undefined,
           plannedMachineModelId: dto.machineModelId ?? undefined,
           businessLineId:
@@ -916,8 +973,10 @@ export class InstallationsService {
       installation.status === InstallationStatus.PENDING &&
       (dto.status === InstallationStatus.INSTALLED ||
         dto.status === InstallationStatus.CANCELLED);
+    const isAssignedEngineerDecision =
+      isEngineer(actor) && installation.installedById === actor.id;
 
-    if (isPendingDecision && !isAdmin(actor)) {
+    if (isPendingDecision && !isAdmin(actor) && !isAssignedEngineerDecision) {
       throw new ForbiddenException('Only admin can approve installation requests');
     }
 
@@ -1036,14 +1095,20 @@ export class InstallationsService {
           note: dto.note?.trim(),
           reviewStatus:
             dto.status === InstallationStatus.INSTALLED
-              ? WorkReviewStatus.APPROVED
+              ? isAdmin(actor)
+                ? WorkReviewStatus.APPROVED
+                : WorkReviewStatus.NOT_REQUIRED
               : dto.status
                 ? WorkReviewStatus.NOT_REQUIRED
                 : undefined,
           reviewedAt:
-            dto.status === InstallationStatus.INSTALLED ? new Date() : undefined,
+            dto.status === InstallationStatus.INSTALLED && isAdmin(actor)
+              ? new Date()
+              : undefined,
           reviewerId:
-            dto.status === InstallationStatus.INSTALLED ? actor.id : undefined,
+            dto.status === InstallationStatus.INSTALLED && isAdmin(actor)
+              ? actor.id
+              : undefined,
           reviewNote:
             dto.status === InstallationStatus.INSTALLED ? null : undefined,
         },

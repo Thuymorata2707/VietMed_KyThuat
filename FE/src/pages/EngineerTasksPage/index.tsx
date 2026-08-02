@@ -307,6 +307,16 @@ function profileCompletenessForTask(
   };
 }
 
+function isCompletionStatus(task: EngineerTask, nextStatus: string) {
+  if (task.kind === 'installation') return nextStatus === 'INSTALLED';
+  return nextStatus === 'COMPLETED';
+}
+
+function completionBlockers(task: EngineerTask, completeness: ReturnType<typeof profileCompletenessForTask> | null, nextStatus: string) {
+  if (!isCompletionStatus(task, nextStatus)) return [];
+  return completeness?.missing ?? [];
+}
+
 function parseMaterialRows(value: string): WorkOperationPart[] {
   return value
     .split('\n')
@@ -521,6 +531,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         : null,
     [attachments, customerFeedback, installationEditForm.receiverPhone, installationEditForm.receiverRepresentative, nextDueDate, resultNote, selectedCheckedChecklistLines, selectedTask],
   );
+  const selectedCompletionBlockers = useMemo(
+    () => (selectedTask ? completionBlockers(selectedTask, selectedCompleteness, status) : []),
+    [selectedCompleteness, selectedTask, status],
+  );
   const todayTaskSummary = useMemo(() => {
     const todayTasks = tasks.filter(isTodayTask);
     return {
@@ -707,7 +721,11 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       }
 
       setCreateForm(emptyCreateTicketForm());
-      setSuccess('Đã tạo phiếu. Admin sẽ kiểm tra nếu cần.');
+      setSuccess(
+        createForm.kind === 'installation'
+          ? 'Đã tạo phiếu lắp đặt chi tiết. Phiếu được ghi nhận ngay cho kỹ sư phụ trách.'
+          : 'Đã tạo phiếu và gán cho kỹ sư phụ trách ngay.',
+      );
       await loadTasks();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tạo được phiếu.');
@@ -1184,9 +1202,16 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     event.preventDefault();
     if (!selectedTask) return;
 
-    setSaving(true);
     setError('');
     setSuccess('');
+
+    const blockers = completionBlockers(selectedTask, selectedCompleteness, status);
+    if (blockers.length) {
+      setError(`Chưa thể chuyển sang "${statusLabel(status)}". Vui lòng bổ sung: ${blockers.join(', ')}.`);
+      return;
+    }
+
+    setSaving(true);
 
     try {
       const enrichedResultNote = buildStructuredEngineerNote(resultNote, selectedCheckedChecklistLines, materialsText, workLogText);
@@ -1290,7 +1315,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         <div className="engineer-task-hero__copy">
           <span>Kỹ sư hiện trường</span>
           <h1>Việc của tôi</h1>
-          <p>Mở màn là thấy việc cần xử lý, phiếu chờ duyệt và lịch hôm nay.</p>
+          <p>Mở màn là thấy việc cần xử lý, phiếu tự tạo khẩn và lịch hôm nay.</p>
         </div>
         <div className="engineer-task-hero__actions">
           <button className="secondary-button" onClick={() => void loadTasks()} type="button">
@@ -1326,7 +1351,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         <section className="engineer-create-panel">
           <div className="task-section-heading">
             <div>
-              <span>Gửi phiếu về admin</span>
+              <span>Kỹ sư tự tạo phiếu</span>
               <h3>{createTicketTitle(createForm.kind)}</h3>
             </div>
           </div>
@@ -1336,7 +1361,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             <select onChange={(event) => changeCreateKind(event.target.value as TaskKind)} value={createForm.kind}>
               <option value="repair">Phiếu bảo dưỡng, sửa chữa thiết bị tại chỗ</option>
               <option value="maintenance">Bảo trì</option>
-              <option value="installation">Lắp đặt</option>
+              <option value="installation">Lắp đặt chi tiết</option>
             </select>
           </label>
 
@@ -1814,7 +1839,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
             ) : null}
 
             <button className="task-primary create-submit" disabled={saving || loadingCreateOptions} type="submit">
-              {saving ? 'Đang gửi' : 'Gửi phiếu về admin'}
+              {saving ? 'Đang tạo' : createForm.kind === 'installation' ? 'Tạo phiếu lắp đặt chi tiết' : 'Tạo phiếu xử lý ngay'}
             </button>
             <button className="task-secondary create-cancel" onClick={backToAssignedWork} type="button">
               Back
@@ -2403,10 +2428,16 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                   <button className="task-secondary" onClick={() => setSelectedTask(null)} type="button">
                     Đóng
                   </button>
-                  <button className="task-primary" disabled={saving} type="submit">
+                  <button className="task-primary" disabled={saving || selectedCompletionBlockers.length > 0} type="submit">
                     {saving ? 'Đang lưu' : 'Lưu cập nhật'}
                   </button>
                 </div>
+                {selectedCompletionBlockers.length ? (
+                  <div className="field-completion-warning col-span-full" role="status">
+                    <strong>Chưa thể hoàn tất phiếu</strong>
+                    <span>Bổ sung {selectedCompletionBlockers.join(', ')} trước khi lưu trạng thái {statusLabel(status).toLowerCase()}.</span>
+                  </div>
+                ) : null}
               </form>
               </section>
             ) : (
@@ -2435,10 +2466,16 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                 <button className="task-secondary" onClick={() => setSelectedTask(null)} type="button">
                   Đóng
                 </button>
-                <button className="task-primary" disabled={saving} type="submit">
+                <button className="task-primary" disabled={saving || selectedCompletionBlockers.length > 0} type="submit">
                   {saving ? 'Đang lưu' : 'Lưu cập nhật'}
                 </button>
               </div>
+              {selectedCompletionBlockers.length ? (
+                <div className="field-completion-warning col-span-full" role="status">
+                  <strong>Chưa thể hoàn tất phiếu</strong>
+                  <span>Bổ sung {selectedCompletionBlockers.join(', ')} trước khi lưu trạng thái {statusLabel(status).toLowerCase()}.</span>
+                </div>
+              ) : null}
             </form>
               </section>
             )}

@@ -863,8 +863,12 @@
 
 .engineer-task-row__action {
   align-content: start;
+  background: #fbfcfd;
+  border: 1px solid #edf0f3;
+  border-radius: 14px;
   display: grid;
   gap: 10px;
+  padding: 10px;
 }
 
 .engineer-task-row__buttons {
@@ -930,8 +934,29 @@
   }
 
   .engineer-task-row__buttons {
-    grid-template-columns: auto 1fr 1fr;
+    grid-template-columns: repeat(2, auto) 1fr 1fr;
   }
+}
+
+.field-completion-warning {
+  background: #fff8ed;
+  border: 1px solid #efd8a8;
+  border-radius: 14px;
+  color: #8a4b12;
+  display: grid;
+  gap: 4px;
+  line-height: 1.45;
+  padding: 12px 14px;
+}
+
+.field-completion-warning strong {
+  color: #713a0a;
+  font-size: 13px;
+}
+
+.field-completion-warning span {
+  font-size: 13px;
+  font-weight: 650;
 }
 
 .task-card {
@@ -1431,6 +1456,40 @@
 }
 
 @media (max-width: 760px) {
+  .engineer-task-row {
+    border-radius: 18px;
+    margin: 10px 8px;
+    padding: 14px;
+  }
+
+  .engineer-task-row__head {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .engineer-task-row__icon {
+    height: 38px;
+    width: 38px;
+  }
+
+  .engineer-task-row__body p {
+    -webkit-line-clamp: 3;
+  }
+
+  .engineer-task-row__action {
+    position: sticky;
+    bottom: 8px;
+    z-index: 1;
+  }
+
+  .engineer-task-row__buttons {
+    grid-template-columns: repeat(2, auto) repeat(2, minmax(0, 1fr));
+  }
+
+  .engineer-task-row__buttons .task-secondary,
+  .engineer-task-row__buttons .task-action {
+    min-height: 42px;
+  }
+
   .engineer-task-hero {
     grid-template-columns: 1fr;
     padding: 18px;
@@ -1561,6 +1620,14 @@
 }
 
 @media (max-width: 560px) {
+  .engineer-task-row__buttons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .engineer-task-row__buttons .icon-button {
+    width: 100%;
+  }
+
   .engineer-workspace-tabs {
     grid-template-columns: 1fr;
   }

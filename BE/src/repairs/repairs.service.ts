@@ -91,12 +91,12 @@ export class RepairsService {
           createdById: actor.id,
           priority: dto.priority ?? RepairPriority.NORMAL,
           status: createdByEngineer
-            ? RepairStatus.PENDING
+            ? RepairStatus.ASSIGNED
             : engineerId
               ? RepairStatus.ASSIGNED
               : RepairStatus.PENDING,
           reportedAt: this.parseOptionalDate(dto.reportedAt) ?? new Date(),
-          assignedAt: createdByEngineer ? null : engineerId ? new Date() : null,
+          assignedAt: engineerId ? new Date() : null,
           usingDepartment: this.cleanOptionalString(dto.usingDepartment),
           representative: this.cleanOptionalString(dto.representative),
           address: this.cleanOptionalString(dto.address),
@@ -150,7 +150,7 @@ export class RepairsService {
         await this.notificationsService.createForAdmins(
           {
             title: 'Kỹ sư tạo phiếu sửa chữa mới',
-            message: `${actor.email} đã tạo phiếu ${repair.code}: ${repair.title}. Vui lòng kiểm tra và duyệt dữ liệu liên quan.`,
+            message: `${actor.email} đã tạo phiếu sửa chữa khẩn ${repair.code}: ${repair.title}. Phiếu đã được gán cho kỹ sư để xử lý ngay, admin hậu kiểm dữ liệu khi cần.`,
             href: '/service-tickets',
             entityType: 'Repair',
             entityId: repair.id,

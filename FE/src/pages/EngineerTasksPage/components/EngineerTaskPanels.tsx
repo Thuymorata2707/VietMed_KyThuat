@@ -329,7 +329,7 @@ function statusActionOptions(task: EngineerTask) {
               : 'Hủy phiếu',
         description:
           option.value === 'INSTALLED'
-            ? 'Hoàn tất thông tin bàn giao, bảo hành và gửi admin kiểm tra.'
+            ? 'Hoàn tất thông tin bàn giao, bảo hành và ghi nhận lắp đặt ngay.'
             : option.value === 'PENDING'
               ? 'Giữ phiếu ở trạng thái chờ nếu chưa đủ thông tin.'
               : 'Dùng khi phiếu không còn thực hiện.',
@@ -361,7 +361,7 @@ function statusActionDescription(kind: TaskKind, value: string) {
     return kind === 'maintenance' ? 'Đánh dấu phiếu đang được bảo trì tại hiện trường.' : 'Đánh dấu máy đang được kiểm tra hoặc sửa chữa.';
   }
   if (value === 'WAITING_PARTS') return 'Tạm dừng vì cần vật tư, linh kiện hoặc xác nhận thêm.';
-  if (value === 'COMPLETED') return 'Nhập kết quả đầy đủ rồi gửi admin kiểm tra.';
+  if (value === 'COMPLETED') return 'Nhập kết quả đầy đủ và ghi nhận hoàn thành ngay.';
   if (value === 'CANCELLED') return 'Dùng khi phiếu không tiếp tục thực hiện.';
   return 'Cập nhật trạng thái phiếu.';
 }

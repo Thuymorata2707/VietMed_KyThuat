@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardCheck, PhoneCall } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, MapPin, PhoneCall } from 'lucide-react';
 import type { EngineerTask } from '../types';
 import {
   reviewStatusLabel,
@@ -32,6 +32,9 @@ export function EngineerTaskRow({ onOpen, task }: EngineerTaskRowProps) {
   const customer = taskCustomer(task) || 'Chưa có khách hàng';
   const phone = taskContactPhone(task);
   const location = taskLocation(task);
+  const directionsHref = location
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(location)}`
+    : '';
 
   return (
     <article className={`engineer-task-row ${attention.tone}`}>
@@ -71,6 +74,11 @@ export function EngineerTaskRow({ onOpen, task }: EngineerTaskRowProps) {
           {phone ? (
             <a className="task-secondary icon-button" href={`tel:${phone}`} title={`Gọi ${phone}`}>
               <PhoneCall size={15} />
+            </a>
+          ) : null}
+          {directionsHref ? (
+            <a className="task-secondary icon-button" href={directionsHref} rel="noreferrer" target="_blank" title="Chỉ đường">
+              <MapPin size={15} />
             </a>
           ) : null}
           <button className="task-secondary" onClick={() => onOpen(task)} type="button">

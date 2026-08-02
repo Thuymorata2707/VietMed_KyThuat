@@ -81,7 +81,7 @@ export class MaintenanceService {
           description: dto.description?.trim() || null,
           type: dto.type ?? MaintenanceType.PERIODIC,
           status: createdByEngineer
-            ? MaintenanceStatus.SCHEDULED
+            ? MaintenanceStatus.ASSIGNED
             : engineerId
               ? MaintenanceStatus.ASSIGNED
               : MaintenanceStatus.SCHEDULED,
@@ -92,7 +92,7 @@ export class MaintenanceService {
             dto.scheduledDate,
             'scheduledDate',
           ),
-          assignedAt: createdByEngineer ? null : engineerId ? new Date() : null,
+          assignedAt: engineerId ? new Date() : null,
           checklist: this.normalizeChecklist(dto.checklist),
           nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
           usingDepartment: this.cleanOptionalString(dto.usingDepartment),
@@ -142,7 +142,7 @@ export class MaintenanceService {
         await this.notificationsService.createForAdmins(
           {
             title: 'Kỹ sư tạo phiếu bảo trì mới',
-            message: `${actor.email} đã tạo phiếu ${maintenance.code}: ${maintenance.title}. Vui lòng kiểm tra và duyệt dữ liệu liên quan.`,
+            message: `${actor.email} đã tạo phiếu bảo trì khẩn ${maintenance.code}: ${maintenance.title}. Phiếu đã được gán cho kỹ sư để xử lý ngay, admin hậu kiểm dữ liệu khi cần.`,
             href: '/service-tickets',
             entityType: 'Maintenance',
             entityId: maintenance.id,
