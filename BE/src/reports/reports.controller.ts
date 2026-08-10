@@ -10,6 +10,18 @@ import { ReportsService } from './reports.service';
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
+  @Get('technical')
+  getTechnicalReport(
+    @CurrentUser() user: RequestUser,
+    @Query() query: Record<string, string | undefined>,
+  ) {
+    assertPermission(user, PERMISSIONS.INSTALLATION_READ);
+    assertPermission(user, PERMISSIONS.REPAIR_READ);
+    assertPermission(user, PERMISSIONS.MAINTENANCE_READ);
+    assertPermission(user, PERMISSIONS.DEMO_LOAN_READ);
+    return this.reportsService.getTechnicalReport(user, query);
+  }
+
   @Get('installations')
   getInstallationReport(
     @CurrentUser() user: RequestUser,

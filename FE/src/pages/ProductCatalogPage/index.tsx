@@ -1003,7 +1003,7 @@ function ProductMachineRowsEditor({
           }}
           placeholder={'Mỗi dòng: Serial | Mã máy | Tên máy\nAF3-2605-00012 | MAY-00012\nAF3-2605-00013'}
         />
-        <span className="mt-2 block text-xs font-medium leading-5 text-[#64748b]">Dán xong bấm ra ngoài ô này, hệ thống sẽ tự tách thành từng dòng máy.</span>
+        <span className="mt-2 block text-xs font-medium leading-5 text-[#64748b]">Dán danh sách, rồi bấm ra ngoài.</span>
       </details>
     </div>
   );

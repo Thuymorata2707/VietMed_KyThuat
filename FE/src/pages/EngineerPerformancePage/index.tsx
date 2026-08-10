@@ -212,7 +212,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       <PageTitle
         eyebrow={isAdmin ? 'Báo cáo vận hành' : 'Báo cáo cá nhân'}
         title={isAdmin ? 'Hiệu suất kỹ sư' : 'Báo cáo của tôi'}
-        description={isAdmin ? 'Theo dõi tải việc, chất lượng và khách hàng theo từng kỹ sư.' : 'Tổng hợp việc đã làm, khách hàng và các điểm cần xử lý trong kỳ.'}
+        description={isAdmin ? 'Tải việc & chất lượng.' : 'Việc làm trong kỳ.'}
       />
 
       {error ? <Notice message={error} /> : null}

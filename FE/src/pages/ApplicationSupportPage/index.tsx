@@ -133,7 +133,7 @@ const statusLabels: Record<SupportStatus, string> = {
 const today = toDateInput(new Date());
 
 export function ApplicationSupportPage({ currentRole, user }: ApplicationSupportPageProps) {
-  const isAdmin = currentRole === 'admin';
+  const canManageCases = currentRole === 'engineer';
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<SupportStatus | ''>('');
@@ -157,6 +157,7 @@ export function ApplicationSupportPage({ currentRole, user }: ApplicationSupport
   });
 
   const optionsQuery = useQuery({
+    enabled: canManageCases,
     queryKey: queryKeys.applicationSupport.options,
     queryFn: async () => {
       const [customers, machines, models] = await Promise.all([
@@ -174,7 +175,7 @@ export function ApplicationSupportPage({ currentRole, user }: ApplicationSupport
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = buildPayload(form, isAdmin ? undefined : user.id);
+      const payload = buildPayload(form, user.id);
       return editingId
         ? apiFetch<SupportCase>(`/application-support/${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) })
         : apiFetch<SupportCase>('/application-support', { method: 'POST', body: JSON.stringify(payload) });
@@ -226,6 +227,7 @@ export function ApplicationSupportPage({ currentRole, user }: ApplicationSupport
   }
 
   function editCase(item: SupportCase) {
+    if (!canManageCases) return;
     setEditingId(item.id);
     setForm({
       supportedAt: toDateInput(new Date(item.supportedAt)),
@@ -266,21 +268,28 @@ export function ApplicationSupportPage({ currentRole, user }: ApplicationSupport
       <PageTitle
         eyebrow="Application specialist"
         title="Hỗ trợ app"
-        description="Ghi nhận cuộc gọi, remote, lỗi phần mềm và cách khắc phục cho nhóm app/xét nghiệm."
+        description={canManageCases ? 'Ghi nhận hỗ trợ app.' : 'Ca hỗ trợ app.'}
       />
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      {!canManageCases ? (
+        <section className="rounded-[18px] border border-[#e4e4e7] bg-[#fafafa] p-4 text-sm font-medium leading-6 text-[#555555]">
+          Bạn đang ở chế độ xem. Kỹ sư đăng nhập sẽ được ghi nhận, sửa hoặc xóa ca hỗ trợ app của mình.
+        </section>
+      ) : null}
+
+      {canManageCases ? (
+      <section className="grid min-w-0 gap-5">
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)] sm:p-6">
           <div className="flex items-start gap-3">
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#eefaf3] text-[#177245]">
               <Headphones size={19} />
             </span>
             <div>
               <h2 className="text-lg font-semibold text-[#1f1f1f]">{editingId ? 'Sửa ca hỗ trợ' : 'Ghi nhận hỗ trợ nhanh'}</h2>
-              <p className="mt-1 text-sm leading-6 text-[#666666]">Dùng sau khi khách gọi để báo cáo không mất quá 1 phút.</p>
+              <p className="mt-1 text-sm leading-6 text-[#666666]">Ghi theo 3 bước, dùng sau khi khách gọi để báo cáo không mất quá 1 phút.</p>
             </div>
           </div>
           {editingId ? (
@@ -291,138 +300,172 @@ export function ApplicationSupportPage({ currentRole, user }: ApplicationSupport
           ) : null}
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-4">
-          <label className={labelClass}>
-            Ngày hỗ trợ
-            <input className={inputClass} onChange={(event) => updateForm({ supportedAt: event.target.value })} type="date" value={form.supportedAt} />
-          </label>
-          <label className={labelClass}>
-            Kênh
-            <select className={inputClass} onChange={(event) => updateForm({ channel: event.target.value as SupportChannel })} value={form.channel}>
-              {Object.entries(channelLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
-          <label className={labelClass}>
-            Nhóm vấn đề
-            <select className={inputClass} onChange={(event) => updateForm({ issueCategory: event.target.value as SupportIssueCategory })} value={form.issueCategory}>
-              {Object.entries(issueLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
-          <label className={labelClass}>
-            Trạng thái
-            <select className={inputClass} onChange={(event) => updateForm({ status: event.target.value as SupportStatus })} value={form.status}>
-              {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-3">
-          <label className={labelClass}>
-            Khách hàng có sẵn
-            <select className={inputClass} onChange={(event) => {
-              const customer = options.customers.find((item) => item.id === event.target.value);
-              updateForm({
-                customerId: event.target.value,
-                customerName: customer?.name ?? form.customerName,
-                contactName: customer?.contactPerson ?? form.contactName,
-                contactPhone: customer?.contactPhone ?? customer?.phone ?? form.contactPhone,
-              });
-            }} value={form.customerId}>
-              <option value="">Không chọn</option>
-              {options.customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
-            </select>
-          </label>
-          <label className={labelClass}>
-            Tên khách hàng/bệnh viện
-            <input className={inputClass} onChange={(event) => updateForm({ customerName: event.target.value })} value={form.customerName} />
-          </label>
-          <label className={labelClass}>
-            Người gọi / số điện thoại
-            <div className="grid gap-2 sm:grid-cols-2">
-              <input className={inputClass} onChange={(event) => updateForm({ contactName: event.target.value })} placeholder="Người gọi" value={form.contactName} />
-              <input className={inputClass} onChange={(event) => updateForm({ contactPhone: event.target.value })} placeholder="Số ĐT" value={form.contactPhone} />
+        <div className={panelClass}>
+          <div className={sectionHeaderClass}>
+            <span className={stepBadgeClass}>1</span>
+            <div>
+              <span className={eyebrowClass}>Thông tin ca</span>
+              <h2 className={sectionTitleClass}>Tiếp nhận yêu cầu</h2>
+              <p className={sectionDescriptionClass}>Trạng thái & nội dung hỗ trợ.</p>
             </div>
-          </label>
-        </div>
+          </div>
 
-        <div className="grid gap-3 lg:grid-cols-3">
-          <label className={labelClass}>
-            Máy
-            <select className={inputClass} onChange={(event) => {
-              const machine = options.machines.find((item) => item.id === event.target.value);
-              updateForm({
-                machineId: event.target.value,
-                machineText: machine ? machineLabel(machine) : form.machineText,
-              });
-            }} value={form.machineId}>
-              <option value="">Không chọn</option>
-              {options.machines.map((machine) => <option key={machine.id} value={machine.id}>{machineLabel(machine)}</option>)}
-            </select>
-          </label>
-          <label className={labelClass}>
-            Model
-            <select className={inputClass} onChange={(event) => updateForm({ machineModelId: event.target.value })} value={form.machineModelId}>
-              <option value="">Không chọn</option>
-              {options.models.map((model) => <option key={model.id} value={model.id}>{model.displayName || model.name || model.code}</option>)}
-            </select>
-          </label>
-          <label className={labelClass}>
-            App/module
-            <input className={inputClass} onChange={(event) => updateForm({ appModule: event.target.value })} placeholder="VD: DICOM, Worklist, QC, LIS..." value={form.appModule} />
-          </label>
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px]">
-          <label className={labelClass}>
-            Lỗi/yêu cầu
-            <input className={inputClass} onChange={(event) => updateForm({ title: event.target.value })} placeholder="VD: Không gửi được kết quả qua LIS" value={form.title} />
-          </label>
-          <label className={labelClass}>
-            Thời lượng phút
-            <input className={inputClass} min={0} onChange={(event) => updateForm({ durationMinutes: event.target.value })} type="number" value={form.durationMinutes} />
-          </label>
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-2">
-          <label className={labelClass}>
-            Mô tả lỗi
-            <textarea className={`${inputClass} min-h-28 py-2.5`} onChange={(event) => updateForm({ issueDescription: event.target.value })} value={form.issueDescription} />
-          </label>
-          <label className={labelClass}>
-            Cách khắc phục
-            <textarea className={`${inputClass} min-h-28 py-2.5`} onChange={(event) => updateForm({ resolution: event.target.value })} value={form.resolution} />
-          </label>
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-2">
-          <label className={labelClass}>
-            Tồn đọng
-            <textarea className={`${inputClass} min-h-20 py-2.5`} onChange={(event) => updateForm({ pending: event.target.value })} value={form.pending} />
-          </label>
-          <label className={labelClass}>
-            Việc tiếp theo
-            <textarea className={`${inputClass} min-h-20 py-2.5`} onChange={(event) => updateForm({ nextAction: event.target.value })} value={form.nextAction} />
-          </label>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eeeeee] pt-3">
-          <div className="flex flex-wrap gap-3 text-sm font-semibold text-[#333333]">
-            <label className="inline-flex items-center gap-2">
-              <input checked={form.followUpNeeded} onChange={(event) => updateForm({ followUpNeeded: event.target.checked })} type="checkbox" />
-              Cần follow-up
+          <div className="grid min-w-0 gap-5 md:grid-cols-2 lg:grid-cols-4">
+            <label className={labelClass}>
+              Ngày hỗ trợ
+              <input className={inputClass} onChange={(event) => updateForm({ supportedAt: event.target.value })} type="date" value={form.supportedAt} />
             </label>
-            {form.followUpNeeded ? <input className={inputClass} onChange={(event) => updateForm({ followUpDate: event.target.value })} type="date" value={form.followUpDate} /> : null}
-            <label className="inline-flex items-center gap-2">
-              <input checked={form.knowledgeCandidate} onChange={(event) => updateForm({ knowledgeCandidate: event.target.checked })} type="checkbox" />
-              Nên đưa vào tri thức
+            <label className={labelClass}>
+              Kênh
+              <select className={inputClass} onChange={(event) => updateForm({ channel: event.target.value as SupportChannel })} value={form.channel}>
+                {Object.entries(channelLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+            <label className={labelClass}>
+              Nhóm vấn đề
+              <select className={inputClass} onChange={(event) => updateForm({ issueCategory: event.target.value as SupportIssueCategory })} value={form.issueCategory}>
+                {Object.entries(issueLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+            <label className={labelClass}>
+              Trạng thái
+              <select className={inputClass} onChange={(event) => updateForm({ status: event.target.value as SupportStatus })} value={form.status}>
+                {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
             </label>
           </div>
-          <button className="primary-button" disabled={saveMutation.isPending} onClick={saveCase} type="button">
-            {saveMutation.isPending ? <Loader2 className="spin-icon" size={16} /> : editingId ? <Save size={16} /> : <Plus size={16} />}
-            {editingId ? 'Lưu thay đổi' : 'Ghi nhận'}
-          </button>
+
+          <div className="mt-5 grid min-w-0 gap-5 md:grid-cols-[minmax(0,1fr)_minmax(140px,200px)]">
+            <label className={labelClass}>
+              Lỗi/yêu cầu
+              <input className={inputClass} onChange={(event) => updateForm({ title: event.target.value })} placeholder="VD: Không gửi được kết quả qua LIS" value={form.title} />
+            </label>
+            <label className={labelClass}>
+              Thời lượng phút
+              <input className={inputClass} min={0} onChange={(event) => updateForm({ durationMinutes: event.target.value })} type="number" value={form.durationMinutes} />
+            </label>
+          </div>
+
+          <div className="mt-5 grid min-w-0 gap-5">
+            <label className={labelClass}>
+              Mô tả lỗi
+              <textarea className={`${inputClass} min-h-28 py-2.5`} onChange={(event) => updateForm({ issueDescription: event.target.value })} value={form.issueDescription} />
+            </label>
+          </div>
+        </div>
+
+        <div className={panelClass}>
+          <div className={sectionHeaderClass}>
+            <span className={stepBadgeClass}>2</span>
+            <div>
+              <span className={eyebrowClass}>Khách hàng & máy</span>
+              <h2 className={sectionTitleClass}>Thông tin tại điểm hỗ trợ</h2>
+              <p className={sectionDescriptionClass}>Liên hệ & thiết bị liên quan.</p>
+            </div>
+          </div>
+
+          <div className="grid min-w-0 gap-5 md:grid-cols-3">
+            <label className={labelClass}>
+              Khách hàng có sẵn
+              <select className={inputClass} onChange={(event) => {
+                const customer = options.customers.find((item) => item.id === event.target.value);
+                updateForm({
+                  customerId: event.target.value,
+                  customerName: customer?.name ?? form.customerName,
+                  contactName: customer?.contactPerson ?? form.contactName,
+                  contactPhone: customer?.contactPhone ?? customer?.phone ?? form.contactPhone,
+                });
+              }} value={form.customerId}>
+                <option value="">Không chọn</option>
+                {options.customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
+              </select>
+            </label>
+            <label className={labelClass}>
+              Tên khách hàng/bệnh viện
+              <input className={inputClass} onChange={(event) => updateForm({ customerName: event.target.value })} value={form.customerName} />
+            </label>
+            <label className={labelClass}>
+              Người gọi / số điện thoại
+              <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+                <input className={inputClass} onChange={(event) => updateForm({ contactName: event.target.value })} placeholder="Người gọi" value={form.contactName} />
+                <input className={inputClass} onChange={(event) => updateForm({ contactPhone: event.target.value })} placeholder="Số ĐT" value={form.contactPhone} />
+              </div>
+            </label>
+          </div>
+
+          <div className="mt-5 grid min-w-0 gap-5 md:grid-cols-2">
+            <label className={labelClass}>
+              Máy
+              <select className={inputClass} onChange={(event) => {
+                const machine = options.machines.find((item) => item.id === event.target.value);
+                updateForm({
+                  machineId: event.target.value,
+                  machineText: machine ? machineLabel(machine) : form.machineText,
+                });
+              }} value={form.machineId}>
+                <option value="">Không chọn</option>
+                {options.machines.map((machine) => <option key={machine.id} value={machine.id}>{machineLabel(machine)}</option>)}
+              </select>
+            </label>
+            <label className={labelClass}>
+              Model
+              <select className={inputClass} onChange={(event) => updateForm({ machineModelId: event.target.value })} value={form.machineModelId}>
+                <option value="">Không chọn</option>
+                {options.models.map((model) => <option key={model.id} value={model.id}>{model.displayName || model.name || model.code}</option>)}
+              </select>
+            </label>
+            <label className={`${labelClass} md:col-span-2`}>
+              App/module
+              <input className={inputClass} onChange={(event) => updateForm({ appModule: event.target.value })} placeholder="VD: DICOM, Worklist, QC, LIS..." value={form.appModule} />
+            </label>
+          </div>
+        </div>
+
+        <div className={panelClass}>
+          <div className={sectionHeaderClass}>
+            <span className={stepBadgeClass}>3</span>
+            <div>
+              <span className={eyebrowClass}>Kết quả</span>
+              <h2 className={sectionTitleClass}>Ghi nhận sau xử lý</h2>
+              <p className={sectionDescriptionClass}>Khắc phục, follow-up & chia sẻ tri thức.</p>
+            </div>
+          </div>
+
+          <div className="grid min-w-0 gap-5 md:grid-cols-2">
+            <label className={labelClass}>
+              Cách khắc phục
+              <textarea className={`${inputClass} min-h-28 py-2.5`} onChange={(event) => updateForm({ resolution: event.target.value })} value={form.resolution} />
+            </label>
+            <label className={labelClass}>
+              Tồn đọng
+              <textarea className={`${inputClass} min-h-28 py-2.5`} onChange={(event) => updateForm({ pending: event.target.value })} value={form.pending} />
+            </label>
+            <label className={`${labelClass} md:col-span-2`}>
+              Việc tiếp theo
+              <textarea className={`${inputClass} min-h-20 py-2.5`} onChange={(event) => updateForm({ nextAction: event.target.value })} value={form.nextAction} />
+            </label>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#eeeeee] pt-4">
+            <div className="flex flex-wrap gap-3 text-sm font-semibold text-[#333333]">
+              <label className="inline-flex items-center gap-2">
+                <input checked={form.followUpNeeded} onChange={(event) => updateForm({ followUpNeeded: event.target.checked })} type="checkbox" />
+                Cần follow-up
+              </label>
+              {form.followUpNeeded ? <input className={inputClass} onChange={(event) => updateForm({ followUpDate: event.target.value })} type="date" value={form.followUpDate} /> : null}
+              <label className="inline-flex items-center gap-2">
+                <input checked={form.knowledgeCandidate} onChange={(event) => updateForm({ knowledgeCandidate: event.target.checked })} type="checkbox" />
+                Nên đưa vào tri thức
+              </label>
+            </div>
+            <button className="primary-button" disabled={saveMutation.isPending} onClick={saveCase} type="button">
+              {saveMutation.isPending ? <Loader2 className="spin-icon" size={16} /> : editingId ? <Save size={16} /> : <Plus size={16} />}
+              {editingId ? 'Lưu thay đổi' : 'Ghi nhận'}
+            </button>
+          </div>
         </div>
       </section>
+      ) : null}
 
       <section className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
         <div className="grid gap-3 border-b border-[#eeeeee] bg-[#fafafa] p-4 lg:grid-cols-[minmax(260px,1fr)_190px_220px_auto]">
@@ -469,6 +512,7 @@ export function ApplicationSupportPage({ currentRole, user }: ApplicationSupport
                 <span className={statusBadgeClass(item.status)}>{statusLabels[item.status]}</span>
                 {item.followUpNeeded ? <span className="font-semibold text-[#9b5a17]">Follow-up {item.followUpDate ? formatDate(item.followUpDate) : ''}</span> : null}
               </div>
+              {canManageCases ? (
               <div className="flex flex-wrap items-start gap-2 xl:justify-end">
                 <button className="secondary-button" onClick={() => editCase(item)} type="button">
                   <Edit3 size={15} />
@@ -479,6 +523,7 @@ export function ApplicationSupportPage({ currentRole, user }: ApplicationSupport
                   Xóa
                 </button>
               </div>
+              ) : null}
             </article>
           )) : null}
         </div>
@@ -564,5 +609,11 @@ function formatDate(value?: string | null) {
   return new Intl.DateTimeFormat('vi-VN').format(date);
 }
 
-const labelClass = 'grid gap-1.5 text-sm font-semibold text-[#333333]';
-const inputClass = 'min-h-11 rounded-xl border border-[#d4d4d8] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
+const labelClass = 'grid min-w-0 gap-1.5 text-sm font-semibold leading-snug text-[#333333]';
+const inputClass = 'box-border min-h-11 w-full min-w-0 rounded-xl border border-[#d4d4d8] bg-white px-3 text-sm font-medium text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
+const panelClass = 'rounded-[24px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_8px_24px_rgba(24,24,27,0.05)] sm:p-6';
+const sectionHeaderClass = 'mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#e4e4e7] pb-4';
+const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#18181b] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(24,24,27,0.24)]';
+const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#18181b]';
+const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
+const sectionDescriptionClass = 'mt-1 text-xs font-medium leading-5 text-[#8a8f99]';

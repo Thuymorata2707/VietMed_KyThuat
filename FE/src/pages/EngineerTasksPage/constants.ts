@@ -1,4 +1,4 @@
-import type { AttachmentOption, TaskKind } from './types';
+import type { AttachmentOption, BusinessTab, DailyWorkStatus, DailyWorkType, TaskKind, WeeklyReportStatus } from './types';
 
 export const repairStatusOptions = [
   { value: 'IN_PROGRESS', label: 'Đang xử lý' },
@@ -40,3 +40,42 @@ export const attachmentOptionsByKind: Record<TaskKind, AttachmentOption[]> = {
     { value: 'OTHER', label: 'Tài liệu khác' },
   ],
 };
+
+export const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
+  WORK: 'Công việc',
+  BUSINESS_TRIP: 'Công tác',
+  LEAVE: 'Nghỉ phép',
+  REPAIR: 'Sửa chữa',
+  INSTALLATION: 'Lắp đặt',
+  MAINTENANCE: 'Bảo trì',
+  OTHER: 'Khác',
+};
+
+export const dailyWorkStatusMeta: Record<DailyWorkStatus, { label: string; className: string }> = {
+  DRAFT: { label: 'Nháp', className: 'border-[#e5e5e5] bg-white text-[#666666]' },
+  PENDING: { label: 'Chờ duyệt', className: 'border-[#efd8a8] bg-[#fffaeb] text-[#9b5a17]' },
+  APPROVED: { label: 'Đã duyệt', className: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]' },
+  REJECTED: { label: 'Từ chối', className: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]' },
+  CANCELLED: { label: 'Đã hủy', className: 'border-[#e5e5e5] bg-[#fafafa] text-[#666666]' },
+};
+
+export const weeklyReportStatusLabels: Record<WeeklyReportStatus | 'NONE', string> = {
+  NONE: 'Chưa có',
+  DRAFT: 'Nháp',
+  SUBMITTED: 'Đã gửi',
+  APPROVED: 'Đã duyệt',
+  NEEDS_REVISION: 'Cần sửa',
+};
+
+export const businessTabs: Array<{ value: BusinessTab; label: string }> = [
+  { value: 'all', label: 'Tổng việc' },
+  { value: 'repair', label: 'Sửa chữa' },
+  { value: 'maintenance', label: 'Bảo trì' },
+  { value: 'installation', label: 'Lắp đặt' },
+  { value: 'warranty', label: 'Bảo hành' },
+  { value: 'calendar', label: 'Lịch công việc' },
+];
+
+export const drawerFieldClass = 'grid gap-[7px] font-semibold text-[#333333]';
+export const drawerInputClass = 'min-h-[42px] rounded-xl border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
+export const drawerTextareaClass = `${drawerInputClass} min-h-28 resize-y py-2.5`;

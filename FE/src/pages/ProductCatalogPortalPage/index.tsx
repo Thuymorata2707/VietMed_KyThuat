@@ -406,18 +406,18 @@ function CatalogPortalHero({
   totals: { businessLines: number; industries: number; inStock: number; machines: number; models: number };
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] px-5 py-10 text-center shadow-[0_12px_30px_rgba(24,24,27,0.05)] md:px-8 md:py-14">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(24,24,27,0.075)_1px,transparent_1px),linear-gradient(180deg,rgba(24,24,27,0.055)_1px,transparent_1px)] bg-[size:70px_70px]" />
-      <div className="pointer-events-none absolute left-10 top-8 h-40 w-40 rounded-full bg-white/70 blur-3xl" />
-      <div className="pointer-events-none absolute right-24 top-16 h-28 w-28 rotate-45 rounded-[28px] bg-[#e4e4e7]/34" />
-      <div className="relative mx-auto max-w-4xl">
-        <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#e4e4e7] bg-white/84 px-4 text-sm font-bold text-[#18181b] shadow-[0_10px_28px_rgba(24,24,27,0.08)]">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#18181b]" />
-          Catalog sản phẩm VietMed
-        </span>
-        <h1 className="mt-6 text-[clamp(42px,7vw,86px)] font-black leading-[0.95] tracking-[-0.055em] text-[#1f1f1f]">Sản phẩm & Thiết bị</h1>
-        <p className="mx-auto mt-5 max-w-2xl text-lg font-semibold leading-8 text-[#667985]">Chọn ngành hàng, xem model và tồn kho.</p>
-        <div className="mt-7 flex flex-wrap justify-center gap-2">
+    <section className="relative overflow-hidden rounded-[28px] bg-[#f6f8f7] px-5 py-6 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)] md:px-6">
+      <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_80%_20%,rgba(62,131,117,0.14),transparent_32%),radial-gradient(circle_at_100%_90%,rgba(180,83,9,0.08),transparent_34%)]" />
+      <div className="relative grid gap-5 min-[960px]:grid-cols-[minmax(0,1fr)_auto] min-[960px]:items-end">
+        <div>
+          <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-white/82 px-3 text-xs font-semibold text-[#4b5563] shadow-[0_8px_22px_rgba(24,24,27,0.06)]">
+            <span className="h-2 w-2 rounded-full bg-[#3e8375]" />
+            Danh mục kỹ thuật
+          </span>
+          <h1 className="mt-4 text-[clamp(32px,4vw,56px)] font-semibold leading-[1.05] text-[#202124]">Sản phẩm & Thiết bị</h1>
+          <p className="mt-3 max-w-2xl text-[15px] font-medium leading-7 text-[#667085]">Ngành hàng, model và tồn kho.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 min-[960px]:justify-end">
           {canAddProduct ? (
             <Link className="primary-button" to="/business-lines/add-product">
               <Plus size={17} />
@@ -429,13 +429,14 @@ function CatalogPortalHero({
             Làm mới
           </button>
         </div>
-        <div className="mx-auto mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
-          <Link to="/technical-machines" className="block cursor-pointer rounded-[22px] transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(24,24,27,0.08)]">
-            <MetricCard icon={<Boxes size={18} />} label="Tổng máy" subLabel={`${totals.inStock} còn kho`} value={totals.machines} />
-          </Link>
-          <MetricCard icon={<Layers3 size={18} />} label="Model" subLabel={`${totals.businessLines} dòng`} value={totals.models} />
-          <MetricCard icon={<BarChart3 size={18} />} label="Ngành hàng" subLabel="nhóm chính" value={totals.industries} />
-        </div>
+      </div>
+
+      <div className="relative mt-5 grid gap-3 sm:grid-cols-3">
+        <Link to="/technical-machines" className="block cursor-pointer rounded-[20px] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(24,24,27,0.07)]">
+          <MetricCard icon={<Boxes size={18} />} label="Tổng máy" subLabel={`${totals.inStock} còn kho`} value={totals.machines} />
+        </Link>
+        <MetricCard icon={<Layers3 size={18} />} label="Model" subLabel={`${totals.businessLines} dòng`} value={totals.models} />
+        <MetricCard icon={<BarChart3 size={18} />} label="Ngành hàng" subLabel="nhóm chính" value={totals.industries} />
       </div>
     </section>
   );
@@ -446,28 +447,27 @@ function IndustryPortalCard({ item }: { item: { id: string; name: string; expert
 
   return (
     <Link
-      className="group relative min-h-[172px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white/92 p-5 shadow-[0_8px_24px_rgba(24,24,27,0.05)] transition hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_14px_34px_rgba(24,24,27,0.08)]"
+      className="group relative min-h-[156px] overflow-hidden rounded-[24px] bg-white/94 p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_8px_22px_rgba(24,24,27,0.045)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[inset_0_0_0_1px_rgba(62,131,117,0.22),0_16px_34px_rgba(24,24,27,0.08)]"
       to={`/product-catalog/industries/${item.id}`}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,0.10),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(248,250,252,0.9))]" />
-      <div className="relative grid grid-cols-[56px_minmax(0,1fr)] gap-4">
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#18181b,#3f3f46)] text-white shadow-[0_16px_34px_rgba(24,24,27,0.24)]">
-          <Boxes size={23} />
+      <div className="relative grid grid-cols-[44px_minmax(0,1fr)] gap-3">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef6f4] text-[#2f6f63]">
+          <Boxes size={20} />
         </span>
         <span className="min-w-0">
-          <strong className="block truncate text-xl font-black text-[#1f1f1f]">{item.name}</strong>
-          <span className="mt-1 block text-sm font-semibold text-[#667985]">{item.expertise}</span>
+          <strong className="block truncate text-lg font-semibold text-[#202124]">{item.name}</strong>
+          <span className="mt-1 block text-sm font-medium text-[#667085]">{item.expertise}</span>
         </span>
       </div>
-      <div className="relative mt-5 grid gap-3">
-        <div className="flex flex-wrap gap-2 text-xs font-bold">
-          <span className="rounded-full border border-[#e4e4e7] bg-white px-2.5 py-1 text-[#333333]">{item.modelCount} model</span>
-          <span className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{item.stock.inStock}/{item.stock.total} còn kho</span>
+      <div className="relative mt-4 grid gap-3">
+        <div className="flex flex-wrap gap-2 text-xs font-semibold">
+          <span className="rounded-full bg-[#f4f4f5] px-2.5 py-1 text-[#3f3f46]">{item.modelCount} model</span>
+          <span className="rounded-full bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{item.stock.inStock}/{item.stock.total} còn kho</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-[#e4e4e7]">
-          <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${Math.max(ratio, item.stock.total ? 8 : 0)}%` }} />
+        <div className="h-1.5 overflow-hidden rounded-full bg-[#e4e7ec]">
+          <span className="block h-full rounded-full bg-[#3e8375]" style={{ width: `${Math.max(ratio, item.stock.total ? 8 : 0)}%` }} />
         </div>
-        <span className="inline-flex items-center gap-2 text-sm font-black text-[#18181b]">
+        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#2f6f63]">
           Mở model <ArrowRight className="transition group-hover:translate-x-1" size={16} />
         </span>
       </div>
@@ -625,7 +625,7 @@ function AddModelModal({
 
         {businessLines.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-[#e4e4e7] bg-[#fafafa] p-5 text-sm font-semibold text-[#667985]">
-            Ngành hàng này chưa có dòng sản phẩm. Vui lòng tạo dòng sản phẩm trước rồi thêm model.
+            Chưa có nhóm sản phẩm.
           </div>
         ) : (
           <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -700,13 +700,13 @@ function ModelFormField({ children, label }: { children: ReactNode; label: strin
 
 function MetricCard({ icon, label, subLabel, value }: { icon: ReactNode; label: string; subLabel: string; value: number }) {
   return (
-    <div className="grid gap-3 rounded-[22px] border border-white/80 bg-white/86 p-4 text-left shadow-[0_8px_20px_rgba(24,24,27,0.05)] backdrop-blur">
+    <div className="grid gap-2 rounded-[20px] bg-white/88 p-3 text-left shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06),0_8px_20px_rgba(24,24,27,0.04)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold text-[#667985]">{label}</span>
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f4f5] text-[#18181b]">{icon}</span>
+        <span className="text-sm font-medium text-[#667085]">{label}</span>
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#f6f8f7] text-[#2f6f63]">{icon}</span>
       </div>
-      <strong className="text-3xl font-black leading-none text-[#1f1f1f]">{value}</strong>
-      <span className="text-xs font-semibold text-[#7a6367]">{subLabel}</span>
+      <strong className="text-2xl font-semibold leading-none text-[#202124]">{value}</strong>
+      <span className="text-xs font-medium text-[#7a8699]">{subLabel}</span>
     </div>
   );
 }

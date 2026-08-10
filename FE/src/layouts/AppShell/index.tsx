@@ -23,6 +23,7 @@ const AdminUsersPage = lazy(() => import('../../pages/AdminUsersPage').then((mod
 const AdminWorkAssignmentPage = lazy(() => import('../../pages/AdminWorkAssignmentPage').then((module) => ({ default: module.AdminWorkAssignmentPage })));
 const ApplicationSupportPage = lazy(() => import('../../pages/ApplicationSupportPage').then((module) => ({ default: module.ApplicationSupportPage })));
 const DashboardPage = lazy(() => import('../../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+const DemoLoanCreatePage = lazy(() => import('../../pages/DemoLoanCreatePage').then((module) => ({ default: module.DemoLoanCreatePage })));
 const EngineerPerformancePage = lazy(() => import('../../pages/EngineerPerformancePage').then((module) => ({ default: module.EngineerPerformancePage })));
 const EngineerCustomersPage = lazy(() => import('../../pages/EngineerCustomersPage').then((module) => ({ default: module.EngineerCustomersPage })));
 const EngineerTasksPage = lazy(() => import('../../pages/EngineerTasksPage').then((module) => ({ default: module.EngineerTasksPage })));
@@ -110,14 +111,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     },
   });
   const role = getRoleName(user);
-  const userCanUseApplicationSupport = role === 'engineer' && user.engineerProfile?.expertiseGroup === 'LAB_TESTING';
-  const visibleNavItems = navItemsForRole(role).filter((item) => item.path !== '/application-support' || userCanUseApplicationSupport);
-  const visibleNavGroups = navGroupsForRole(role)
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => item.path !== '/application-support' || userCanUseApplicationSupport),
-    }))
-    .filter((group) => group.items.length > 0);
+  const visibleNavItems = navItemsForRole(role);
+  const visibleNavGroups = navGroupsForRole(role).filter((group) => group.items.length > 0);
   const activeNavItem = visibleNavItems.find((item) =>
     item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path),
   );
@@ -433,11 +428,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                {userCanUseApplicationSupport ? (
-                  <ApplicationSupportPage currentRole={role} user={user} />
-                ) : (
-                  <AccessDeniedPage message="Chỉ kỹ sư xét nghiệm/application specialist được dùng chức năng hỗ trợ app." />
-                )}
+                <ApplicationSupportPage currentRole={role} user={user} />
               </RequireRole>
             }
           />
@@ -505,7 +496,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/reports"
             element={
               <RequireRole
-                allowedRoles={['admin', 'manager']}
+                allowedRoles={['admin', 'manager', 'engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
@@ -799,6 +790,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <ServiceTicketCreatePage user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/demo-loans/create"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'manager', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <DemoLoanCreatePage user={user} />
               </RequireRole>
             }
           />

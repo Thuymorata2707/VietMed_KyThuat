@@ -1,6 +1,6 @@
 import { Edit3, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
@@ -22,11 +22,17 @@ export function ResourcePage({
   getEditHref?: (row: TableRow) => string | null;
 }) {
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = config.endpoint === '/customers' ? 50 : 10;
   const resourceParams = useMemo(() => {
-    const search = new URLSearchParams({ ...extraQueryParams, page: '1', limit: '10' });
+    const search = new URLSearchParams({ ...extraQueryParams, page: String(page), limit: String(pageSize) });
     if (config.searchEnabled !== false && query.trim()) search.set('search', query.trim());
     return search.toString();
-  }, [config.searchEnabled, extraQueryParams, query]);
+  }, [config.searchEnabled, extraQueryParams, page, pageSize, query]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [extraQueryParams, query]);
 
   const resourceQuery = useQuery({
     queryKey: queryKeys.resources.list(config.endpoint, resourceParams),
@@ -54,8 +60,16 @@ export function ResourcePage({
 
   const rows = resourceQuery.data?.rows ?? [];
   const meta = resourceQuery.data?.meta ?? null;
+  const totalPages = Math.max(1, meta?.totalPages ?? 1);
+  const totalRows = meta?.total ?? rows.length;
+  const firstVisibleRow = totalRows ? ((meta?.page ?? page) - 1) * (meta?.limit ?? pageSize) + 1 : 0;
+  const lastVisibleRow = Math.min(totalRows, (meta?.page ?? page) * (meta?.limit ?? pageSize));
   const loading = resourceQuery.isLoading || resourceQuery.isFetching;
   const error = resourceQuery.error instanceof Error ? resourceQuery.error.message : '';
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <PageFrame>
@@ -74,7 +88,7 @@ export function ResourcePage({
         </div>
         {toolbarControl}
         <div className="inline-flex min-h-[34px] items-center whitespace-nowrap rounded-full border border-[#e5e5e5] bg-white px-3 text-[13px] font-medium text-[#666666]">
-          {loading ? 'Đang tải' : `${meta?.total ?? rows.length} bản ghi`}
+          {loading ? 'Đang tải' : `${firstVisibleRow}-${lastVisibleRow}/${totalRows}`}
         </div>
       </div>
 
@@ -138,6 +152,28 @@ export function ResourcePage({
             ) : null}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm font-semibold text-[#666666]">
+        <span>Trang {meta?.page ?? page}/{totalPages}</span>
+        <div className="flex gap-2">
+          <button
+            className="secondary-button compact"
+            disabled={loading || page <= 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            type="button"
+          >
+            Trước
+          </button>
+          <button
+            className="secondary-button compact"
+            disabled={loading || page >= totalPages}
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            type="button"
+          >
+            Sau
+          </button>
+        </div>
       </div>
     </PageFrame>
   );

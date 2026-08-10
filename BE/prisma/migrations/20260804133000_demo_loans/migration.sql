@@ -1,0 +1,40 @@
+CREATE TABLE `DemoLoan` (
+  `id` VARCHAR(191) NOT NULL,
+  `code` VARCHAR(191) NOT NULL,
+  `status` ENUM('PLANNED', 'HANDED_OVER', 'OVERDUE', 'RETURNED', 'CANCELLED') NOT NULL DEFAULT 'PLANNED',
+  `machineId` VARCHAR(191) NOT NULL,
+  `customerId` VARCHAR(191) NOT NULL,
+  `engineerId` VARCHAR(191) NOT NULL,
+  `plannedHandoverAt` DATETIME(3) NOT NULL,
+  `handedOverAt` DATETIME(3) NULL,
+  `expectedReturnAt` DATETIME(3) NOT NULL,
+  `returnedAt` DATETIME(3) NULL,
+  `handoverAddress` VARCHAR(191) NULL,
+  `receiverName` VARCHAR(191) NULL,
+  `receiverPosition` VARCHAR(191) NULL,
+  `receiverPhone` VARCHAR(191) NULL,
+  `handoverCondition` TEXT NULL,
+  `handoverAccessories` JSON NULL,
+  `handoverNote` TEXT NULL,
+  `returnCondition` TEXT NULL,
+  `returnAccessories` JSON NULL,
+  `returnNote` TEXT NULL,
+  `purpose` TEXT NULL,
+  `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` DATETIME(3) NOT NULL,
+
+  UNIQUE INDEX `DemoLoan_code_key`(`code`),
+  INDEX `DemoLoan_machineId_idx`(`machineId`),
+  INDEX `DemoLoan_customerId_idx`(`customerId`),
+  INDEX `DemoLoan_engineerId_idx`(`engineerId`),
+  INDEX `DemoLoan_status_idx`(`status`),
+  INDEX `DemoLoan_plannedHandoverAt_idx`(`plannedHandoverAt`),
+  INDEX `DemoLoan_expectedReturnAt_idx`(`expectedReturnAt`),
+  INDEX `DemoLoan_returnedAt_idx`(`returnedAt`),
+  PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE `DemoLoan`
+  ADD CONSTRAINT `DemoLoan_machineId_fkey` FOREIGN KEY (`machineId`) REFERENCES `Machine`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  ADD CONSTRAINT `DemoLoan_customerId_fkey` FOREIGN KEY (`customerId`) REFERENCES `Customer`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  ADD CONSTRAINT `DemoLoan_engineerId_fkey` FOREIGN KEY (`engineerId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

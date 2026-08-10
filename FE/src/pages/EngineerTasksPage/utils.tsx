@@ -1,7 +1,7 @@
 import { ClipboardCheck, PackageCheck, Wrench } from 'lucide-react';
 import type { ApiUser } from '../../api';
+import { checklistForCategory } from '../../config/medicalDeviceChecklists';
 import { displayLabel } from '../../utils/displayLabels';
-import { machineModelOptionLabel } from '../../utils/machineDisplayName';
 import type {
   AttachmentType,
   BusinessTab,
@@ -9,14 +9,15 @@ import type {
   EngineerTask,
   InstallationDeviceItem,
   InstallationTask,
-  PickerCustomer,
-  PickerMachine,
   TaskFilter,
   TaskKind,
   TaskTone,
   CreateTicketForm,
+  TaskAttachment,
   QuickMachineModel,
-  TaskMachine,
+  WorkOperationLog,
+  WorkOperationPart,
+  WorkOperationsResponse,
 } from './types';
 
 export const todayValue = () => new Date().toISOString().slice(0, 10);
@@ -126,6 +127,140 @@ export const emptyCreateTicketForm = (kind: TaskKind = 'repair'): CreateTicketFo
   deviceCondition: 'NEW_100',
   deviceConditionNote: '',
 });
+
+export function engineerChecklistForTask(task: EngineerTask) {
+  const category = task.machine?.productCategory || task.machine?.businessLine?.productIndustry?.name || taskModelText(task) || taskPrimaryMachineName(task);
+  return checklistForCategory(category, task.kind);
+}
+
+export function buildStructuredEngineerNote(baseNote: string, checklistLines: string[], materialsText: string, workLogText: string) {
+  const sections = [baseNote.trim()].filter(Boolean);
+  if (checklistLines.length) sections.push(`[Checklist đã thực hiện]\n${checklistLines.map((line) => `- ${line}`).join('\n')}`);
+  if (materialsText.trim()) sections.push(`[Linh kiện/vật tư sử dụng]\n${materialsText.trim()}`);
+  if (workLogText.trim()) sections.push(`[Nhật ký xử lý]\n${workLogText.trim()}`);
+  return sections.join('\n\n');
+}
+
+function taskMachineIdentity(task: EngineerTask) {
+  return [
+    task.machine?.id,
+    task.machine?.machineCode,
+    task.machine?.serialNumber,
+    taskSerialText(task),
+  ].filter(Boolean);
+}
+
+export function sameMachineHistory(task: EngineerTask, tasks: EngineerTask[]) {
+  const identities = new Set(taskMachineIdentity(task));
+  if (!identities.size) return [];
+
+  return tasks
+    .filter((item) => item.id !== task.id || item.kind !== task.kind)
+    .filter((item) => taskMachineIdentity(item).some((identity) => identities.has(identity)))
+    .sort((left, right) => new Date(taskDateValue(right) || 0).getTime() - new Date(taskDateValue(left) || 0).getTime())
+    .slice(0, 5);
+}
+
+export function taskAddressForMap(task: EngineerTask) {
+  return taskLocation(task) || task.customer?.fullAddress || task.customer?.address || task.machine?.customer?.province || '';
+}
+
+export function profileCompletenessForTask(
+  task: EngineerTask,
+  attachments: TaskAttachment[],
+  resultNote: string,
+  checklistLines: string[],
+  nextDueDate: string,
+  customerFeedback: string,
+  installationReceiverRepresentative: string,
+  installationReceiverPhone: string,
+) {
+  const checks = [
+    { label: 'Thiếu thông tin khách hàng', ok: Boolean(taskCustomer(task)) },
+    { label: 'Thiếu serial/mã máy', ok: Boolean(taskSerialText(task) || task.machine?.machineCode) },
+    { label: 'Thiếu ảnh/tài liệu hiện trường', ok: attachments.length > 0 },
+    { label: 'Thiếu kết quả kỹ thuật', ok: Boolean(resultNote.trim()) },
+    { label: 'Chưa tick checklist nghiệp vụ', ok: checklistLines.length > 0 },
+  ];
+
+  if (task.kind === 'repair') {
+    checks.push({ label: 'Thiếu phản hồi khách hàng', ok: Boolean(customerFeedback.trim() || task.customerFeedback || task.repairMethod || task.conditionAssessment) });
+  }
+  if (task.kind === 'maintenance') {
+    checks.push({ label: 'Thiếu lịch hẹn bảo trì lại', ok: Boolean(nextDueDate || task.nextDueDate) });
+  }
+  if (task.kind === 'installation') {
+    checks.push({ label: 'Thiếu serial/bàn giao lắp đặt', ok: Boolean(taskSerialText(task) || task.installedDeviceItems?.some((item) => item.serialNumber)) });
+    checks.push({
+      label: 'Thiếu thông tin người nhận bàn giao',
+      ok: Boolean(installationReceiverRepresentative.trim() || installationReceiverPhone.trim() || task.receiverRepresentative || task.receiverPhone),
+    });
+  }
+
+  const done = checks.filter((item) => item.ok).length;
+  return {
+    percent: Math.round((done / checks.length) * 100),
+    missing: checks.filter((item) => !item.ok).map((item) => item.label),
+  };
+}
+
+export function isCompletionStatus(task: EngineerTask, nextStatus: string) {
+  if (task.kind === 'installation') return nextStatus === 'INSTALLED';
+  return nextStatus === 'COMPLETED';
+}
+
+export function completionBlockers(task: EngineerTask, completeness: ReturnType<typeof profileCompletenessForTask> | null, nextStatus: string) {
+  if (!isCompletionStatus(task, nextStatus)) return [];
+  return completeness?.missing ?? [];
+}
+
+export function parseMaterialRows(value: string): WorkOperationPart[] {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, quantityText, serialNumber, unitCostText, note] = line.split('|').map((part) => part.trim());
+      const quantity = Number(quantityText || 1);
+      const unitCost = unitCostText ? Number(unitCostText.replaceAll(',', '')) : null;
+      const normalized = `${name} ${note || ''}`.toLowerCase();
+      const status: WorkOperationPart['status'] = normalized.includes('chờ') || normalized.includes('waiting') ? 'WAITING' : 'USED';
+      return {
+        name,
+        quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+        serialNumber: serialNumber || null,
+        unitCost: unitCost !== null && Number.isFinite(unitCost) ? unitCost : null,
+        status,
+        note: note || null,
+      };
+    })
+    .filter((item) => item.name);
+}
+
+export function parseWorkLogRows(value: string): WorkOperationLog[] {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => {
+      const [title, ...noteParts] = line.split(' - ');
+      return {
+        title: title.trim() || line,
+        note: noteParts.join(' - ').trim() || null,
+        sortOrder: index,
+      };
+    });
+}
+
+export function materialRowsToText(parts: WorkOperationsResponse['usedParts']) {
+  return parts
+    .map((part) => [part.name, part.quantity || 1, part.serialNumber || '', part.unitCost ?? '', part.note || ''].join(' | '))
+    .join('\n');
+}
+
+export function workLogRowsToText(logs: WorkOperationsResponse['workLogs']) {
+  return logs.map((log) => (log.note ? `${log.title} - ${log.note}` : log.title)).join('\n');
+}
 
 export function compareTasks(a: EngineerTask, b: EngineerTask) {
   return taskSortDate(b).getTime() - taskSortDate(a).getTime();
@@ -366,17 +501,6 @@ export function canEngineerSeeModel(user: ApiUser, model: QuickMachineModel) {
   return true;
 }
 
-export function quickModelLabel(model: QuickMachineModel) {
-  return machineModelOptionLabel(model) || model.code || model.displayName || model.name || 'Model';
-}
-
-export function canEngineerSeeMachine(user: ApiUser, machine: TaskMachine) {
-  const expertiseGroup = user.engineerProfile?.expertiseGroup;
-  if (!expertiseGroup) return true;
-  const machineGroup = machine.businessLine?.productIndustry?.expertiseGroup ?? machine.businessLine?.expertiseGroup;
-  return !machineGroup || machineGroup === expertiseGroup;
-}
-
 export function groupTasksByDate(tasks: EngineerTask[]) {
   const groups = new Map<string, EngineerTask[]>();
 
@@ -406,29 +530,6 @@ function compareTaskGroupKeys(left: string, right: string) {
   if (left === '__missing__') return 1;
   if (right === '__missing__') return -1;
   return right.localeCompare(left);
-}
-
-export function machinePickerLabel(machine: PickerMachine) {
-  return [machine.machineCode, machine.serialNumber ? `S/N ${machine.serialNumber}` : '', machine.modelName || machine.name, machine.customer?.name]
-    .filter(Boolean)
-    .join(' - ');
-}
-
-export function machinePickerEndpoint(kind: TaskKind) {
-  return kind === 'installation'
-    ? '/machines?limit=20'
-    : '/machines?limit=20&inventoryStatus=INSTALLED';
-}
-
-export function isMachineEligibleForTicket(kind: TaskKind, machine: PickerMachine) {
-  if (!machine.inventoryStatus) return true;
-  return kind === 'installation'
-    ? !['INSTALLED', 'SOLD'].includes(machine.inventoryStatus)
-    : machine.inventoryStatus === 'INSTALLED';
-}
-
-export function customerPickerLabel(customer: PickerCustomer) {
-  return [customer.customerCode, customer.name, customer.province, customer.phone].filter(Boolean).join(' - ');
 }
 
 export function isEngineerUser(user: ApiUser) {

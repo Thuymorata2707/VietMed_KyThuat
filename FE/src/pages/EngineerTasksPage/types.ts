@@ -73,29 +73,6 @@ export type TaskMachine = {
   } | null;
 };
 
-export type PickerMachine = TaskMachine & {
-  id: string;
-  inventoryStatus?: string | null;
-  name?: string | null;
-  customer?: {
-    id?: string | null;
-    name?: string | null;
-    province?: string | null;
-  } | null;
-};
-
-export type PickerCustomer = {
-  id: string;
-  customerCode?: string | null;
-  name: string;
-  phone?: string | null;
-  province?: string | null;
-  fullAddress?: string | null;
-  address?: string | null;
-  contactPerson?: string | null;
-  contactPhone?: string | null;
-};
-
 export type RepairTask = WorkReviewFields & {
   id: string;
   code: string;
@@ -327,6 +304,48 @@ export type CreateTicketForm = {
   installedDeviceItems: InstallationDeviceItem[];
   deviceCondition: string;
   deviceConditionNote: string;
+};
+
+export type WorkOperationPart = {
+  name: string;
+  quantity?: number;
+  serialNumber?: string | null;
+  unitCost?: number | null;
+  status?: 'PLANNED' | 'USED' | 'WAITING' | 'RETURNED';
+  note?: string | null;
+};
+
+export type ComponentAccessoryOption = {
+  id: string;
+  code?: string | null;
+  name: string;
+  requiresSerial?: boolean | null;
+  component?: {
+    name?: string | null;
+    machineModel?: {
+      code?: string | null;
+      name?: string | null;
+      displayName?: string | null;
+    } | null;
+  } | null;
+};
+
+export type WorkOperationLog = {
+  title: string;
+  note?: string | null;
+  sortOrder?: number;
+};
+
+export type WorkOperationChecklistItem = {
+  label: string;
+  status: 'PENDING' | 'DONE' | 'SKIPPED';
+  sortOrder?: number;
+};
+
+export type WorkOperationsResponse = {
+  workLogs: Array<WorkOperationLog & { id: string }>;
+  usedParts: Array<WorkOperationPart & { id: string; quantity: number; totalCost?: number | null }>;
+  checklistItems: Array<WorkOperationChecklistItem & { id: string }>;
 };
 
 export type EngineerTasksPageProps = {

@@ -26,8 +26,25 @@ type PaginationState = {
   total: number;
   totalPages: number;
 };
+type InitialBusinessLineRow = {
+  code: string;
+  countryOfOrigin: string;
+  manufacturer: string;
+  name: string;
+  productCategory: string;
+};
 
 const pageSizeOptions = [10, 20, 50, 100];
+const initialBusinessLineCategoryOptions = [
+  { label: 'Máy siêu âm', value: 'ULTRASOUND' },
+  { label: 'Máy xét nghiệm', value: 'LAB_TESTING' },
+  { label: 'Sinh hóa', value: 'BIOCHEMISTRY' },
+  { label: 'Miễn dịch', value: 'IMMUNOLOGY' },
+  { label: 'Huyết học', value: 'HEMATOLOGY' },
+  { label: 'X-quang', value: 'X_RAY' },
+  { label: 'Nội soi', value: 'ENDOSCOPY' },
+  { label: 'Khác', value: 'OTHER' },
+];
 const quickFilterKeys = [
   'status',
   'inventoryStatus',
@@ -49,6 +66,7 @@ export function AdminCrudPage({
   extraQueryParams?: Record<string, string>;
   headerControl?: ReactNode;
 }) {
+  const isCustomerCrud = isCustomersEndpoint(config.endpoint);
   const [rows, setRows] = useState<TableRow[]>([]);
   const [options, setOptions] = useState<OptionMap>({});
   const [query, setQuery] = useState('');
@@ -61,7 +79,7 @@ export function AdminCrudPage({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pagination, setPagination] = useState<PaginationState | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(isCustomerCrud ? 50 : 20);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -90,9 +108,8 @@ export function AdminCrudPage({
   const searchableRows = useMemo(() => (pagination ? rows : filterRows(rows, query)), [pagination, query, rows]);
   const filteredRows = useMemo(() => applyColumnFilters(searchableRows, filters), [filters, searchableRows]);
   const quickFilters = useMemo(() => buildQuickFilters(config, rows), [config, rows]);
-  const isCustomerCrud = isCustomersEndpoint(config.endpoint);
   const customerStats = useMemo(() => buildCustomerStats(rows), [rows]);
-  const tableColumnCount = (isCustomerCrud ? 6 : config.columns.length) + (config.canUpdate !== false || config.canDelete !== false ? 1 : 0);
+  const tableColumnCount = (isCustomerCrud ? 7 : config.columns.length) + (config.canUpdate !== false || config.canDelete !== false ? 1 : 0);
 
   useEffect(() => {
     if (!pagination) return;
@@ -302,30 +319,54 @@ export function AdminCrudPage({
         </div>
 
         {isCustomerCrud ? (
-          <div className="customer-card-list">
-            {filteredRows.map((row, index) => (
-              <CustomerCard
-                canDelete={config.canDelete !== false}
-                canUpdate={config.canUpdate !== false}
-                key={String(row.id ?? index)}
-                onDelete={() => setDeletingRow(row)}
-                onEdit={() => startEdit(row)}
-                onSelect={() => setSelectedRow(row)}
-                row={row}
-              />
-            ))}
-            {loading ? (
-              <div className="table-state">
-                <Loader2 className="spin-icon" size={18} />
-                Đang tải dữ liệu...
-              </div>
-            ) : null}
-            {!loading && filteredRows.length === 0 ? (
-              <div className="table-state empty-state">
-                <strong>Không có dữ liệu phù hợp</strong>
-                <span>Thử đổi từ khóa tìm kiếm hoặc tạo mới {config.entityLabel}.</span>
-              </div>
-            ) : null}
+          <div className="crud-table-wrap customer-table-wrap">
+            <table className="customer-crud-table">
+              <thead>
+                <tr>
+                  <th>Khách hàng</th>
+                  <th>Mã</th>
+                  <th>Tỉnh/TP</th>
+                  <th>Liên hệ</th>
+                  <th>Kỹ sư</th>
+                  <th>Máy</th>
+                  <th>Trạng thái</th>
+                  {config.canUpdate !== false || config.canDelete !== false ? <th className="actions-column"></th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((row, index) => (
+                  <CustomerTableRow
+                    canDelete={config.canDelete !== false}
+                    canUpdate={config.canUpdate !== false}
+                    key={String(row.id ?? index)}
+                    onDelete={() => setDeletingRow(row)}
+                    onEdit={() => startEdit(row)}
+                    onSelect={() => setSelectedRow(row)}
+                    row={row}
+                  />
+                ))}
+                {loading ? (
+                  <tr>
+                    <td colSpan={tableColumnCount}>
+                      <div className="table-state">
+                        <Loader2 className="spin-icon" size={18} />
+                        Đang tải dữ liệu...
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                {!loading && filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={tableColumnCount}>
+                      <div className="table-state empty-state">
+                        <strong>Không có dữ liệu phù hợp</strong>
+                        <span>Thử đổi từ khóa tìm kiếm hoặc tạo mới {config.entityLabel}.</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="crud-table-wrap">
@@ -756,6 +797,15 @@ function FieldControl({
   row?: TableRow | null;
   onChange: (value: string, optionRow?: TableRow) => void;
 }) {
+  if (field.type === 'businessLines') {
+    return (
+      <div className="wide-field">
+        <span className="field-label">{field.label}</span>
+        <InitialBusinessLinesEditor onChange={onChange} value={value} />
+      </div>
+    );
+  }
+
   if (field.type === 'textarea' || field.type === 'tags') {
     return (
       <label className="wide-field">
@@ -836,6 +886,79 @@ function FieldControl({
         </span>
       ) : null}
     </label>
+  );
+}
+
+function InitialBusinessLinesEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const rows = parseInitialBusinessLinesForEditor(value);
+  const editableRows = rows.length ? rows : [emptyInitialBusinessLineRow()];
+
+  function setRows(nextRows: InitialBusinessLineRow[]) {
+    onChange(serializeInitialBusinessLines(nextRows));
+  }
+
+  function updateRow(index: number, patch: Partial<InitialBusinessLineRow>) {
+    setRows(editableRows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
+  }
+
+  function removeRow(index: number) {
+    setRows(editableRows.filter((_, rowIndex) => rowIndex !== index));
+  }
+
+  return (
+    <div className="initial-business-lines-editor">
+      <div className="initial-business-lines-header">
+        <span>Nhóm sản phẩm thuộc ngành hàng này</span>
+        <button className="secondary-button compact" onClick={() => setRows([...editableRows, emptyInitialBusinessLineRow()])} type="button">
+          <Plus size={15} />
+          Thêm nhóm
+        </button>
+      </div>
+      <div className="initial-business-lines-rows">
+        {editableRows.map((row, index) => (
+          <div className="initial-business-line-row" key={index}>
+            <input
+              className="uppercase"
+              onChange={(event) => updateRow(index, { code: event.target.value })}
+              placeholder="Mã nhóm"
+              value={row.code}
+            />
+            <input
+              onChange={(event) => updateRow(index, { name: event.target.value })}
+              placeholder="Tên nhóm sản phẩm"
+              value={row.name}
+            />
+            <select onChange={(event) => updateRow(index, { productCategory: event.target.value })} value={row.productCategory}>
+              {initialBusinessLineCategoryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <input
+              onChange={(event) => updateRow(index, { manufacturer: event.target.value })}
+              placeholder="Hãng"
+              value={row.manufacturer}
+            />
+            <input
+              onChange={(event) => updateRow(index, { countryOfOrigin: event.target.value })}
+              placeholder="Xuất xứ"
+              value={row.countryOfOrigin}
+            />
+            <button
+              className="icon-button"
+              disabled={editableRows.length === 1 && !hasInitialBusinessLineValue(row)}
+              onClick={() => removeRow(index)}
+              title="Xóa nhóm"
+              type="button"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <p className="field-hint">Tạo ngành hàng xong, các nhóm này sẽ dùng ngay để thêm model.</p>
+    </div>
   );
 }
 
@@ -1077,7 +1200,7 @@ function CustomerQuickField({ label, value }: { label: string; value: ReactNode 
   );
 }
 
-function CustomerCard({
+function CustomerTableRow({
   row,
   canUpdate,
   canDelete,
@@ -1095,19 +1218,25 @@ function CustomerCard({
   const editHref = adminCrudFormEditHref('/customers', row);
   const name = formatDisplayValue(readPath(row, 'hospitalName') || readPath(row, 'name'));
   const code = formatDisplayValue(readPath(row, 'customerCode'));
+  const type = displayLabel(String(readPath(row, 'customerType') ?? ''));
   const address = [readPath(row, 'address'), readPath(row, 'district'), readPath(row, 'province')]
     .filter(Boolean)
     .map((value) => String(value))
     .join(', ');
+  const province = formatDisplayValue(readPath(row, 'province'));
   const phone = formatDisplayValue(readPath(row, 'contactPhone') || readPath(row, 'phone'));
   const contact = formatDisplayValue(readPath(row, 'contactPerson'));
-  const region = formatDisplayValue(readPath(row, 'region.name'));
   const engineer = formatDisplayValue(readPath(row, 'primaryEngineer.fullName'));
   const machineCount = Number(readPath(row, '_count.machines') ?? 0);
+  const profileHref = `/customers/profile?customerId=${String(readPath(row, 'id') ?? '')}`;
+  const handleCustomerAction = (event: MouseEvent<HTMLButtonElement>, action: () => void) => {
+    event.stopPropagation();
+    action();
+  };
 
   return (
-    <article
-      className="customer-card"
+    <tr
+      className="clickable-row customer-table-row"
       onClick={onSelect}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -1117,58 +1246,54 @@ function CustomerCard({
       }}
       tabIndex={0}
     >
-      <div className="customer-card-main">
-        <div className="customer-name-cell">
+      <td>
+        <div className="customer-name-cell customer-name-cell--compact">
           <strong>{name}</strong>
-          <span>{[code !== '-' ? code : '', displayLabel(String(readPath(row, 'customerType') ?? ''))].filter(Boolean).join(' - ') || 'Chưa phân loại'}</span>
+          <span>{type || 'Chưa phân loại'}</span>
           {address ? <small>{address}</small> : null}
         </div>
-
-        <div className="customer-card-meta">
-          <div className="customer-stack-cell">
-            <span>Liên hệ</span>
-            <strong>{contact}</strong>
-            <small>{phone}</small>
-          </div>
-          <div className="customer-stack-cell">
-            <span>Khu vực</span>
-            <strong>{region}</strong>
-          </div>
-          <div className="customer-stack-cell">
-            <span>Phụ trách</span>
-            <strong>{engineer === '-' ? 'Chưa gán' : engineer}</strong>
-          </div>
+      </td>
+      <td>
+        <span className="customer-code-cell">{code}</span>
+      </td>
+      <td>{province}</td>
+      <td>
+        <div className="customer-stack-cell customer-stack-cell--compact">
+          <strong>{contact}</strong>
+          <small>{phone}</small>
         </div>
-      </div>
-
-      <div className="customer-card-side">
+      </td>
+      <td>{engineer === '-' ? <span className="muted-text">Chưa gán</span> : engineer}</td>
+      <td>
         <span className="customer-machine-count">{machineCount} máy</span>
-        {renderStatusBadge(readPath(row, 'status'))}
-        {canUpdate || canDelete ? (
-          <div className="row-actions" onClick={(event) => event.stopPropagation()}>
-            <Link className="customer-profile-link" to={`/customers/profile?customerId=${String(readPath(row, 'id') ?? '')}`}>
+      </td>
+      <td>{renderStatusBadge(readPath(row, 'status'))}</td>
+      {canUpdate || canDelete ? (
+        <td className="actions-cell customer-table-actions">
+          <div className="row-actions">
+            <Link className="customer-profile-link" onClick={(event) => event.stopPropagation()} to={profileHref}>
               Hồ sơ
             </Link>
             {canUpdate ? (
               editHref ? (
-                <Link className="icon-button" title="Sửa" to={editHref}>
+                <Link className="icon-button" onClick={(event) => event.stopPropagation()} title="Sửa" to={editHref}>
                   <Edit3 size={16} />
                 </Link>
               ) : (
-                <button className="icon-button" onClick={onEdit} title="Sửa" type="button">
+                <button className="icon-button" onClick={(event) => handleCustomerAction(event, onEdit)} title="Sửa" type="button">
                   <Edit3 size={16} />
                 </button>
               )
             ) : null}
             {canDelete ? (
-              <button className="icon-button danger" onClick={onDelete} title="Xóa" type="button">
+              <button className="icon-button danger" onClick={(event) => handleCustomerAction(event, onDelete)} title="Xóa" type="button">
                 <Trash2 size={16} />
               </button>
             ) : null}
           </div>
-        ) : null}
-      </div>
-    </article>
+        </td>
+      ) : null}
+    </tr>
   );
 }
 
@@ -1631,10 +1756,92 @@ function buildPayload(fields: CrudField[], form: FormState) {
   fields.forEach((field) => {
     const value = form[field.name]?.trim() ?? '';
     if (!value && !field.required) return;
+    if (field.name === 'businessLinesText') {
+      const businessLines = parseInitialBusinessLines(value);
+      if (businessLines.length) payload.businessLines = businessLines;
+      return;
+    }
     payload[field.name] = field.type === 'tags' ? value.split('\n').map((item) => item.trim()).filter(Boolean) : value;
   });
 
   return payload;
+}
+
+function parseInitialBusinessLines(value: string) {
+  return parseInitialBusinessLinesForEditor(value)
+    .filter((line) => line.code && line.name)
+    .map((line) =>
+      Object.fromEntries(
+        Object.entries(line).filter(([, fieldValue]) => fieldValue),
+      ),
+    );
+}
+
+function parseInitialBusinessLinesForEditor(value: string): InitialBusinessLineRow[] {
+  if (!value.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(value) as InitialBusinessLineRow[];
+    if (Array.isArray(parsed)) {
+      return parsed.map((row) => ({
+        code: String(row?.code ?? '').trim().toUpperCase(),
+        countryOfOrigin: String(row?.countryOfOrigin ?? '').trim(),
+        manufacturer: String(row?.manufacturer ?? '').trim(),
+        name: String(row?.name ?? '').trim(),
+        productCategory: normalizeInitialBusinessLineCategory(row?.productCategory),
+      }));
+    }
+  } catch {
+    // Keep supporting the old pasted text format while the UI now uses rows.
+  }
+
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [code = '', name = '', productCategory = '', manufacturer = '', countryOfOrigin = ''] = line.split('|').map((part) => part.trim());
+      return {
+        code: code.toUpperCase(),
+        countryOfOrigin,
+        manufacturer,
+        name,
+        productCategory: normalizeInitialBusinessLineCategory(productCategory),
+      };
+    });
+}
+
+function serializeInitialBusinessLines(rows: InitialBusinessLineRow[]) {
+  const normalized = rows
+    .map((row) => ({
+      code: row.code.trim().toUpperCase(),
+      countryOfOrigin: row.countryOfOrigin.trim(),
+      manufacturer: row.manufacturer.trim(),
+      name: row.name.trim(),
+      productCategory: normalizeInitialBusinessLineCategory(row.productCategory),
+    }))
+    .filter(hasInitialBusinessLineValue);
+
+  return normalized.length ? JSON.stringify(normalized) : '';
+}
+
+function emptyInitialBusinessLineRow(): InitialBusinessLineRow {
+  return {
+    code: '',
+    countryOfOrigin: '',
+    manufacturer: '',
+    name: '',
+    productCategory: 'OTHER',
+  };
+}
+
+function hasInitialBusinessLineValue(row: InitialBusinessLineRow) {
+  return Boolean(row.code || row.name || row.manufacturer || row.countryOfOrigin || (row.productCategory && row.productCategory !== 'OTHER'));
+}
+
+function normalizeInitialBusinessLineCategory(value?: string | null) {
+  const normalized = String(value ?? '').trim().toUpperCase();
+  return initialBusinessLineCategoryOptions.some((option) => option.value === normalized) ? normalized : 'OTHER';
 }
 
 function buildMachinePayload(fields: CrudField[], form: FormState, editingRow: TableRow | null) {

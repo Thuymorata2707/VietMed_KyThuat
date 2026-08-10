@@ -92,7 +92,6 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
     ...(selectedCustomer?.directMaintenances ?? []),
   ]);
   const totalAccessories = machines.reduce((total, machine) => total + (machine.accessories?.length ?? 0), 0);
-
   useEffect(() => {
     setPage(1);
   }, [search, selectedEngineerId]);
@@ -111,9 +110,7 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
             <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#18181b]">Chăm sóc khách hàng</span>
             <h1 className="mt-1 text-2xl font-extrabold tracking-normal text-[#1f1f1f]">{isAdminProfile ? 'Hồ sơ khách hàng' : 'Khách hàng phụ trách'}</h1>
             <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-[#666666]">
-              {isAdminProfile
-                ? 'Danh sách khách hàng được phân trang 50 dòng/lần để dùng tốt khi dữ liệu lên hàng nghìn. Tìm kiếm và lọc kỹ sư đều chạy theo dữ liệu server.'
-                : 'Theo dõi máy đang lắp, lịch sử sửa chữa và các lần bảo trì của từng khách hàng trong một màn hình.'}
+              {isAdminProfile ? 'Tra cứu & lọc khách hàng.' : 'Máy, lịch sử và việc mở.'}
             </p>
           </div>
           <Button asChild variant="secondary">

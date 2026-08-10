@@ -1,6 +1,6 @@
-import { Archive, ArrowLeft, ArrowRight, BarChart3, ChevronDown, ClipboardCheck, Filter, Loader2, Plus, RefreshCw, Search, Stethoscope, Wrench, X } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { Archive, ArrowLeft, ArrowRight, BarChart3, ChevronDown, ClipboardCheck, Download, Filter, Loader2, Plus, RefreshCw, Search, Stethoscope, Wrench, X } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch } from '../../api';
@@ -15,9 +15,10 @@ import { isTechnicalUser, technicalUserName } from '../../utils/technicalUsers';
 
 type ServiceTicketKind = 'repairs' | 'maintenance';
 type BoardKind = ServiceTicketKind | 'installations';
-type TicketScope = BoardKind | 'receiving';
+type TicketScope = BoardKind | 'demo';
 type QueueKey = 'action' | 'active' | 'review' | 'closed' | 'all';
 type GroupByKey = 'date' | 'engineer' | 'industry' | 'customer';
+type WorkKind = 'installation' | 'repair' | 'maintenance' | 'demo' | 'applicationSupport';
 
 type ProductIndustry = {
   id: string;
@@ -36,9 +37,12 @@ type EngineerOption = {
 };
 
 type MachineSummary = {
+  id?: string | null;
+  name?: string | null;
   machineCode?: string | null;
   serialNumber?: string | null;
   modelName?: string | null;
+  inventoryStatus?: string | null;
   warrantyStartDate?: string | null;
   warrantyEndDate?: string | null;
   productCategory?: string | null;
@@ -53,6 +57,50 @@ type MachineSummary = {
     hospitalName?: string | null;
     province?: string | null;
   } | null;
+};
+
+type CustomerOption = {
+  id: string;
+  name: string;
+  hospitalName?: string | null;
+  province?: string | null;
+  fullAddress?: string | null;
+  address?: string | null;
+  contactPerson?: string | null;
+  contactPosition?: string | null;
+  contactPhone?: string | null;
+};
+
+type DemoLoanRow = {
+  id: string;
+  code: string;
+  status: 'PLANNED' | 'HANDED_OVER' | 'OVERDUE' | 'RETURNED' | 'CANCELLED';
+  plannedHandoverAt: string;
+  handedOverAt?: string | null;
+  expectedReturnAt: string;
+  returnedAt?: string | null;
+  handoverAddress?: string | null;
+  receiverName?: string | null;
+  receiverPosition?: string | null;
+  receiverPhone?: string | null;
+  handoverCondition?: string | null;
+  handoverAccessories?: string[] | null;
+  handoverNote?: string | null;
+  returnCondition?: string | null;
+  returnAccessories?: string[] | null;
+  returnNote?: string | null;
+  purpose?: string | null;
+  engineer?: EngineerOption | null;
+  customer?: CustomerOption | null;
+  machine?: MachineSummary | null;
+};
+
+type DemoReturnDraft = {
+  accessoriesText: string;
+  condition: string;
+  loan: DemoLoanRow;
+  note: string;
+  occurredAt: string;
 };
 
 type ServiceRow = {
@@ -135,6 +183,43 @@ type BoardItem = {
   urgency?: string | null;
 };
 
+type TechnicalReportRow = {
+  id: string;
+  code: string;
+  kind: WorkKind;
+  title: string;
+  status: string;
+  date: string;
+  completedAt: string | null;
+  engineerId: string | null;
+  engineer: string;
+  customerId: string | null;
+  customer: string;
+  province: string;
+  machineId: string | null;
+  machineModelId: string | null;
+  model: string;
+  machineCode: string;
+  serialNumber: string;
+  note: string | null;
+};
+
+type TechnicalReport = {
+  summary: {
+    total: number;
+    installations: number;
+    repairs: number;
+    maintenances: number;
+    demos: number;
+    applicationSupport: number;
+    customers: number;
+    machines: number;
+    engineers: number;
+    provinces: number;
+  };
+  rows: TechnicalReportRow[];
+};
+
 type TicketPortalCard = {
   actionLabel: string;
   countKey: TicketScope;
@@ -175,14 +260,13 @@ const serviceTicketOptions: TicketPortalCard[] = [
     value: 'installations',
   },
   {
-    actionLabel: 'Để trống',
-    countKey: 'receiving',
-    description: 'Chờ bổ sung.',
-    disabled: true,
+    actionLabel: 'Mở luồng demo',
+    countKey: 'demo',
+    description: 'Bàn giao dùng thử, hạn thu hồi, phiếu nhận lại thiết bị.',
     icon: <Archive size={23} />,
-    label: 'Phiếu nhận thiết bị',
-    meta: 'Sẽ bổ sung sau',
-    value: 'receiving',
+    label: 'Demo / dùng thử',
+    meta: 'Bàn giao máy demo',
+    value: 'demo',
   },
 ];
 
@@ -203,29 +287,47 @@ const groupOptions: Array<{ label: string; value: GroupByKey }> = [
 
 export function ServiceTicketsPage({ user }: { user: ApiUser }) {
   const [selectedKind, setSelectedKind] = useState<TicketScope | ''>('');
+  const role = getRoleName(user);
+  const defaultRange = useMemo(() => currentMonthRange(), []);
+  const [reportFrom, setReportFrom] = useState(defaultRange.from);
+  const [reportTo, setReportTo] = useState(defaultRange.to);
   const overviewQuery = useTicketPortalOverview();
-  const overviewCounts = overviewQuery.data ?? { installations: 0, maintenance: 0, receiving: 0, repairs: 0 };
+  const reportQuery = useTechnicalWorkRegister(reportFrom, reportTo, role !== 'engineer');
+  const overviewCounts = overviewQuery.data ?? { demo: 0, installations: 0, maintenance: 0, repairs: 0 };
   const loading = overviewQuery.isLoading || overviewQuery.isFetching;
-  const error = overviewQuery.error instanceof Error ? overviewQuery.error.message : '';
+  const error =
+    (overviewQuery.error instanceof Error ? overviewQuery.error.message : '') ||
+    (reportQuery.error instanceof Error ? reportQuery.error.message : '');
 
   if (!selectedKind) {
     return (
       <PageFrame>
         <TicketPortalHero loading={loading} onRefresh={() => void overviewQuery.refetch()} />
         {error ? <Notice message={error} /> : null}
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-3 xl:grid-cols-2">
           {serviceTicketOptions.map((item) => (
             <TicketPortalCardButton count={overviewCounts[item.countKey]} item={item} key={item.value} onSelect={setSelectedKind} />
           ))}
         </section>
+        {role !== 'engineer' ? (
+          <TechnicalWorkRegister
+            from={reportFrom}
+            loading={reportQuery.isLoading || reportQuery.isFetching}
+            onFromChange={setReportFrom}
+            onRefresh={() => void reportQuery.refetch()}
+            onToChange={setReportTo}
+            report={reportQuery.data}
+            to={reportTo}
+          />
+        ) : null}
       </PageFrame>
     );
   }
 
-  if (selectedKind === 'receiving') {
+  if (selectedKind === 'demo') {
     return (
       <PageFrame>
-        <ReceivingPlaceholder onBack={() => setSelectedKind('')} />
+        <DemoLoansBoard onBack={() => setSelectedKind('')} user={user} />
       </PageFrame>
     );
   }
@@ -258,41 +360,49 @@ function useTicketPortalOverview() {
   return useQuery({
     queryKey: queryKeys.serviceTickets.board('portal', 'overview'),
     queryFn: async () => {
-      const [repairsResult, maintenanceResult, installationsResult] = await Promise.all([
+      const [repairsResult, maintenanceResult, installationsResult, demoResult] = await Promise.all([
         apiFetch<Paginated<ServiceRow> | ServiceRow[]>('/repairs?limit=100'),
         apiFetch<Paginated<ServiceRow> | ServiceRow[]>('/maintenance?limit=100'),
         apiFetch<Paginated<InstallationRow> | InstallationRow[]>('/installations?limit=100'),
+        apiFetch<Paginated<DemoLoanRow> | DemoLoanRow[]>('/demo-loans?limit=100'),
       ]);
 
       return {
         installations: listCount(installationsResult),
         maintenance: listCount(maintenanceResult),
-        receiving: 0,
+        demo: listCount(demoResult),
         repairs: listCount(repairsResult),
       } satisfies Record<TicketScope, number>;
     },
   });
 }
 
+function useTechnicalWorkRegister(from: string, to: string, enabled: boolean) {
+  return useQuery({
+    enabled,
+    queryKey: queryKeys.reports.installations(`work-register:${from}:${to}`),
+    queryFn: async () => apiFetch<TechnicalReport>(`/reports/technical?from=${from}&to=${to}`),
+  });
+}
+
 function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh: () => void }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] px-5 py-9 shadow-[0_12px_30px_rgba(24,24,27,0.05)] md:px-8 md:py-12">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(24,24,27,0.075)_1px,transparent_1px),linear-gradient(180deg,rgba(24,24,27,0.055)_1px,transparent_1px)] bg-[size:70px_70px]" />
-      <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-[#e4e4e7]/38 blur-3xl" />
+    <section className="relative overflow-hidden rounded-[26px] bg-[#f6f7f9] px-5 py-6 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)] md:px-6">
+      <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_70%_20%,rgba(62,131,117,0.12),transparent_32%),radial-gradient(circle_at_100%_80%,rgba(189,130,72,0.10),transparent_34%)]" />
       <div className="relative grid gap-5 min-[980px]:grid-cols-[minmax(0,1fr)_auto] min-[980px]:items-end">
         <div>
-          <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#e4e4e7] bg-white/84 px-4 text-sm font-bold text-[#18181b] shadow-[0_10px_28px_rgba(24,24,27,0.08)]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#18181b]" />
-            Kho phiếu kỹ thuật
+          <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-white/82 px-3 text-xs font-semibold text-[#4b5563] shadow-[0_8px_22px_rgba(24,24,27,0.06)]">
+            <span className="h-2 w-2 rounded-full bg-[#3e8375]" />
+            Bàn điều phối kỹ thuật
           </span>
-          <h1 className="mt-5 max-w-[760px] text-[clamp(38px,6vw,76px)] font-black leading-[0.96] tracking-[-0.055em] text-[#1f1f1f]">
-            Tổng hợp phiếu
+          <h1 className="mt-4 max-w-[760px] text-[clamp(32px,4vw,56px)] font-semibold leading-[1.05] text-[#202124]">
+            Sổ công việc kỹ thuật
           </h1>
-          <p className="mt-4 max-w-2xl text-[15px] font-semibold leading-7 text-[#667985]">
-            Tạo, tra cứu, duyệt phiếu.
+          <p className="mt-3 max-w-2xl text-[15px] font-medium leading-7 text-[#667085]">
+            Điều phối & tổng hợp công việc.
           </p>
         </div>
-        <button className="secondary-button bg-white/86" disabled={loading} onClick={onRefresh} type="button">
+        <button className="secondary-button bg-white/90 shadow-[0_8px_20px_rgba(24,24,27,0.06)]" disabled={loading} onClick={onRefresh} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
           Làm mới
         </button>
@@ -307,57 +417,511 @@ function TicketPortalCardButton({ count, item, onSelect }: { count: number; item
   return (
     <button
       className={[
-        'group relative min-h-[218px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-white/94 p-5 text-left shadow-[0_8px_24px_rgba(24,24,27,0.05)] transition',
-        isDisabled ? 'cursor-pointer opacity-78 hover:border-[#e4e4e7]' : 'hover:-translate-y-1 hover:border-[#18181b]/35 hover:shadow-[0_14px_34px_rgba(24,24,27,0.08)]',
+        'group grid min-h-[132px] grid-cols-[48px_minmax(0,1fr)] items-center gap-4 rounded-[22px] bg-white/92 p-4 text-left shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_8px_22px_rgba(24,24,27,0.045)] transition sm:grid-cols-[48px_minmax(0,1fr)_auto]',
+        isDisabled ? 'cursor-pointer opacity-80' : 'hover:-translate-y-0.5 hover:bg-white hover:shadow-[inset_0_0_0_1px_rgba(62,131,117,0.24),0_16px_34px_rgba(24,24,27,0.08)]',
       ].join(' ')}
       onClick={() => onSelect(item.value)}
       type="button"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,0.10),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(248,250,252,0.9))]" />
-      <div className="relative grid h-full gap-5">
-        <div className="flex items-start justify-between gap-4">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#18181b,#3f3f46)] text-white shadow-[0_16px_34px_rgba(24,24,27,0.24)]">
-            {item.icon}
-          </span>
-          <span className="rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-black text-[#667985]">
-            {count} phiếu
-          </span>
-        </div>
-        <div className="grid gap-2">
-          <span className="text-sm font-black text-[#18181b]">{item.meta}</span>
-          <strong className="block text-2xl font-black tracking-[-0.03em] text-[#1f1f1f]">{item.label}</strong>
-          <span className="text-sm font-semibold leading-6 text-[#667985]">{item.description}</span>
-        </div>
-        <span className="mt-auto inline-flex items-center gap-2 text-sm font-black text-[#18181b]">
+      <span className={`${ticketPortalIconClass(item.value)} flex h-12 w-12 items-center justify-center rounded-2xl`}>
+        {item.icon}
+      </span>
+      <span className="grid min-w-0 gap-1">
+        <span className="text-xs font-semibold text-[#7a8699]">{item.meta}</span>
+        <strong className="truncate text-[21px] font-semibold leading-tight text-[#202124]">{item.label}</strong>
+        <span className="line-clamp-2 text-sm font-medium leading-6 text-[#667085]">{item.description}</span>
+      </span>
+      <span className="col-span-2 grid grid-cols-[auto_1fr] items-center gap-3 border-t border-[#eef0f3] pt-3 sm:col-span-1 sm:grid-cols-1 sm:justify-items-end sm:border-0 sm:pt-0">
+        <span className="text-[28px] font-semibold leading-none text-[#202124]">{count}</span>
+        <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-semibold text-[#3e8375]">
           {item.actionLabel}
           <ArrowRight className={isDisabled ? '' : 'transition group-hover:translate-x-1'} size={16} />
         </span>
-      </div>
+      </span>
     </button>
   );
 }
 
-function ReceivingPlaceholder({ onBack }: { onBack: () => void }) {
+function TechnicalWorkRegister({
+  from,
+  loading,
+  onFromChange,
+  onRefresh,
+  onToChange,
+  report,
+  to,
+}: {
+  from: string;
+  loading: boolean;
+  onFromChange: (value: string) => void;
+  onRefresh: () => void;
+  onToChange: (value: string) => void;
+  report?: TechnicalReport;
+  to: string;
+}) {
+  const rows = report?.rows ?? [];
+  const summary = report?.summary;
+
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-dashed border-[#e4e4e7] bg-[#fafafa] p-8 text-center shadow-[0_18px_46px_rgba(24,24,27,0.06)]">
-      <div className="mx-auto grid max-w-2xl justify-items-center gap-4">
-        <span className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-[#f4f4f5] text-[#18181b]">
-          <Archive size={28} />
-        </span>
+    <section className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-white p-4 shadow-[0_18px_46px_rgba(24,24,27,0.06)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <span className="text-sm font-black text-[#18181b]">Để trống nghiệp vụ</span>
-          <h1 className="mt-2 text-[clamp(30px,5vw,52px)] font-black tracking-[-0.045em] text-[#1f1f1f]">Phiếu nhận thiết bị</h1>
-          <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-7 text-[#667985]">
-            Chờ bổ sung nghiệp vụ.
+          <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#3e8375]">Bảng tổng hợp</span>
+          <h2 className="mt-1 text-xl font-semibold text-[#202124]">Tất cả công việc trong kỳ</h2>
+          <p className="mt-1 text-sm font-medium text-[#667085]">
+            Lọc theo kỳ, xuất Excel.
           </p>
         </div>
-        <button className="secondary-button" onClick={onBack} type="button">
-          <ArrowLeft size={16} />
-          Quay lại loại phiếu
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button className="secondary-button" disabled={loading} onClick={onRefresh} type="button">
+            {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
+            Làm mới
+          </button>
+          <button className="primary-button" disabled={!rows.length} onClick={() => exportTechnicalWorkExcel(rows, from, to)} type="button">
+            <Download size={16} />
+            Xuất Excel
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 rounded-[24px] bg-[#fafafa] p-3 min-[980px]:grid-cols-[170px_170px_minmax(0,1fr)] min-[980px]:items-end">
+        <DateInput className="operation-filter-field" label="Từ ngày" onChange={onFromChange} value={from} />
+        <DateInput className="operation-filter-field" label="Đến ngày" onChange={onToChange} value={to} />
+        <div className="grid gap-2 sm:grid-cols-4">
+          <RegisterMetric label="Tổng phiếu" value={summary?.total ?? rows.length} />
+          <RegisterMetric label="Khách hàng" value={summary?.customers ?? 0} />
+          <RegisterMetric label="Máy/model" value={summary?.machines ?? 0} />
+          <RegisterMetric label="Kỹ sư" value={summary?.engineers ?? 0} />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-5">
+        <RegisterMetric label="Lắp đặt" value={summary?.installations ?? 0} />
+        <RegisterMetric label="Sửa chữa" value={summary?.repairs ?? 0} />
+        <RegisterMetric label="Bảo trì" value={summary?.maintenances ?? 0} />
+        <RegisterMetric label="Demo" value={summary?.demos ?? 0} />
+        <RegisterMetric label="Hỗ trợ app" value={summary?.applicationSupport ?? 0} />
+      </div>
+
+      <div className="overflow-hidden rounded-[22px] border border-[#eef0f3]">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1120px] text-left text-sm">
+            <thead className="bg-[#fafafa] text-xs uppercase text-[#667085]">
+              <tr>
+                <th className="border-b border-[#eef0f3] px-4 py-3">Ngày</th>
+                <th className="border-b border-[#eef0f3] px-4 py-3">Loại</th>
+                <th className="border-b border-[#eef0f3] px-4 py-3">Mã phiếu</th>
+                <th className="border-b border-[#eef0f3] px-4 py-3">Máy / Model / S/N</th>
+                <th className="border-b border-[#eef0f3] px-4 py-3">Địa điểm</th>
+                <th className="border-b border-[#eef0f3] px-4 py-3">Khách hàng</th>
+                <th className="border-b border-[#eef0f3] px-4 py-3">Kỹ sư</th>
+                <th className="border-b border-[#eef0f3] px-4 py-3">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td className="px-4 py-8 text-center text-sm font-semibold text-[#667085]" colSpan={8}>
+                    <span className="inline-flex items-center gap-2"><Loader2 className="spin-icon" size={17} />Đang tổng hợp dữ liệu</span>
+                  </td>
+                </tr>
+              ) : null}
+              {!loading && rows.map((row) => (
+                <tr className="hover:bg-[#fafafa]" key={`${row.kind}-${row.id}`}>
+                  <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.date)}</td>
+                  <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{workKindLabel(row.kind)}</td>
+                  <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{row.code}</td>
+                  <td className="border-b border-[#f1f2f4] px-4 py-3">
+                    <strong className="block text-[#202124]">{row.machineCode || '-'}</strong>
+                    <span className="text-xs font-medium text-[#667085]">{[row.model, row.serialNumber ? `S/N ${row.serialNumber}` : ''].filter(Boolean).join(' - ') || '-'}</span>
+                  </td>
+                  <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{row.province || '-'}</td>
+                  <td className="border-b border-[#f1f2f4] px-4 py-3">{row.customer || '-'}</td>
+                  <td className="border-b border-[#f1f2f4] px-4 py-3">{row.engineer || '-'}</td>
+                  <td className="border-b border-[#f1f2f4] px-4 py-3">{displayLabel(row.status)}</td>
+                </tr>
+              ))}
+              {!loading && rows.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-8 text-center text-sm font-semibold text-[#667085]" colSpan={8}>
+                    Không có phiếu trong khoảng thời gian này.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );
+}
+
+function RegisterMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl bg-white px-3 py-2 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)]">
+      <span className="block text-xs font-semibold text-[#667085]">{label}</span>
+      <strong className="mt-1 block text-lg text-[#202124]">{value}</strong>
+    </div>
+  );
+}
+
+function ticketPortalIconClass(value: TicketScope) {
+  if (value === 'maintenance') return 'bg-[#eefaf3] text-[#177245]';
+  if (value === 'installations') return 'bg-[#eef2ff] text-[#4f46e5]';
+  if (value === 'demo') return 'bg-[#fff7ed] text-[#b45309]';
+  return 'bg-[#f4f4f5] text-[#3f3f46]';
+}
+
+function DemoLoansBoard({ onBack, user }: { onBack: () => void; user: ApiUser }) {
+  const role = getRoleName(user);
+  const canManage = role === 'admin' || role === 'manager';
+  const canCreateDemo = canManage || role === 'engineer';
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [formError, setFormError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [returnDraft, setReturnDraft] = useState<DemoReturnDraft | null>(null);
+
+  const listParams = useMemo(() => {
+    const params = new URLSearchParams({ limit: '100' });
+    if (search.trim()) params.set('search', search.trim());
+    if (status) params.set('status', status);
+    if (dateFrom) params.set('from', dateFrom);
+    if (dateTo) params.set('to', dateTo);
+    return params.toString();
+  }, [dateFrom, dateTo, search, status]);
+
+  const loansQuery = useQuery({
+    queryKey: ['demo-loans', listParams],
+    queryFn: async () => {
+      const result = await apiFetch<Paginated<DemoLoanRow> | DemoLoanRow[]>(`/demo-loans?${listParams}`);
+      return Array.isArray(result) ? result : result.data ?? [];
+    },
+  });
+
+  const loans = loansQuery.data ?? [];
+  const summary = demoLoanSummary(loans);
+
+  const actionMutation = useMutation({
+    mutationFn: ({ action, id, payload }: { action: 'handover' | 'return'; id: string; payload?: Record<string, unknown> }) =>
+      apiFetch<DemoLoanRow>(`/demo-loans/${id}/${action}`, {
+        method: 'POST',
+        body: JSON.stringify(payload ?? { occurredAt: new Date().toISOString() }),
+      }),
+    onSuccess: () => {
+      setSuccess('Đã cập nhật trạng thái phiếu demo.');
+      setReturnDraft(null);
+      void queryClient.invalidateQueries({ queryKey: ['demo-loans'] });
+      void queryClient.invalidateQueries({ queryKey: ['service-tickets'] });
+    },
+    onError: (err) => setFormError(err instanceof Error ? err.message : 'Không cập nhật được phiếu demo.'),
+  });
+
+  function openReturnDraft(loan: DemoLoanRow) {
+    setFormError('');
+    setSuccess('');
+    setReturnDraft({
+      accessoriesText: (loan.handoverAccessories ?? []).join('\n'),
+      condition: 'Máy đã nhận lại, tình trạng cần kiểm tra tại kho.',
+      loan,
+      note: '',
+      occurredAt: new Date().toISOString().slice(0, 10),
+    });
+  }
+
+  function submitReturnDraft(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!returnDraft) return;
+    actionMutation.mutate({
+      action: 'return',
+      id: returnDraft.loan.id,
+      payload: {
+        accessories: returnDraft.accessoriesText
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        condition: returnDraft.condition,
+        note: returnDraft.note,
+        occurredAt: returnDraft.occurredAt,
+      },
+    });
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-4 min-[980px]:grid-cols-[minmax(0,1fr)_auto] min-[980px]:items-end">
+        <div className="grid gap-3">
+          <button className="secondary-button mt-5" onClick={onBack} type="button">
+            <ArrowLeft size={16} />
+            Quay lại loại phiếu
+          </button>
+          <PageTitle
+            eyebrow="Máy demo"
+            title="Bàn giao và thu hồi máy dùng thử"
+            description="Bàn giao & thu hồi."
+          />
+        </div>
+        <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
+          {canCreateDemo ? (
+            <Link className="primary-button" to="/demo-loans/create?returnTo=/service-tickets">
+              <Plus size={16} />
+              Tạo phiếu demo
+            </Link>
+          ) : null}
+          <button className="secondary-button" disabled={loansQuery.isFetching} onClick={() => void loansQuery.refetch()} type="button">
+            {loansQuery.isFetching ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
+            Làm mới
+          </button>
+        </div>
+      </div>
+
+      <section className="grid gap-3 sm:grid-cols-4">
+        <DemoMetric label="Đang demo" tone="warn" value={summary.active} />
+        <DemoMetric label="Quá hạn" tone="danger" value={summary.overdue} />
+        <DemoMetric label="Sắp thu hồi" tone="warn" value={summary.dueSoon} />
+        <DemoMetric label="Đã thu hồi" tone="good" value={summary.returned} />
+      </section>
+
+      {formError ? <Notice message={formError} /> : null}
+      {success ? <Notice message={success} /> : null}
+
+      <section className="grid gap-3 rounded-[24px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]">
+        <div className="grid gap-3 min-[980px]:grid-cols-[minmax(0,1fr)_180px_160px_160px] min-[980px]:items-end">
+          <label className="operation-filter-field">
+            <span>Tìm nhanh</span>
+            <input onChange={(event) => setSearch(event.target.value)} placeholder="Mã phiếu, khách hàng, serial..." value={search} />
+          </label>
+          <label className="operation-filter-field">
+            <span>Trạng thái</span>
+            <select onChange={(event) => setStatus(event.target.value)} value={status}>
+              <option value="">Tất cả</option>
+              <option value="PLANNED">Chờ bàn giao</option>
+              <option value="HANDED_OVER">Đang demo</option>
+              <option value="OVERDUE">Quá hạn</option>
+              <option value="RETURNED">Đã thu hồi</option>
+              <option value="CANCELLED">Đã hủy</option>
+            </select>
+          </label>
+          <DateInput label="Từ ngày" onChange={setDateFrom} value={dateFrom} />
+          <DateInput label="Đến ngày" onChange={setDateTo} value={dateTo} />
+        </div>
+
+        {loansQuery.isLoading ? (
+          <div className="grid min-h-[220px] place-items-center text-sm font-semibold text-[#667085]">
+            <Loader2 className="spin-icon" size={20} />
+            Đang tải phiếu demo
+          </div>
+        ) : null}
+
+        {!loansQuery.isLoading && loans.length === 0 ? (
+          <div className="grid min-h-[220px] place-items-center gap-2 text-center text-sm text-[#667085]">
+            <Archive size={28} />
+            <strong className="text-[#202124]">Chưa có phiếu demo phù hợp</strong>
+          </div>
+        ) : null}
+
+        {!loansQuery.isLoading ? (
+          <div className="grid gap-2">
+            {loans.map((loan) => (
+              <DemoLoanCard
+                actionLoading={actionMutation.isPending}
+                canUpdate={canManage || loan.engineer?.id === user.id}
+                key={loan.id}
+                loan={loan}
+                onHandOver={() => actionMutation.mutate({ action: 'handover', id: loan.id })}
+                onReturn={() => openReturnDraft(loan)}
+              />
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      {returnDraft ? (
+        <DemoReturnModal
+          draft={returnDraft}
+          loading={actionMutation.isPending}
+          onChange={(patch) => setReturnDraft((current) => (current ? { ...current, ...patch } : current))}
+          onClose={() => setReturnDraft(null)}
+          onSubmit={submitReturnDraft}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function DemoMetric({ label, tone, value }: { label: string; tone: 'good' | 'warn' | 'danger'; value: number }) {
+  const toneClass = tone === 'good' ? 'text-[#177245]' : tone === 'danger' ? 'text-[#b5121b]' : 'text-[#9b5a17]';
+  return (
+    <div className="rounded-[20px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_8px_22px_rgba(24,24,27,0.045)]">
+      <span className="text-sm font-medium text-[#667085]">{label}</span>
+      <strong className={`mt-2 block text-3xl font-semibold ${toneClass}`}>{value}</strong>
+    </div>
+  );
+}
+
+function DemoLoanCard({
+  actionLoading,
+  canUpdate,
+  loan,
+  onHandOver,
+  onReturn,
+}: {
+  actionLoading: boolean;
+  canUpdate: boolean;
+  loan: DemoLoanRow;
+  onHandOver: () => void;
+  onReturn: () => void;
+}) {
+  return (
+    <article className="grid gap-3 rounded-[20px] bg-[#fafafa] p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)] min-[980px]:grid-cols-[minmax(0,1fr)_220px_180px] min-[980px]:items-center">
+      <div className="grid min-w-0 gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone={statusTone(loan.status)}>{demoStatusLabel(loan.status)}</Badge>
+          <span className="text-xs font-semibold text-[#667085]">{loan.code}</span>
+          {demoIsDueSoon(loan) ? <Badge tone="warn">Sắp đến hạn</Badge> : null}
+        </div>
+        <h3 className="truncate text-lg font-semibold text-[#202124]">{demoMachineLabel(loan.machine)}</h3>
+        <div className="flex flex-wrap gap-2 text-sm font-medium text-[#667085]">
+          <span>{loan.customer ? demoCustomerLabel(loan.customer) : 'Chưa có khách'}</span>
+          <span>{loan.handoverAddress || loan.customer?.fullAddress || loan.customer?.address || ''}</span>
+        </div>
+        {loan.purpose ? <p className="line-clamp-2 text-sm leading-6 text-[#667085]">{loan.purpose}</p> : null}
+      </div>
+      <div className="grid gap-2 text-sm text-[#667085]">
+        <span>Bàn giao: <strong className="text-[#202124]">{formatDate(loan.handedOverAt || loan.plannedHandoverAt)}</strong></span>
+        <span>Hạn thu hồi: <strong className="text-[#202124]">{formatDate(loan.expectedReturnAt)}</strong></span>
+        <span>Kỹ sư: <strong className="text-[#202124]">{loan.engineer ? technicalUserName(loan.engineer) : 'Chưa phân'}</strong></span>
+      </div>
+      <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
+        {canUpdate && loan.status === 'PLANNED' ? (
+          <button className="primary-button rounded-2xl" disabled={actionLoading} onClick={onHandOver} type="button">
+            {actionLoading ? <Loader2 className="spin-icon" size={15} /> : null}
+            Đã bàn giao
+          </button>
+        ) : null}
+        {canUpdate && ['PLANNED', 'HANDED_OVER', 'OVERDUE'].includes(loan.status) ? (
+          <button className="secondary-button rounded-2xl" disabled={actionLoading} onClick={onReturn} type="button">
+            {actionLoading ? <Loader2 className="spin-icon" size={15} /> : null}
+            Đã thu hồi
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function DemoReturnModal({
+  draft,
+  loading,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  draft: DemoReturnDraft;
+  loading: boolean;
+  onChange: (patch: Partial<DemoReturnDraft>) => void;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
+      <form
+        className="grid max-h-[92vh] w-full max-w-[720px] gap-4 overflow-y-auto rounded-[28px] bg-white p-5 shadow-[0_30px_90px_rgba(24,24,27,0.28)]"
+        onClick={(event) => event.stopPropagation()}
+        onSubmit={onSubmit}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <span className="text-sm font-semibold text-[#3e8375]">Phiếu nhận thiết bị</span>
+            <h2 className="mt-1 text-2xl font-semibold text-[#202124]">Thu hồi {draft.loan.code}</h2>
+            <p className="mt-1 text-sm font-medium text-[#667085]">{demoMachineLabel(draft.loan.machine)}</p>
+          </div>
+          <button className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#e4e4e7] bg-white text-[#667085] hover:bg-[#f4f4f5]" onClick={onClose} type="button" aria-label="Đóng">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <DateInput label="Ngày thu hồi" onChange={(value) => onChange({ occurredAt: value })} required value={draft.occurredAt} />
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+            Tình trạng khi nhận lại
+            <textarea
+              className="min-h-[104px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-semibold leading-6 text-[#172033] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+              onChange={(event) => onChange({ condition: event.target.value })}
+              required
+              value={draft.condition}
+            />
+          </label>
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155] md:col-span-2">
+            Phụ kiện nhận lại
+            <textarea
+              className="min-h-[96px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-semibold leading-6 text-[#172033] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+              onChange={(event) => onChange({ accessoriesText: event.target.value })}
+              placeholder="Mỗi phụ kiện một dòng"
+              value={draft.accessoriesText}
+            />
+          </label>
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155] md:col-span-2">
+            Ghi chú thu hồi
+            <textarea
+              className="min-h-[96px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-semibold leading-6 text-[#172033] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+              onChange={(event) => onChange({ note: event.target.value })}
+              value={draft.note}
+            />
+          </label>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2">
+          <button className="secondary-button" onClick={onClose} type="button">
+            Hủy
+          </button>
+          <button className="primary-button" disabled={loading} type="submit">
+            {loading ? <Loader2 className="spin-icon" size={16} /> : null}
+            Lưu thu hồi
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function demoLoanSummary(loans: DemoLoanRow[]) {
+  return {
+    active: loans.filter((loan) => loan.status === 'HANDED_OVER').length,
+    overdue: loans.filter((loan) => loan.status === 'OVERDUE').length,
+    dueSoon: loans.filter(demoIsDueSoon).length,
+    returned: loans.filter((loan) => loan.status === 'RETURNED').length,
+  };
+}
+
+function demoIsDueSoon(loan: DemoLoanRow) {
+  if (loan.status !== 'HANDED_OVER') return false;
+  const dueTime = new Date(loan.expectedReturnAt).getTime();
+  if (Number.isNaN(dueTime)) return false;
+  const daysLeft = Math.ceil((dueTime - Date.now()) / 86_400_000);
+  return daysLeft >= 0 && daysLeft <= 3;
+}
+
+function demoStatusLabel(status: DemoLoanRow['status']) {
+  if (status === 'PLANNED') return 'Chờ bàn giao';
+  if (status === 'HANDED_OVER') return 'Đang demo';
+  if (status === 'OVERDUE') return 'Quá hạn';
+  if (status === 'RETURNED') return 'Đã thu hồi';
+  return 'Đã hủy';
+}
+
+function demoMachineLabel(machine?: MachineSummary | null) {
+  if (!machine) return 'Chưa gắn máy';
+  return [machine.machineCode, machine.name || machine.modelName, machine.serialNumber ? `S/N ${machine.serialNumber}` : '', machine.inventoryStatus ? displayLabel(machine.inventoryStatus) : '']
+    .filter(Boolean)
+    .join(' - ');
+}
+
+function demoCustomerLabel(customer: CustomerOption) {
+  return [customer.hospitalName || customer.name, customer.province].filter(Boolean).join(' - ');
 }
 
 function OperationsBoard({
@@ -1115,6 +1679,66 @@ function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN');
+}
+
+function currentMonthRange() {
+  const now = new Date();
+  return {
+    from: toDateInput(new Date(now.getFullYear(), now.getMonth(), 1)),
+    to: toDateInput(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
+}
+
+function toDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function workKindLabel(kind: WorkKind) {
+  if (kind === 'installation') return 'Lắp đặt';
+  if (kind === 'repair') return 'Sửa chữa';
+  if (kind === 'maintenance') return 'Bảo trì';
+  if (kind === 'demo') return 'Demo';
+  return 'Hỗ trợ app';
+}
+
+function exportTechnicalWorkExcel(rows: TechnicalReportRow[], from: string, to: string) {
+  const headers = ['Ngày', 'Loại phiếu', 'Mã phiếu', 'Máy', 'Model', 'Serial', 'Địa điểm', 'Khách hàng', 'Kỹ sư', 'Nội dung', 'Trạng thái'];
+  const bodyRows = rows.map((row) => [
+    formatDate(row.date),
+    workKindLabel(row.kind),
+    row.code,
+    row.machineCode,
+    row.model,
+    row.serialNumber,
+    row.province,
+    row.customer,
+    row.engineer,
+    row.note || row.title,
+    displayLabel(row.status),
+  ]);
+  const table = [headers, ...bodyRows]
+    .map((line) => `<tr>${line.map((value) => `<td>${escapeHtml(String(value ?? ''))}</td>`).join('')}</tr>`)
+    .join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8" /></head><body><table>${table}</table></body></html>`;
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `so-cong-viec-ky-thuat-${from}-${to}.xls`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function listCount<T>(result: Paginated<T> | T[]) {

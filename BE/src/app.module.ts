@@ -12,6 +12,7 @@ import { AppConfigModule } from './config/app-config.module';
 import { DailyWorkNotesModule } from './daily-work-notes/daily-work-notes.module';
 import { DailyReportsModule } from './daily-reports/daily-reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { DemoLoansModule } from './demo-loans/demo-loans.module';
 import { EngineerProfilesModule } from './engineer-profiles/engineer-profiles.module';
 import { InventoryMovementsModule } from './inventory-movements/inventory-movements.module';
 import { InstallationsModule } from './installations/installations.module';
@@ -49,6 +50,7 @@ import { WorkOperationsModule } from './work-operations/work-operations.module';
     DailyReportsModule,
     MachinesModule,
     DashboardModule,
+    DemoLoansModule,
     RepairsModule,
     EngineerProfilesModule,
     MaintenanceModule,

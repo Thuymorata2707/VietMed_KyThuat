@@ -186,6 +186,12 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
             {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
             Làm mới
           </button>
+          {data ? (
+            <button className="secondary-button" onClick={() => exportEngineerCsv(data)} type="button">
+              <FileText size={16} />
+              Xuất CSV
+            </button>
+          ) : null}
           <Link
             aria-disabled={isAdmin && !engineerId}
             className={`secondary-button ${isAdmin && !engineerId ? 'pointer-events-none opacity-60' : ''}`}
@@ -527,4 +533,36 @@ function formatDay(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN');
+}
+
+function exportEngineerCsv(data: TechnicalStatistics) {
+  const headers = ['Kỹ sư', 'Tổng', 'Sửa chữa', 'Bảo trì', 'Lắp đặt', 'Hoàn tất', 'Đang mở', 'Chờ xác nhận', 'Khách hàng', 'Máy', 'Tỷ lệ hoàn tất'];
+  const lines = [
+    headers,
+    ...data.byEngineer.map((item) => [
+      item.engineerName,
+      item.total,
+      item.repair,
+      item.maintenance,
+      item.installation,
+      item.completed,
+      item.open,
+      item.waitingReview,
+      item.customers,
+      item.machines,
+      `${item.completionRate}%`,
+    ]),
+  ];
+  const csv = lines.map((line) => line.map(csvCell).join(',')).join('\n');
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `thong-ke-ky-thuat-${data.period.start.slice(0, 10)}-${data.period.end.slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvCell(value: unknown) {
+  return `"${String(value ?? '').replaceAll('"', '""')}"`;
 }

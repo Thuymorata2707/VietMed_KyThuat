@@ -6,6 +6,7 @@ export const queryKeys = {
     overview: ['dashboard', 'overview'] as const,
   },
   reports: {
+    technical: (params: string) => ['reports', 'technical', params] as const,
     installations: (params: string) => ['reports', 'installations', params] as const,
     engineer: (engineerId: string, params: string) => ['reports', 'engineer', engineerId, params] as const,
     model: (modelKey: string, params: string) => ['reports', 'model', modelKey, params] as const,

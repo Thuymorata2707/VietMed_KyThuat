@@ -20,6 +20,7 @@ import { isTechnicalUser } from '../../utils/technicalUsers';
 import { AsyncEntityPicker, type PickerOption } from '../EngineerTasksPage/components/AsyncEntityPicker';
 
 type TicketKind = 'repair' | 'maintenance' | 'installation';
+type CreateTicketStep = 'setup' | 'records' | 'work';
 type TicketScope = 'installation' | 'service';
 
 type Region = { id: string; name: string };
@@ -159,6 +160,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const returnTo = searchParams.get('returnTo') ?? '';
   const role = getRoleName(user);
   const [kind, setKind] = useState<TicketKind>(initialKind);
+  const [currentStep, setCurrentStep] = useState<CreateTicketStep>('setup');
   const [form, setForm] = useState<TicketForm>(() => emptyTicketForm(user, initialKind));
   const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm(user));
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(() => emptyQuickMachineForm());
@@ -449,6 +451,42 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     }));
   }
 
+  function changeKind(nextKind: TicketKind) {
+    setKind(nextKind);
+    setCurrentStep('setup');
+    setFormError('');
+    setSuccess('');
+  }
+
+  function goToRecordsStep() {
+    setFormError('');
+    setSuccess('');
+    setCurrentStep('records');
+  }
+
+  function goToWorkStep() {
+    setFormError('');
+    setSuccess('');
+
+    if (kind === 'installation' && !form.customerId) {
+      setFormError('Vui lòng chọn hoặc tạo khách hàng trước khi nhập nội dung lắp đặt.');
+      return;
+    }
+
+    if (kind !== 'installation' && !form.machineId && !form.customerId && !form.machineModelId && !form.serialNumber.trim()) {
+      setFormError('Vui lòng chọn máy/khách hàng hoặc tạo hồ sơ máy trước khi nhập nội dung công việc.');
+      return;
+    }
+
+    setCurrentStep('work');
+  }
+
+  function goBackStep() {
+    setFormError('');
+    setSuccess('');
+    setCurrentStep((step) => (step === 'work' ? 'records' : 'setup'));
+  }
+
   function selectCustomer(customerId: string) {
     const customer = customers.find((item) => item.id === customerId) || customerOptions.find((item) => item.value === customerId)?.row;
     applyCustomer(customer, customerId);
@@ -534,6 +572,16 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     setFormError('');
     setSuccess('');
 
+    if (currentStep === 'setup') {
+      goToRecordsStep();
+      return;
+    }
+
+    if (currentStep === 'records') {
+      goToWorkStep();
+      return;
+    }
+
     try {
       await createTicketMutation.mutateAsync();
     } catch (err) {
@@ -547,7 +595,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         <PageTitle
           eyebrow="Phiếu dịch vụ"
           title="Tạo phiếu"
-          description="Tạo phiếu mới."
+          description="Hồ sơ & nội dung việc."
         />
         <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
           <ArrowLeft size={17} />
@@ -558,97 +606,71 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      {role === 'engineer' ? (
-        <div className="rounded-lg border border-[#efd8a8] bg-[#fffbeb] px-4 py-3 text-sm font-semibold leading-relaxed text-[#92400e]">
-          Chờ admin kiểm tra.
-        </div>
-      ) : null}
+      <ServiceCreateOperationalGuide currentStep={currentStep} kind={kind} />
 
       <form className="grid min-w-0 gap-5 font-sans min-[1320px]:grid-cols-[minmax(0,1fr)_380px]" onSubmit={submit}>
         <section className="grid min-w-0 gap-5">
-          <div className={panelClass}>
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#e4e4e7] pb-4">
-              <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
+          {currentStep === 'setup' ? (
+            <div className={panelClass}>
+              <div className="mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#e4e4e7] pb-4">
                 <span className={stepBadgeClass}>1</span>
                 <div>
-                  <span className={eyebrowClass}>Thông tin phiếu</span>
+                  <span className={eyebrowClass}>Loại phiếu</span>
                   <h2 className={sectionTitleClass}>Chọn nghiệp vụ và người phụ trách</h2>
-                  <p className={sectionDescriptionClass}>Chọn loại phiếu, thiết bị và kỹ sư.</p>
+                  <p className={sectionDescriptionClass}>Chọn luồng xử lý.</p>
                 </div>
               </div>
-              <label className="grid min-w-[220px] max-sm:min-w-0 max-sm:w-full gap-2 text-sm font-semibold text-[#333333]">
-                Loại phiếu
-                <select className={fieldClass} disabled={Boolean(fixedKind)} onChange={(event) => setKind(event.target.value as TicketKind)} value={kind}>
-                  <option value="repair">Sửa chữa</option>
-                  <option value="maintenance">Bảo trì</option>
-                  <option value="installation">Lắp đặt</option>
-                </select>
-              </label>
-            </div>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              {kind !== 'installation' ? (
-                <label className={wideLabelClass}>
-                  Tiêu đề
-                  <input className={fieldClass} onChange={(event) => updateForm({ title: event.target.value })} required value={form.title} />
+              <div className="grid gap-5 md:grid-cols-2">
+                <label className={labelClass}>
+                  Loại phiếu
+                  <select className={fieldClass} disabled={Boolean(fixedKind)} onChange={(event) => changeKind(event.target.value as TicketKind)} value={kind}>
+                    <option value="repair">Sửa chữa</option>
+                    <option value="maintenance">Bảo trì</option>
+                    <option value="installation">Lắp đặt</option>
+                  </select>
                 </label>
-              ) : null}
+                <label className={labelClass}>
+                  Kỹ sư phụ trách
+                  <select className={fieldClass} disabled={loading || role === 'engineer'} onChange={(event) => updateForm({ engineerId: event.target.value })} required={kind === 'installation'} value={form.engineerId}>
+                    <option value="">Chưa phân công</option>
+                    {engineers.map((engineer) => (
+                      <option key={engineer.id} value={engineer.id}>
+                        {engineer.fullName || engineer.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+          ) : null}
 
-              {kind !== 'installation' ? (
-                <AsyncEntityPicker<MachineOption>
-                  className={wideLabelClass}
-                  disabled={loading}
-                  endpoint={machinePickerEndpoint(kind, form.customerId)}
-                  formatOption={(machine) => ({
-                    label: machineLabel(machine),
-                    row: machine,
-                    value: machine.id,
-                  })}
-                  initialOptions={machineOptions.filter((option) => machinePickerRowFilter(kind, form.customerId, user, option.row))}
-                  inputClassName={fieldClass}
-                  label="Thiết bị có sẵn"
-                  onChange={(value, machine) => {
-                    rememberMachineOption(machine);
-                    applyMachine(machine, value);
-                  }}
-                  placeholder="Tìm mã máy, S/N, model, tên máy hoặc khách hàng"
-                  rowFilter={(machine) => machinePickerRowFilter(kind, form.customerId, user, machine)}
-                  value={form.machineId}
-                />
-              ) : null}
-
-              {kind === 'installation' ? (
-                <AsyncEntityPicker<MachineOption>
-                  className={wideLabelClass}
-                  disabled={loading}
-                  endpoint={machinePickerEndpoint(kind, form.customerId)}
-                  formatOption={(machine) => ({
-                    label: machineLabel(machine),
-                    row: machine,
-                    value: machine.id,
-                  })}
-                  initialOptions={machineOptions.filter((option) => machinePickerRowFilter(kind, form.customerId, user, option.row))}
-                  inputClassName={fieldClass}
-                  label="Máy đã có hồ sơ"
-                  onChange={(value, machine) => {
-                    rememberMachineOption(machine);
-                    applyMachine(machine, value);
-                  }}
-                  placeholder="Tìm máy trong kho theo mã máy, S/N, model hoặc tên máy"
-                  rowFilter={(machine) => machinePickerRowFilter(kind, form.customerId, user, machine)}
-                  value={form.machineId}
-                />
-              ) : null}
-
-              {form.machineId ? (
-                <div className="md:col-span-2 -mt-3 flex justify-end">
-                  <button className="text-xs font-bold text-[#475569] underline-offset-4 hover:underline" onClick={() => applyMachine()} type="button">
-                    Bỏ chọn máy
+          {currentStep === 'records' ? (
+            <div className={panelClass}>
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#e4e4e7] pb-4">
+                <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
+                  <span className={stepBadgeClass}>2</span>
+                  <div>
+                    <span className={eyebrowClass}>Hồ sơ</span>
+                    <h2 className={sectionTitleClass}>Khách hàng và máy</h2>
+                    <p className={sectionDescriptionClass}>Chọn hoặc tạo nhanh hồ sơ.</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button className="secondary-button" onClick={() => setShowQuickCustomer((value) => !value)} type="button">
+                    <Plus size={16} />
+                    Chưa có khách hàng
+                    {showQuickCustomer ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                  </button>
+                  <button className="secondary-button" onClick={() => setShowQuickMachine((value) => !value)} type="button">
+                    <Plus size={16} />
+                    Chưa có máy
+                    {showQuickMachine ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                   </button>
                 </div>
-              ) : null}
+              </div>
 
-              {kind !== 'installation' ? (
+              <div className="grid gap-5 md:grid-cols-2">
                 <AsyncEntityPicker<CustomerOption>
                   className={labelClass}
                   disabled={loading}
@@ -666,116 +688,108 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                     applyCustomer(customer, value);
                   }}
                   placeholder="Tìm tên, mã khách hàng, tỉnh hoặc số điện thoại"
+                  required={kind === 'installation'}
                   value={form.customerId}
                 />
-              ) : null}
 
-              {kind === 'installation' ? (
-                <AsyncEntityPicker<CustomerOption>
+                <AsyncEntityPicker<MachineOption>
                   className={labelClass}
                   disabled={loading}
-                  endpoint="/customers?limit=20"
-                  formatOption={(customer) => ({
-                    label: customerLabel(customer),
-                    row: customer,
-                    value: customer.id,
+                  endpoint={machinePickerEndpoint(kind, form.customerId)}
+                  formatOption={(machine) => ({
+                    label: machineLabel(machine),
+                    row: machine,
+                    value: machine.id,
                   })}
-                  initialOptions={customerOptions}
+                  initialOptions={machineOptions.filter((option) => machinePickerRowFilter(kind, form.customerId, user, option.row))}
                   inputClassName={fieldClass}
-                  label="Khách hàng"
-                  onChange={(value, customer) => {
-                    rememberCustomerOption(customer);
-                    applyCustomer(customer, value);
+                  label={kind === 'installation' ? 'Máy đã có hồ sơ' : 'Thiết bị có sẵn'}
+                  onChange={(value, machine) => {
+                    rememberMachineOption(machine);
+                    applyMachine(machine, value);
                   }}
-                  placeholder="Tìm tên, mã khách hàng, tỉnh hoặc số điện thoại"
-                  required
-                  value={form.customerId}
+                  placeholder={kind === 'installation' ? 'Tìm máy trong kho theo mã máy, S/N, model hoặc tên máy' : 'Tìm mã máy, S/N, model, tên máy hoặc khách hàng'}
+                  rowFilter={(machine) => machinePickerRowFilter(kind, form.customerId, user, machine)}
+                  value={form.machineId}
+                />
+
+                {form.machineId ? (
+                  <div className="md:col-span-2 -mt-3 flex justify-end">
+                    <button className="text-xs font-bold text-[#475569] underline-offset-4 hover:underline" onClick={() => applyMachine()} type="button">
+                      Bỏ chọn máy
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              {showQuickCustomer ? (
+                <QuickCustomerPanel
+                  creating={creatingCustomer}
+                  form={quickCustomerForm}
+                  isEngineer={role === 'engineer'}
+                  onCreate={createCustomer}
+                  regions={regions}
+                  updateForm={(patch) => setQuickCustomerForm((current) => ({ ...current, ...patch }))}
                 />
               ) : null}
 
-              <label className={labelClass}>
-                Kỹ sư phụ trách
-                <select className={fieldClass} disabled={loading || role === 'engineer'} onChange={(event) => updateForm({ engineerId: event.target.value })} required={kind === 'installation'} value={form.engineerId}>
-                  <option value="">Chưa phân công</option>
-                  {engineers.map((engineer) => (
-                    <option key={engineer.id} value={engineer.id}>
-                      {engineer.fullName || engineer.email}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {kind === 'repair' ? (
-                <RepairFields form={form} models={visibleMachineModels} updateForm={updateForm} />
-              ) : kind === 'maintenance' ? (
-                <MaintenanceFields form={form} models={visibleMachineModels} updateForm={updateForm} />
-              ) : (
-                <InstallationFields
-                  addDeviceItem={addInstallationDeviceItem}
-                  form={form}
-                  machineOptions={machineOptions}
-                  machines={visibleMachines}
+              {showQuickMachine ? (
+                <QuickMachinePanel
+                  creating={creatingMachine}
+                  customerName={customerNameForSummary(undefined, customers, form.customerId)}
+                  hasTicketCustomer={Boolean(form.customerId)}
+                  form={quickMachineForm}
+                  kind={kind}
                   models={visibleMachineModels}
-                  removeDeviceItem={removeInstallationDeviceItem}
-                  updateDeviceItem={updateInstallationDeviceItem}
-                  updateForm={updateForm}
-                  user={user}
+                  onCreate={createMachine}
+                  selectedModel={selectedModel}
+                  supportsAccessories={Boolean(quickMachineAccessoryMode)}
+                  accessoryMode={quickMachineAccessoryMode}
+                  updateForm={(patch) => setQuickMachineForm((current) => ({ ...current, ...patch }))}
                 />
-              )}
+              ) : null}
             </div>
-          </div>
+          ) : null}
 
-          <div className={panelClass}>
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#e4e4e7] pb-4">
-              <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-3">
-                <span className={stepBadgeClass}>2</span>
+          {currentStep === 'work' ? (
+            <div className={panelClass}>
+              <div className="mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#e4e4e7] pb-4">
+                <span className={stepBadgeClass}>3</span>
                 <div>
-                  <span className={eyebrowClass}>Dữ liệu chưa có</span>
-                  <h2 className={sectionTitleClass}>Tạo nhanh khi cần</h2>
-                  <p className={sectionDescriptionClass}>Khi thiếu dữ liệu.</p>
+                  <span className={eyebrowClass}>Nội dung</span>
+                  <h2 className={sectionTitleClass}>Thông tin công việc</h2>
+                  <p className={sectionDescriptionClass}>Nhập nội dung kỹ thuật.</p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button className="secondary-button" onClick={() => setShowQuickCustomer((value) => !value)} type="button">
-                  <Plus size={16} />
-                  Khách hàng
-                  {showQuickCustomer ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                </button>
-                <button className="secondary-button" onClick={() => setShowQuickMachine((value) => !value)} type="button">
-                  <Plus size={16} />
-                  Thiết bị
-                  {showQuickMachine ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                </button>
+
+              <div className="grid gap-5 md:grid-cols-2">
+                {kind !== 'installation' ? (
+                  <label className={wideLabelClass}>
+                    Tiêu đề công việc
+                    <input className={fieldClass} onChange={(event) => updateForm({ title: event.target.value })} required value={form.title} />
+                  </label>
+                ) : null}
+
+                {kind === 'repair' ? (
+                  <RepairFields form={form} models={visibleMachineModels} updateForm={updateForm} />
+                ) : kind === 'maintenance' ? (
+                  <MaintenanceFields form={form} models={visibleMachineModels} updateForm={updateForm} />
+                ) : (
+                  <InstallationFields
+                    addDeviceItem={addInstallationDeviceItem}
+                    form={form}
+                    machineOptions={machineOptions}
+                    machines={visibleMachines}
+                    models={visibleMachineModels}
+                    removeDeviceItem={removeInstallationDeviceItem}
+                    updateDeviceItem={updateInstallationDeviceItem}
+                    updateForm={updateForm}
+                    user={user}
+                  />
+                )}
               </div>
             </div>
-
-            {showQuickCustomer ? (
-              <QuickCustomerPanel
-                creating={creatingCustomer}
-                form={quickCustomerForm}
-                isEngineer={role === 'engineer'}
-                onCreate={createCustomer}
-                regions={regions}
-                updateForm={(patch) => setQuickCustomerForm((current) => ({ ...current, ...patch }))}
-              />
-            ) : null}
-
-            {showQuickMachine ? (
-              <QuickMachinePanel
-                creating={creatingMachine}
-                customerName={customerNameForSummary(undefined, customers, form.customerId)}
-                hasTicketCustomer={Boolean(form.customerId)}
-                form={quickMachineForm}
-                kind={kind}
-                models={visibleMachineModels}
-                onCreate={createMachine}
-                selectedModel={selectedModel}
-                supportsAccessories={Boolean(quickMachineAccessoryMode)}
-                accessoryMode={quickMachineAccessoryMode}
-                updateForm={(patch) => setQuickMachineForm((current) => ({ ...current, ...patch }))}
-              />
-            ) : null}
-          </div>
+          ) : null}
         </section>
 
         <aside className="grid min-w-0 gap-4 self-start min-[1320px]:sticky min-[1320px]:top-5">
@@ -792,13 +806,19 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
           <div className="rounded-[22px] border border-[#e4e4e7] bg-[#f4f4f5] p-3 shadow-[0_16px_40px_rgba(24,24,27,0.08)]">
             <div className="grid gap-2 sm:grid-cols-2 min-[1320px]:grid-cols-1">
-            <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
-              Hủy
-            </button>
-            <button className="primary-button" disabled={saving || loading} type="submit">
-              {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-              {saving ? 'Đang tạo' : 'Tạo phiếu'}
-            </button>
+              <button className="secondary-button" onClick={currentStep === 'setup' ? () => navigate(backHref) : goBackStep} type="button">
+                {currentStep === 'setup' ? 'Hủy' : 'Quay lại bước trước'}
+              </button>
+              {currentStep === 'work' ? (
+                <button className="primary-button" disabled={saving || loading} type="submit">
+                  {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
+                  {saving ? 'Đang tạo' : 'Tạo phiếu'}
+                </button>
+              ) : (
+                <button className="primary-button" disabled={loading} onClick={currentStep === 'setup' ? goToRecordsStep : goToWorkStep} type="button">
+                  Tiếp tục
+                </button>
+              )}
             </div>
           </div>
         </aside>
@@ -1260,7 +1280,7 @@ function QuickMachinePanel({
         </>
       ) : (
         <div className="md:col-span-2 rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-4 py-5 text-sm font-semibold text-[#64748b]">
-          Chọn model trước, hệ thống sẽ hiện thông tin model và các trường nhập thiết bị.
+          Chọn model để nhập máy.
         </div>
       )}
     </div>
@@ -1342,6 +1362,54 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <span>{label}</span>
       <strong className="text-right text-[#1f1f1f]">{value || '-'}</strong>
     </div>
+  );
+}
+
+function ServiceCreateOperationalGuide({ currentStep, kind }: { currentStep: CreateTicketStep; kind: TicketKind }) {
+  const machineHint = kind === 'installation' ? 'Máy kho hoặc máy nhập mới' : 'Máy đã lắp tại khách';
+  const workHint = kind === 'repair' ? 'Lỗi, kiểm tra, phương án sửa' : kind === 'maintenance' ? 'Lịch, checklist, ghi chú' : 'Bàn giao, bảo hành, thiết bị kèm';
+  const steps: Array<{ id: CreateTicketStep; eyebrow: string; title: string; description: string }> = [
+    {
+      id: 'setup',
+      eyebrow: '1. Loại phiếu',
+      title: ticketKindLabel(kind),
+      description: 'Loại việc & kỹ sư.',
+    },
+    {
+      id: 'records',
+      eyebrow: '2. Hồ sơ',
+      title: 'Khách hàng & máy',
+      description: `${machineHint}; tạo nhanh nếu thiếu.`,
+    },
+    {
+      id: 'work',
+      eyebrow: '3. Nội dung',
+      title: 'Thông tin công việc',
+      description: workHint,
+    },
+  ];
+
+  return (
+    <section className="grid gap-2 rounded-[24px] bg-[#f6f8f7] p-3 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)] md:grid-cols-3">
+      {steps.map((step) => {
+        const active = step.id === currentStep;
+        return (
+          <div
+            className={[
+              'grid gap-1 rounded-[18px] px-4 py-3 transition',
+              active
+                ? 'bg-[#18181b] text-white shadow-[0_14px_28px_rgba(24,24,27,0.2)]'
+                : 'bg-white text-[#202124] shadow-[0_10px_24px_rgba(24,24,27,0.08)]',
+            ].join(' ')}
+            key={step.id}
+          >
+            <span className={`text-xs font-bold uppercase ${active ? 'text-[#d7f5e6]' : 'text-[#2f6f63]'}`}>{step.eyebrow}</span>
+            <strong className="text-sm">{step.title}</strong>
+            <span className={`text-xs font-medium ${active ? 'text-[#edf2f7]' : 'text-[#667085]'}`}>{step.description}</span>
+          </div>
+        );
+      })}
+    </section>
   );
 }
 

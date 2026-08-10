@@ -28,6 +28,14 @@ enum MachineInventoryStatus {
   SOLD
 }
 
+enum DemoLoanStatus {
+  PLANNED
+  HANDED_OVER
+  OVERDUE
+  RETURNED
+  CANCELLED
+}
+
 enum OperationalDataStatus {
   PENDING_REVIEW
   VERIFIED
@@ -314,36 +322,37 @@ model User {
   regionId String
   region   Region @relation(fields: [regionId], references: [id])
 
-  assignedRepairs       Repair[]                   @relation("RepairEngineer")
-  createdRepairs        Repair[]                   @relation("RepairCreatedBy")
-  reviewedRepairs       Repair[]                   @relation("RepairReviewer")
-  maintenances          Maintenance[]
-  reviewedMaintenances  Maintenance[]              @relation("MaintenanceReviewer")
-  installedMachines     Machine[]                  @relation("MachineInstalledBy")
-  machineInstallations  MachineInstallation[]      @relation("MachineInstallationEngineer")
-  reviewedInstallations MachineInstallation[]      @relation("InstallationReviewer")
-  issuedWarrantyCards   WarrantyCard[]             @relation("WarrantyCardIssuedBy")
-  responsibleMachines   Machine[]                  @relation("MachinePrimaryEngineer")
-  inventoryMovements    MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
-  receivedNotifications Notification[]             @relation("NotificationRecipient")
-  sentNotifications     Notification[]             @relation("NotificationSender")
-  managedBusinessLines  BusinessLine[]             @relation("BusinessLineManager")
-  auditLogs             AuditLog[]                 @relation("AuditLogActor")
-  uploadedAttachments   Attachment[]               @relation("AttachmentUploadedBy")
-  engineerProfile       EngineerProfile?
-  dailyWorkNotes        DailyWorkNote[]            @relation("DailyWorkNoteUser")
-  reviewedDailyWorkNotes DailyWorkNote[]           @relation("DailyWorkNoteReviewer")
-  dailyReports          DailyReport[]              @relation("DailyReportUser")
-  reviewedDailyReports  DailyReport[]              @relation("DailyReportReviewer")
-  weeklyReports         WeeklyReport[]             @relation("WeeklyReportUser")
-  reviewedWeeklyReports WeeklyReport[]             @relation("WeeklyReportReviewer")
-  primaryCustomers      Customer[]                 @relation("CustomerPrimaryEngineer")
-  createdKnowledgeArticles KnowledgeArticle[]      @relation("KnowledgeArticleCreatedBy")
-  updatedKnowledgeArticles KnowledgeArticle[]      @relation("KnowledgeArticleUpdatedBy")
-  createdWorkLogs       WorkLog[]                  @relation("WorkLogCreatedBy")
-  createdUsedParts      UsedPart[]                 @relation("UsedPartCreatedBy")
-  updatedTaskChecklistItems TaskChecklistItem[]     @relation("TaskChecklistUpdatedBy")
-  applicationSupportCases ApplicationSupportCase[]  @relation("ApplicationSupportEngineer")
+  assignedRepairs           Repair[]                   @relation("RepairEngineer")
+  createdRepairs            Repair[]                   @relation("RepairCreatedBy")
+  reviewedRepairs           Repair[]                   @relation("RepairReviewer")
+  maintenances              Maintenance[]
+  reviewedMaintenances      Maintenance[]              @relation("MaintenanceReviewer")
+  installedMachines         Machine[]                  @relation("MachineInstalledBy")
+  machineInstallations      MachineInstallation[]      @relation("MachineInstallationEngineer")
+  reviewedInstallations     MachineInstallation[]      @relation("InstallationReviewer")
+  demoLoans                 DemoLoan[]                 @relation("DemoLoanEngineer")
+  issuedWarrantyCards       WarrantyCard[]             @relation("WarrantyCardIssuedBy")
+  responsibleMachines       Machine[]                  @relation("MachinePrimaryEngineer")
+  inventoryMovements        MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
+  receivedNotifications     Notification[]             @relation("NotificationRecipient")
+  sentNotifications         Notification[]             @relation("NotificationSender")
+  managedBusinessLines      BusinessLine[]             @relation("BusinessLineManager")
+  auditLogs                 AuditLog[]                 @relation("AuditLogActor")
+  uploadedAttachments       Attachment[]               @relation("AttachmentUploadedBy")
+  engineerProfile           EngineerProfile?
+  dailyWorkNotes            DailyWorkNote[]            @relation("DailyWorkNoteUser")
+  reviewedDailyWorkNotes    DailyWorkNote[]            @relation("DailyWorkNoteReviewer")
+  dailyReports              DailyReport[]              @relation("DailyReportUser")
+  reviewedDailyReports      DailyReport[]              @relation("DailyReportReviewer")
+  weeklyReports             WeeklyReport[]             @relation("WeeklyReportUser")
+  reviewedWeeklyReports     WeeklyReport[]             @relation("WeeklyReportReviewer")
+  primaryCustomers          Customer[]                 @relation("CustomerPrimaryEngineer")
+  createdKnowledgeArticles  KnowledgeArticle[]         @relation("KnowledgeArticleCreatedBy")
+  updatedKnowledgeArticles  KnowledgeArticle[]         @relation("KnowledgeArticleUpdatedBy")
+  createdWorkLogs           WorkLog[]                  @relation("WorkLogCreatedBy")
+  createdUsedParts          UsedPart[]                 @relation("UsedPartCreatedBy")
+  updatedTaskChecklistItems TaskChecklistItem[]        @relation("TaskChecklistUpdatedBy")
+  applicationSupportCases   ApplicationSupportCase[]   @relation("ApplicationSupportEngineer")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -361,10 +370,10 @@ model KnowledgeArticle {
   category KnowledgeArticleCategory @default(OTHER)
   status   KnowledgeArticleStatus   @default(PUBLISHED)
 
-  tags      Json @default("[]")
-  symptoms  Json @default("[]")
-  steps     Json @default("[]")
-  checklist Json @default("[]")
+  tags      Json    @default("[]")
+  symptoms  Json    @default("[]")
+  steps     Json    @default("[]")
+  checklist Json    @default("[]")
   note      String? @db.Text
 
   sortOrder Int @default(0)
@@ -470,15 +479,15 @@ model DailyReport {
 
   reportDate DateTime
   status     DailyReportStatus @default(DRAFT)
-  summary    String? @db.Text
-  pending    String? @db.Text
-  proposal   String? @db.Text
+  summary    String?           @db.Text
+  pending    String?           @db.Text
+  proposal   String?           @db.Text
 
   submittedAt DateTime?
   reviewedAt  DateTime?
-  reviewNote  String? @db.Text
+  reviewNote  String?   @db.Text
   reviewerId  String?
-  reviewer    User?   @relation("DailyReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewer    User?     @relation("DailyReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -600,12 +609,13 @@ model Customer {
   primaryEngineerId String?
   primaryEngineer   User?   @relation("CustomerPrimaryEngineer", fields: [primaryEngineerId], references: [id], onDelete: SetNull)
 
-  machines             Machine[]
-  inventoryMovements   MachineInventoryMovement[]
-  machineInstallations MachineInstallation[]
-  warrantyCards        WarrantyCard[]
-  repairs              Repair[]
-  maintenances         Maintenance[]
+  machines                Machine[]
+  inventoryMovements      MachineInventoryMovement[]
+  machineInstallations    MachineInstallation[]
+  demoLoans               DemoLoan[]
+  warrantyCards           WarrantyCard[]
+  repairs                 Repair[]
+  maintenances            Maintenance[]
   applicationSupportCases ApplicationSupportCase[]
 
   createdAt DateTime @default(now())
@@ -664,9 +674,9 @@ model MachineModel {
   description     String?
   note            String?
 
-  machines             Machine[]
-  components           MachineComponent[]
-  plannedInstallations MachineInstallation[] @relation("PlannedInstallationModel")
+  machines                Machine[]
+  components              MachineComponent[]
+  plannedInstallations    MachineInstallation[]    @relation("PlannedInstallationModel")
   applicationSupportCases ApplicationSupportCase[]
 
   createdAt DateTime @default(now())
@@ -765,16 +775,61 @@ model Machine {
   primaryEngineerId String?
   primaryEngineer   User?   @relation("MachinePrimaryEngineer", fields: [primaryEngineerId], references: [id])
 
-  repairs            Repair[]
-  maintenances       Maintenance[]
-  inventoryMovements MachineInventoryMovement[]
-  installations      MachineInstallation[]
-  warrantyCards      WarrantyCard[]
-  accessories        MachineAccessory[]
+  repairs                 Repair[]
+  maintenances            Maintenance[]
+  inventoryMovements      MachineInventoryMovement[]
+  installations           MachineInstallation[]
+  demoLoans               DemoLoan[]
+  warrantyCards           WarrantyCard[]
+  accessories             MachineAccessory[]
   applicationSupportCases ApplicationSupportCase[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DemoLoan {
+  id String @id @default(cuid())
+
+  code   String         @unique
+  status DemoLoanStatus @default(PLANNED)
+
+  machineId String
+  machine   Machine @relation(fields: [machineId], references: [id])
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  engineerId String
+  engineer   User   @relation("DemoLoanEngineer", fields: [engineerId], references: [id], onDelete: Restrict)
+
+  plannedHandoverAt DateTime
+  handedOverAt      DateTime?
+  expectedReturnAt  DateTime
+  returnedAt        DateTime?
+
+  handoverAddress     String?
+  receiverName        String?
+  receiverPosition    String?
+  receiverPhone       String?
+  handoverCondition   String? @db.Text
+  handoverAccessories Json?
+  handoverNote        String? @db.Text
+  returnCondition     String? @db.Text
+  returnAccessories   Json?
+  returnNote          String? @db.Text
+  purpose             String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([machineId])
+  @@index([customerId])
+  @@index([engineerId])
+  @@index([status])
+  @@index([plannedHandoverAt])
+  @@index([expectedReturnAt])
+  @@index([returnedAt])
 }
 
 model MachineAccessory {
@@ -815,10 +870,10 @@ model ApplicationSupportCase {
   machineModelId String?
   machineModel   MachineModel? @relation(fields: [machineModelId], references: [id], onDelete: SetNull)
 
-  supportedAt DateTime
-  channel     ApplicationSupportChannel       @default(PHONE)
+  supportedAt   DateTime
+  channel       ApplicationSupportChannel       @default(PHONE)
   issueCategory ApplicationSupportIssueCategory @default(APP_ERROR)
-  status      ApplicationSupportStatus        @default(RESOLVED)
+  status        ApplicationSupportStatus        @default(RESOLVED)
 
   customerName String?
   contactName  String?
@@ -828,16 +883,16 @@ model ApplicationSupportCase {
   impactLevel  String?
 
   title            String
-  issueDescription String @db.Text
-  resolution        String @db.Text
-  durationMinutes   Int?
-  pending           String? @db.Text
-  nextAction        String? @db.Text
+  issueDescription String  @db.Text
+  resolution       String  @db.Text
+  durationMinutes  Int?
+  pending          String? @db.Text
+  nextAction       String? @db.Text
 
-  followUpNeeded    Boolean   @default(false)
-  followUpDate      DateTime?
-  knowledgeCandidate Boolean  @default(false)
-  note              String?   @db.Text
+  followUpNeeded     Boolean   @default(false)
+  followUpDate       DateTime?
+  knowledgeCandidate Boolean   @default(false)
+  note               String?   @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -898,9 +953,9 @@ model MachineInstallation {
   reviewerId   String?
   reviewer     User?            @relation("InstallationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
 
-  warrantyCard WarrantyCard?
-  workLogs      WorkLog[]
-  usedParts     UsedPart[]
+  warrantyCard   WarrantyCard?
+  workLogs       WorkLog[]
+  usedParts      UsedPart[]
   checklistItems TaskChecklistItem[]
 
   createdAt DateTime @default(now())
@@ -1105,10 +1160,10 @@ model WorkLog {
   installationId String?
   installation   MachineInstallation? @relation(fields: [installationId], references: [id], onDelete: Cascade)
 
-  stepTime DateTime?
-  title    String
-  note     String? @db.Text
-  sortOrder Int @default(0)
+  stepTime  DateTime?
+  title     String
+  note      String?   @db.Text
+  sortOrder Int       @default(0)
 
   createdById String?
   createdBy   User?   @relation("WorkLogCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -1138,16 +1193,16 @@ model UsedPart {
   installationId String?
   installation   MachineInstallation? @relation(fields: [installationId], references: [id], onDelete: Cascade)
 
-  name         String
-  quantity     Decimal @default(1) @db.Decimal(12, 2)
-  unit         String?
-  serialNumber String?
-  unitCost     Decimal? @db.Decimal(15, 2)
-  totalCost    Decimal? @db.Decimal(15, 2)
-  status       UsedPartStatus @default(USED)
+  name            String
+  quantity        Decimal        @default(1) @db.Decimal(12, 2)
+  unit            String?
+  serialNumber    String?
+  unitCost        Decimal?       @db.Decimal(15, 2)
+  totalCost       Decimal?       @db.Decimal(15, 2)
+  status          UsedPartStatus @default(USED)
   inventoryItemId String?
-  note         String? @db.Text
-  usedAt       DateTime?
+  note            String?        @db.Text
+  usedAt          DateTime?
 
   createdById String?
   createdBy   User?   @relation("UsedPartCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -1179,10 +1234,10 @@ model TaskChecklistItem {
   installationId String?
   installation   MachineInstallation? @relation(fields: [installationId], references: [id], onDelete: Cascade)
 
-  label    String
-  status   TaskChecklistStatus @default(PENDING)
-  note     String? @db.Text
-  sortOrder Int @default(0)
+  label     String
+  status    TaskChecklistStatus @default(PENDING)
+  note      String?             @db.Text
+  sortOrder Int                 @default(0)
   checkedAt DateTime?
 
   updatedById String?

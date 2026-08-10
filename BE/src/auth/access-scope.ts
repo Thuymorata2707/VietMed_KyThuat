@@ -23,11 +23,13 @@ export function machineAccessWhere(user?: RequestUser): Prisma.MachineWhereInput
     return {
       OR: [
         { customer: { regionId: user.regionId } },
+        { customerId: null },
         { installedBy: { regionId: user.regionId } },
         { primaryEngineer: { regionId: user.regionId } },
         { repairs: { some: { engineer: { regionId: user.regionId } } } },
         { maintenances: { some: { engineer: { regionId: user.regionId } } } },
         { installations: { some: { installedBy: { regionId: user.regionId } } } },
+        { demoLoans: { some: { engineer: { regionId: user.regionId } } } },
       ],
     };
   }
@@ -41,6 +43,7 @@ export function machineAccessWhere(user?: RequestUser): Prisma.MachineWhereInput
         { repairs: { some: { engineerId: user.id } } },
         { maintenances: { some: { engineerId: user.id } } },
         { installations: { some: { installedById: user.id } } },
+        { demoLoans: { some: { engineerId: user.id } } },
       ],
     };
   }
@@ -63,6 +66,7 @@ export function customerAccessWhere(
     return {
       OR: [
         { primaryEngineerId: user.id },
+        { demoLoans: { some: { engineerId: user.id } } },
         {
           machines: {
             some: machineAccessWhere(user),
@@ -175,6 +179,35 @@ export function installationAccessWhere(
     return {
       OR: [
         { installedById: user.id },
+        { customer: { primaryEngineerId: user.id } },
+      ],
+    };
+  }
+
+  return { id: '__no_access__' };
+}
+
+export function demoLoanAccessWhere(
+  user?: RequestUser,
+): Prisma.DemoLoanWhereInput {
+  if (!user) {
+    return {};
+  }
+
+  if (isAdmin(user) || isManager(user)) {
+    return {
+      OR: [
+        { customer: { regionId: user.regionId } },
+        { engineer: { regionId: user.regionId } },
+        { machine: { customer: { regionId: user.regionId } } },
+      ],
+    };
+  }
+
+  if (isEngineer(user)) {
+    return {
+      OR: [
+        { engineerId: user.id },
         { customer: { primaryEngineerId: user.id } },
       ],
     };

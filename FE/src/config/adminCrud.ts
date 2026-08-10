@@ -6,7 +6,7 @@ export type CrudField = {
   name: string;
   label: string;
   placeholder?: string;
-  type?: 'text' | 'email' | 'url' | 'image' | 'date' | 'select' | 'textarea' | 'tags' | 'accessories';
+  type?: 'text' | 'email' | 'url' | 'image' | 'date' | 'select' | 'textarea' | 'tags' | 'accessories' | 'businessLines';
   required?: boolean;
   createOnly?: boolean;
   updateOnly?: boolean;
@@ -128,18 +128,19 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
   customers: {
     title: 'Khách hàng',
     entityLabel: 'khách hàng',
-    description: 'Khách hàng & phụ trách.',
+    description: 'Danh sách khách hàng, máy và kỹ sư phụ trách.',
     endpoint: '/customers',
     icon: null,
-    searchPlaceholder: 'Tìm tên, mã, email, điện thoại',
+    searchPlaceholder: 'Tìm tên, mã, tỉnh, SĐT',
     roles: ['admin'],
     columns: [
-      { key: 'name', label: 'Tên khách hàng' },
+      { key: 'hospitalName', label: 'Khách hàng', fallbackKeys: ['name'] },
       { key: 'customerCode', label: 'Mã' },
-      { key: 'customerType', label: 'Loại' },
+      { key: 'province', label: 'Tỉnh/TP' },
+      { key: 'phone', label: 'SĐT', fallbackKeys: ['contactPhone'] },
+      { key: 'primaryEngineer.fullName', label: 'Kỹ sư' },
+      { key: '_count.machines', label: 'Máy' },
       { key: 'status', label: 'Trạng thái' },
-      { key: 'region.name', label: 'Khu vực' },
-      { key: 'primaryEngineer.fullName', label: 'Kỹ sư phụ trách' },
     ],
     fields: [
       { name: 'name', label: 'Tên khách hàng', required: true },
@@ -244,6 +245,13 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'code', label: 'Mã ngành hàng', required: true },
       { name: 'name', label: 'Tên ngành hàng', required: true },
       { name: 'expertiseGroup', label: 'Nhóm kỹ sư quản lý', type: 'select', required: true, options: expertiseGroups },
+      {
+        name: 'businessLinesText',
+        label: 'Nhóm sản phẩm ban đầu',
+        type: 'businessLines',
+        createOnly: true,
+        wide: true,
+      },
       { name: 'sortOrder', label: 'Thứ tự' },
       { name: 'status', label: 'Trạng thái', type: 'select', options: activeInactiveStatuses },
       { name: 'description', label: 'Mô tả', type: 'textarea' },

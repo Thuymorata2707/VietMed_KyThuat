@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { BusinessLineStatus, Prisma } from '@prisma/client';
+import { BusinessLineStatus, MachineProductCategory, Prisma } from '@prisma/client';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
@@ -16,17 +16,33 @@ export class ProductIndustriesService {
     assertPermission(actor, PERMISSIONS.MASTER_DATA_WRITE);
     this.validate(dto.code, dto.name);
     await this.ensureCodeAvailable(dto.code);
+    await this.ensureBusinessLineCodesAvailable(dto.businessLines ?? []);
 
-    return this.prisma.productIndustry.create({
-      data: {
-        code: this.normalizeCode(dto.code),
-        name: dto.name.trim(),
-        expertiseGroup: dto.expertiseGroup,
-        description: dto.description?.trim() || null,
-        status: dto.status ?? BusinessLineStatus.ACTIVE,
-        sortOrder: dto.sortOrder ?? 0,
-      },
-      include: this.defaultInclude(),
+    return this.prisma.$transaction(async (tx) => {
+      const industry = await tx.productIndustry.create({
+        data: {
+          code: this.normalizeCode(dto.code),
+          name: dto.name.trim(),
+          expertiseGroup: dto.expertiseGroup,
+          description: dto.description?.trim() || null,
+          status: dto.status ?? BusinessLineStatus.ACTIVE,
+          sortOrder: dto.sortOrder ?? 0,
+          businessLines: {
+            create: (dto.businessLines ?? []).map((line) => ({
+              code: this.normalizeCode(line.code),
+              name: line.name.trim(),
+              status: BusinessLineStatus.ACTIVE,
+              expertiseGroup: dto.expertiseGroup,
+              productCategory: this.normalizeProductCategory(line.productCategory),
+              manufacturer: line.manufacturer?.trim() || null,
+              countryOfOrigin: line.countryOfOrigin?.trim() || null,
+            })),
+          },
+        },
+        include: this.defaultInclude(),
+      });
+
+      return industry;
     });
   }
 
@@ -106,8 +122,34 @@ export class ProductIndustriesService {
     if (existing && existing.id !== currentId) throw new ConflictException('Product industry code already exists');
   }
 
+  private async ensureBusinessLineCodesAvailable(lines: Array<{ code: string }>) {
+    const codes = lines.map((line) => this.normalizeCode(line.code)).filter(Boolean);
+    const duplicatedCode = codes.find((code, index) => codes.indexOf(code) !== index);
+    if (duplicatedCode) {
+      throw new ConflictException(`Business line code ${duplicatedCode} is duplicated`);
+    }
+    if (!codes.length) return;
+
+    const existing = await this.prisma.businessLine.findMany({
+      where: { code: { in: codes } },
+      select: { code: true },
+    });
+    if (existing.length) {
+      throw new ConflictException(`Business line code ${existing[0].code} already exists`);
+    }
+  }
+
   private normalizeCode(code: string) {
     return code.toUpperCase().trim();
+  }
+
+  private normalizeProductCategory(value?: string | null) {
+    const normalized = value?.trim().toUpperCase();
+    if (!normalized) return MachineProductCategory.OTHER;
+    if (Object.values(MachineProductCategory).includes(normalized as MachineProductCategory)) {
+      return normalized as MachineProductCategory;
+    }
+    return MachineProductCategory.OTHER;
   }
 
   private defaultInclude() {

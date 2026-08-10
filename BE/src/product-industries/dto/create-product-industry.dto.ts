@@ -1,6 +1,28 @@
 import { BusinessLineStatus, ExpertiseGroup } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsArray, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+
+export class CreateProductIndustryBusinessLineDto {
+  @IsString()
+  @IsNotEmpty()
+  code!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  productCategory?: string;
+
+  @IsOptional()
+  @IsString()
+  manufacturer?: string;
+
+  @IsOptional()
+  @IsString()
+  countryOfOrigin?: string;
+}
 
 export class CreateProductIndustryDto {
   @IsString()
@@ -27,4 +49,10 @@ export class CreateProductIndustryDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductIndustryBusinessLineDto)
+  businessLines?: CreateProductIndustryBusinessLineDto[];
 }

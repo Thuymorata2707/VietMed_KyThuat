@@ -84,6 +84,53 @@
   padding: 12px;
 }
 
+.customer-table-wrap table {
+  min-width: 1040px;
+}
+
+.customer-crud-table th:first-child,
+.customer-crud-table td:first-child {
+  max-width: 340px;
+  width: 30%;
+}
+
+.customer-table-row td {
+  padding-bottom: 11px;
+  padding-top: 11px;
+}
+
+.customer-name-cell--compact strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-name-cell--compact small {
+  color: #747474;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-stack-cell--compact {
+  gap: 2px;
+}
+
+.customer-code-cell {
+  color: #3f3f46;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.customer-table-actions .row-actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
 .customer-card {
   align-items: stretch;
   background: linear-gradient(135deg, #ffffff 0%, #ffffff 58%, #f9fbff 100%);
@@ -249,6 +296,39 @@
     6px 6px;
   cursor: pointer;
   padding-right: 40px;
+}
+
+.initial-business-lines-editor {
+  @apply grid gap-3 rounded-2xl border border-[#e2e8f0] bg-[#fbfdff] p-3;
+}
+
+.initial-business-lines-header {
+  @apply flex flex-wrap items-center justify-between gap-2;
+}
+
+.initial-business-lines-header span {
+  @apply text-sm font-semibold text-[#334155];
+}
+
+.initial-business-lines-rows {
+  @apply grid gap-2;
+}
+
+.initial-business-line-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(90px, 0.75fr) minmax(160px, 1.4fr) minmax(150px, 1fr) minmax(130px, 1fr) minmax(110px, 0.9fr) 40px;
+  min-width: 0;
+}
+
+.initial-business-line-row .icon-button {
+  height: 40px;
+  min-width: 40px;
+  width: 40px;
+}
+
+.field-hint {
+  @apply text-xs font-medium leading-5 text-[#64748b];
 }
 
 .service-kind-select {
@@ -459,7 +539,7 @@
   font-weight: 800;
   position: sticky;
   top: 0;
-  text-transform:;
+  text-transform: uppercase;
   white-space: nowrap;
   z-index: 2;
 }
@@ -1296,6 +1376,14 @@
 }
 
 @media (max-width: 760px) {
+  .initial-business-line-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .initial-business-line-row .icon-button {
+    justify-self: end;
+  }
+
   .admin-crud-heading {
     align-items: stretch;
     flex-direction: column;
