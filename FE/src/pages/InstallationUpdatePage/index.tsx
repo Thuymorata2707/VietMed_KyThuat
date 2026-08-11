@@ -344,7 +344,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
           machineModelId: detail?.plannedMachineModelId || undefined,
           machineId: form.machineId || undefined,
           machineSerialNumber: machineSerialNumber.trim() || undefined,
-          machineCode: machineCode.trim() || undefined,
+          machineCode: undefined,
           machineName: form.deviceName.trim() || detail?.plannedMachineModel?.name || detail?.plannedModelName || undefined,
           machineAccessories: parseMachineAccessoriesInput(machineAccessoriesText),
           note,
@@ -564,8 +564,8 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   <input className={fieldClass} onChange={(event) => setMachineSerialNumber(event.target.value)} required={status === 'INSTALLED'} value={machineSerialNumber} />
                 </label>
                 <label className={labelClass}>
-                  Mã máy nội bộ (tự sinh nếu để trống)
-                  <input className={fieldClass} onChange={(event) => setMachineCode(event.target.value)} placeholder="VD: XCUBE50-001" value={machineCode} />
+                  Mã máy nội bộ
+                  <input className={fieldClass} disabled placeholder="Tự sinh khi lưu" value={machineCode || 'Tự sinh khi lưu'} />
                 </label>
                 <div className="md:col-span-2">
                   {accessoryMode ? (

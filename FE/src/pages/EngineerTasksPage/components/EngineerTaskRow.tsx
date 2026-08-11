@@ -1,17 +1,12 @@
 import { ArrowRight, ClipboardCheck, MapPin, PhoneCall } from 'lucide-react';
 import type { EngineerTask } from '../types';
 import {
-  reviewStatusLabel,
-  reviewStatusTone,
-  secondaryLabel,
-  secondaryTone,
   statusLabel,
   statusTone,
   taskAttention,
   taskContactPhone,
   taskCustomer,
   taskDate,
-  taskDescription,
   taskIcon,
   taskKindLabel,
   taskLocation,
@@ -43,33 +38,28 @@ export function EngineerTaskRow({ onOpen, task }: EngineerTaskRowProps) {
         <div className="engineer-task-row__title">
           <div className="engineer-task-row__meta">
             <span>{taskKindLabel(task.kind)}</span>
-            <span>{task.code}</span>
             <span>{taskDate(task)}</span>
           </div>
           <h2>{taskTitle(task)}</h2>
+          <span className="engineer-task-row__code">{task.code}</span>
         </div>
       </div>
 
       <div className="engineer-task-row__body">
-        <p>{taskDescription(task) || 'Chưa có mô tả chi tiết.'}</p>
         <div className="engineer-task-row__facts">
+          <span className="strong">{customer}</span>
           <span>{model}</span>
           <span>{machine}</span>
-          <span>{customer}</span>
-          {location ? <span>{location}</span> : null}
         </div>
+        {location ? <span className="engineer-task-row__location">{location}</span> : null}
       </div>
 
       <div className="engineer-task-row__status">
         <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
-        {task.reviewStatus && task.reviewStatus !== 'NOT_REQUIRED' ? (
-          <span className={`task-badge ${reviewStatusTone(task.reviewStatus)}`}>{reviewStatusLabel(task.reviewStatus)}</span>
-        ) : null}
-        <span className={`task-badge ${secondaryTone(task)}`}>{secondaryLabel(task)}</span>
+        <span className={`engineer-next-step ${attention.tone}`}>{attention.label}</span>
       </div>
 
       <div className="engineer-task-row__action">
-        <span className={`engineer-next-step ${attention.tone}`}>{attention.label}</span>
         <div className="engineer-task-row__buttons">
           {phone ? (
             <a className="task-secondary icon-button" href={`tel:${phone}`} title={`Gọi ${phone}`}>

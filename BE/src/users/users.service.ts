@@ -137,7 +137,9 @@ export class UsersService {
     };
   }
 
-  private async findAllLegacy(actor?: RequestUser): Promise<UserWithoutPassword[]> {
+  private async findAllLegacy(
+    actor?: RequestUser,
+  ): Promise<UserWithoutPassword[]> {
     const users = await this.prisma.user.findMany({
       where: userAccessWhere(actor),
       include: {
@@ -154,8 +156,11 @@ export class UsersService {
   }
 
   async findOne(id: string, actor?: RequestUser): Promise<UserWithoutPassword> {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id,
+        AND: [userAccessWhere(actor)],
+      },
       include: {
         role: true,
         region: true,
@@ -166,7 +171,6 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    this.assertCanManageRegion(user.regionId, actor);
 
     return this.withoutPassword(user);
   }
@@ -402,7 +406,10 @@ export class UsersService {
     return normalized || null;
   }
 
-  private async ensureUsernameIsAvailable(username?: string | null, userId?: string) {
+  private async ensureUsernameIsAvailable(
+    username?: string | null,
+    userId?: string,
+  ) {
     const normalized = this.normalizeOptionalUsername(username);
     if (!normalized) return;
 
@@ -426,7 +433,10 @@ export class UsersService {
     );
   }
 
-  private buildFindAllWhere(query?: ListUsersQueryDto, actor?: RequestUser): Prisma.UserWhereInput {
+  private buildFindAllWhere(
+    query?: ListUsersQueryDto,
+    actor?: RequestUser,
+  ): Prisma.UserWhereInput {
     const search = query?.search?.trim();
     const roleName = query?.roleName?.trim();
     const conditions: Prisma.UserWhereInput[] = [];
@@ -481,31 +491,47 @@ export class UsersService {
       });
     }
 
-    const requestedRegionId = this.canUseRequestedRegion(query?.regionId, actor) ? query?.regionId : undefined;
+    const requestedRegionId = this.canUseRequestedRegion(query?.regionId, actor)
+      ? query?.regionId
+      : undefined;
 
     return {
       status: query?.status,
       regionId: requestedRegionId,
-      AND: [userAccessWhere(actor), ...conditions].filter((item) => Object.keys(item).length),
+      AND: [userAccessWhere(actor), ...conditions].filter(
+        (item) => Object.keys(item).length,
+      ),
     };
   }
 
-  private canUseRequestedRegion(regionId: string | undefined, actor?: RequestUser) {
+  private canUseRequestedRegion(
+    regionId: string | undefined,
+    actor?: RequestUser,
+  ) {
     if (!regionId) return false;
     if (isAdmin(actor)) return regionId === actor.regionId;
     return false;
   }
 
-  private assertCanManageRegion(regionId: string | undefined, actor?: RequestUser) {
+  private assertCanManageRegion(
+    regionId: string | undefined,
+    actor?: RequestUser,
+  ) {
     if (!actor || !isAdmin(actor) || !regionId) return;
     if (regionId !== actor.regionId) {
-      throw new ForbiddenException('Bạn chỉ được quản lý nhân sự trong khu vực của mình.');
+      throw new ForbiddenException(
+        'Bạn chỉ được quản lý nhân sự trong khu vực của mình.',
+      );
     }
   }
 
   private isEngineerRoleName(roleName: string) {
     const normalized = roleName.toLowerCase().trim();
-    return normalized === 'engineer' || normalized === 'kỹ sư' || normalized === 'ky su';
+    return (
+      normalized === 'engineer' ||
+      normalized === 'kỹ sư' ||
+      normalized === 'ky su'
+    );
   }
 
   private withoutPassword<

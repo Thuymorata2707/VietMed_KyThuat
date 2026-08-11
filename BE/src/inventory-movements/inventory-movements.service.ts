@@ -3,10 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  InventoryMovementType,
-  MachineInventoryStatus,
-} from '@prisma/client';
+import { InventoryMovementType, MachineInventoryStatus } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
 import { inventoryMovementAccessWhere } from '../auth/access-scope';
@@ -188,7 +185,10 @@ export class InventoryMovementsService {
     }
   }
 
-  private async ensureMachineCanMove(machineId: string, type: InventoryMovementType) {
+  private async ensureMachineCanMove(
+    machineId: string,
+    type: InventoryMovementType,
+  ) {
     if (type !== InventoryMovementType.SELL) return;
 
     const splitCount = await this.prisma.machineInventoryMovement.count({
@@ -199,7 +199,9 @@ export class InventoryMovementsService {
     });
 
     if (splitCount > 0) {
-      throw new BadRequestException('Cannot sell a machine after accessories have been split');
+      throw new BadRequestException(
+        'Cannot sell a machine after accessories have been split',
+      );
     }
   }
 

@@ -133,7 +133,8 @@ export class NotificationsService {
   streamForUser(userId: string): Observable<MessageEvent> {
     return new Observable<MessageEvent>((subscriber) => {
       const subject = new Subject<MessageEvent>();
-      const streams = this.streams.get(userId) ?? new Set<Subject<MessageEvent>>();
+      const streams =
+        this.streams.get(userId) ?? new Set<Subject<MessageEvent>>();
       streams.add(subject);
       this.streams.set(userId, streams);
 

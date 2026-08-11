@@ -1,5 +1,15 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { DailyReportStatus, DailyWorkStatus, Prisma, WeeklyReportStatus } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  DailyReportStatus,
+  DailyWorkStatus,
+  Prisma,
+  WeeklyReportStatus,
+} from '@prisma/client';
 import { isAdmin, isEngineer, userAccessWhere } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,11 +20,21 @@ import { SaveDailyReportDto } from './dto/save-daily-report.dto';
 export class DailyReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByDate({ user, reportDate, userId }: { user: RequestUser; reportDate?: string; userId?: string }) {
+  async findByDate({
+    user,
+    reportDate,
+    userId,
+  }: {
+    user: RequestUser;
+    reportDate?: string;
+    userId?: string;
+  }) {
     this.assertCanUseDailyReports(user);
     const targetUserId = this.resolveTargetUserId(user, userId);
     await this.ensureUserExists(targetUserId, user);
-    const date = this.startOfDay(this.parseDate(reportDate || new Date().toISOString(), 'reportDate'));
+    const date = this.startOfDay(
+      this.parseDate(reportDate || new Date().toISOString(), 'reportDate'),
+    );
     const report = await this.prisma.dailyReport.findUnique({
       where: { userId_reportDate: { userId: targetUserId, reportDate: date } },
       include: this.defaultInclude(),
@@ -27,48 +47,59 @@ export class DailyReportsService {
     this.assertCanUseDailyReports(user);
     const targetUserId = this.resolveTargetUserId(user, dto.userId);
     await this.ensureUserExists(targetUserId, user);
-    const reportDate = this.startOfDay(this.parseDate(dto.reportDate, 'reportDate'));
+    const reportDate = this.startOfDay(
+      this.parseDate(dto.reportDate, 'reportDate'),
+    );
 
-    return this.prisma.$transaction(async (tx) => {
-      const report = await tx.dailyReport.upsert({
-        where: { userId_reportDate: { userId: targetUserId, reportDate } },
-        create: {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const report = await tx.dailyReport.upsert({
+          where: { userId_reportDate: { userId: targetUserId, reportDate } },
+          create: {
+            userId: targetUserId,
+            reportDate,
+            status: DailyReportStatus.DRAFT,
+            summary: this.cleanOptional(dto.summary),
+            pending: this.cleanOptional(dto.pending),
+            proposal: this.cleanOptional(dto.proposal),
+          },
+          update: {
+            status: DailyReportStatus.DRAFT,
+            summary: this.cleanOptional(dto.summary),
+            pending: this.cleanOptional(dto.pending),
+            proposal: this.cleanOptional(dto.proposal),
+            submittedAt: null,
+            reviewedAt: null,
+            reviewerId: null,
+            reviewNote: null,
+          },
+          include: this.defaultInclude(),
+        });
+
+        await this.syncDraftToWeeklyReport(tx, {
           userId: targetUserId,
           reportDate,
-          status: DailyReportStatus.DRAFT,
-          summary: this.cleanOptional(dto.summary),
-          pending: this.cleanOptional(dto.pending),
-          proposal: this.cleanOptional(dto.proposal),
-        },
-        update: {
-          status: DailyReportStatus.DRAFT,
-          summary: this.cleanOptional(dto.summary),
-          pending: this.cleanOptional(dto.pending),
-          proposal: this.cleanOptional(dto.proposal),
-          submittedAt: null,
-          reviewedAt: null,
-          reviewerId: null,
-          reviewNote: null,
-        },
-        include: this.defaultInclude(),
-      });
+          summary: report.summary,
+          pending: report.pending,
+          proposal: report.proposal,
+        });
 
-      await this.syncDraftToWeeklyReport(tx, {
-        userId: targetUserId,
-        reportDate,
-        summary: report.summary,
-        pending: report.pending,
-        proposal: report.proposal,
-      });
-
-      return report;
-    }, { timeout: 20_000 });
+        return report;
+      },
+      { timeout: 20_000 },
+    );
   }
 
   async submit(id: string, user: RequestUser) {
     const report = await this.findAccessibleReport(id, user);
-    if (!report.summary?.trim() && !report.pending?.trim() && !report.proposal?.trim()) {
-      throw new BadRequestException('Daily report must have content before submit');
+    if (
+      !report.summary?.trim() &&
+      !report.pending?.trim() &&
+      !report.proposal?.trim()
+    ) {
+      throw new BadRequestException(
+        'Daily report must have content before submit',
+      );
     }
 
     return this.prisma.dailyReport.update({
@@ -85,12 +116,21 @@ export class DailyReportsService {
   }
 
   async review(id: string, dto: ReviewDailyReportDto, user: RequestUser) {
-    if (!isAdmin(user)) throw new ForbiddenException('Only admin can review daily reports');
-    if (dto.status !== DailyReportStatus.APPROVED && dto.status !== DailyReportStatus.NEEDS_REVISION) {
+    if (!isAdmin(user))
+      throw new ForbiddenException('Only admin can review daily reports');
+    if (
+      dto.status !== DailyReportStatus.APPROVED &&
+      dto.status !== DailyReportStatus.NEEDS_REVISION
+    ) {
       throw new BadRequestException('Invalid review status');
     }
-    if (dto.status === DailyReportStatus.NEEDS_REVISION && !dto.reviewNote?.trim()) {
-      throw new BadRequestException('reviewNote is required when requesting revision');
+    if (
+      dto.status === DailyReportStatus.NEEDS_REVISION &&
+      !dto.reviewNote?.trim()
+    ) {
+      throw new BadRequestException(
+        'reviewNote is required when requesting revision',
+      );
     }
 
     await this.findAccessibleReport(id, user);
@@ -109,42 +149,83 @@ export class DailyReportsService {
   private async buildSuggestedReport(userId: string, reportDate: Date) {
     const start = this.startOfDay(reportDate);
     const end = this.endOfDay(reportDate);
-    const [dailyNotes, repairs, maintenances, installations] = await Promise.all([
-      this.prisma.dailyWorkNote.findMany({
-        where: {
-          userId,
-          workDate: { gte: start, lte: end },
-          status: { notIn: [DailyWorkStatus.REJECTED, DailyWorkStatus.CANCELLED] },
-        },
-        orderBy: [{ startTime: 'asc' }, { createdAt: 'asc' }],
-      }),
-      this.prisma.repair.findMany({
-        where: { engineerId: userId, OR: [{ completedAt: { gte: start, lte: end } }, { reportedAt: { gte: start, lte: end } }] },
-        include: { customer: true, machine: { include: { customer: true } } },
-        orderBy: [{ completedAt: 'asc' }, { reportedAt: 'asc' }],
-      }),
-      this.prisma.maintenance.findMany({
-        where: { engineerId: userId, OR: [{ completedAt: { gte: start, lte: end } }, { scheduledDate: { gte: start, lte: end } }] },
-        include: { customer: true, machine: { include: { customer: true } } },
-        orderBy: [{ completedAt: 'asc' }, { scheduledDate: 'asc' }],
-      }),
-      this.prisma.machineInstallation.findMany({
-        where: { installedById: userId, installedAt: { gte: start, lte: end } },
-        include: { customer: true, machine: true, plannedMachineModel: true },
-        orderBy: { installedAt: 'asc' },
-      }),
-    ]);
+    const [dailyNotes, repairs, maintenances, installations] =
+      await Promise.all([
+        this.prisma.dailyWorkNote.findMany({
+          where: {
+            userId,
+            workDate: { gte: start, lte: end },
+            status: {
+              notIn: [DailyWorkStatus.REJECTED, DailyWorkStatus.CANCELLED],
+            },
+          },
+          orderBy: [{ startTime: 'asc' }, { createdAt: 'asc' }],
+        }),
+        this.prisma.repair.findMany({
+          where: {
+            engineerId: userId,
+            OR: [
+              { completedAt: { gte: start, lte: end } },
+              { reportedAt: { gte: start, lte: end } },
+            ],
+          },
+          include: { customer: true, machine: { include: { customer: true } } },
+          orderBy: [{ completedAt: 'asc' }, { reportedAt: 'asc' }],
+        }),
+        this.prisma.maintenance.findMany({
+          where: {
+            engineerId: userId,
+            OR: [
+              { completedAt: { gte: start, lte: end } },
+              { scheduledDate: { gte: start, lte: end } },
+            ],
+          },
+          include: { customer: true, machine: { include: { customer: true } } },
+          orderBy: [{ completedAt: 'asc' }, { scheduledDate: 'asc' }],
+        }),
+        this.prisma.machineInstallation.findMany({
+          where: {
+            installedById: userId,
+            installedAt: { gte: start, lte: end },
+          },
+          include: { customer: true, machine: true, plannedMachineModel: true },
+          orderBy: { installedAt: 'asc' },
+        }),
+      ]);
 
     const lines = [
-      ...dailyNotes.map((note) => `- Lịch: ${note.title}${note.note ? ` - ${note.note}` : ''}`),
-      ...repairs.map((item) => `- Sửa chữa ${item.code}: ${item.title}${item.resultNote ? ` - ${item.resultNote}` : ''}`),
-      ...maintenances.map((item) => `- Bảo trì ${item.code}: ${item.title}${item.resultNote ? ` - ${item.resultNote}` : ''}`),
-      ...installations.map((item) => `- Lắp đặt ${item.code}: ${item.customer?.name || item.machine?.modelName || item.plannedMachineModel?.name || 'thiết bị'}${item.note ? ` - ${item.note}` : ''}`),
+      ...dailyNotes.map(
+        (note) => `- Lịch: ${note.title}${note.note ? ` - ${note.note}` : ''}`,
+      ),
+      ...repairs.map(
+        (item) =>
+          `- Sửa chữa ${item.code}: ${item.title}${item.resultNote ? ` - ${item.resultNote}` : ''}`,
+      ),
+      ...maintenances.map(
+        (item) =>
+          `- Bảo trì ${item.code}: ${item.title}${item.resultNote ? ` - ${item.resultNote}` : ''}`,
+      ),
+      ...installations.map(
+        (item) =>
+          `- Lắp đặt ${item.code}: ${item.customer?.name || item.machine?.modelName || item.plannedMachineModel?.name || 'thiết bị'}${item.note ? ` - ${item.note}` : ''}`,
+      ),
     ];
     const pending = [
-      ...repairs.filter((item) => item.status !== 'COMPLETED' && item.status !== 'CANCELLED').map((item) => `- ${item.code}: ${item.title}`),
-      ...maintenances.filter((item) => item.status !== 'COMPLETED' && item.status !== 'CANCELLED').map((item) => `- ${item.code}: ${item.title}`),
-      ...installations.filter((item) => item.status !== 'INSTALLED' && item.status !== 'CANCELLED').map((item) => `- ${item.code}: ${item.customer?.name || 'lắp đặt'}`),
+      ...repairs
+        .filter(
+          (item) => item.status !== 'COMPLETED' && item.status !== 'CANCELLED',
+        )
+        .map((item) => `- ${item.code}: ${item.title}`),
+      ...maintenances
+        .filter(
+          (item) => item.status !== 'COMPLETED' && item.status !== 'CANCELLED',
+        )
+        .map((item) => `- ${item.code}: ${item.title}`),
+      ...installations
+        .filter(
+          (item) => item.status !== 'INSTALLED' && item.status !== 'CANCELLED',
+        )
+        .map((item) => `- ${item.code}: ${item.customer?.name || 'lắp đặt'}`),
     ];
 
     return {
@@ -173,7 +254,8 @@ export class DailyReportsService {
   private async findAccessibleReport(id: string, user: RequestUser) {
     const report = await this.prisma.dailyReport.findUnique({ where: { id } });
     if (!report) throw new NotFoundException('Daily report not found');
-    if (!isAdmin(user) && report.userId !== user.id) throw new NotFoundException('Daily report not found');
+    if (!isAdmin(user) && report.userId !== user.id)
+      throw new NotFoundException('Daily report not found');
     if (isAdmin(user)) await this.ensureUserExists(report.userId, user);
     return report;
   }
@@ -184,11 +266,15 @@ export class DailyReportsService {
   }
 
   private assertCanUseDailyReports(user: RequestUser) {
-    if (!isAdmin(user) && !isEngineer(user)) throw new ForbiddenException('You cannot use daily reports');
+    if (!isAdmin(user) && !isEngineer(user))
+      throw new ForbiddenException('You cannot use daily reports');
   }
 
   private async ensureUserExists(userId: string, actor?: RequestUser) {
-    const user = await this.prisma.user.findFirst({ where: { AND: [{ id: userId }, userAccessWhere(actor)] }, select: { id: true } });
+    const user = await this.prisma.user.findFirst({
+      where: { AND: [{ id: userId }, userAccessWhere(actor)] },
+      select: { id: true },
+    });
     if (!user) throw new NotFoundException('User not found');
   }
 
@@ -202,7 +288,9 @@ export class DailyReportsService {
       proposal?: string | null;
     },
   ) {
-    const hasContent = [report.summary, report.pending, report.proposal].some((value) => value?.trim());
+    const hasContent = [report.summary, report.pending, report.proposal].some(
+      (value) => value?.trim(),
+    );
     const weekStart = this.startOfWeek(report.reportDate);
     const marker = this.dailyWeeklyMarker(report.reportDate);
 
@@ -277,7 +365,8 @@ export class DailyReportsService {
 
   private parseDate(value: string, field: string) {
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) throw new BadRequestException(`${field} must be a valid date`);
+    if (Number.isNaN(date.getTime()))
+      throw new BadRequestException(`${field} must be a valid date`);
     return date;
   }
 

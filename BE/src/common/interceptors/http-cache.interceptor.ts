@@ -17,7 +17,10 @@ export class HttpCacheInterceptor implements NestInterceptor {
     }>();
 
     if (request.method === 'GET' && !response.getHeader?.('Cache-Control')) {
-      response.setHeader?.('Cache-Control', 'private, max-age=0, must-revalidate');
+      response.setHeader?.(
+        'Cache-Control',
+        'private, max-age=0, must-revalidate',
+      );
       response.setHeader?.('Vary', 'Authorization');
     }
 

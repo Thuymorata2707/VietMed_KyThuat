@@ -314,6 +314,10 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
             />
           </div>
           <div className="flex flex-wrap justify-end gap-2">
+            <Link className="secondary-button bg-white" to={`/technical-machines?installState=INSTALLED${industryId ? `&productIndustryId=${industryId}` : ''}`}>
+              <Boxes size={17} />
+              Danh sách máy quản lý
+            </Link>
             {canAddModel ? (
               <button className="secondary-button bg-white" onClick={openModelForm} type="button">
                 <Plus size={17} />
@@ -418,6 +422,10 @@ function CatalogPortalHero({
           <p className="mt-3 max-w-2xl text-[15px] font-medium leading-7 text-[#667085]">Ngành hàng, model và tồn kho.</p>
         </div>
         <div className="flex flex-wrap gap-2 min-[960px]:justify-end">
+          <Link className="secondary-button bg-white/86" to="/technical-machines?installState=INSTALLED">
+            <Boxes size={17} />
+            Danh sách máy quản lý
+          </Link>
           {canAddProduct ? (
             <Link className="primary-button" to="/business-lines/add-product">
               <Plus size={17} />
@@ -435,7 +443,7 @@ function CatalogPortalHero({
         <Link to="/technical-machines" className="block cursor-pointer rounded-[20px] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(24,24,27,0.07)]">
           <MetricCard icon={<Boxes size={18} />} label="Tổng máy" subLabel={`${totals.inStock} còn kho`} value={totals.machines} />
         </Link>
-        <MetricCard icon={<Layers3 size={18} />} label="Model" subLabel={`${totals.businessLines} dòng`} value={totals.models} />
+        <MetricCard icon={<Layers3 size={18} />} label="Model" subLabel={`${totals.businessLines} nhóm sản phẩm`} value={totals.models} />
         <MetricCard icon={<BarChart3 size={18} />} label="Ngành hàng" subLabel="nhóm chính" value={totals.industries} />
       </div>
     </section>

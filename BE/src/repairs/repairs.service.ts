@@ -16,6 +16,7 @@ import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
 import { isAdmin, isEngineer, repairAccessWhere } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { ReviewWorkTaskDto } from '../common/dto/review-work-task.dto';
+import { shortDateCode } from '../common/code-format';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { validateMachineState } from '../machines/machine-state.rules';
@@ -74,94 +75,95 @@ export class RepairsService {
       dto.customerId,
     );
 
-    return this.prisma.$transaction(async (tx) => {
-      const repair = await tx.repair.create({
-        data: {
-          code: await this.generateRepairCode(
-            tx,
-            machine,
-            dto.warrantyStatus,
-            engineerId,
-          ),
-          title: dto.title.trim(),
-          description: dto.description?.trim() || null,
-          machineId: machine?.id ?? null,
-          customerId,
-          engineerId: engineerId || null,
-          createdById: actor.id,
-          priority: dto.priority ?? RepairPriority.NORMAL,
-          status: createdByEngineer
-            ? RepairStatus.ASSIGNED
-            : engineerId
+    return this.prisma.$transaction(
+      async (tx) => {
+        const repair = await tx.repair.create({
+          data: {
+            code: await this.generateRepairCode(
+              tx,
+              this.parseOptionalDate(dto.reportedAt) ?? new Date(),
+            ),
+            title: dto.title.trim(),
+            description: dto.description?.trim() || null,
+            machineId: machine?.id ?? null,
+            customerId,
+            engineerId: engineerId || null,
+            createdById: actor.id,
+            priority: dto.priority ?? RepairPriority.NORMAL,
+            status: createdByEngineer
               ? RepairStatus.ASSIGNED
-              : RepairStatus.PENDING,
-          reportedAt: this.parseOptionalDate(dto.reportedAt) ?? new Date(),
-          assignedAt: engineerId ? new Date() : null,
-          usingDepartment: this.cleanOptionalString(dto.usingDepartment),
-          representative: this.cleanOptionalString(dto.representative),
-          address: this.cleanOptionalString(dto.address),
-          contactPhone: this.cleanOptionalString(dto.contactPhone),
-          deviceName: this.cleanOptionalString(dto.deviceName),
-          modelName: this.cleanOptionalString(dto.modelName),
-          serialNumber: this.cleanOptionalString(dto.serialNumber),
-          warrantyStatus: this.cleanOptionalString(dto.warrantyStatus),
-          conditionAssessment: this.cleanOptionalString(
-            dto.conditionAssessment,
-          ),
-          repairMethod: this.cleanOptionalString(dto.repairMethod),
-        },
-        include: this.defaultInclude(),
-      });
-
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.CREATE,
-          entityType: 'Repair',
-          entityId: repair.id,
-          actor,
-          metadata: {
-            code: repair.code,
-            machineId: repair.machineId,
-            customerId: repair.customerId,
-            createdById: repair.createdById,
-            engineerId: repair.engineerId,
-            status: repair.status,
+              : engineerId
+                ? RepairStatus.ASSIGNED
+                : RepairStatus.PENDING,
+            reportedAt: this.parseOptionalDate(dto.reportedAt) ?? new Date(),
+            assignedAt: engineerId ? new Date() : null,
+            usingDepartment: this.cleanOptionalString(dto.usingDepartment),
+            representative: this.cleanOptionalString(dto.representative),
+            address: this.cleanOptionalString(dto.address),
+            contactPhone: this.cleanOptionalString(dto.contactPhone),
+            deviceName: this.cleanOptionalString(dto.deviceName),
+            modelName: this.cleanOptionalString(dto.modelName),
+            serialNumber: this.cleanOptionalString(dto.serialNumber),
+            warrantyStatus: this.cleanOptionalString(dto.warrantyStatus),
+            conditionAssessment: this.cleanOptionalString(
+              dto.conditionAssessment,
+            ),
+            repairMethod: this.cleanOptionalString(dto.repairMethod),
           },
-        },
-        tx,
-      );
+          include: this.defaultInclude(),
+        });
 
-      if (repair.engineerId && repair.engineerId !== actor.id) {
-        await this.notificationsService.create(
+        await this.auditLogsService.create(
           {
-            userId: repair.engineerId,
-            title: 'Bạn có phiếu sửa chữa mới',
-            message: `${actor.email} đã phân công phiếu ${repair.code}: ${repair.title}`,
-            href: '/my-tasks',
+            action: AUDIT_ACTIONS.CREATE,
             entityType: 'Repair',
             entityId: repair.id,
-            createdById: actor.id,
+            actor,
+            metadata: {
+              code: repair.code,
+              machineId: repair.machineId,
+              customerId: repair.customerId,
+              createdById: repair.createdById,
+              engineerId: repair.engineerId,
+              status: repair.status,
+            },
           },
           tx,
         );
-      }
 
-      if (isEngineer(actor)) {
-        await this.notificationsService.createForAdmins(
-          {
-            title: 'Kỹ sư tạo phiếu sửa chữa mới',
-            message: `${actor.email} đã tạo phiếu sửa chữa khẩn ${repair.code}: ${repair.title}. Phiếu đã được gán cho kỹ sư để xử lý ngay, admin hậu kiểm dữ liệu khi cần.`,
-            href: '/service-tickets',
-            entityType: 'Repair',
-            entityId: repair.id,
-            createdById: actor.id,
-          },
-          tx,
-        );
-      }
+        if (repair.engineerId && repair.engineerId !== actor.id) {
+          await this.notificationsService.create(
+            {
+              userId: repair.engineerId,
+              title: 'Bạn có phiếu sửa chữa mới',
+              message: `${actor.email} đã phân công phiếu ${repair.code}: ${repair.title}`,
+              href: '/my-tasks',
+              entityType: 'Repair',
+              entityId: repair.id,
+              createdById: actor.id,
+            },
+            tx,
+          );
+        }
 
-      return repair;
-    }, { timeout: 20_000 });
+        if (isEngineer(actor)) {
+          await this.notificationsService.createForAdmins(
+            {
+              title: 'Kỹ sư tạo phiếu sửa chữa mới',
+              message: `${actor.email} đã tạo phiếu sửa chữa khẩn ${repair.code}: ${repair.title}. Phiếu đã được gán cho kỹ sư để xử lý ngay, admin hậu kiểm dữ liệu khi cần.`,
+              href: '/service-tickets',
+              entityType: 'Repair',
+              entityId: repair.id,
+              createdById: actor.id,
+            },
+            tx,
+          );
+        }
+
+        return repair;
+      },
+      { timeout: 20_000 },
+    );
   }
 
   async findAll(
@@ -177,8 +179,9 @@ export class RepairsService {
         where,
         include: this.defaultInclude(),
         orderBy: [
-          { reportedAt: 'desc' },
           { createdAt: 'desc' },
+          { updatedAt: 'desc' },
+          { reportedAt: 'desc' },
         ],
         skip: (page - 1) * limit,
         take: limit,
@@ -219,7 +222,7 @@ export class RepairsService {
       dto.customerId === undefined
         ? dto.machineId === undefined
           ? repair.customerId
-          : nextMachine?.customerId ?? null
+          : (nextMachine?.customerId ?? null)
         : dto.customerId,
     );
 
@@ -242,140 +245,147 @@ export class RepairsService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.repair.update({
-        where: { id },
-        data: {
-          title: dto.title?.trim(),
-          description:
-            dto.description === undefined
-              ? undefined
-              : dto.description?.trim() || null,
-          priority: dto.priority,
-          engineerId:
-            dto.engineerId === undefined ? undefined : nextEngineerId,
-          machineId:
-            dto.machineId === undefined ? undefined : nextMachine?.id ?? null,
-          customerId:
-            dto.customerId === undefined && dto.machineId === undefined
-              ? undefined
-              : nextCustomerId,
-          status: dto.status,
-          assignedAt:
-            dto.engineerId !== undefined && nextEngineerId && !repair.assignedAt
-              ? new Date()
-              : undefined,
-          startedAt:
-            dto.status === RepairStatus.IN_PROGRESS && !repair.startedAt
-              ? new Date()
-              : undefined,
-          completedAt:
-            dto.status === RepairStatus.COMPLETED ? new Date() : undefined,
-          reviewStatus: dto.status
-            ? this.resolveReviewStatus(dto.status, actor)
-            : undefined,
-          reviewedAt:
-            dto.status === RepairStatus.COMPLETED && isAdmin(actor)
-              ? new Date()
-              : dto.status
-                ? null
-                : undefined,
-          reviewerId:
-            dto.status === RepairStatus.COMPLETED && isAdmin(actor)
-              ? actor.id
-              : dto.status
-                ? null
-                : undefined,
-          reviewNote: dto.status ? null : undefined,
-          resultNote:
-            dto.resultNote === undefined
-              ? undefined
-              : dto.resultNote?.trim() || null,
-          customerFeedback:
-            dto.customerFeedback === undefined
-              ? undefined
-              : dto.customerFeedback?.trim() || null,
-          usingDepartment: this.cleanOptionalUpdateString(
-            dto.usingDepartment,
-          ),
-          representative: this.cleanOptionalUpdateString(dto.representative),
-          address: this.cleanOptionalUpdateString(dto.address),
-          contactPhone: this.cleanOptionalUpdateString(dto.contactPhone),
-          deviceName: this.cleanOptionalUpdateString(dto.deviceName),
-          modelName: this.cleanOptionalUpdateString(dto.modelName),
-          serialNumber: this.cleanOptionalUpdateString(dto.serialNumber),
-          warrantyStatus: this.cleanOptionalUpdateString(dto.warrantyStatus),
-          conditionAssessment: this.cleanOptionalUpdateString(
-            dto.conditionAssessment,
-          ),
-          repairMethod: this.cleanOptionalUpdateString(dto.repairMethod),
-        },
-        include: this.defaultInclude(),
-      });
-
-      const machineStatus = this.getMachineStatusForRepairStatus(nextStatus);
-
-      if (machineStatus && nextMachine) {
-        validateMachineState(
-          machineStatus,
-          nextMachine.inventoryStatus,
-          nextMachine.customerId,
-        );
-        await tx.machine.update({
-          where: { id: nextMachine.id },
+    return this.prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.repair.update({
+          where: { id },
           data: {
-            status: machineStatus,
+            title: dto.title?.trim(),
+            description:
+              dto.description === undefined
+                ? undefined
+                : dto.description?.trim() || null,
+            priority: dto.priority,
+            engineerId:
+              dto.engineerId === undefined ? undefined : nextEngineerId,
+            machineId:
+              dto.machineId === undefined
+                ? undefined
+                : (nextMachine?.id ?? null),
+            customerId:
+              dto.customerId === undefined && dto.machineId === undefined
+                ? undefined
+                : nextCustomerId,
+            status: dto.status,
+            assignedAt:
+              dto.engineerId !== undefined &&
+              nextEngineerId &&
+              !repair.assignedAt
+                ? new Date()
+                : undefined,
+            startedAt:
+              dto.status === RepairStatus.IN_PROGRESS && !repair.startedAt
+                ? new Date()
+                : undefined,
+            completedAt:
+              dto.status === RepairStatus.COMPLETED ? new Date() : undefined,
+            reviewStatus: dto.status
+              ? this.resolveReviewStatus(dto.status, actor)
+              : undefined,
+            reviewedAt:
+              dto.status === RepairStatus.COMPLETED && isAdmin(actor)
+                ? new Date()
+                : dto.status
+                  ? null
+                  : undefined,
+            reviewerId:
+              dto.status === RepairStatus.COMPLETED && isAdmin(actor)
+                ? actor.id
+                : dto.status
+                  ? null
+                  : undefined,
+            reviewNote: dto.status ? null : undefined,
+            resultNote:
+              dto.resultNote === undefined
+                ? undefined
+                : dto.resultNote?.trim() || null,
+            customerFeedback:
+              dto.customerFeedback === undefined
+                ? undefined
+                : dto.customerFeedback?.trim() || null,
+            usingDepartment: this.cleanOptionalUpdateString(
+              dto.usingDepartment,
+            ),
+            representative: this.cleanOptionalUpdateString(dto.representative),
+            address: this.cleanOptionalUpdateString(dto.address),
+            contactPhone: this.cleanOptionalUpdateString(dto.contactPhone),
+            deviceName: this.cleanOptionalUpdateString(dto.deviceName),
+            modelName: this.cleanOptionalUpdateString(dto.modelName),
+            serialNumber: this.cleanOptionalUpdateString(dto.serialNumber),
+            warrantyStatus: this.cleanOptionalUpdateString(dto.warrantyStatus),
+            conditionAssessment: this.cleanOptionalUpdateString(
+              dto.conditionAssessment,
+            ),
+            repairMethod: this.cleanOptionalUpdateString(dto.repairMethod),
           },
+          include: this.defaultInclude(),
         });
-      }
 
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.UPDATE,
-          entityType: 'Repair',
-          entityId: id,
-          actor,
-          changes: this.pickChangedFields(repair, updated, [
-            'title',
-            'description',
-            'priority',
-            'customerId',
-            'engineerId',
-            'status',
-            'resultNote',
-            'customerFeedback',
-            'usingDepartment',
-            'representative',
-            'address',
-            'contactPhone',
-            'deviceName',
-            'modelName',
-            'serialNumber',
-            'warrantyStatus',
-            'conditionAssessment',
-            'repairMethod',
-          ]),
-        },
-        tx,
-      );
+        const machineStatus = this.getMachineStatusForRepairStatus(nextStatus);
 
-      if (updated.engineerId && updated.engineerId !== repair.engineerId) {
-        await this.notificationsService.create(
+        if (machineStatus && nextMachine) {
+          validateMachineState(
+            machineStatus,
+            nextMachine.inventoryStatus,
+            nextMachine.customerId,
+          );
+          await tx.machine.update({
+            where: { id: nextMachine.id },
+            data: {
+              status: machineStatus,
+            },
+          });
+        }
+
+        await this.auditLogsService.create(
           {
-            userId: updated.engineerId,
-            title: 'Bạn có phiếu sửa chữa mới',
-            message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
-            href: '/my-tasks',
+            action: AUDIT_ACTIONS.UPDATE,
             entityType: 'Repair',
-            entityId: updated.id,
-            createdById: actor.id,
+            entityId: id,
+            actor,
+            changes: this.pickChangedFields(repair, updated, [
+              'title',
+              'description',
+              'priority',
+              'customerId',
+              'engineerId',
+              'status',
+              'resultNote',
+              'customerFeedback',
+              'usingDepartment',
+              'representative',
+              'address',
+              'contactPhone',
+              'deviceName',
+              'modelName',
+              'serialNumber',
+              'warrantyStatus',
+              'conditionAssessment',
+              'repairMethod',
+            ]),
           },
           tx,
         );
-      }
 
-      return updated;
-    }, { timeout: 20_000 });
+        if (updated.engineerId && updated.engineerId !== repair.engineerId) {
+          await this.notificationsService.create(
+            {
+              userId: updated.engineerId,
+              title: 'Bạn có phiếu sửa chữa mới',
+              message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+              href: '/my-tasks',
+              entityType: 'Repair',
+              entityId: updated.id,
+              createdById: actor.id,
+            },
+            tx,
+          );
+        }
+
+        return updated;
+      },
+      { timeout: 20_000 },
+    );
   }
 
   async remove(id: string, actor: RequestUser) {
@@ -420,57 +430,60 @@ export class RepairsService {
       throw new BadRequestException('Cannot assign a closed repair');
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.repair.update({
-        where: { id },
-        data: {
-          engineerId: dto.engineerId,
-          status:
-            repair.status === RepairStatus.PENDING
-              ? RepairStatus.ASSIGNED
-              : repair.status,
-          assignedAt: repair.assignedAt ?? new Date(),
-        },
-        include: this.defaultInclude(),
-      });
-
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.ASSIGN,
-          entityType: 'Repair',
-          entityId: id,
-          actor,
-          changes: {
-            engineerId: {
-              from: repair.engineerId,
-              to: updated.engineerId,
-            },
-            status: {
-              from: repair.status,
-              to: updated.status,
-            },
+    return this.prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.repair.update({
+          where: { id },
+          data: {
+            engineerId: dto.engineerId,
+            status:
+              repair.status === RepairStatus.PENDING
+                ? RepairStatus.ASSIGNED
+                : repair.status,
+            assignedAt: repair.assignedAt ?? new Date(),
           },
-        },
-        tx,
-      );
+          include: this.defaultInclude(),
+        });
 
-      if (updated.engineerId && updated.engineerId !== repair.engineerId) {
-        await this.notificationsService.create(
+        await this.auditLogsService.create(
           {
-            userId: updated.engineerId,
-            title: 'Bạn có phiếu sửa chữa mới',
-            message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
-            href: '/my-tasks',
+            action: AUDIT_ACTIONS.ASSIGN,
             entityType: 'Repair',
-            entityId: updated.id,
-            createdById: actor.id,
+            entityId: id,
+            actor,
+            changes: {
+              engineerId: {
+                from: repair.engineerId,
+                to: updated.engineerId,
+              },
+              status: {
+                from: repair.status,
+                to: updated.status,
+              },
+            },
           },
           tx,
         );
-      }
 
-      return updated;
-    }, { timeout: 20_000 });
+        if (updated.engineerId && updated.engineerId !== repair.engineerId) {
+          await this.notificationsService.create(
+            {
+              userId: updated.engineerId,
+              title: 'Bạn có phiếu sửa chữa mới',
+              message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+              href: '/my-tasks',
+              entityType: 'Repair',
+              entityId: updated.id,
+              createdById: actor.id,
+            },
+            tx,
+          );
+        }
+
+        return updated;
+      },
+      { timeout: 20_000 },
+    );
   }
 
   async updateStatus(
@@ -494,77 +507,81 @@ export class RepairsService {
       );
     }
 
-    const updatedRepair = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.repair.update({
-        where: { id },
-        data: {
-          status: dto.status,
-          startedAt:
-            dto.status === RepairStatus.IN_PROGRESS && !repair.startedAt
-              ? now
-              : undefined,
-          completedAt: dto.status === RepairStatus.COMPLETED ? now : undefined,
-          reviewStatus: this.resolveReviewStatus(dto.status, actor),
-          reviewedAt:
-            dto.status === RepairStatus.COMPLETED && isAdmin(actor)
-              ? now
-              : null,
-          reviewerId:
-            dto.status === RepairStatus.COMPLETED && isAdmin(actor)
-              ? actor.id
-              : null,
-          reviewNote: null,
-          resultNote: dto.resultNote?.trim(),
-          customerFeedback: dto.customerFeedback?.trim(),
-        },
-        include: this.defaultInclude(),
-      });
-
-      const machineStatus = this.getMachineStatusForRepairStatus(dto.status);
-
-      if (machineStatus && repair.machine) {
-        validateMachineState(
-          machineStatus,
-          repair.machine.inventoryStatus,
-          repair.machine.customerId,
-        );
-        await tx.machine.update({
-          where: { id: repair.machine.id },
+    const updatedRepair = await this.prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.repair.update({
+          where: { id },
           data: {
-            status: machineStatus,
+            status: dto.status,
+            startedAt:
+              dto.status === RepairStatus.IN_PROGRESS && !repair.startedAt
+                ? now
+                : undefined,
+            completedAt:
+              dto.status === RepairStatus.COMPLETED ? now : undefined,
+            reviewStatus: this.resolveReviewStatus(dto.status, actor),
+            reviewedAt:
+              dto.status === RepairStatus.COMPLETED && isAdmin(actor)
+                ? now
+                : null,
+            reviewerId:
+              dto.status === RepairStatus.COMPLETED && isAdmin(actor)
+                ? actor.id
+                : null,
+            reviewNote: null,
+            resultNote: dto.resultNote?.trim(),
+            customerFeedback: dto.customerFeedback?.trim(),
           },
+          include: this.defaultInclude(),
         });
-      }
 
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.STATUS_CHANGE,
-          entityType: 'Repair',
-          entityId: id,
-          actor,
-          changes: {
-            status: {
-              from: repair.status,
-              to: updated.status,
-            },
-            resultNote: {
-              from: repair.resultNote,
-              to: updated.resultNote,
-            },
-            customerFeedback: {
-              from: repair.customerFeedback,
-              to: updated.customerFeedback,
-            },
-          },
-          metadata: {
+        const machineStatus = this.getMachineStatusForRepairStatus(dto.status);
+
+        if (machineStatus && repair.machine) {
+          validateMachineState(
             machineStatus,
-          },
-        },
-        tx,
-      );
+            repair.machine.inventoryStatus,
+            repair.machine.customerId,
+          );
+          await tx.machine.update({
+            where: { id: repair.machine.id },
+            data: {
+              status: machineStatus,
+            },
+          });
+        }
 
-      return updated;
-    }, { timeout: 20_000 });
+        await this.auditLogsService.create(
+          {
+            action: AUDIT_ACTIONS.STATUS_CHANGE,
+            entityType: 'Repair',
+            entityId: id,
+            actor,
+            changes: {
+              status: {
+                from: repair.status,
+                to: updated.status,
+              },
+              resultNote: {
+                from: repair.resultNote,
+                to: updated.resultNote,
+              },
+              customerFeedback: {
+                from: repair.customerFeedback,
+                to: updated.customerFeedback,
+              },
+            },
+            metadata: {
+              machineStatus,
+            },
+          },
+          tx,
+        );
+
+        return updated;
+      },
+      { timeout: 20_000 },
+    );
 
     if (dto.status === RepairStatus.COMPLETED && isEngineer(actor)) {
       await this.notificationsService
@@ -598,12 +615,16 @@ export class RepairsService {
 
     const repair = await this.findOne(id, actor);
     if (repair.reviewStatus !== WorkReviewStatus.PENDING) {
-      throw new BadRequestException('Only pending review repairs can be reviewed');
+      throw new BadRequestException(
+        'Only pending review repairs can be reviewed',
+      );
     }
 
     const reviewNote = this.cleanOptionalString(dto.reviewNote);
     if (dto.status === WorkReviewStatus.NEEDS_REVISION && !reviewNote) {
-      throw new BadRequestException('reviewNote is required when returning a repair');
+      throw new BadRequestException(
+        'reviewNote is required when returning a repair',
+      );
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -826,17 +847,9 @@ export class RepairsService {
 
   private async generateRepairCode(
     tx: Prisma.TransactionClient,
-    machine: MachineExpertiseSource,
-    warrantyStatus?: string | null,
-    engineerId?: string | null,
+    date: Date,
   ): Promise<string> {
-    const now = new Date();
-    const year = now.getFullYear();
-    const typePrefix = warrantyStatus === 'IN_WARRANTY' ? 'BH' : 'SC';
-    const groupPrefix =
-      (await this.getEngineerCode(tx, engineerId)) ??
-      this.getExpertiseGroupCode(machine);
-    const prefix = `${typePrefix}-${groupPrefix}-${year}`;
+    const prefix = `SC-${shortDateCode(date)}`;
 
     const latest = await tx.repair.findFirst({
       where: {
@@ -902,9 +915,7 @@ export class RepairsService {
     return normalized || null;
   }
 
-  private getExpertiseGroupCode(
-    machine: MachineExpertiseSource,
-  ) {
+  private getExpertiseGroupCode(machine: MachineExpertiseSource) {
     const group =
       machine?.businessLine?.productIndustry?.expertiseGroup ??
       machine?.businessLine?.expertiseGroup ??
@@ -964,28 +975,28 @@ export class RepairsService {
       AND: and.length ? and : undefined,
       OR: search
         ? [
-            { code: { contains: search,  } },
-            { title: { contains: search,  } },
-            { description: { contains: search,  } },
-            { deviceName: { contains: search,  } },
-            { modelName: { contains: search,  } },
-            { serialNumber: { contains: search,  } },
-            { usingDepartment: { contains: search,  } },
-            { representative: { contains: search,  } },
+            { code: { contains: search } },
+            { title: { contains: search } },
+            { description: { contains: search } },
+            { deviceName: { contains: search } },
+            { modelName: { contains: search } },
+            { serialNumber: { contains: search } },
+            { usingDepartment: { contains: search } },
+            { representative: { contains: search } },
             {
               machine: {
-                serialNumber: { contains: search,  },
+                serialNumber: { contains: search },
               },
             },
             {
               machine: {
-                machineCode: { contains: search,  },
+                machineCode: { contains: search },
               },
             },
             {
               machine: {
                 customer: {
-                  name: { contains: search,  },
+                  name: { contains: search },
                 },
               },
             },

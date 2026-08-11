@@ -1,5 +1,11 @@
 import { ExpertiseGroup } from '@prisma/client';
-import { IsArray, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class UpsertEngineerProfileDto {
   @IsOptional()

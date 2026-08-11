@@ -132,9 +132,24 @@ export function assertPermission(
 export function normalizeRoleName(roleName?: string): RoleName | undefined {
   const normalized = roleName?.trim().toLowerCase();
 
-  if (normalized === 'admin' || normalized === 'quản trị viên' || normalized === 'quan tri vien') return 'admin';
-  if (normalized === 'manager' || normalized === 'quản lý' || normalized === 'quan ly') return 'manager';
-  if (normalized === 'engineer' || normalized === 'kỹ sư' || normalized === 'ky su') return 'engineer';
+  if (
+    normalized === 'admin' ||
+    normalized === 'quản trị viên' ||
+    normalized === 'quan tri vien'
+  )
+    return 'admin';
+  if (
+    normalized === 'manager' ||
+    normalized === 'quản lý' ||
+    normalized === 'quan ly'
+  )
+    return 'manager';
+  if (
+    normalized === 'engineer' ||
+    normalized === 'kỹ sư' ||
+    normalized === 'ky su'
+  )
+    return 'engineer';
 
   return undefined;
 }

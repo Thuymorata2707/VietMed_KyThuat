@@ -260,6 +260,11 @@ type TechnicalMachines = {
   limit: number;
   totalPages: number;
   businessLines: TechnicalMachineGroup[];
+  productIndustries?: Array<{
+    id: string | null;
+    name: string;
+    count: number;
+  }>;
   machines: DashboardMachine[];
 };
 
@@ -267,11 +272,13 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   const navigate = useNavigate();
   const location = useLocation();
   const { machineId } = useParams();
+  const initialParams = new URLSearchParams(location.search);
   const isMachineEditRoute = Boolean(machineId && location.pathname.endsWith('/edit'));
   const [technicalMachines, setTechnicalMachines] = useState<TechnicalMachines | null>(null);
   const [customers, setCustomers] = useState<DashboardCustomer[]>([]);
   const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
-  const [selectedBusinessLineKey, setSelectedBusinessLineKey] = useState('ALL');
+  const [selectedBusinessLineKey, setSelectedBusinessLineKey] = useState(() => initialParams.get('businessLineId') || 'ALL');
+  const [selectedProductIndustryId, setSelectedProductIndustryId] = useState(() => initialParams.get('productIndustryId') || '');
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
   const [machineDetail, setMachineDetail] = useState<DashboardMachine | null>(null);
   const [loadingMachineDetail, setLoadingMachineDetail] = useState(false);
@@ -283,7 +290,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   const [loadingAccessoryTemplates, setLoadingAccessoryTemplates] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [installState, setInstallState] = useState('ALL');
+  const [installState, setInstallState] = useState(() => initialParams.get('installState') || 'ALL');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [loading, setLoading] = useState(true);
@@ -328,7 +335,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   useEffect(() => {
     if (machineId) return;
     void loadTechnicalMachines();
-  }, [machineId, search, selectedBusinessLineKey, installState, page, limit]);
+  }, [machineId, search, selectedBusinessLineKey, selectedProductIndustryId, installState, page, limit]);
 
   useEffect(() => {
     if (machineId) return;
@@ -368,6 +375,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
       if (search) params.set('search', search);
       if (selectedBusinessLineKey !== 'ALL') params.set('businessLineId', selectedBusinessLineKey);
+      if (selectedProductIndustryId) params.set('productIndustryId', selectedProductIndustryId);
       if (installState !== 'ALL') params.set('installState', installState);
 
       const result = await apiFetch<TechnicalMachines>(`/dashboard/technical-machines?${params.toString()}`);
@@ -416,6 +424,10 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     if (!technicalMachines?.businessLines.length) return null;
     return technicalMachines.businessLines.find((businessLine) => businessLineKey(businessLine) === selectedBusinessLineKey) ?? null;
   }, [selectedBusinessLineKey, technicalMachines]);
+  const selectedProductIndustry = useMemo(() => {
+    if (!selectedProductIndustryId) return null;
+    return technicalMachines?.productIndustries?.find((industry) => industry.id === selectedProductIndustryId) ?? null;
+  }, [selectedProductIndustryId, technicalMachines]);
 
   const selectedMachine = useMemo(() => {
     if (!technicalMachines?.machines.length) return null;
@@ -427,6 +439,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     setSearch('');
     setInstallState('ALL');
     setSelectedBusinessLineKey('ALL');
+    setSelectedProductIndustryId('');
     setSelectedMachineId(null);
     setPage(1);
   }
@@ -572,14 +585,14 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       const accessories = editForm.accessories.filter(hasAccessoryContent);
 
       if (accessories.some((accessory) => !accessory.name.trim())) {
-        setError('Tên phụ kiện là bắt buộc. Nếu không dùng nữa, hãy xóa dòng phụ kiện đó.');
+        setError('Tên phụ kiện là bắt buộc. Nếu không dùng nữa, hãy xóa phụ kiện đó.');
         return;
       }
 
       await apiFetch(`/machines/${editingMachine.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          machineCode: editForm.machineCode.trim() || null,
+          machineCode: undefined,
           serialNumber: editForm.serialNumber.trim(),
           machineModelId: editForm.machineModelId || null,
           name: editForm.name.trim() || undefined,
@@ -644,7 +657,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         await apiFetch('/machines', {
           method: 'POST',
           body: JSON.stringify({
-            machineCode: row.machineCode || undefined,
+            machineCode: undefined,
             serialNumber: row.serialNumber,
             machineModelId: bulkForm.machineModelId || undefined,
             name: row.name || bulkForm.modelName.trim() || undefined,
@@ -821,7 +834,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 }}
                 value={selectedBusinessLineKey}
               >
-                <option value="ALL">Tất cả ngành hàng ({technicalMachines?.businessLines.reduce((sum, item) => sum + item.count, 0) ?? 0})</option>
+                <option value="ALL">Tất cả nhóm sản phẩm ({technicalMachines?.businessLines.reduce((sum, item) => sum + item.count, 0) ?? 0})</option>
                 {technicalMachines?.businessLines.map((businessLine) => (
                   <option key={businessLineKey(businessLine)} value={businessLineKey(businessLine)}>
                     {businessLine.name} ({businessLine.count})
@@ -855,7 +868,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               </select>
             </label>
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
-              Số dòng
+              Hiển thị
               <select
                 className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
                 onChange={(event) => {
@@ -865,10 +878,10 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 }}
                 value={limit}
               >
-                <option value={10}>10 dòng</option>
-                <option value={25}>25 dòng</option>
-                <option value={50}>50 dòng</option>
-                <option value={100}>100 dòng</option>
+                <option value={10}>10 mục/trang</option>
+                <option value={25}>25 mục/trang</option>
+                <option value={50}>50 mục/trang</option>
+                <option value={100}>100 mục/trang</option>
               </select>
             </label>
             <button className="secondary-button mt-[22px] justify-center" onClick={resetFilters} type="button">
@@ -876,6 +889,11 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               Đặt lại
             </button>
           </div>
+          {selectedProductIndustryId ? (
+            <div className="rounded-2xl border border-[#e4e4e7] bg-[#fafafa] px-3 py-2 text-sm font-semibold text-[#333333]">
+              Đang lọc ngành hàng: {selectedProductIndustry?.name || 'Đang tải'}.
+            </div>
+          ) : null}
         </div>
 
         <section className="overflow-hidden rounded-lg border border-[#d8e0ea] bg-white shadow-[0_12px_34px_rgba(24,24,27,0.06)]">
@@ -968,8 +986,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
             <div className="grid gap-3 md:grid-cols-2">
               <label className={editLabelClass}>
-                Mã máy (tự sinh nếu để trống khi tạo mới)
-                <input className={editFieldClass} onChange={(event) => updateEditForm({ machineCode: event.target.value })} placeholder="VD: XCUBE50-001" value={editForm.machineCode} />
+                Mã máy
+                <input className={editFieldClass} disabled placeholder="Tự sinh khi lưu" value={editForm.machineCode || 'Tự sinh khi lưu'} />
               </label>
               <label className={editLabelClass}>
                 Serial
@@ -1038,7 +1056,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <span className="text-[12px] font-medium text-[#666666]">Đầu dò / Phụ kiện</span>
-                  <h3 className="mt-1 text-base font-medium text-[#1f1f1f]">{editForm.accessories.length} dòng phụ kiện</h3>
+                  <h3 className="mt-1 text-base font-medium text-[#1f1f1f]">{editForm.accessories.length} phụ kiện</h3>
                 </div>
                 <button className="secondary-button" onClick={addAccessoryForm} type="button">
                   <Plus size={16} />
@@ -1220,6 +1238,8 @@ function MachineDetailPanel({
   onVerify: (machine: DashboardMachine) => void;
   verifying: boolean;
 }) {
+  const [activeSection, setActiveSection] = useState<'overview' | 'accessories' | 'customer' | 'history'>('overview');
+
   if (!machine) {
     return (
       <aside className="rounded-lg border border-[#e5e5e5] bg-white p-6">
@@ -1243,6 +1263,12 @@ function MachineDetailPanel({
   const businessSignals = buildMachineBusinessSignals(machine, warrantyEndDate);
   const profileGaps = buildMachineProfileGaps(machine);
   const completedGaps = profileGaps.filter((gap) => gap.done).length;
+  const detailTabs = [
+    { id: 'overview', label: 'Tổng quan', value: completedGaps },
+    { id: 'accessories', label: 'Phụ kiện', value: accessories.length },
+    { id: 'customer', label: 'Khách hàng', value: customer ? 1 : 0 },
+    { id: 'history', label: 'Lịch sử', value: lifecycleEvents.length },
+  ] as const;
 
   return (
     <aside className="grid min-w-0 gap-4 self-start">
@@ -1283,57 +1309,76 @@ function MachineDetailPanel({
           <ProfileStat label="Phụ kiện" value={accessories.length} />
         </div>
 
-        <MachineBusinessSignalPanel signals={businessSignals} />
-
-        <div className="grid min-w-0 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-          <InfoItem label="Model" value={machine.modelName} />
-          <InfoItem label="Mã máy" value={machine.machineCode} />
-          <InfoItem label="Tên máy" value={machine.name || machine.modelName} />
-          <InfoItem label="Hãng" value={machine.manufacturer} />
-          <InfoItem label="Loại thiết bị" value={displayProductCategory(machine.productCategory)} />
-          <InfoItem label="Ngày sản xuất" value={formatDashboardDate(machine.manufacturingDate)} />
-          <InfoItem label="Ngày nhập kho" value={formatDashboardDate(machine.warehouseImportDate)} />
-          <InfoItem label="Ngày lắp" value={formatDashboardDate(machine.installDate)} />
-          <InfoItem label="Hết bảo hành" value={formatDashboardDate(warrantyEndDate)} />
-          <InfoItem label="Kỹ sư lắp đặt" value={machine.installedBy?.fullName} />
-          <InfoItem label="Kỹ sư phụ trách" value={machine.primaryEngineer?.fullName} />
+        <div className="mb-5 grid gap-2 rounded-[18px] border border-[#e4e4e7] bg-[#fafafa] p-2 md:grid-cols-4">
+          {detailTabs.map((tab) => (
+            <button
+              className={`flex min-h-11 items-center justify-between rounded-[14px] px-3 text-left text-sm font-semibold transition ${
+                activeSection === tab.id ? 'bg-[#18181b] text-white shadow-[0_12px_30px_rgba(24,24,27,0.18)]' : 'bg-white text-[#555555] hover:bg-[#f4f4f5]'
+              }`}
+              key={tab.id}
+              onClick={() => setActiveSection(tab.id)}
+              type="button"
+            >
+              <span>{tab.label}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs ${activeSection === tab.id ? 'bg-white/14 text-white' : 'bg-[#fafafa] text-[#18181b]'}`}>{tab.value}</span>
+            </button>
+          ))}
         </div>
 
-        <MachineProfileCompletenessCard completed={completedGaps} gaps={profileGaps} total={profileGaps.length} />
+        {activeSection === 'overview' ? (
+          <>
+            <MachineBusinessSignalPanel signals={businessSignals} />
 
-        <div className="mt-6 border-t border-[#eeeeee] pt-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-xl font-medium text-[#1f1f1f]">Đầu dò / Phụ kiện</h3>
-            <span className="rounded-full bg-[#fafafa] px-3 py-1 text-sm font-medium text-[#18181b]">{accessories.length}</span>
-          </div>
-          {accessories.length ? (
-            <div className="grid min-w-0 gap-3 md:grid-cols-2 2xl:grid-cols-3">
-              {accessories.map((accessory) => (
-                <div className="grid min-w-0 gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-4" key={accessory.id}>
-                  <div className="grid gap-1">
+            <div className="grid min-w-0 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              <InfoItem label="Model" value={machine.modelName} />
+              <InfoItem label="Mã máy" value={machine.machineCode} />
+              <InfoItem label="Tên máy" value={machine.name || machine.modelName} />
+              <InfoItem label="Hãng" value={machine.manufacturer} />
+              <InfoItem label="Loại thiết bị" value={displayProductCategory(machine.productCategory)} />
+              <InfoItem label="Ngày lắp" value={formatDashboardDate(machine.installDate)} />
+              <InfoItem label="Hết bảo hành" value={formatDashboardDate(warrantyEndDate)} />
+              <InfoItem label="Kỹ sư phụ trách" value={machine.primaryEngineer?.fullName || machine.installedBy?.fullName} />
+            </div>
+
+            <MachineProfileCompletenessCard completed={completedGaps} gaps={profileGaps} total={profileGaps.length} />
+          </>
+        ) : null}
+
+        {activeSection === 'accessories' ? (
+          <div className="border-t border-[#eeeeee] pt-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-medium text-[#1f1f1f]">Đầu dò / Phụ kiện</h3>
+                <p className="mt-1 text-sm text-[#666666]">Có thể thêm, sửa, xoá trong màn chỉnh sửa máy khi tài khoản được cấp quyền.</p>
+              </div>
+              {canEdit ? (
+                <button className="secondary-button" onClick={() => onEdit(machine)} type="button">
+                  <Edit3 size={16} />
+                  Quản lý phụ kiện
+                </button>
+              ) : null}
+            </div>
+            {accessories.length ? (
+              <div className="grid min-w-0 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                {accessories.map((accessory) => (
+                  <div className="grid min-w-0 gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-4" key={accessory.id}>
                     <span className="text-[12px] font-medium text-[#666666]">
                       {accessory.componentAccessory?.component?.name || accessory.componentAccessory?.name || accessory.code || 'Phụ kiện'}
                     </span>
                     <strong className="break-words text-base font-medium leading-snug text-[#1f1f1f]">{accessory.name}</strong>
+                    <span className="text-sm text-[#666666]">S/N: <b className="font-semibold text-[#18181b]">{accessory.serialNumber || '-'}</b></span>
+                    <span className="text-sm text-[#666666]">Mã: <b className="font-semibold text-[#18181b]">{accessory.code || accessory.componentAccessory?.code || '-'}</b></span>
                   </div>
-                  <div className="grid grid-cols-[76px_minmax(0,1fr)] gap-2 text-sm">
-                    <span className="font-semibold text-[#666666]">S/N</span>
-                    <strong className="break-words text-[#18181b]">{accessory.serialNumber || '-'}</strong>
-                    <span className="font-semibold text-[#666666]">Mã</span>
-                    <span className="break-words text-[#333333]">{accessory.code || accessory.componentAccessory?.code || '-'}</span>
-                  </div>
-                  {accessory.note || accessory.description ? (
-                    <p className="text-sm leading-snug text-[#666666]">{accessory.note || accessory.description}</p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState text="Chưa có thông tin đầu dò/phụ kiện." />
-          )}
-        </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState text="Chưa có thông tin đầu dò/phụ kiện." />
+            )}
+          </div>
+        ) : null}
       </div>
 
+      {activeSection === 'customer' ? (
       <div className="min-w-0 rounded-lg border border-[#e5e5e5] bg-white p-6 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
         <div className="mb-5 flex min-w-0 items-start justify-between gap-3">
           <h2 className="text-2xl font-medium leading-tight text-[#1f1f1f]">Khách hàng đã lắp máy</h2>
@@ -1352,7 +1397,10 @@ function MachineDetailPanel({
           <EmptyState text="Máy chưa có thông tin lắp đặt." />
         )}
       </div>
+      ) : null}
 
+      {activeSection === 'history' ? (
+      <>
       <MachineLifecycleTimeline events={lifecycleEvents} />
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-3">
@@ -1407,6 +1455,8 @@ function MachineDetailPanel({
           title="Bảo hành"
         />
       </div>
+      </>
+      ) : null}
     </aside>
   );
 }
@@ -2129,8 +2179,8 @@ function MachineEditForm({
 
       <div className="grid gap-3 md:grid-cols-2">
         <label className={editLabelClass}>
-          Mã máy (tự sinh nếu để trống khi tạo mới)
-          <input className={editFieldClass} onChange={(event) => onUpdateForm({ machineCode: event.target.value })} placeholder="VD: XCUBE50-001" value={editForm.machineCode} />
+          Mã máy
+          <input className={editFieldClass} disabled placeholder="Tự sinh khi lưu" value={editForm.machineCode || 'Tự sinh khi lưu'} />
         </label>
         <label className={editLabelClass}>
           Serial
@@ -2211,7 +2261,7 @@ function MachineEditForm({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="text-[12px] font-medium text-[#666666]">Đầu dò / Phụ kiện</span>
-            <h3 className="mt-1 text-base font-medium text-[#1f1f1f]">{editForm.accessories.length} dòng phụ kiện</h3>
+            <h3 className="mt-1 text-base font-medium text-[#1f1f1f]">{editForm.accessories.length} phụ kiện</h3>
           </div>
           <button className="secondary-button" onClick={onAddAccessory} type="button">
             <Plus size={16} />

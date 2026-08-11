@@ -36,7 +36,10 @@ export class MachinesController {
   }
 
   @Get()
-  findAll(@Query() query: ListMachinesQueryDto, @CurrentUser() user: RequestUser) {
+  findAll(
+    @Query() query: ListMachinesQueryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.machinesService.findAll(query, user);
   }
 

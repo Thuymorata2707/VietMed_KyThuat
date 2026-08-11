@@ -6,11 +6,12 @@ import { CreateRegionDto } from './dto/create-region.dto';
 import { RegionsService } from './regions.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
+@Roles('admin', 'manager', 'engineer')
 @Controller('regions')
 export class RegionsController {
   constructor(private readonly regionsService: RegionsService) {}
 
+  @Roles('admin')
   @Post()
   create(@Body() dto: CreateRegionDto) {
     return this.regionsService.create(dto);

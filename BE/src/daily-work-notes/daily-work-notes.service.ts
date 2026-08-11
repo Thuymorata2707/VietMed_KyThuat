@@ -138,7 +138,9 @@ export class DailyWorkNotesService {
       dto.status !== DailyWorkStatus.APPROVED &&
       dto.status !== DailyWorkStatus.REJECTED
     ) {
-      throw new BadRequestException('Review status must be APPROVED or REJECTED');
+      throw new BadRequestException(
+        'Review status must be APPROVED or REJECTED',
+      );
     }
 
     const current = await this.findNote(id);
@@ -246,7 +248,9 @@ export class DailyWorkNotesService {
       return {
         status: dto.status,
         reviewedAt: reviewed ? new Date() : null,
-        reviewer: reviewed ? { connect: { id: user.id } } : { disconnect: true },
+        reviewer: reviewed
+          ? { connect: { id: user.id } }
+          : { disconnect: true },
         rejectReason:
           dto.status === DailyWorkStatus.REJECTED
             ? this.cleanOptional(dto.rejectReason)
@@ -284,20 +288,18 @@ export class DailyWorkNotesService {
   }
 
   private needsApproval(type: DailyWorkType) {
-    return (
-      type === DailyWorkType.LEAVE || type === DailyWorkType.BUSINESS_TRIP
-    );
+    return type === DailyWorkType.LEAVE || type === DailyWorkType.BUSINESS_TRIP;
   }
 
   private hasReviewableChange(dto: UpdateDailyWorkNoteDto) {
     return Boolean(
       dto.title !== undefined ||
-        dto.note !== undefined ||
-        dto.workDate !== undefined ||
-        dto.startTime !== undefined ||
-        dto.endTime !== undefined ||
-        dto.color !== undefined ||
-        dto.type !== undefined,
+      dto.note !== undefined ||
+      dto.workDate !== undefined ||
+      dto.startTime !== undefined ||
+      dto.endTime !== undefined ||
+      dto.color !== undefined ||
+      dto.type !== undefined,
     );
   }
 

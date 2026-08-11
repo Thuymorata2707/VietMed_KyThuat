@@ -1,9 +1,28 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, TaskChecklistStatus, UsedPartStatus, WorkTaskKind } from '@prisma/client';
-import { isAdmin, installationAccessWhere, maintenanceAccessWhere, repairAccessWhere, userAccessWhere } from '../auth/access-scope';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  Prisma,
+  TaskChecklistStatus,
+  UsedPartStatus,
+  WorkTaskKind,
+} from '@prisma/client';
+import {
+  isAdmin,
+  installationAccessWhere,
+  maintenanceAccessWhere,
+  repairAccessWhere,
+  userAccessWhere,
+} from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
-import { SyncTaskChecklistItemDto, SyncUsedPartDto, SyncWorkLogDto, SyncWorkOperationsDto } from './dto/sync-work-operations.dto';
+import {
+  SyncUsedPartDto,
+  SyncWorkOperationsDto,
+} from './dto/sync-work-operations.dto';
 
 type TaskKindParam = 'repair' | 'maintenance' | 'installation';
 
@@ -11,7 +30,11 @@ type TaskKindParam = 'repair' | 'maintenance' | 'installation';
 export class WorkOperationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findForTask(kindParam: TaskKindParam, taskId: string, user: RequestUser) {
+  async findForTask(
+    kindParam: TaskKindParam,
+    taskId: string,
+    user: RequestUser,
+  ) {
     const kind = this.parseKind(kindParam);
     await this.assertCanAccessTask(kind, taskId, user);
     const where = this.taskWhere(kind, taskId);
@@ -19,17 +42,27 @@ export class WorkOperationsService {
     const [workLogs, usedParts, checklistItems] = await Promise.all([
       this.prisma.workLog.findMany({
         where,
-        include: { createdBy: { select: { id: true, fullName: true, email: true } } },
-        orderBy: [{ sortOrder: 'asc' }, { stepTime: 'asc' }, { createdAt: 'asc' }],
+        include: {
+          createdBy: { select: { id: true, fullName: true, email: true } },
+        },
+        orderBy: [
+          { sortOrder: 'asc' },
+          { stepTime: 'asc' },
+          { createdAt: 'asc' },
+        ],
       }),
       this.prisma.usedPart.findMany({
         where,
-        include: { createdBy: { select: { id: true, fullName: true, email: true } } },
+        include: {
+          createdBy: { select: { id: true, fullName: true, email: true } },
+        },
         orderBy: [{ usedAt: 'asc' }, { createdAt: 'asc' }],
       }),
       this.prisma.taskChecklistItem.findMany({
         where,
-        include: { updatedBy: { select: { id: true, fullName: true, email: true } } },
+        include: {
+          updatedBy: { select: { id: true, fullName: true, email: true } },
+        },
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
       }),
     ]);
@@ -37,7 +70,12 @@ export class WorkOperationsService {
     return { kind, taskId, workLogs, usedParts, checklistItems };
   }
 
-  async syncForTask(kindParam: TaskKindParam, taskId: string, dto: SyncWorkOperationsDto, user: RequestUser) {
+  async syncForTask(
+    kindParam: TaskKindParam,
+    taskId: string,
+    dto: SyncWorkOperationsDto,
+    user: RequestUser,
+  ) {
     const kind = this.parseKind(kindParam);
     await this.assertCanAccessTask(kind, taskId, user);
     const where = this.taskWhere(kind, taskId);
@@ -51,7 +89,10 @@ export class WorkOperationsService {
             data: dto.workLogs.map((item, index) => ({
               kind,
               ...relation,
-              stepTime: this.parseOptionalDate(item.stepTime, `workLogs.${index}.stepTime`),
+              stepTime: this.parseOptionalDate(
+                item.stepTime,
+                `workLogs.${index}.stepTime`,
+              ),
               title: this.cleanRequired(item.title, `workLogs.${index}.title`),
               note: this.cleanOptional(item.note),
               sortOrder: item.sortOrder ?? index,
@@ -65,7 +106,9 @@ export class WorkOperationsService {
         await tx.usedPart.deleteMany({ where });
         if (dto.usedParts.length) {
           await tx.usedPart.createMany({
-            data: dto.usedParts.map((item, index) => this.usedPartData(kind, relation, item, index, user.id)),
+            data: dto.usedParts.map((item, index) =>
+              this.usedPartData(kind, relation, item, index, user.id),
+            ),
           });
         }
       }
@@ -77,11 +120,15 @@ export class WorkOperationsService {
             data: dto.checklistItems.map((item, index) => ({
               kind,
               ...relation,
-              label: this.cleanRequired(item.label, `checklistItems.${index}.label`),
+              label: this.cleanRequired(
+                item.label,
+                `checklistItems.${index}.label`,
+              ),
               status: item.status ?? TaskChecklistStatus.PENDING,
               note: this.cleanOptional(item.note),
               sortOrder: item.sortOrder ?? index,
-              checkedAt: item.status === TaskChecklistStatus.DONE ? new Date() : null,
+              checkedAt:
+                item.status === TaskChecklistStatus.DONE ? new Date() : null,
               updatedById: user.id,
             })),
           });
@@ -101,8 +148,12 @@ export class WorkOperationsService {
     engineerId?: string;
     weekStart?: string;
   }) {
-    if (!isAdmin(user)) throw new ForbiddenException('Only admin can view used parts summary');
-    const start = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
+    if (!isAdmin(user))
+      throw new ForbiddenException('Only admin can view used parts summary');
+    const start = this.parseDate(
+      weekStart || this.currentWeekStart(),
+      'weekStart',
+    );
     const end = this.endOfDay(this.addDays(start, 6));
 
     const parts = await this.prisma.usedPart.findMany({
@@ -113,14 +164,35 @@ export class WorkOperationsService {
       },
       include: {
         createdBy: { select: { id: true, fullName: true, email: true } },
-        repair: { select: { id: true, code: true, title: true, engineerId: true } },
-        maintenance: { select: { id: true, code: true, title: true, engineerId: true } },
-        installation: { select: { id: true, code: true, installedById: true, customer: { select: { name: true } } } },
+        repair: {
+          select: { id: true, code: true, title: true, engineerId: true },
+        },
+        maintenance: {
+          select: { id: true, code: true, title: true, engineerId: true },
+        },
+        installation: {
+          select: {
+            id: true,
+            code: true,
+            installedById: true,
+            customer: { select: { name: true } },
+          },
+        },
       },
       orderBy: [{ usedAt: 'asc' }, { createdAt: 'asc' }],
     });
 
-    const byEngineer = new Map<string, { engineerId: string; engineerName: string; quantity: number; totalCost: number; waiting: number; used: number }>();
+    const byEngineer = new Map<
+      string,
+      {
+        engineerId: string;
+        engineerName: string;
+        quantity: number;
+        totalCost: number;
+        waiting: number;
+        used: number;
+      }
+    >();
     let totalCost = 0;
     let waiting = 0;
     let used = 0;
@@ -129,7 +201,8 @@ export class WorkOperationsService {
       const engineerKey = part.createdBy?.id || 'unknown';
       const current = byEngineer.get(engineerKey) ?? {
         engineerId: engineerKey,
-        engineerName: part.createdBy?.fullName || part.createdBy?.email || 'Không rõ kỹ sư',
+        engineerName:
+          part.createdBy?.fullName || part.createdBy?.email || 'Không rõ kỹ sư',
         quantity: 0,
         totalCost: 0,
         waiting: 0,
@@ -156,7 +229,9 @@ export class WorkOperationsService {
         waiting,
         used,
       },
-      byEngineer: Array.from(byEngineer.values()).sort((left, right) => right.totalCost - left.totalCost),
+      byEngineer: Array.from(byEngineer.values()).sort(
+        (left, right) => right.totalCost - left.totalCost,
+      ),
       parts: parts.map((part) => ({
         ...part,
         quantity: Number(part.quantity),
@@ -167,19 +242,36 @@ export class WorkOperationsService {
     };
   }
 
-  private async assertCanAccessTask(kind: WorkTaskKind, taskId: string, user: RequestUser) {
+  private async assertCanAccessTask(
+    kind: WorkTaskKind,
+    taskId: string,
+    user: RequestUser,
+  ) {
     const task = await this.findAccessibleTask(kind, taskId, user);
     if (!task) throw new NotFoundException('Work task not found');
   }
 
-  private findAccessibleTask(kind: WorkTaskKind, taskId: string, user: RequestUser) {
+  private findAccessibleTask(
+    kind: WorkTaskKind,
+    taskId: string,
+    user: RequestUser,
+  ) {
     if (kind === WorkTaskKind.REPAIR) {
-      return this.prisma.repair.findFirst({ where: { AND: [{ id: taskId }, repairAccessWhere(user)] }, select: { id: true } });
+      return this.prisma.repair.findFirst({
+        where: { AND: [{ id: taskId }, repairAccessWhere(user)] },
+        select: { id: true },
+      });
     }
     if (kind === WorkTaskKind.MAINTENANCE) {
-      return this.prisma.maintenance.findFirst({ where: { AND: [{ id: taskId }, maintenanceAccessWhere(user)] }, select: { id: true } });
+      return this.prisma.maintenance.findFirst({
+        where: { AND: [{ id: taskId }, maintenanceAccessWhere(user)] },
+        select: { id: true },
+      });
     }
-    return this.prisma.machineInstallation.findFirst({ where: { AND: [{ id: taskId }, installationAccessWhere(user)] }, select: { id: true } });
+    return this.prisma.machineInstallation.findFirst({
+      where: { AND: [{ id: taskId }, installationAccessWhere(user)] },
+      select: { id: true },
+    });
   }
 
   private parseKind(value: string): WorkTaskKind {
@@ -201,7 +293,16 @@ export class WorkOperationsService {
     return { installationId: taskId };
   }
 
-  private usedPartData(kind: WorkTaskKind, relation: Pick<Prisma.UsedPartCreateManyInput, 'repairId' | 'maintenanceId' | 'installationId'>, item: SyncUsedPartDto, index: number, createdById: string): Prisma.UsedPartCreateManyInput {
+  private usedPartData(
+    kind: WorkTaskKind,
+    relation: Pick<
+      Prisma.UsedPartCreateManyInput,
+      'repairId' | 'maintenanceId' | 'installationId'
+    >,
+    item: SyncUsedPartDto,
+    index: number,
+    createdById: string,
+  ): Prisma.UsedPartCreateManyInput {
     const quantity = item.quantity ?? 1;
     const unitCost = item.unitCost ?? null;
     return {
@@ -216,7 +317,9 @@ export class WorkOperationsService {
       status: item.status ?? UsedPartStatus.USED,
       inventoryItemId: this.cleanOptional(item.inventoryItemId),
       note: this.cleanOptional(item.note),
-      usedAt: this.parseOptionalDate(item.usedAt, `usedParts.${index}.usedAt`) ?? new Date(),
+      usedAt:
+        this.parseOptionalDate(item.usedAt, `usedParts.${index}.usedAt`) ??
+        new Date(),
       createdById,
     };
   }
@@ -225,11 +328,33 @@ export class WorkOperationsService {
     kind: WorkTaskKind;
     repair?: { id: string; code: string; title: string } | null;
     maintenance?: { id: string; code: string; title: string } | null;
-    installation?: { id: string; code: string; customer?: { name: string } | null } | null;
+    installation?: {
+      id: string;
+      code: string;
+      customer?: { name: string } | null;
+    } | null;
   }) {
-    if (part.kind === WorkTaskKind.REPAIR && part.repair) return { kind: 'repair', id: part.repair.id, code: part.repair.code, title: part.repair.title };
-    if (part.kind === WorkTaskKind.MAINTENANCE && part.maintenance) return { kind: 'maintenance', id: part.maintenance.id, code: part.maintenance.code, title: part.maintenance.title };
-    if (part.kind === WorkTaskKind.INSTALLATION && part.installation) return { kind: 'installation', id: part.installation.id, code: part.installation.code, title: part.installation.customer?.name || 'Lắp đặt' };
+    if (part.kind === WorkTaskKind.REPAIR && part.repair)
+      return {
+        kind: 'repair',
+        id: part.repair.id,
+        code: part.repair.code,
+        title: part.repair.title,
+      };
+    if (part.kind === WorkTaskKind.MAINTENANCE && part.maintenance)
+      return {
+        kind: 'maintenance',
+        id: part.maintenance.id,
+        code: part.maintenance.code,
+        title: part.maintenance.title,
+      };
+    if (part.kind === WorkTaskKind.INSTALLATION && part.installation)
+      return {
+        kind: 'installation',
+        id: part.installation.id,
+        code: part.installation.code,
+        title: part.installation.customer?.name || 'Lắp đặt',
+      };
     return null;
   }
 
@@ -250,7 +375,8 @@ export class WorkOperationsService {
 
   private parseDate(value: string, field: string) {
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) throw new BadRequestException(`${field} must be a valid date`);
+    if (Number.isNaN(date.getTime()))
+      throw new BadRequestException(`${field} must be a valid date`);
     return date;
   }
 

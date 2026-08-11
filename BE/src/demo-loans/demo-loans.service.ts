@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   DemoLoanStatus,
   InventoryMovementType,
@@ -6,7 +11,12 @@ import {
   MachineStatus,
   Prisma,
 } from '@prisma/client';
-import { demoLoanAccessWhere, isAdmin, isEngineer, isManager } from '../auth/access-scope';
+import {
+  demoLoanAccessWhere,
+  isAdmin,
+  isEngineer,
+  isManager,
+} from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
@@ -21,7 +31,10 @@ import { UpdateDemoLoanDto } from './dto/update-demo-loan.dto';
 export class DemoLoansService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(query: ListDemoLoansQueryDto, user?: RequestUser): Promise<PaginatedResult<unknown>> {
+  async findAll(
+    query: ListDemoLoansQueryDto,
+    user?: RequestUser,
+  ): Promise<PaginatedResult<unknown>> {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_READ);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -66,10 +79,18 @@ export class DemoLoansService {
   async create(dto: CreateDemoLoanDto, user?: RequestUser) {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_CREATE);
     this.assertCanCreate(dto.engineerId, user);
-    const plannedHandoverAt = this.parseRequiredDate(dto.plannedHandoverAt, 'plannedHandoverAt');
-    const expectedReturnAt = this.parseRequiredDate(dto.expectedReturnAt, 'expectedReturnAt');
+    const plannedHandoverAt = this.parseRequiredDate(
+      dto.plannedHandoverAt,
+      'plannedHandoverAt',
+    );
+    const expectedReturnAt = this.parseRequiredDate(
+      dto.expectedReturnAt,
+      'expectedReturnAt',
+    );
     if (expectedReturnAt.getTime() < plannedHandoverAt.getTime()) {
-      throw new BadRequestException('expectedReturnAt must be after plannedHandoverAt');
+      throw new BadRequestException(
+        'expectedReturnAt must be after plannedHandoverAt',
+      );
     }
 
     const [machine, customer, engineer] = await Promise.all([
@@ -78,19 +99,32 @@ export class DemoLoansService {
       this.ensureEngineer(dto.engineerId, user),
     ]);
 
-    if (machine.inventoryStatus !== MachineInventoryStatus.IN_STOCK && machine.inventoryStatus !== MachineInventoryStatus.RETURNED) {
-      throw new BadRequestException('Only IN_STOCK or RETURNED machines can be assigned for demo');
+    if (
+      machine.inventoryStatus !== MachineInventoryStatus.IN_STOCK &&
+      machine.inventoryStatus !== MachineInventoryStatus.RETURNED
+    ) {
+      throw new BadRequestException(
+        'Only IN_STOCK or RETURNED machines can be assigned for demo',
+      );
     }
 
     const activeLoan = await this.prisma.demoLoan.findFirst({
       where: {
         machineId: machine.id,
-        status: { in: [DemoLoanStatus.PLANNED, DemoLoanStatus.HANDED_OVER, DemoLoanStatus.OVERDUE] },
+        status: {
+          in: [
+            DemoLoanStatus.PLANNED,
+            DemoLoanStatus.HANDED_OVER,
+            DemoLoanStatus.OVERDUE,
+          ],
+        },
       },
       select: { code: true },
     });
     if (activeLoan) {
-      throw new BadRequestException(`Machine already has active demo loan ${activeLoan.code}`);
+      throw new BadRequestException(
+        `Machine already has active demo loan ${activeLoan.code}`,
+      );
     }
 
     validateInventoryMovement(
@@ -110,10 +144,22 @@ export class DemoLoansService {
           engineerId: engineer.id,
           plannedHandoverAt,
           expectedReturnAt,
-          handoverAddress: this.clean(dto.handoverAddress) || customer.fullAddress || customer.address || null,
-          receiverName: this.clean(dto.receiverName) || customer.contactPerson || null,
-          receiverPosition: this.clean(dto.receiverPosition) || customer.contactPosition || null,
-          receiverPhone: this.clean(dto.receiverPhone) || customer.contactPhone || customer.phone || null,
+          handoverAddress:
+            this.clean(dto.handoverAddress) ||
+            customer.fullAddress ||
+            customer.address ||
+            null,
+          receiverName:
+            this.clean(dto.receiverName) || customer.contactPerson || null,
+          receiverPosition:
+            this.clean(dto.receiverPosition) ||
+            customer.contactPosition ||
+            null,
+          receiverPhone:
+            this.clean(dto.receiverPhone) ||
+            customer.contactPhone ||
+            customer.phone ||
+            null,
           handoverCondition: this.clean(dto.handoverCondition),
           handoverAccessories: dto.handoverAccessories ?? Prisma.JsonNull,
           handoverNote: this.clean(dto.handoverNote),
@@ -154,12 +200,17 @@ export class DemoLoansService {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_UPDATE);
     this.assertAdminOrManager(user);
     const current = await this.findOne(id, user);
-    if (current.status === DemoLoanStatus.RETURNED || current.status === DemoLoanStatus.CANCELLED) {
+    if (
+      current.status === DemoLoanStatus.RETURNED ||
+      current.status === DemoLoanStatus.CANCELLED
+    ) {
       throw new BadRequestException('Closed demo loans cannot be edited');
     }
 
     if (dto.machineId && dto.machineId !== current.machineId) {
-      throw new BadRequestException('Machine cannot be changed after demo loan is created');
+      throw new BadRequestException(
+        'Machine cannot be changed after demo loan is created',
+      );
     }
 
     const customerId = dto.customerId ?? current.customerId;
@@ -175,7 +226,9 @@ export class DemoLoansService {
       ? this.parseRequiredDate(dto.expectedReturnAt, 'expectedReturnAt')
       : current.expectedReturnAt;
     if (expectedReturnAt.getTime() < plannedHandoverAt.getTime()) {
-      throw new BadRequestException('expectedReturnAt must be after plannedHandoverAt');
+      throw new BadRequestException(
+        'expectedReturnAt must be after plannedHandoverAt',
+      );
     }
 
     return this.prisma.demoLoan.update({
@@ -185,13 +238,18 @@ export class DemoLoansService {
         engineerId: engineer.id,
         plannedHandoverAt,
         expectedReturnAt,
-        handedOverAt: dto.handedOverAt ? this.parseRequiredDate(dto.handedOverAt, 'handedOverAt') : undefined,
+        handedOverAt: dto.handedOverAt
+          ? this.parseRequiredDate(dto.handedOverAt, 'handedOverAt')
+          : undefined,
         handoverAddress: this.cleanPatch(dto.handoverAddress),
         receiverName: this.cleanPatch(dto.receiverName),
         receiverPosition: this.cleanPatch(dto.receiverPosition),
         receiverPhone: this.cleanPatch(dto.receiverPhone),
         handoverCondition: this.cleanPatch(dto.handoverCondition),
-        handoverAccessories: dto.handoverAccessories === undefined ? undefined : dto.handoverAccessories,
+        handoverAccessories:
+          dto.handoverAccessories === undefined
+            ? undefined
+            : dto.handoverAccessories,
         handoverNote: this.cleanPatch(dto.handoverNote),
         purpose: this.cleanPatch(dto.purpose),
       },
@@ -204,16 +262,22 @@ export class DemoLoansService {
     const current = await this.findOne(id, user);
     this.assertCanTouchStatus(current.engineerId, user);
     if (current.status !== DemoLoanStatus.PLANNED) {
-      throw new BadRequestException('Only planned demo loans can be handed over');
+      throw new BadRequestException(
+        'Only planned demo loans can be handed over',
+      );
     }
 
     return this.prisma.demoLoan.update({
       where: { id },
       data: {
         status: DemoLoanStatus.HANDED_OVER,
-        handedOverAt: dto.occurredAt ? this.parseRequiredDate(dto.occurredAt, 'occurredAt') : new Date(),
-        handoverCondition: this.clean(dto.condition) ?? current.handoverCondition,
-        handoverAccessories: dto.accessories === undefined ? undefined : dto.accessories,
+        handedOverAt: dto.occurredAt
+          ? this.parseRequiredDate(dto.occurredAt, 'occurredAt')
+          : new Date(),
+        handoverCondition:
+          this.clean(dto.condition) ?? current.handoverCondition,
+        handoverAccessories:
+          dto.accessories === undefined ? undefined : dto.accessories,
         handoverNote: this.clean(dto.note) ?? current.handoverNote,
       },
       include: this.defaultInclude(),
@@ -234,7 +298,9 @@ export class DemoLoansService {
     }
 
     const machine = await this.ensureMachine(current.machineId);
-    const returnedAt = dto.occurredAt ? this.parseRequiredDate(dto.occurredAt, 'occurredAt') : new Date();
+    const returnedAt = dto.occurredAt
+      ? this.parseRequiredDate(dto.occurredAt, 'occurredAt')
+      : new Date();
     validateInventoryMovement(
       InventoryMovementType.RETURN,
       machine.inventoryStatus,
@@ -249,7 +315,8 @@ export class DemoLoansService {
           status: DemoLoanStatus.RETURNED,
           returnedAt,
           returnCondition: this.clean(dto.condition),
-          returnAccessories: dto.accessories === undefined ? undefined : dto.accessories,
+          returnAccessories:
+            dto.accessories === undefined ? undefined : dto.accessories,
           returnNote: this.clean(dto.note),
         },
         include: this.defaultInclude(),
@@ -286,7 +353,10 @@ export class DemoLoansService {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_UPDATE);
     this.assertAdminOrManager(user);
     const current = await this.findOne(id, user);
-    if (current.status === DemoLoanStatus.RETURNED || current.status === DemoLoanStatus.CANCELLED) {
+    if (
+      current.status === DemoLoanStatus.RETURNED ||
+      current.status === DemoLoanStatus.CANCELLED
+    ) {
       throw new BadRequestException('Demo loan is already closed');
     }
     const machine = await this.ensureMachine(current.machineId);
@@ -314,7 +384,11 @@ export class DemoLoansService {
         });
         await tx.machine.update({
           where: { id: machine.id },
-          data: { inventoryStatus: MachineInventoryStatus.IN_STOCK, status: MachineStatus.ACTIVE, customerId: null },
+          data: {
+            inventoryStatus: MachineInventoryStatus.IN_STOCK,
+            status: MachineStatus.ACTIVE,
+            customerId: null,
+          },
         });
       }
 
@@ -337,12 +411,16 @@ export class DemoLoansService {
     return Object.values(DemoLoanStatus);
   }
 
-  private buildWhere(query: ListDemoLoansQueryDto, user?: RequestUser): Prisma.DemoLoanWhereInput {
+  private buildWhere(
+    query: ListDemoLoansQueryDto,
+    user?: RequestUser,
+  ): Prisma.DemoLoanWhereInput {
     const where: Prisma.DemoLoanWhereInput = {};
     if (query.status) where.status = query.status;
     if (query.customerId) where.customerId = query.customerId;
     if (query.machineId) where.machineId = query.machineId;
-    if (query.engineerId && (isAdmin(user) || isManager(user))) where.engineerId = query.engineerId;
+    if (query.engineerId && (isAdmin(user) || isManager(user)))
+      where.engineerId = query.engineerId;
     if (query.productIndustryId) {
       where.machine = {
         businessLine: {
@@ -352,8 +430,12 @@ export class DemoLoansService {
     }
     if (query.from || query.to) {
       where.plannedHandoverAt = {
-        gte: query.from ? this.parseRequiredDate(query.from, 'from') : undefined,
-        lte: query.to ? this.endOfDay(this.parseRequiredDate(query.to, 'to')) : undefined,
+        gte: query.from
+          ? this.parseRequiredDate(query.from, 'from')
+          : undefined,
+        lte: query.to
+          ? this.endOfDay(this.parseRequiredDate(query.to, 'to'))
+          : undefined,
       };
     }
     if (query.search?.trim()) {
@@ -385,35 +467,49 @@ export class DemoLoansService {
 
   private assertAdminOrManager(user?: RequestUser) {
     if (!isAdmin(user) && !isManager(user)) {
-      throw new ForbiddenException('Only admin or manager can manage demo loans');
+      throw new ForbiddenException(
+        'Only admin or manager can manage demo loans',
+      );
     }
   }
 
   private assertCanCreate(engineerId: string, user?: RequestUser) {
     if (isAdmin(user) || isManager(user)) return;
     if (isEngineer(user) && user?.id === engineerId) return;
-    throw new ForbiddenException('Engineers can only create demo tickets assigned to themselves');
+    throw new ForbiddenException(
+      'Engineers can only create demo tickets assigned to themselves',
+    );
   }
 
   private assertCanTouchStatus(engineerId: string, user?: RequestUser) {
     if (isAdmin(user) || isManager(user)) return;
     if (isEngineer(user) && user?.id === engineerId) return;
-    throw new ForbiddenException('Only assigned engineer can update this demo loan');
+    throw new ForbiddenException(
+      'Only assigned engineer can update this demo loan',
+    );
   }
 
   private async ensureMachine(machineId: string) {
     const machine = await this.prisma.machine.findUnique({
       where: { id: machineId },
-      include: { businessLine: { include: { productIndustry: true } }, customer: true },
+      include: {
+        businessLine: { include: { productIndustry: true } },
+        customer: true,
+      },
     });
     if (!machine) throw new BadRequestException('Machine does not exist');
     return machine;
   }
 
   private async ensureCustomer(customerId: string, user?: RequestUser) {
-    const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+    });
     if (!customer) throw new BadRequestException('Customer does not exist');
-    if ((isAdmin(user) || isManager(user)) && customer.regionId !== user?.regionId) {
+    if (
+      (isAdmin(user) || isManager(user)) &&
+      customer.regionId !== user?.regionId
+    ) {
       throw new ForbiddenException('Customer is outside your region');
     }
     return customer;
@@ -427,7 +523,10 @@ export class DemoLoansService {
     if (!engineer || engineer.status !== 'ACTIVE') {
       throw new BadRequestException('Engineer does not exist');
     }
-    if ((isAdmin(user) || isManager(user)) && engineer.regionId !== user?.regionId) {
+    if (
+      (isAdmin(user) || isManager(user)) &&
+      engineer.regionId !== user?.regionId
+    ) {
       throw new ForbiddenException('Engineer is outside your region');
     }
     return engineer;
@@ -441,7 +540,9 @@ export class DemoLoansService {
       orderBy: { code: 'desc' },
       select: { code: true },
     });
-    const latestNumber = latest?.code ? Number(latest.code.slice(prefix.length + 1)) : 0;
+    const latestNumber = latest?.code
+      ? Number(latest.code.slice(prefix.length + 1))
+      : 0;
     const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
     return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
   }
@@ -457,7 +558,9 @@ export class DemoLoansService {
       orderBy: { code: 'desc' },
       select: { code: true },
     });
-    const latestNumber = latest?.code ? Number(latest.code.slice(prefix.length + 1)) : 0;
+    const latestNumber = latest?.code
+      ? Number(latest.code.slice(prefix.length + 1))
+      : 0;
     const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
     return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
   }
@@ -487,7 +590,14 @@ export class DemoLoansService {
       },
       machine: {
         include: {
-          customer: { select: { id: true, name: true, hospitalName: true, province: true } },
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              hospitalName: true,
+              province: true,
+            },
+          },
           businessLine: { include: { productIndustry: true } },
           machineModel: true,
         },

@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -19,7 +28,12 @@ export class WeeklyReportsController {
     @Query('to') to?: string,
     @Query('userId') userId?: string,
   ) {
-    return this.weeklyReportsService.getEngineerSummary({ user, from, to, userId });
+    return this.weeklyReportsService.getEngineerSummary({
+      user,
+      from,
+      to,
+      userId,
+    });
   }
 
   @Get('daily-work-rows')
@@ -28,7 +42,11 @@ export class WeeklyReportsController {
     @Query('weekStart') weekStart?: string,
     @Query('userId') userId?: string,
   ) {
-    return this.weeklyReportsService.getDailyWorkRows({ user, weekStart, userId });
+    return this.weeklyReportsService.getDailyWorkRows({
+      user,
+      weekStart,
+      userId,
+    });
   }
 
   @Get('ticket-rows')

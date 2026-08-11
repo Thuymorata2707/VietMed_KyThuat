@@ -22,7 +22,9 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto, ip?: string) {
-    const identifier = this.normalizeLoginIdentifier(dto.identifier || dto.email);
+    const identifier = this.normalizeLoginIdentifier(
+      dto.identifier || dto.email,
+    );
     this.loginThrottle.assertCanAttempt(identifier, ip);
 
     if (!identifier || !dto.password) {
@@ -32,10 +34,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { email: identifier },
-          { username: identifier },
-        ],
+        OR: [{ email: identifier }, { username: identifier }],
       },
       include: {
         role: true,

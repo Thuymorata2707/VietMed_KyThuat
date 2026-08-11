@@ -1,6 +1,14 @@
 import { TaskChecklistStatus, UsedPartStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 export class SyncWorkLogDto {
   @IsOptional()

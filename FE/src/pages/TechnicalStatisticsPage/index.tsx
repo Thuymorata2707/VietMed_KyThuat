@@ -173,7 +173,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
         <PageTitle
           eyebrow="Báo cáo kỹ thuật"
           title="Thống kê kỹ thuật"
-          description={isAdmin ? 'Theo ngày & kỹ sư.' : 'Theo khoảng ngày.'}
+          description={isAdmin ? 'Phân bố theo kỹ sư, ngành hàng & tồn đọng.' : 'Thống kê công việc của bạn trong kỳ.'}
         />
         <div className="flex flex-wrap gap-2">
           {returnTo ? (

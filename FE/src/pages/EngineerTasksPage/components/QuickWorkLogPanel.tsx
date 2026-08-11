@@ -97,15 +97,11 @@ export function QuickWorkLogPanel({ form, saving, onBack, onChange, onKindChange
           />
         </label>
 
-        <div className="create-wide-field rounded-[18px] border border-[#e4e4e7] bg-[#fafafa] p-3 text-sm font-medium leading-6 text-[#555555]">
-          Lưu vào lịch và báo cáo tuần.
-        </div>
-
         <button className="task-primary create-submit" disabled={saving} type="submit">
           {saving ? 'Đang lưu' : 'Lưu ghi nhận nhanh'}
         </button>
         <button className="task-secondary create-cancel" onClick={onBack} type="button">
-          Back
+          Quay lại
         </button>
       </form>
     </section>

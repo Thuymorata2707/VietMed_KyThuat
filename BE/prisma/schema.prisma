@@ -676,6 +676,7 @@ model MachineModel {
 
   machines                Machine[]
   components              MachineComponent[]
+  componentAccessories    ComponentAccessory[]
   plannedInstallations    MachineInstallation[]    @relation("PlannedInstallationModel")
   applicationSupportCases ApplicationSupportCase[]
 
@@ -721,15 +722,19 @@ model ComponentAccessory {
   sortOrder      Int                @default(0)
   status         BusinessLineStatus @default(ACTIVE)
 
-  componentId String
-  component   MachineComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  machineModelId String
+  machineModel   MachineModel @relation(fields: [machineModelId], references: [id], onDelete: Cascade)
+
+  componentId String?
+  component   MachineComponent? @relation(fields: [componentId], references: [id], onDelete: SetNull)
 
   machineAccessories MachineAccessory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([componentId, code])
+  @@unique([machineModelId, code])
+  @@index([machineModelId])
   @@index([componentId])
   @@index([status])
 }

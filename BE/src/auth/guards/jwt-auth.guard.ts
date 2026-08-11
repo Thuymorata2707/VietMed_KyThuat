@@ -57,9 +57,10 @@ export class JwtAuthGuard implements CanActivate {
 
   private extractBearerToken(request: Request): string {
     const authorization = request.headers.authorization;
-    const queryToken = typeof request.query?.token === 'string' ? request.query.token : '';
+    const queryToken =
+      typeof request.query?.token === 'string' ? request.query.token : '';
 
-    if (queryToken) {
+    if (queryToken && request.path === '/notifications/stream') {
       return queryToken;
     }
 

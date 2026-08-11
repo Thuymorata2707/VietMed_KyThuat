@@ -6,7 +6,6 @@ import { GoogleMapsDirectionsButton } from '../../components/VietnamAddressSelec
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { EngineerTaskRow } from './components/EngineerTaskRow';
-import { TodayCommandCenter, TodayDailyWorkCard, WeeklyReportQuickCard } from './components/EngineerTaskPanels';
 import { QuickWorkLogPanel } from './components/QuickWorkLogPanel';
 import { TaskAttachmentsPanel } from './components/TaskAttachmentsPanel';
 import { TaskUpdateFormPanel } from './components/TaskUpdateFormPanel';
@@ -21,7 +20,6 @@ import {
   installationStatusOptions,
   maintenanceStatusOptions,
   repairStatusOptions,
-  weeklyReportStatusLabels,
 } from './constants';
 import type {
   AttachmentType,
@@ -41,7 +39,6 @@ import type {
   TaskFilter,
   TaskKind,
   WorkOperationsResponse,
-  WeeklyReportQuick,
   WorkspaceTab,
 } from './types';
 import {
@@ -99,7 +96,6 @@ import {
   taskKindLabel,
   taskModelText,
   taskPrimaryMachineName,
-  taskPriorityScore,
   taskSerialText,
   taskAddressForMap,
   taskTitle,
@@ -120,8 +116,6 @@ function dailyWorkTypeForQuickLog(kind: TaskKind): DailyWorkType {
 export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [tasks, setTasks] = useState<EngineerTask[]>([]);
   const [dailyWorkNotes, setDailyWorkNotes] = useState<DailyWorkNote[]>([]);
-  const [weeklyReport, setWeeklyReport] = useState<WeeklyReportQuick | null>(null);
-  const [loadingWeeklyReport, setLoadingWeeklyReport] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingDailyWork, setLoadingDailyWork] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -159,7 +153,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
   useEffect(() => {
     loadTasks();
     loadDailyWorkNotes();
-    loadWeeklyReportQuick();
     loadMachineModelOptions();
   }, [user.id]);
 
@@ -230,26 +223,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     }),
     [tasks],
   );
-
-  const priorityTasks = useMemo(() => {
-    return tasks
-      .filter((task) => task.reviewStatus === 'NEEDS_REVISION' || !['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status))
-      .filter((task) => task.reviewStatus === 'NEEDS_REVISION' || isOverdueTask(task) || isTodayTask(task) || needsMachineProfile(task))
-      .sort((a, b) => {
-        const priorityA = taskPriorityScore(a);
-        const priorityB = taskPriorityScore(b);
-        if (priorityB !== priorityA) return priorityB - priorityA;
-        return compareTasks(a, b);
-      })
-      .slice(0, 5);
-  }, [tasks]);
-
-  const todayDailyWorkNotes = useMemo(() => {
-    const todayKey = toDateInput(new Date());
-    return dailyWorkNotes
-      .filter((note) => note.workDate?.slice(0, 10) === todayKey)
-      .sort((left, right) => (left.startTime || '99:99').localeCompare(right.startTime || '99:99'));
-  }, [dailyWorkNotes]);
 
   const selectedChecklistLines = useMemo(() => (selectedTask ? engineerChecklistForTask(selectedTask) : []), [selectedTask]);
   const selectedCheckedChecklistLines = useMemo(
@@ -331,20 +304,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     }
   }
 
-  async function loadWeeklyReportQuick() {
-    setLoadingWeeklyReport(true);
-    const weekStart = toDateInput(startOfWeek(new Date()));
-
-    try {
-      const result = await apiFetch<WeeklyReportQuick | null | undefined>(`/weekly-reports?weekStart=${weekStart}`);
-      setWeeklyReport(result ?? null);
-    } catch {
-      setWeeklyReport(null);
-    } finally {
-      setLoadingWeeklyReport(false);
-    }
-  }
-
   async function loadMachineModelOptions() {
     try {
       const modelsResult = await apiFetchAllPages<QuickMachineModel>('/machine-models');
@@ -380,10 +339,9 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       });
 
       setCreateForm(emptyCreateTicketForm());
-      setSuccess('Đã lưu ghi nhận nhanh. Nội dung này sẽ vào lịch và báo cáo tuần của bạn.');
+      setSuccess('Đã lưu ghi nhận nhanh.');
       setWorkspaceTab('assigned');
       await loadDailyWorkNotes();
-      await loadWeeklyReportQuick();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không lưu được ghi nhận nhanh.');
     } finally {
@@ -552,8 +510,8 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
     const note = [
       accessory.code ? `Mã ${accessory.code}` : '',
-      accessory.component?.name ? `Thành phần: ${accessory.component.name}` : '',
-      accessory.component?.machineModel?.code ? `Model: ${accessory.component.machineModel.code}` : '',
+      accessory.component?.name ? `Nhóm: ${accessory.component.name}` : '',
+      accessory.machineModel?.code ? `Model: ${accessory.machineModel.code}` : '',
     ].filter(Boolean).join('; ');
     const line = [accessory.name, '1', '', '', note].join(' | ');
 
@@ -794,19 +752,27 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="grid grid-cols-1 gap-4 min-[1180px]:grid-cols-[minmax(0,1fr)_340px]">
-        <TodayCommandCenter
-          createLabel={createTicketLabelForTab(businessTab)}
-          onCreate={openCreateRequest}
-          onFilter={focusTaskList}
-          onOpen={openTask}
-          stats={taskStats}
-          tasks={priorityTasks}
-        />
-        <div className="grid gap-3.5">
-          <TodayDailyWorkCard loading={loadingDailyWork} notes={todayDailyWorkNotes} />
-          <WeeklyReportQuickCard loading={loadingWeeklyReport} report={weeklyReport} />
-        </div>
+      <section className="engineer-focus-strip" aria-label="Lối tắt công việc">
+        <button onClick={() => focusTaskList('today')} type="button">
+          <strong>{taskStats.today}</strong>
+          <span>Hôm nay</span>
+        </button>
+        <button onClick={() => focusTaskList('revision')} type="button">
+          <strong>{taskStats.revision}</strong>
+          <span>Cần bổ sung</span>
+        </button>
+        <button onClick={() => focusTaskList('overdue')} type="button">
+          <strong>{taskStats.overdue}</strong>
+          <span>Quá hạn</span>
+        </button>
+        <Link to="/daily-work">
+          <CalendarDays size={16} />
+          Lịch công tác
+        </Link>
+        <Link to={`/weekly-reports?weekStart=${toDateInput(startOfWeek(new Date()))}`}>
+          <FileText size={16} />
+          Báo cáo tuần
+        </Link>
       </section>
 
       {workspaceTab === 'create' ? (
@@ -1090,7 +1056,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
                         </option>
                         {accessoryOptions.map((accessory) => (
                           <option key={accessory.id} value={accessory.id}>
-                            {[accessory.name, accessory.code, accessory.component?.name, accessory.component?.machineModel?.code].filter(Boolean).join(' - ')}
+                            {[accessory.name, accessory.code, accessory.component?.name, accessory.machineModel?.code].filter(Boolean).join(' - ')}
                           </option>
                         ))}
                       </select>

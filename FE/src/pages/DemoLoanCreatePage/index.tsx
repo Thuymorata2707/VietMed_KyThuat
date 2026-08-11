@@ -260,7 +260,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
         method: 'POST',
         body: JSON.stringify({
           inventoryStatus: 'IN_STOCK',
-          machineCode: quickMachineForm.machineCode.trim(),
+          machineCode: undefined,
           machineModelId: quickMachineForm.machineModelId,
           name: quickMachineForm.name.trim() || undefined,
           primaryEngineerId: isEngineer ? user.id : form.engineerId || undefined,
@@ -749,7 +749,7 @@ function QuickMachinePanel({
         </label>
         <label className={labelClass}>
           Mã máy
-          <input className={fieldClass} onChange={(event) => onChange({ machineCode: event.target.value })} value={form.machineCode} />
+          <input className={fieldClass} disabled placeholder="Tự sinh khi lưu" value={form.machineCode || 'Tự sinh khi lưu'} />
         </label>
         <label className={`${labelClass} md:col-span-3`}>
           Tên máy

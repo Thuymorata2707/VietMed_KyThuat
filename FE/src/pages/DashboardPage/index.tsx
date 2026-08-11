@@ -38,7 +38,16 @@ type Summary = {
 
 type TechnicalMachines = {
   total: number;
+  filteredTotal?: number;
   businessLines: unknown[];
+  productIndustries?: Array<{
+    id: string | null;
+    code?: string | null;
+    name: string;
+    expertiseGroup?: string | null;
+    count: number;
+    businessLines: number;
+  }>;
 };
 
 type Tone = 'good' | 'neutral' | 'warn' | 'danger';
@@ -49,13 +58,15 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     queryFn: async () => {
       const [summary, technicalMachines] = await Promise.all([
         apiFetch<Summary>('/dashboard/summary'),
-        apiFetch<TechnicalMachines>('/dashboard/technical-machines'),
+        apiFetch<TechnicalMachines>('/dashboard/technical-machines?installState=INSTALLED&limit=8'),
       ]);
       return { summary, technicalMachines };
     },
   });
   const summary = dashboardQuery.data?.summary ?? null;
   const technicalMachines = dashboardQuery.data?.technicalMachines ?? null;
+  const installedMachineTotal = technicalMachines?.filteredTotal ?? technicalMachines?.total ?? 0;
+  const installedIndustryGroups = technicalMachines?.productIndustries ?? [];
   const loading = dashboardQuery.isLoading || dashboardQuery.isFetching;
   const error = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : dashboardQuery.isError ? 'Không tải được dashboard' : '';
   const lastUpdatedAt = dashboardQuery.dataUpdatedAt
@@ -342,10 +353,101 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
         <div className="grid gap-2 border-t border-[#f4e2e4] pt-4 sm:grid-cols-3">
           <ActionLink icon={<Wrench size={17} />} label="Tổng hợp phiếu" to="/service-tickets" />
           <ActionLink icon={<ClipboardCheck size={17} />} label="Lịch công việc" to="/daily-work" />
-          <ActionLink icon={<PackageSearch size={17} />} label={`${technicalMachines?.total ?? summary?.totalMachines ?? 0} máy`} to="/technical-machines" />
+          <ActionLink icon={<PackageSearch size={17} />} label={`${installedMachineTotal || summary?.totalMachines || 0} máy đã giao`} to="/technical-machines?installState=INSTALLED" />
         </div>
       </section>
+
+      <section className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-white p-5 shadow-[0_14px_34px_rgba(24,24,27,0.06)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
+          <div>
+            <span className="text-[12px] font-semibold text-[#18181b]">Máy phòng kỹ thuật đang quản lý</span>
+            <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-[#1f1f1f]">Máy đã giao cho khách theo ngành hàng</h2>
+            <p className="mt-1 text-sm font-medium text-[#666666]">
+              Chỉ tính các máy đã lắp/giao cho khách trong phạm vi dữ liệu của tài khoản.
+            </p>
+          </div>
+          <Link
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[16px] border border-[#e4e4e7] bg-[#fafafa] px-3 text-sm font-bold text-[#333333] transition hover:border-[#18181b]/35 hover:bg-white"
+            to="/technical-machines?installState=INSTALLED"
+          >
+            Xem danh sách máy
+            <PackageSearch size={16} />
+          </Link>
+        </div>
+
+        <InstalledIndustryPanel
+          groups={installedIndustryGroups}
+          loading={loading}
+          total={installedMachineTotal}
+        />
+      </section>
     </PageFrame>
+  );
+}
+
+function InstalledIndustryPanel({
+  groups,
+  loading,
+  total,
+}: {
+  groups: NonNullable<TechnicalMachines['productIndustries']>;
+  loading: boolean;
+  total: number;
+}) {
+  const maxValue = Math.max(1, ...groups.map((group) => group.count));
+
+  if (loading) {
+    return (
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div className="h-32 animate-pulse rounded-[22px] border border-[#eeeeee] bg-[#fafafa]" key={index} />
+        ))}
+      </div>
+    );
+  }
+
+  if (!groups.length) {
+    return (
+      <div className="grid min-h-36 place-items-center rounded-[22px] border border-dashed border-[#d7d7d7] bg-[#fafafa] px-4 text-center">
+        <span>
+          <strong className="block text-sm text-[#1f1f1f]">Chưa có máy đã giao cho khách</strong>
+          <span className="mt-1 block text-sm text-[#666666]">Khi máy có trạng thái đã lắp, hệ thống sẽ tự nhóm theo ngành hàng.</span>
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {groups.map((group) => {
+        const percent = total > 0 ? Math.round((group.count / total) * 100) : 0;
+        const width = Math.max(8, Math.round((group.count / maxValue) * 100));
+
+        return (
+          <Link
+            className="grid min-h-32 gap-3 rounded-[22px] border border-[#eeeeee] bg-[#fafafa] p-4 transition hover:-translate-y-px hover:border-[#18181b]/30 hover:bg-white hover:shadow-[0_14px_30px_rgba(24,24,27,0.07)]"
+            key={group.id ?? group.name}
+            to={`/technical-machines?installState=INSTALLED${group.id ? `&productIndustryId=${group.id}` : ''}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <span className="min-w-0">
+                <strong className="block [overflow-wrap:anywhere] text-sm font-black text-[#1f1f1f]">{group.name}</strong>
+                <span className="mt-1 block text-xs font-semibold text-[#71717a]">
+                  {group.businessLines} nhóm sản phẩm
+                </span>
+              </span>
+              <strong className="text-2xl font-black leading-none text-[#18181b]">{group.count}</strong>
+            </div>
+            <div>
+              <div className="h-2 overflow-hidden rounded-full bg-[#e4e4e7]">
+                <span className="block h-full rounded-full bg-[#177245]" style={{ width: `${width}%` }} />
+              </div>
+              <span className="mt-2 block text-xs font-bold text-[#666666]">{percent}% tổng máy đã giao</span>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 

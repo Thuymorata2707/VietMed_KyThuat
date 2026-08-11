@@ -712,7 +712,7 @@ function UsedPartsSummaryPanel({ loading, summary }: { loading: boolean; summary
       </div>
 
       <div className="mt-3 grid min-w-0 grid-cols-3 gap-2">
-        <MiniMetric label="Dòng" value={summary?.totals.parts ?? 0} />
+        <MiniMetric label="Linh kiện" value={summary?.totals.parts ?? 0} />
         <MiniMetric label="Chờ" value={summary?.totals.waiting ?? 0} />
         <MiniMetric label="Chi phí" value={formatMoney(summary?.totals.totalCost ?? 0)} />
       </div>

@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -27,7 +36,11 @@ export class DailyReportsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: SaveDailyReportDto, @CurrentUser() user: RequestUser) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: SaveDailyReportDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.service.save(dto, user);
   }
 
@@ -37,7 +50,11 @@ export class DailyReportsController {
   }
 
   @Post(':id/review')
-  review(@Param('id') id: string, @Body() dto: ReviewDailyReportDto, @CurrentUser() user: RequestUser) {
+  review(
+    @Param('id') id: string,
+    @Body() dto: ReviewDailyReportDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.service.review(id, dto, user);
   }
 }

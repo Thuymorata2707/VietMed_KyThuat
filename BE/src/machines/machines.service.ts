@@ -18,6 +18,7 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { isEngineer, machineAccessWhere } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { pickChangedFields } from '../common/audit-changes';
+import { normalizeCodeSegment } from '../common/code-format';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMachineDto } from './dto/create-machine.dto';
 import { ListMachinesQueryDto } from './dto/list-machines-query.dto';
@@ -83,7 +84,11 @@ export class MachinesService {
             serialNumber: this.normalizeSerialNumber(input.serialNumber),
             name: input.name?.trim() || null,
             imageUrl: input.imageUrl?.trim() || null,
-            modelName: machineModel?.name ?? input.modelName?.trim() ?? input.name?.trim() ?? 'Chưa xác định',
+            modelName:
+              machineModel?.name ??
+              input.modelName?.trim() ??
+              input.name?.trim() ??
+              'Chưa xác định',
             version: input.version?.trim() || null,
             manufacturer:
               machineModel?.manufacturer ?? input.manufacturer?.trim() ?? '',
@@ -98,7 +103,9 @@ export class MachinesService {
             dataStatus: reviewFields.dataStatus,
             createdSource: reviewFields.createdSource,
             manufacturingDate: this.parseOptionalDate(input.manufacturingDate),
-            warehouseImportDate: this.parseOptionalDate(input.warehouseImportDate),
+            warehouseImportDate: this.parseOptionalDate(
+              input.warehouseImportDate,
+            ),
             installDate: this.parseOptionalDate(input.installDate),
             warrantyStartDate: this.parseOptionalDate(input.warrantyStartDate),
             warrantyEndDate: this.parseOptionalDate(input.warrantyEndDate),
@@ -461,7 +468,7 @@ export class MachinesService {
           componentAccessoryId:
             dto.componentAccessoryId === undefined
               ? undefined
-              : componentAccessory?.id ?? null,
+              : (componentAccessory?.id ?? null),
           code:
             dto.code === undefined
               ? componentAccessory?.code
@@ -554,10 +561,6 @@ export class MachinesService {
       await this.ensureSerialNumberIsAvailable(dto.serialNumber, id);
     }
 
-    if (dto.machineCode) {
-      await this.ensureMachineCodeIsAvailable(dto.machineCode, id);
-    }
-
     if (dto.installedById) {
       await this.ensureEngineerExists(dto.installedById);
     }
@@ -616,59 +619,58 @@ export class MachinesService {
       const updated = await tx.machine.update({
         where: { id },
         data: {
-        machineCode:
-          dto.machineCode === undefined
-            ? undefined
-            : dto.machineCode?.trim() || null,
-        serialNumber: dto.serialNumber
-          ? this.normalizeSerialNumber(dto.serialNumber)
-          : undefined,
-        name: dto.name === undefined ? undefined : dto.name?.trim() || null,
-        imageUrl:
-          dto.imageUrl === undefined ? undefined : dto.imageUrl?.trim() || null,
-        modelName: machineModel?.name ?? dto.modelName?.trim(),
-        version:
-          dto.version === undefined ? undefined : dto.version?.trim() || null,
-        manufacturer: machineModel?.manufacturer ?? dto.manufacturer?.trim(),
-        productCategory: machineModel?.productCategory ?? dto.productCategory,
-        productLine: machineModel
-          ? machineModel.productLine
-          : dto.productLine === undefined
-            ? undefined
-            : dto.productLine?.trim() || null,
-        status: dto.status,
-        inventoryStatus: dto.inventoryStatus,
-        dataStatus: dto.dataStatus,
-        createdSource: dto.createdSource,
-        manufacturingDate:
-          dto.manufacturingDate === undefined
-            ? undefined
-            : this.parseOptionalDate(dto.manufacturingDate),
-        warehouseImportDate:
-          dto.warehouseImportDate === undefined
-            ? undefined
-            : this.parseOptionalDate(dto.warehouseImportDate),
-        installDate: nextInstallDate,
-        warrantyStartDate: nextWarrantyStartDate,
-        warrantyEndDate: nextWarrantyEndDate,
-        businessLineId: machineModel
-          ? machineModel.businessLineId
-          : dto.businessLineId === undefined
-            ? undefined
-            : dto.businessLineId || null,
-        machineModelId:
-          dto.machineModelId === undefined
-            ? undefined
-            : (machineModel?.id ?? null),
-        customerId: dto.customerId,
-        installedById:
-          dto.installedById === undefined
-            ? undefined
-            : dto.installedById || null,
-        primaryEngineerId:
-          dto.primaryEngineerId === undefined
-            ? undefined
-            : dto.primaryEngineerId || null,
+          machineCode: undefined,
+          serialNumber: dto.serialNumber
+            ? this.normalizeSerialNumber(dto.serialNumber)
+            : undefined,
+          name: dto.name === undefined ? undefined : dto.name?.trim() || null,
+          imageUrl:
+            dto.imageUrl === undefined
+              ? undefined
+              : dto.imageUrl?.trim() || null,
+          modelName: machineModel?.name ?? dto.modelName?.trim(),
+          version:
+            dto.version === undefined ? undefined : dto.version?.trim() || null,
+          manufacturer: machineModel?.manufacturer ?? dto.manufacturer?.trim(),
+          productCategory: machineModel?.productCategory ?? dto.productCategory,
+          productLine: machineModel
+            ? machineModel.productLine
+            : dto.productLine === undefined
+              ? undefined
+              : dto.productLine?.trim() || null,
+          status: dto.status,
+          inventoryStatus: dto.inventoryStatus,
+          dataStatus: dto.dataStatus,
+          createdSource: dto.createdSource,
+          manufacturingDate:
+            dto.manufacturingDate === undefined
+              ? undefined
+              : this.parseOptionalDate(dto.manufacturingDate),
+          warehouseImportDate:
+            dto.warehouseImportDate === undefined
+              ? undefined
+              : this.parseOptionalDate(dto.warehouseImportDate),
+          installDate: nextInstallDate,
+          warrantyStartDate: nextWarrantyStartDate,
+          warrantyEndDate: nextWarrantyEndDate,
+          businessLineId: machineModel
+            ? machineModel.businessLineId
+            : dto.businessLineId === undefined
+              ? undefined
+              : dto.businessLineId || null,
+          machineModelId:
+            dto.machineModelId === undefined
+              ? undefined
+              : (machineModel?.id ?? null),
+          customerId: dto.customerId,
+          installedById:
+            dto.installedById === undefined
+              ? undefined
+              : dto.installedById || null,
+          primaryEngineerId:
+            dto.primaryEngineerId === undefined
+              ? undefined
+              : dto.primaryEngineerId || null,
         },
         include: this.defaultInclude(),
       });
@@ -910,17 +912,7 @@ export class MachinesService {
   }
 
   private normalizeMachineCodePrefix(value: string) {
-    const normalized = value
-      .trim()
-      .toUpperCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/Đ/g, 'D')
-      .replace(/[^A-Z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .replace(/-{2,}/g, '-');
-
-    return normalized || 'MAY';
+    return normalizeCodeSegment(value, 'MAY');
   }
 
   private async ensureEngineerExists(engineerId?: string | null) {
@@ -1091,7 +1083,9 @@ export class MachinesService {
 
       const current = currentById.get(accessoryId);
       if (!current) {
-        throw new BadRequestException('Machine accessory does not belong to this machine');
+        throw new BadRequestException(
+          'Machine accessory does not belong to this machine',
+        );
       }
 
       const componentAccessory =
@@ -1117,7 +1111,9 @@ export class MachinesService {
       const nextName =
         accessory.name?.trim() ||
         componentAccessory?.name ||
-        (accessory.componentAccessoryId === undefined ? current.name : undefined);
+        (accessory.componentAccessoryId === undefined
+          ? current.name
+          : undefined);
 
       if (!nextName?.trim()) {
         throw new BadRequestException('Accessory name is required');
@@ -1129,7 +1125,7 @@ export class MachinesService {
           componentAccessoryId:
             accessory.componentAccessoryId === undefined
               ? undefined
-              : componentAccessory?.id ?? null,
+              : (componentAccessory?.id ?? null),
           code:
             accessory.code === undefined
               ? componentAccessory?.code
@@ -1141,7 +1137,9 @@ export class MachinesService {
               ? undefined
               : accessory.description?.trim() || null,
           note:
-            accessory.note === undefined ? undefined : accessory.note?.trim() || null,
+            accessory.note === undefined
+              ? undefined
+              : accessory.note?.trim() || null,
         },
       });
     }
@@ -1293,9 +1291,6 @@ export class MachinesService {
 
     const componentAccessory = await this.prisma.componentAccessory.findUnique({
       where: { id: componentAccessoryId },
-      include: {
-        component: true,
-      },
     });
 
     if (!componentAccessory) {
@@ -1304,7 +1299,7 @@ export class MachinesService {
 
     if (
       machineModelId &&
-      componentAccessory.component.machineModelId !== machineModelId
+      componentAccessory.machineModelId !== machineModelId
     ) {
       throw new BadRequestException(
         'Component accessory does not belong to this machine model',
@@ -1386,15 +1381,15 @@ export class MachinesService {
     if (search) {
       filters.push({
         OR: [
-          { machineCode: { contains: search,  } },
-          { serialNumber: { contains: search,  } },
-          { name: { contains: search,  } },
-          { imageUrl: { contains: search,  } },
-          { modelName: { contains: search,  } },
-          { manufacturer: { contains: search,  } },
+          { machineCode: { contains: search } },
+          { serialNumber: { contains: search } },
+          { name: { contains: search } },
+          { imageUrl: { contains: search } },
+          { modelName: { contains: search } },
+          { manufacturer: { contains: search } },
           {
             customer: {
-              name: { contains: search,  },
+              name: { contains: search },
             },
           },
         ],

@@ -13,9 +13,14 @@ import {
 } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
-import { isAdmin, isEngineer, maintenanceAccessWhere } from '../auth/access-scope';
+import {
+  isAdmin,
+  isEngineer,
+  maintenanceAccessWhere,
+} from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { ReviewWorkTaskDto } from '../common/dto/review-work-task.dto';
+import { shortDateCode } from '../common/code-format';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { validateMachineState } from '../machines/machine-state.rules';
@@ -73,87 +78,93 @@ export class MaintenanceService {
       dto.customerId,
     );
 
-    return this.prisma.$transaction(async (tx) => {
-      const maintenance = await tx.maintenance.create({
-        data: {
-          code: await this.generateMaintenanceCode(tx, machine, engineerId),
-          title: dto.title.trim(),
-          description: dto.description?.trim() || null,
-          type: dto.type ?? MaintenanceType.PERIODIC,
-          status: createdByEngineer
-            ? MaintenanceStatus.ASSIGNED
-            : engineerId
+    return this.prisma.$transaction(
+      async (tx) => {
+        const maintenance = await tx.maintenance.create({
+          data: {
+            code: await this.generateMaintenanceCode(
+              tx,
+              this.parseRequiredDate(dto.scheduledDate, 'scheduledDate'),
+            ),
+            title: dto.title.trim(),
+            description: dto.description?.trim() || null,
+            type: dto.type ?? MaintenanceType.PERIODIC,
+            status: createdByEngineer
               ? MaintenanceStatus.ASSIGNED
-              : MaintenanceStatus.SCHEDULED,
-          machineId: machine?.id ?? null,
-          customerId,
-          engineerId: engineerId || null,
-          scheduledDate: this.parseRequiredDate(
-            dto.scheduledDate,
-            'scheduledDate',
-          ),
-          assignedAt: engineerId ? new Date() : null,
-          checklist: this.normalizeChecklist(dto.checklist),
-          nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
-          usingDepartment: this.cleanOptionalString(dto.usingDepartment),
-          representative: this.cleanOptionalString(dto.representative),
-          address: this.cleanOptionalString(dto.address),
-          contactPhone: this.cleanOptionalString(dto.contactPhone),
-          deviceName: this.cleanOptionalString(dto.deviceName),
-          modelName: this.cleanOptionalString(dto.modelName),
-          serialNumber: this.cleanOptionalString(dto.serialNumber),
-        },
-        include: this.defaultInclude(),
-      });
-
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.CREATE,
-          entityType: 'Maintenance',
-          entityId: maintenance.id,
-          actor,
-          metadata: {
-            code: maintenance.code,
-            machineId: maintenance.machineId,
-            customerId: maintenance.customerId,
-            engineerId: maintenance.engineerId,
-            status: maintenance.status,
+              : engineerId
+                ? MaintenanceStatus.ASSIGNED
+                : MaintenanceStatus.SCHEDULED,
+            machineId: machine?.id ?? null,
+            customerId,
+            engineerId: engineerId || null,
+            scheduledDate: this.parseRequiredDate(
+              dto.scheduledDate,
+              'scheduledDate',
+            ),
+            assignedAt: engineerId ? new Date() : null,
+            checklist: this.normalizeChecklist(dto.checklist),
+            nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
+            usingDepartment: this.cleanOptionalString(dto.usingDepartment),
+            representative: this.cleanOptionalString(dto.representative),
+            address: this.cleanOptionalString(dto.address),
+            contactPhone: this.cleanOptionalString(dto.contactPhone),
+            deviceName: this.cleanOptionalString(dto.deviceName),
+            modelName: this.cleanOptionalString(dto.modelName),
+            serialNumber: this.cleanOptionalString(dto.serialNumber),
           },
-        },
-        tx,
-      );
+          include: this.defaultInclude(),
+        });
 
-      if (maintenance.engineerId && maintenance.engineerId !== actor.id) {
-        await this.notificationsService.create(
+        await this.auditLogsService.create(
           {
-            userId: maintenance.engineerId,
-            title: 'Bạn có phiếu bảo trì mới',
-            message: `${actor.email} đã phân công phiếu ${maintenance.code}: ${maintenance.title}`,
-            href: '/my-tasks',
+            action: AUDIT_ACTIONS.CREATE,
             entityType: 'Maintenance',
             entityId: maintenance.id,
-            createdById: actor.id,
+            actor,
+            metadata: {
+              code: maintenance.code,
+              machineId: maintenance.machineId,
+              customerId: maintenance.customerId,
+              engineerId: maintenance.engineerId,
+              status: maintenance.status,
+            },
           },
           tx,
         );
-      }
 
-      if (isEngineer(actor)) {
-        await this.notificationsService.createForAdmins(
-          {
-            title: 'Kỹ sư tạo phiếu bảo trì mới',
-            message: `${actor.email} đã tạo phiếu bảo trì khẩn ${maintenance.code}: ${maintenance.title}. Phiếu đã được gán cho kỹ sư để xử lý ngay, admin hậu kiểm dữ liệu khi cần.`,
-            href: '/service-tickets',
-            entityType: 'Maintenance',
-            entityId: maintenance.id,
-            createdById: actor.id,
-          },
-          tx,
-        );
-      }
+        if (maintenance.engineerId && maintenance.engineerId !== actor.id) {
+          await this.notificationsService.create(
+            {
+              userId: maintenance.engineerId,
+              title: 'Bạn có phiếu bảo trì mới',
+              message: `${actor.email} đã phân công phiếu ${maintenance.code}: ${maintenance.title}`,
+              href: '/my-tasks',
+              entityType: 'Maintenance',
+              entityId: maintenance.id,
+              createdById: actor.id,
+            },
+            tx,
+          );
+        }
 
-      return maintenance;
-    }, { timeout: 20_000 });
+        if (isEngineer(actor)) {
+          await this.notificationsService.createForAdmins(
+            {
+              title: 'Kỹ sư tạo phiếu bảo trì mới',
+              message: `${actor.email} đã tạo phiếu bảo trì khẩn ${maintenance.code}: ${maintenance.title}. Phiếu đã được gán cho kỹ sư để xử lý ngay, admin hậu kiểm dữ liệu khi cần.`,
+              href: '/service-tickets',
+              entityType: 'Maintenance',
+              entityId: maintenance.id,
+              createdById: actor.id,
+            },
+            tx,
+          );
+        }
+
+        return maintenance;
+      },
+      { timeout: 20_000 },
+    );
   }
 
   async findAll(
@@ -169,8 +180,9 @@ export class MaintenanceService {
         where,
         include: this.defaultInclude(),
         orderBy: [
-          { scheduledDate: 'desc' },
           { createdAt: 'desc' },
+          { updatedAt: 'desc' },
+          { scheduledDate: 'desc' },
         ],
         skip: (page - 1) * limit,
         take: limit,
@@ -213,7 +225,7 @@ export class MaintenanceService {
       dto.customerId === undefined
         ? dto.machineId === undefined
           ? maintenance.customerId
-          : nextMachine?.customerId ?? null
+          : (nextMachine?.customerId ?? null)
         : dto.customerId,
     );
 
@@ -236,145 +248,155 @@ export class MaintenanceService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.maintenance.update({
-        where: { id },
-        data: {
-          title: dto.title?.trim(),
-          description:
-            dto.description === undefined
-              ? undefined
-              : dto.description?.trim() || null,
-          type: dto.type,
-          engineerId:
-            dto.engineerId === undefined ? undefined : nextEngineerId,
-          machineId:
-            dto.machineId === undefined ? undefined : nextMachine?.id ?? null,
-          customerId:
-            dto.customerId === undefined && dto.machineId === undefined
-              ? undefined
-              : nextCustomerId,
-          status: dto.status,
-          assignedAt:
-            dto.engineerId !== undefined &&
-            nextEngineerId &&
-            !maintenance.assignedAt
-              ? new Date()
-              : undefined,
-          startedAt:
-            dto.status === MaintenanceStatus.IN_PROGRESS &&
-            !maintenance.startedAt
-              ? new Date()
-              : undefined,
-          completedAt:
-            dto.status === MaintenanceStatus.COMPLETED ? new Date() : undefined,
-          reviewStatus: dto.status
-            ? this.resolveReviewStatus(dto.status, actor)
-            : undefined,
-          reviewedAt:
-            dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
-              ? new Date()
-              : dto.status
-                ? null
-                : undefined,
-          reviewerId:
-            dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
-              ? actor.id
-              : dto.status
-                ? null
-                : undefined,
-          reviewNote: dto.status ? null : undefined,
-          scheduledDate: dto.scheduledDate
-            ? this.parseRequiredDate(dto.scheduledDate, 'scheduledDate')
-            : undefined,
-          checklist:
-            dto.checklist === undefined
-              ? undefined
-              : this.normalizeChecklist(dto.checklist),
-          resultNote:
-            dto.resultNote === undefined
-              ? undefined
-              : dto.resultNote?.trim() || null,
-          nextDueDate:
-            dto.nextDueDate === undefined
-              ? undefined
-              : this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
-          usingDepartment: this.cleanOptionalUpdateString(
-            dto.usingDepartment,
-          ),
-          representative: this.cleanOptionalUpdateString(dto.representative),
-          address: this.cleanOptionalUpdateString(dto.address),
-          contactPhone: this.cleanOptionalUpdateString(dto.contactPhone),
-          deviceName: this.cleanOptionalUpdateString(dto.deviceName),
-          modelName: this.cleanOptionalUpdateString(dto.modelName),
-          serialNumber: this.cleanOptionalUpdateString(dto.serialNumber),
-        },
-        include: this.defaultInclude(),
-      });
-
-      const machineStatus =
-        this.getMachineStatusForMaintenanceStatus(nextStatus);
-
-      if (machineStatus && nextMachine) {
-        validateMachineState(
-          machineStatus,
-          nextMachine.inventoryStatus,
-          nextMachine.customerId,
-        );
-        await tx.machine.update({
-          where: { id: nextMachine.id },
+    return this.prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.maintenance.update({
+          where: { id },
           data: {
-            status: machineStatus,
+            title: dto.title?.trim(),
+            description:
+              dto.description === undefined
+                ? undefined
+                : dto.description?.trim() || null,
+            type: dto.type,
+            engineerId:
+              dto.engineerId === undefined ? undefined : nextEngineerId,
+            machineId:
+              dto.machineId === undefined
+                ? undefined
+                : (nextMachine?.id ?? null),
+            customerId:
+              dto.customerId === undefined && dto.machineId === undefined
+                ? undefined
+                : nextCustomerId,
+            status: dto.status,
+            assignedAt:
+              dto.engineerId !== undefined &&
+              nextEngineerId &&
+              !maintenance.assignedAt
+                ? new Date()
+                : undefined,
+            startedAt:
+              dto.status === MaintenanceStatus.IN_PROGRESS &&
+              !maintenance.startedAt
+                ? new Date()
+                : undefined,
+            completedAt:
+              dto.status === MaintenanceStatus.COMPLETED
+                ? new Date()
+                : undefined,
+            reviewStatus: dto.status
+              ? this.resolveReviewStatus(dto.status, actor)
+              : undefined,
+            reviewedAt:
+              dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
+                ? new Date()
+                : dto.status
+                  ? null
+                  : undefined,
+            reviewerId:
+              dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
+                ? actor.id
+                : dto.status
+                  ? null
+                  : undefined,
+            reviewNote: dto.status ? null : undefined,
+            scheduledDate: dto.scheduledDate
+              ? this.parseRequiredDate(dto.scheduledDate, 'scheduledDate')
+              : undefined,
+            checklist:
+              dto.checklist === undefined
+                ? undefined
+                : this.normalizeChecklist(dto.checklist),
+            resultNote:
+              dto.resultNote === undefined
+                ? undefined
+                : dto.resultNote?.trim() || null,
+            nextDueDate:
+              dto.nextDueDate === undefined
+                ? undefined
+                : this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
+            usingDepartment: this.cleanOptionalUpdateString(
+              dto.usingDepartment,
+            ),
+            representative: this.cleanOptionalUpdateString(dto.representative),
+            address: this.cleanOptionalUpdateString(dto.address),
+            contactPhone: this.cleanOptionalUpdateString(dto.contactPhone),
+            deviceName: this.cleanOptionalUpdateString(dto.deviceName),
+            modelName: this.cleanOptionalUpdateString(dto.modelName),
+            serialNumber: this.cleanOptionalUpdateString(dto.serialNumber),
           },
+          include: this.defaultInclude(),
         });
-      }
 
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.UPDATE,
-          entityType: 'Maintenance',
-          entityId: id,
-          actor,
-          changes: this.pickChangedFields(maintenance, updated, [
-            'title',
-            'description',
-            'type',
-            'customerId',
-            'engineerId',
-            'status',
-            'scheduledDate',
-            'checklist',
-            'resultNote',
-            'nextDueDate',
-            'usingDepartment',
-            'representative',
-            'address',
-            'contactPhone',
-            'deviceName',
-            'modelName',
-            'serialNumber',
-          ]),
-        },
-        tx,
-      );
+        const machineStatus =
+          this.getMachineStatusForMaintenanceStatus(nextStatus);
 
-      if (updated.engineerId && updated.engineerId !== maintenance.engineerId) {
-        await this.notificationsService.create(
+        if (machineStatus && nextMachine) {
+          validateMachineState(
+            machineStatus,
+            nextMachine.inventoryStatus,
+            nextMachine.customerId,
+          );
+          await tx.machine.update({
+            where: { id: nextMachine.id },
+            data: {
+              status: machineStatus,
+            },
+          });
+        }
+
+        await this.auditLogsService.create(
           {
-            userId: updated.engineerId,
-            title: 'Bạn có phiếu bảo trì mới',
-            message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
-            href: '/my-tasks',
+            action: AUDIT_ACTIONS.UPDATE,
             entityType: 'Maintenance',
-            entityId: updated.id,
-            createdById: actor.id,
+            entityId: id,
+            actor,
+            changes: this.pickChangedFields(maintenance, updated, [
+              'title',
+              'description',
+              'type',
+              'customerId',
+              'engineerId',
+              'status',
+              'scheduledDate',
+              'checklist',
+              'resultNote',
+              'nextDueDate',
+              'usingDepartment',
+              'representative',
+              'address',
+              'contactPhone',
+              'deviceName',
+              'modelName',
+              'serialNumber',
+            ]),
           },
           tx,
         );
-      }
 
-      return updated;
-    }, { timeout: 20_000 });
+        if (
+          updated.engineerId &&
+          updated.engineerId !== maintenance.engineerId
+        ) {
+          await this.notificationsService.create(
+            {
+              userId: updated.engineerId,
+              title: 'Bạn có phiếu bảo trì mới',
+              message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+              href: '/my-tasks',
+              entityType: 'Maintenance',
+              entityId: updated.id,
+              createdById: actor.id,
+            },
+            tx,
+          );
+        }
+
+        return updated;
+      },
+      { timeout: 20_000 },
+    );
   }
 
   async remove(id: string, actor: RequestUser) {
@@ -419,58 +441,64 @@ export class MaintenanceService {
       throw new BadRequestException('Cannot assign a closed maintenance job');
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.maintenance.update({
-        where: { id },
-        data: {
-          engineerId: dto.engineerId,
-          status:
-            maintenance.status === MaintenanceStatus.SCHEDULED ||
-            maintenance.status === MaintenanceStatus.OVERDUE
-              ? MaintenanceStatus.ASSIGNED
-              : maintenance.status,
-          assignedAt: maintenance.assignedAt ?? new Date(),
-        },
-        include: this.defaultInclude(),
-      });
-
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.ASSIGN,
-          entityType: 'Maintenance',
-          entityId: id,
-          actor,
-          changes: {
-            engineerId: {
-              from: maintenance.engineerId,
-              to: updated.engineerId,
-            },
-            status: {
-              from: maintenance.status,
-              to: updated.status,
-            },
+    return this.prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.maintenance.update({
+          where: { id },
+          data: {
+            engineerId: dto.engineerId,
+            status:
+              maintenance.status === MaintenanceStatus.SCHEDULED ||
+              maintenance.status === MaintenanceStatus.OVERDUE
+                ? MaintenanceStatus.ASSIGNED
+                : maintenance.status,
+            assignedAt: maintenance.assignedAt ?? new Date(),
           },
-        },
-        tx,
-      );
+          include: this.defaultInclude(),
+        });
 
-      if (updated.engineerId && updated.engineerId !== maintenance.engineerId) {
-        await this.notificationsService.create(
+        await this.auditLogsService.create(
           {
-            userId: updated.engineerId,
-            title: 'Bạn có phiếu bảo trì mới',
-            message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
-            href: '/my-tasks',
+            action: AUDIT_ACTIONS.ASSIGN,
             entityType: 'Maintenance',
-            entityId: updated.id,
-            createdById: actor.id,
+            entityId: id,
+            actor,
+            changes: {
+              engineerId: {
+                from: maintenance.engineerId,
+                to: updated.engineerId,
+              },
+              status: {
+                from: maintenance.status,
+                to: updated.status,
+              },
+            },
           },
           tx,
         );
-      }
 
-      return updated;
-    }, { timeout: 20_000 });
+        if (
+          updated.engineerId &&
+          updated.engineerId !== maintenance.engineerId
+        ) {
+          await this.notificationsService.create(
+            {
+              userId: updated.engineerId,
+              title: 'Bạn có phiếu bảo trì mới',
+              message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+              href: '/my-tasks',
+              entityType: 'Maintenance',
+              entityId: updated.id,
+              createdById: actor.id,
+            },
+            tx,
+          );
+        }
+
+        return updated;
+      },
+      { timeout: 20_000 },
+    );
   }
 
   async updateStatus(
@@ -494,81 +522,84 @@ export class MaintenanceService {
       );
     }
 
-    const updatedMaintenance = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.maintenance.update({
-        where: { id },
-        data: {
-          status: dto.status,
-          startedAt:
-            dto.status === MaintenanceStatus.IN_PROGRESS &&
-            !maintenance.startedAt
-              ? now
-              : undefined,
-          completedAt:
-            dto.status === MaintenanceStatus.COMPLETED ? now : undefined,
-          reviewStatus: this.resolveReviewStatus(dto.status, actor),
-          reviewedAt:
-            dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
-              ? now
-              : null,
-          reviewerId:
-            dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
-              ? actor.id
-              : null,
-          reviewNote: null,
-          resultNote: dto.resultNote?.trim(),
-          nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
-        },
-        include: this.defaultInclude(),
-      });
-
-      const machineStatus = this.getMachineStatusForMaintenanceStatus(
-        dto.status,
-      );
-
-      if (machineStatus && maintenance.machine) {
-        validateMachineState(
-          machineStatus,
-          maintenance.machine.inventoryStatus,
-          maintenance.machine.customerId,
-        );
-        await tx.machine.update({
-          where: { id: maintenance.machine.id },
+    const updatedMaintenance = await this.prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.maintenance.update({
+          where: { id },
           data: {
-            status: machineStatus,
+            status: dto.status,
+            startedAt:
+              dto.status === MaintenanceStatus.IN_PROGRESS &&
+              !maintenance.startedAt
+                ? now
+                : undefined,
+            completedAt:
+              dto.status === MaintenanceStatus.COMPLETED ? now : undefined,
+            reviewStatus: this.resolveReviewStatus(dto.status, actor),
+            reviewedAt:
+              dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
+                ? now
+                : null,
+            reviewerId:
+              dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
+                ? actor.id
+                : null,
+            reviewNote: null,
+            resultNote: dto.resultNote?.trim(),
+            nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
           },
+          include: this.defaultInclude(),
         });
-      }
 
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.STATUS_CHANGE,
-          entityType: 'Maintenance',
-          entityId: id,
-          actor,
-          changes: {
-            status: {
-              from: maintenance.status,
-              to: updated.status,
-            },
-            resultNote: {
-              from: maintenance.resultNote,
-              to: updated.resultNote,
-            },
-            nextDueDate: {
-              from: maintenance.nextDueDate,
-              to: updated.nextDueDate,
-            },
-          },
-          metadata: {
+        const machineStatus = this.getMachineStatusForMaintenanceStatus(
+          dto.status,
+        );
+
+        if (machineStatus && maintenance.machine) {
+          validateMachineState(
             machineStatus,
-          },
-        },
-        tx,
-      );
+            maintenance.machine.inventoryStatus,
+            maintenance.machine.customerId,
+          );
+          await tx.machine.update({
+            where: { id: maintenance.machine.id },
+            data: {
+              status: machineStatus,
+            },
+          });
+        }
 
-      return updated;
-    }, { timeout: 20_000 });
+        await this.auditLogsService.create(
+          {
+            action: AUDIT_ACTIONS.STATUS_CHANGE,
+            entityType: 'Maintenance',
+            entityId: id,
+            actor,
+            changes: {
+              status: {
+                from: maintenance.status,
+                to: updated.status,
+              },
+              resultNote: {
+                from: maintenance.resultNote,
+                to: updated.resultNote,
+              },
+              nextDueDate: {
+                from: maintenance.nextDueDate,
+                to: updated.nextDueDate,
+              },
+            },
+            metadata: {
+              machineStatus,
+            },
+          },
+          tx,
+        );
+
+        return updated;
+      },
+      { timeout: 20_000 },
+    );
 
     if (
       updatedMaintenance.status === MaintenanceStatus.COMPLETED &&
@@ -715,9 +746,7 @@ export class MaintenanceService {
 
   private validateCreateMaintenance(dto: CreateMaintenanceDto) {
     if (!dto.title?.trim() || !dto.scheduledDate) {
-      throw new BadRequestException(
-        'title and scheduledDate are required',
-      );
+      throw new BadRequestException('title and scheduledDate are required');
     }
   }
 
@@ -839,15 +868,9 @@ export class MaintenanceService {
 
   private async generateMaintenanceCode(
     tx: Prisma.TransactionClient,
-    machine: MachineExpertiseSource,
-    engineerId?: string | null,
+    date: Date,
   ): Promise<string> {
-    const now = new Date();
-    const year = now.getFullYear();
-    const engineerCode =
-      (await this.getEngineerCode(tx, engineerId)) ??
-      this.getExpertiseGroupCode(machine);
-    const prefix = `BT-${engineerCode}-${year}`;
+    const prefix = `BT-${shortDateCode(date)}`;
 
     const latest = await tx.maintenance.findFirst({
       where: {
@@ -913,9 +936,7 @@ export class MaintenanceService {
     return normalized || null;
   }
 
-  private getExpertiseGroupCode(
-    machine: MachineExpertiseSource,
-  ) {
+  private getExpertiseGroupCode(machine: MachineExpertiseSource) {
     const group =
       machine?.businessLine?.productIndustry?.expertiseGroup ??
       machine?.businessLine?.expertiseGroup ??
@@ -1003,28 +1024,28 @@ export class MaintenanceService {
           : undefined,
       OR: search
         ? [
-            { code: { contains: search,  } },
-            { title: { contains: search,  } },
-            { description: { contains: search,  } },
-            { deviceName: { contains: search,  } },
-            { modelName: { contains: search,  } },
-            { serialNumber: { contains: search,  } },
-            { usingDepartment: { contains: search,  } },
-            { representative: { contains: search,  } },
+            { code: { contains: search } },
+            { title: { contains: search } },
+            { description: { contains: search } },
+            { deviceName: { contains: search } },
+            { modelName: { contains: search } },
+            { serialNumber: { contains: search } },
+            { usingDepartment: { contains: search } },
+            { representative: { contains: search } },
             {
               machine: {
-                serialNumber: { contains: search,  },
+                serialNumber: { contains: search },
               },
             },
             {
               machine: {
-                machineCode: { contains: search,  },
+                machineCode: { contains: search },
               },
             },
             {
               machine: {
                 customer: {
-                  name: { contains: search,  },
+                  name: { contains: search },
                 },
               },
             },

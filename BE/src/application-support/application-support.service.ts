@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   ApplicationSupportChannel,
   ApplicationSupportIssueCategory,
@@ -20,10 +25,7 @@ export class ApplicationSupportService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const where: Prisma.ApplicationSupportCaseWhereInput = {
-      AND: [
-        this.accessWhere(user),
-        this.filterWhere(query, user),
-      ],
+      AND: [this.accessWhere(user), this.filterWhere(query, user)],
     };
 
     const [data, total] = await Promise.all([
@@ -61,10 +63,17 @@ export class ApplicationSupportService {
     });
   }
 
-  async update(id: string, dto: SaveApplicationSupportCaseDto, user: RequestUser) {
+  async update(
+    id: string,
+    dto: SaveApplicationSupportCaseDto,
+    user: RequestUser,
+  ) {
     const current = await this.findAccessible(id, user);
     this.assertCanManageCase(user);
-    const engineerId = this.resolveEngineerId(dto.engineerId ?? current.engineerId, user);
+    const engineerId = this.resolveEngineerId(
+      dto.engineerId ?? current.engineerId,
+      user,
+    );
     await this.ensureEngineer(engineerId, user);
     await this.ensureLinkedEntities(dto, user);
 
@@ -82,11 +91,22 @@ export class ApplicationSupportService {
     return { ok: true };
   }
 
-  async getWeeklyRows({ user, weekStart, userId }: { user: RequestUser; weekStart?: string; userId?: string }) {
+  async getWeeklyRows({
+    user,
+    weekStart,
+    userId,
+  }: {
+    user: RequestUser;
+    weekStart?: string;
+    userId?: string;
+  }) {
     this.assertCanUse(user);
     const targetUserId = this.resolveEngineerId(userId, user);
     await this.ensureEngineer(targetUserId, user);
-    const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
+    const parsedWeekStart = this.parseDate(
+      weekStart || this.currentWeekStart(),
+      'weekStart',
+    );
     const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 5));
 
     const cases = await this.prisma.applicationSupportCase.findMany({
@@ -103,9 +123,16 @@ export class ApplicationSupportService {
       weekEnd,
       counts: {
         total: cases.length,
-        resolved: cases.filter((item) => item.status === ApplicationSupportStatus.RESOLVED).length,
-        followUp: cases.filter((item) => item.followUpNeeded || item.status === ApplicationSupportStatus.FOLLOW_UP).length,
-        knowledgeCandidate: cases.filter((item) => item.knowledgeCandidate).length,
+        resolved: cases.filter(
+          (item) => item.status === ApplicationSupportStatus.RESOLVED,
+        ).length,
+        followUp: cases.filter(
+          (item) =>
+            item.followUpNeeded ||
+            item.status === ApplicationSupportStatus.FOLLOW_UP,
+        ).length,
+        knowledgeCandidate: cases.filter((item) => item.knowledgeCandidate)
+          .length,
       },
       rows: cases.map((item, index) => ({
         sourceId: item.id,
@@ -115,8 +142,14 @@ export class ApplicationSupportService {
         machine: this.machineLabel(item),
         content: `Hỗ trợ app: ${item.title} (${issueCategoryLabel(item.issueCategory)}, ${channelLabel(item.channel)})`,
         result: item.resolution || statusLabel(item.status),
-        pending: item.pending || (item.followUpNeeded ? `Cần follow-up${item.followUpDate ? ` ngày ${this.formatDate(item.followUpDate)}` : ''}.` : ''),
-        proposal: item.nextAction || (item.knowledgeCandidate ? 'Nên đưa vào tri thức nội bộ.' : ''),
+        pending:
+          item.pending ||
+          (item.followUpNeeded
+            ? `Cần follow-up${item.followUpDate ? ` ngày ${this.formatDate(item.followUpDate)}` : ''}.`
+            : ''),
+        proposal:
+          item.nextAction ||
+          (item.knowledgeCandidate ? 'Nên đưa vào tri thức nội bộ.' : ''),
         sortOrder: index,
       })),
     };
@@ -130,11 +163,15 @@ export class ApplicationSupportService {
 
   private assertCanManageCase(user: RequestUser) {
     if (!isEngineer(user)) {
-      throw new ForbiddenException('Only lab application engineers can manage application support cases');
+      throw new ForbiddenException(
+        'Only lab application engineers can manage application support cases',
+      );
     }
   }
 
-  private accessWhere(user: RequestUser): Prisma.ApplicationSupportCaseWhereInput {
+  private accessWhere(
+    user: RequestUser,
+  ): Prisma.ApplicationSupportCaseWhereInput {
     if (isAdmin(user) || isManager(user)) {
       return {
         OR: [
@@ -152,16 +189,22 @@ export class ApplicationSupportService {
     return { id: '__no_access__' };
   }
 
-  private filterWhere(query: ApplicationSupportQueryDto, user: RequestUser): Prisma.ApplicationSupportCaseWhereInput {
+  private filterWhere(
+    query: ApplicationSupportQueryDto,
+    user: RequestUser,
+  ): Prisma.ApplicationSupportCaseWhereInput {
     const where: Prisma.ApplicationSupportCaseWhereInput = {};
-    if (query.engineerId && (isAdmin(user) || isManager(user))) where.engineerId = query.engineerId;
+    if (query.engineerId && (isAdmin(user) || isManager(user)))
+      where.engineerId = query.engineerId;
     if (query.customerId) where.customerId = query.customerId;
     if (query.status) where.status = query.status;
     if (query.issueCategory) where.issueCategory = query.issueCategory;
     if (query.from || query.to) {
       where.supportedAt = {
         gte: query.from ? this.parseDate(query.from, 'from') : undefined,
-        lte: query.to ? this.endOfDay(this.parseDate(query.to, 'to')) : undefined,
+        lte: query.to
+          ? this.endOfDay(this.parseDate(query.to, 'to'))
+          : undefined,
       };
     }
     if (query.search?.trim()) {
@@ -186,7 +229,8 @@ export class ApplicationSupportService {
     const item = await this.prisma.applicationSupportCase.findFirst({
       where: { id, AND: [this.accessWhere(user)] },
     });
-    if (!item) throw new NotFoundException('Application support case not found');
+    if (!item)
+      throw new NotFoundException('Application support case not found');
     return item;
   }
 
@@ -205,30 +249,48 @@ export class ApplicationSupportService {
     if (!engineer || engineer.status !== 'ACTIVE') {
       throw new BadRequestException('Engineer does not exist');
     }
-    if ((isAdmin(user) || isManager(user)) && engineer.regionId !== user.regionId) {
+    if (
+      (isAdmin(user) || isManager(user)) &&
+      engineer.regionId !== user.regionId
+    ) {
       throw new ForbiddenException('Engineer is outside your region');
     }
   }
 
-  private async ensureLinkedEntities(dto: SaveApplicationSupportCaseDto, user: RequestUser) {
+  private async ensureLinkedEntities(
+    dto: SaveApplicationSupportCaseDto,
+    user: RequestUser,
+  ) {
     if (dto.customerId) {
-      const customer = await this.prisma.customer.findUnique({ where: { id: dto.customerId } });
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: dto.customerId },
+      });
       if (!customer) throw new BadRequestException('Customer does not exist');
-      if ((isAdmin(user) || isManager(user)) && customer.regionId !== user.regionId) {
+      if (
+        (isAdmin(user) || isManager(user)) &&
+        customer.regionId !== user.regionId
+      ) {
         throw new ForbiddenException('Customer is outside your region');
       }
     }
     if (dto.machineId) {
-      const machine = await this.prisma.machine.findUnique({ where: { id: dto.machineId } });
+      const machine = await this.prisma.machine.findUnique({
+        where: { id: dto.machineId },
+      });
       if (!machine) throw new BadRequestException('Machine does not exist');
     }
     if (dto.machineModelId) {
-      const model = await this.prisma.machineModel.findUnique({ where: { id: dto.machineModelId } });
+      const model = await this.prisma.machineModel.findUnique({
+        where: { id: dto.machineModelId },
+      });
       if (!model) throw new BadRequestException('Machine model does not exist');
     }
   }
 
-  private buildData(dto: SaveApplicationSupportCaseDto, engineerId: string): Prisma.ApplicationSupportCaseUncheckedCreateInput {
+  private buildData(
+    dto: SaveApplicationSupportCaseDto,
+    engineerId: string,
+  ): Prisma.ApplicationSupportCaseUncheckedCreateInput {
     return {
       engineerId,
       customerId: this.cleanId(dto.customerId),
@@ -236,7 +298,8 @@ export class ApplicationSupportService {
       machineModelId: this.cleanId(dto.machineModelId),
       supportedAt: this.parseDate(dto.supportedAt, 'supportedAt'),
       channel: dto.channel ?? ApplicationSupportChannel.PHONE,
-      issueCategory: dto.issueCategory ?? ApplicationSupportIssueCategory.APP_ERROR,
+      issueCategory:
+        dto.issueCategory ?? ApplicationSupportIssueCategory.APP_ERROR,
       status: dto.status ?? ApplicationSupportStatus.RESOLVED,
       customerName: this.cleanOptional(dto.customerName),
       contactName: this.cleanOptional(dto.contactName),
@@ -251,7 +314,9 @@ export class ApplicationSupportService {
       pending: this.cleanOptional(dto.pending),
       nextAction: this.cleanOptional(dto.nextAction),
       followUpNeeded: dto.followUpNeeded ?? false,
-      followUpDate: dto.followUpDate ? this.parseDate(dto.followUpDate, 'followUpDate') : null,
+      followUpDate: dto.followUpDate
+        ? this.parseDate(dto.followUpDate, 'followUpDate')
+        : null,
       knowledgeCandidate: dto.knowledgeCandidate ?? false,
       note: this.cleanOptional(dto.note),
     };
@@ -260,20 +325,56 @@ export class ApplicationSupportService {
   private defaultInclude() {
     return {
       engineer: { select: { id: true, fullName: true, email: true } },
-      customer: { select: { id: true, name: true, phone: true, contactPerson: true, contactPhone: true, province: true } },
-      machine: { select: { id: true, machineCode: true, serialNumber: true, modelName: true, name: true } },
-      machineModel: { select: { id: true, code: true, name: true, displayName: true } },
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          contactPerson: true,
+          contactPhone: true,
+          province: true,
+        },
+      },
+      machine: {
+        select: {
+          id: true,
+          machineCode: true,
+          serialNumber: true,
+          modelName: true,
+          name: true,
+        },
+      },
+      machineModel: {
+        select: { id: true, code: true, name: true, displayName: true },
+      },
     } satisfies Prisma.ApplicationSupportCaseInclude;
   }
 
-  private machineLabel(item: { machine?: { machineCode?: string | null; serialNumber?: string | null; modelName?: string | null; name?: string | null } | null; machineModel?: { code?: string | null; name?: string | null; displayName?: string | null } | null; machineText?: string | null }) {
+  private machineLabel(item: {
+    machine?: {
+      machineCode?: string | null;
+      serialNumber?: string | null;
+      modelName?: string | null;
+      name?: string | null;
+    } | null;
+    machineModel?: {
+      code?: string | null;
+      name?: string | null;
+      displayName?: string | null;
+    } | null;
+    machineText?: string | null;
+  }) {
     return [
       item.machine?.machineCode,
       item.machine?.serialNumber,
       item.machine?.modelName || item.machine?.name,
-      item.machineModel?.displayName || item.machineModel?.name || item.machineModel?.code,
+      item.machineModel?.displayName ||
+        item.machineModel?.name ||
+        item.machineModel?.code,
       item.machineText,
-    ].filter(Boolean).join(' - ');
+    ]
+      .filter(Boolean)
+      .join(' - ');
   }
 
   private cleanId(value?: string | null) {

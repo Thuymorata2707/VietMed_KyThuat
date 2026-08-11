@@ -1,4 +1,8 @@
-import { BusinessLineStatus, ExpertiseGroup, MachineProductCategory } from '@prisma/client';
+import {
+  BusinessLineStatus,
+  ExpertiseGroup,
+  MachineProductCategory,
+} from '@prisma/client';
 import {
   IsEmail,
   IsEnum,

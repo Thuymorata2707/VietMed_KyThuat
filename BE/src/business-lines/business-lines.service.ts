@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { BusinessLineStatus, ExpertiseGroup, MachineProductCategory } from '@prisma/client';
+import {
+  BusinessLineStatus,
+  ExpertiseGroup,
+  MachineProductCategory,
+} from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { pickChangedFields } from '../common/audit-changes';
@@ -25,7 +29,9 @@ export class BusinessLinesService {
     this.validateCreate(dto);
     await this.ensureCodeIsAvailable(dto.code);
     await this.ensureManagerExists(dto.managerId);
-    const productIndustry = await this.ensureProductIndustryExists(dto.productIndustryId);
+    const productIndustry = await this.ensureProductIndustryExists(
+      dto.productIndustryId,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.businessLine.create({
@@ -36,7 +42,10 @@ export class BusinessLinesService {
           manufacturer: dto.manufacturer?.trim() || null,
           imageUrl: dto.imageUrl?.trim() || null,
           productCategory: dto.productCategory ?? MachineProductCategory.OTHER,
-          expertiseGroup: dto.expertiseGroup ?? productIndustry?.expertiseGroup ?? ExpertiseGroup.IMAGING,
+          expertiseGroup:
+            dto.expertiseGroup ??
+            productIndustry?.expertiseGroup ??
+            ExpertiseGroup.IMAGING,
           productIndustryId: productIndustry?.id ?? null,
           countryOfOrigin: dto.countryOfOrigin?.trim() || null,
           website: dto.website?.trim() || null,
@@ -170,7 +179,10 @@ export class BusinessLinesService {
               : dto.imageUrl?.trim() || null,
           productCategory: dto.productCategory,
           expertiseGroup: dto.expertiseGroup ?? productIndustry?.expertiseGroup,
-          productIndustryId: dto.productIndustryId === undefined ? undefined : productIndustry?.id ?? null,
+          productIndustryId:
+            dto.productIndustryId === undefined
+              ? undefined
+              : (productIndustry?.id ?? null),
           countryOfOrigin:
             dto.countryOfOrigin === undefined
               ? undefined

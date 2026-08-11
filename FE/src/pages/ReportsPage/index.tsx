@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Building2, CalendarDays, Download, Loader2, MapPinned, PackageCheck, Table2, UserRound, Users, Wrench } from 'lucide-react';
+import { ArrowLeft, BarChart3, CalendarDays, Download, Loader2, MapPinned, PackageCheck, Table2, Users, Wrench } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api';
@@ -10,7 +10,7 @@ import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
 import { displayLabel } from '../../utils/displayLabels';
 
-type ReportView = 'summary' | 'kinds' | 'engineers' | 'customers' | 'machines' | 'models' | 'provinces' | 'details';
+type ReportView = 'summary' | 'kinds' | 'customers' | 'machines' | 'models' | 'provinces' | 'details' | 'customer';
 type WorkKind = 'installation' | 'repair' | 'maintenance' | 'demo' | 'applicationSupport';
 
 type EngineerFilterOption = {
@@ -117,7 +117,6 @@ type TechnicalReport = {
 const reportTabs: Array<{ key: ReportView; label: string; icon: ReactNode }> = [
   { key: 'summary', label: 'Tổng quan', icon: <BarChart3 size={16} /> },
   { key: 'kinds', label: 'Loại việc', icon: <Wrench size={16} /> },
-  { key: 'engineers', label: 'Kỹ sư', icon: <UserRound size={16} /> },
   { key: 'customers', label: 'Khách hàng', icon: <Users size={16} /> },
   { key: 'machines', label: 'Máy', icon: <PackageCheck size={16} /> },
   { key: 'models', label: 'Model', icon: <Table2 size={16} /> },
@@ -138,6 +137,8 @@ export function ReportsPage() {
   const customer = searchParams.get('customer') || '';
   const model = searchParams.get('model') || '';
   const province = searchParams.get('province') || '';
+  const focusCustomerId = searchParams.get('customerDetail') || '';
+  const isCustomerDetail = activeView === 'customer' && Boolean(focusCustomerId);
   const [draftFrom, setDraftFrom] = useState(from);
   const [draftTo, setDraftTo] = useState(to);
 
@@ -163,6 +164,16 @@ export function ReportsPage() {
   function changeView(view: ReportView) {
     const next = new URLSearchParams(searchParams);
     next.set('view', view);
+    next.set('from', from);
+    next.set('to', to);
+    if (view !== 'customer') next.delete('customerDetail');
+    setSearchParams(next);
+  }
+
+  function openCustomer(customerId: string) {
+    const next = new URLSearchParams(searchParams);
+    next.set('view', 'customer');
+    next.set('customerDetail', customerId);
     next.set('from', from);
     next.set('to', to);
     setSearchParams(next);
@@ -197,7 +208,7 @@ export function ReportsPage() {
       <div className="grid gap-5 rounded-[28px] bg-white/95 p-5 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
-            description="Tổng hợp toàn bộ nghiệp vụ."
+            description="Theo khách hàng & máy — bấm vào khách hàng để xem chi tiết."
             eyebrow="Báo cáo kỹ thuật"
             title="Báo cáo tổng hợp"
           />
@@ -245,7 +256,13 @@ export function ReportsPage() {
         {error ? <Notice message={error} /> : null}
         {loading && !report ? <LoadingState /> : null}
         {report ? <ReportSummary report={report} from={from} to={to} /> : null}
-        {report ? <ReportContent report={report} view={activeView} /> : null}
+        {report ? (
+          isCustomerDetail ? (
+            <CustomerDetailView customerId={focusCustomerId} onBack={() => changeView('customers')} report={report} />
+          ) : (
+            <ReportContent onOpenCustomer={openCustomer} report={report} view={activeView} />
+          )
+        ) : null}
       </div>
     </PageFrame>
   );
@@ -294,21 +311,19 @@ function ReportSummary({ from, report, to }: { from: string; report: TechnicalRe
   );
 }
 
-function ReportContent({ report, view }: { report: TechnicalReport; view: ReportView }) {
+function ReportContent({ onOpenCustomer, report, view }: { onOpenCustomer: (customerId: string) => void; report: TechnicalReport; view: ReportView }) {
   if (view === 'summary') {
     return (
       <div className="grid gap-4 xl:grid-cols-2">
-        <EngineerDetailTable compact rows={report.engineerDetails.slice(0, 5)} title="Kỹ sư phát sinh nhiều việc" />
-        <GroupTable rows={report.byCustomer.slice(0, 8)} title="Khách hàng phát sinh nhiều việc" />
-        <MachineGroupTable rows={report.byMachine.slice(0, 8)} title="Máy phát sinh nhiều việc" />
+        <CustomerHighlights onOpen={onOpenCustomer} report={report} title="Khách hàng phát sinh nhiều việc" />
+        <MachineGroupTable rows={report.byMachine.slice(0, 6)} title="Máy phát sinh nhiều việc" />
         <KindTable report={report} />
         <TrendPanel rows={report.rows} />
       </div>
     );
   }
   if (view === 'kinds') return <KindTable report={report} />;
-  if (view === 'engineers') return <EngineerDetailTable rows={report.engineerDetails} title="Theo kỹ sư" />;
-  if (view === 'customers') return <GroupTable rows={report.byCustomer} title="Theo khách hàng" />;
+  if (view === 'customers') return <GroupTable onSelect={onOpenCustomer} rows={report.byCustomer} title="Theo khách hàng" />;
   if (view === 'machines') return <MachineGroupTable rows={report.byMachine} title="Theo máy" />;
   if (view === 'models') return <GroupTable rows={report.byModel} title="Theo model" />;
   if (view === 'provinces') return <GroupTable rows={report.byProvince} title="Theo tỉnh" />;
@@ -362,7 +377,7 @@ function KindTable({ report }: { report: TechnicalReport }) {
   );
 }
 
-function GroupTable({ rows, title }: { rows: TechnicalReportGroup[]; title: string }) {
+function GroupTable({ onSelect, rows, title }: { onSelect?: (id: string) => void; rows: TechnicalReportGroup[]; title: string }) {
   return (
     <section className="overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
       <TableTitle count={rows.length} title={title} />
@@ -384,7 +399,16 @@ function GroupTable({ rows, title }: { rows: TechnicalReportGroup[]; title: stri
           <tbody>
             {rows.map((row) => (
               <tr className="hover:bg-[#fafafa]" key={row.id}>
-                <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{row.label}</td>
+                <td className="border-b border-[#f1f2f4] px-4 py-3">
+                  {onSelect ? (
+                    <button className="inline-flex items-center gap-1 font-semibold text-[#202124] transition hover:text-[#3e8375]" onClick={() => onSelect(row.id)} type="button">
+                      {row.label}
+                      <ArrowLeft className="rotate-180" size={14} />
+                    </button>
+                  ) : (
+                    <span className="font-semibold text-[#202124]">{row.label}</span>
+                  )}
+                </td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold">{row.total}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.installation}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.repair}</td>
@@ -453,103 +477,6 @@ function MachineGroupTable({ rows, title }: { rows: TechnicalMachineGroup[]; tit
   );
 }
 
-function EngineerDetailTable({ compact = false, rows, title }: { compact?: boolean; rows: TechnicalEngineerDetail[]; title: string }) {
-  return (
-    <section className="overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
-      <TableTitle count={rows.length} title={title} />
-      <div className="grid divide-y divide-[#eef0f3]">
-        {rows.map((row) => {
-          const topCustomers = row.customersList.slice(0, compact ? 3 : 6);
-          const recentWorks = row.recentWorks.slice(0, compact ? 3 : 5);
-          return (
-            <article className="grid gap-4 p-4" key={row.id}>
-              <div className="grid gap-3 lg:grid-cols-[minmax(220px,1.1fr)_minmax(0,1.9fr)]">
-                <div className="min-w-0">
-                  <h3 className="truncate text-base font-semibold text-[#202124]">{row.label}</h3>
-                  <p className="mt-1 text-sm font-medium text-[#667085]">
-                    {row.total} việc · {row.customers} khách · {row.machines} máy · gần nhất {formatDate(row.lastWorkedAt)}
-                  </p>
-                </div>
-                <div className="grid grid-cols-5 gap-2 text-center text-xs font-semibold text-[#667085]">
-                  <EngineerMetric label="Lắp" value={row.installation} />
-                  <EngineerMetric label="Sửa" value={row.repair} />
-                  <EngineerMetric label="Bảo trì" value={row.maintenance} />
-                  <EngineerMetric label="Demo" value={row.demo} />
-                  <EngineerMetric label="App" value={row.applicationSupport} />
-                </div>
-              </div>
-
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-                <div className="grid gap-2">
-                  <span className="text-xs font-bold uppercase text-[#667085]">Khách hàng đã care trong kỳ</span>
-                  <div className="grid gap-2">
-                    {topCustomers.map((customer) => (
-                      <div className="grid gap-2 rounded-2xl bg-[#fafafa] px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto]" key={customer.id}>
-                        <div className="min-w-0">
-                          <strong className="block truncate text-sm text-[#202124]">{customer.label}</strong>
-                          <span className="text-xs font-medium text-[#667085]">
-                            {customer.province} · {customer.total} việc · {customer.machines} máy
-                          </span>
-                        </div>
-                        <span className="text-xs font-semibold text-[#667085]">
-                          {customer.installation} lắp · {customer.repair} sửa · {customer.maintenance} bảo trì
-                        </span>
-                      </div>
-                    ))}
-                    {!topCustomers.length ? <EmptyInline text="Chưa có khách hàng phát sinh trong kỳ." /> : null}
-                  </div>
-                </div>
-
-                <div className="grid gap-2">
-                  <span className="text-xs font-bold uppercase text-[#667085]">Phiếu gần nhất</span>
-                  <div className="grid gap-2">
-                    {recentWorks.map((work) => (
-                      workHref(work) ? (
-                        <Link className="grid gap-1 rounded-2xl border border-[#eef0f3] px-3 py-2 transition hover:border-[#cbd5e1] hover:bg-[#fafafa]" key={`${work.kind}-${work.id}`} to={workHref(work)!}>
-                          <span className="flex min-w-0 items-center justify-between gap-2 text-sm font-semibold text-[#202124]">
-                            <span className="truncate">{work.code} · {workLabel(work.kind)}</span>
-                            <span className="shrink-0 text-xs text-[#667085]">{formatDate(work.date)}</span>
-                          </span>
-                          <span className="truncate text-xs font-medium text-[#667085]">{work.customer} · {work.model}</span>
-                        </Link>
-                      ) : (
-                        <div className="grid gap-1 rounded-2xl border border-[#eef0f3] px-3 py-2" key={`${work.kind}-${work.id}`}>
-                          <span className="flex min-w-0 items-center justify-between gap-2 text-sm font-semibold text-[#202124]">
-                            <span className="truncate">{work.code} · {workLabel(work.kind)}</span>
-                            <span className="shrink-0 text-xs text-[#667085]">{formatDate(work.date)}</span>
-                          </span>
-                          <span className="truncate text-xs font-medium text-[#667085]">{work.customer} · {work.model}</span>
-                        </div>
-                      )
-                    ))}
-                    {!recentWorks.length ? <EmptyInline text="Chưa có phiếu phát sinh trong kỳ." /> : null}
-                  </div>
-                </div>
-              </div>
-            </article>
-          );
-        })}
-        {!rows.length ? (
-          <div className="px-4 py-8 text-center text-sm text-[#667085]">Không có dữ liệu trong kỳ này.</div>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-function EngineerMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-2xl bg-[#f6f8f7] px-2 py-2">
-      <strong className="block text-base text-[#202124]">{value}</strong>
-      <span>{label}</span>
-    </div>
-  );
-}
-
-function EmptyInline({ text }: { text: string }) {
-  return <div className="rounded-2xl border border-dashed border-[#d8dde5] px-3 py-3 text-sm font-medium text-[#667085]">{text}</div>;
-}
-
 function TrendPanel({ rows }: { rows: WorkReportRow[] }) {
   const buckets = buildTrendBuckets(rows);
   const max = Math.max(1, ...buckets.map((item) => item.total));
@@ -615,11 +542,223 @@ function DetailTable({ rows }: { rows: WorkReportRow[] }) {
   );
 }
 
+function CustomerHighlights({ onOpen, report, title }: { onOpen: (customerId: string) => void; report: TechnicalReport; title: string }) {
+  const rows = report.byCustomer.slice(0, 6);
+  return (
+    <section className="overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
+      <TableTitle count={report.byCustomer.length} title={title} />
+      {rows.length ? (
+        <div className="grid">
+          {rows.map((row) => (
+            <button
+              className="grid gap-2.5 border-b border-[#eef0f3] p-4 text-left transition last:border-b-0 hover:bg-[#fafafa]"
+              key={row.id}
+              onClick={() => onOpen(row.id)}
+              type="button"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <strong className="text-[#202124]">{row.label}</strong>
+                <span className="text-sm font-semibold text-[#3e8375]">{row.total} việc</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <KindChip label="Lắp đặt" value={row.installation} />
+                <KindChip label="Sửa chữa" value={row.repair} />
+                <KindChip label="Bảo trì" value={row.maintenance} />
+                <KindChip label="Demo" value={row.demo} />
+                <KindChip label="Hỗ trợ app" value={row.applicationSupport} />
+              </div>
+              <span className="text-xs font-medium text-[#667085]">
+                {row.machines} máy · gần nhất {formatDate(row.lastWorkedAt)} · bấm để xem chi tiết
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="px-4 py-8 text-center text-sm text-[#667085]">Không có dữ liệu trong kỳ này.</div>
+      )}
+    </section>
+  );
+}
+
+function KindChip({ label, value }: { label: string; value: number }) {
+  if (!value) return null;
+  return <span className="rounded-lg border border-[#eef0f3] bg-[#fafafa] px-2 py-1 text-xs font-semibold text-[#667085]">{label} {value}</span>;
+}
+
+function CustomerDetailView({ customerId, onBack, report }: { customerId: string; onBack: () => void; report: TechnicalReport }) {
+  const group = report.byCustomer.find((item) => item.id === customerId);
+  const [kindFilter, setKindFilter] = useState<WorkKind | ''>('');
+
+  const machineRows = useMemo(
+    () =>
+      report.byMachine.filter(
+        (item) => item.customerId === customerId || (!item.customerId && group?.label && item.customer === group.label),
+      ),
+    [customerId, group, report.byMachine],
+  );
+  const workRows = useMemo(
+    () =>
+      [...report.rows]
+        .filter((row) => row.customerId === customerId || (!row.customerId && group?.label && row.customer === group.label))
+        .sort((first, second) => second.date.localeCompare(first.date)),
+    [customerId, group, report.rows],
+  );
+  const visibleWorks = kindFilter ? workRows.filter((row) => row.kind === kindFilter) : workRows;
+
+  if (!group) {
+    return (
+      <section className="rounded-[24px] bg-white p-6 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
+        <button className="secondary-button" onClick={onBack} type="button">
+          <ArrowLeft size={16} />
+          Quay lại danh sách
+        </button>
+        <p className="mt-4 text-sm text-[#667085]">Không tìm thấy khách hàng trong kỳ báo cáo.</p>
+      </section>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button className="secondary-button" onClick={onBack} type="button">
+          <ArrowLeft size={16} />
+          Quay lại danh sách
+        </button>
+        <button
+          className="secondary-button"
+          disabled={!workRows.length}
+          onClick={() => exportRows(`bao-cao-khach-hang-${report.filters.from}-${report.filters.to}.csv`, workRows)}
+          type="button"
+        >
+          <Download size={16} />
+          Xuất CSV
+        </button>
+      </div>
+
+      <section className="rounded-[24px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
+        <span className="text-xs font-bold uppercase text-[#3e8375]">Báo cáo theo khách hàng</span>
+        <h2 className="mt-1 text-2xl font-semibold text-[#202124]">{group.label}</h2>
+        <p className="mt-1 text-sm font-medium text-[#667085]">
+          {group.total} việc · {group.machines} máy · gần nhất {formatDate(group.lastWorkedAt)} · {formatDate(report.filters.from)} - {formatDate(report.filters.to)}
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <KindStat label="Lắp đặt" value={group.installation} />
+          <KindStat label="Sửa chữa" value={group.repair} />
+          <KindStat label="Bảo trì" value={group.maintenance} />
+          <KindStat label="Demo" value={group.demo} />
+          <KindStat label="Hỗ trợ app" value={group.applicationSupport} />
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
+        <TableTitle count={machineRows.length} title={`Máy của ${group.label}`} />
+        {machineRows.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left text-sm">
+              <thead className="text-xs uppercase text-[#667085]">
+                <tr>
+                  {['Máy', 'Model', 'Khách hàng', 'Tỉnh', 'Tổng', 'Lắp', 'Sửa', 'Bảo trì', 'Demo', 'App', 'Gần nhất'].map((header) => (
+                    <th className="border-b border-[#eef0f3] px-4 py-3" key={header}>{header}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {machineRows.map((row) => (
+                  <tr className="hover:bg-[#fafafa]" key={row.id}>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">
+                      <strong className="block text-[#202124]">{row.machineCode}</strong>
+                      <span className="text-xs text-[#667085]">{row.serialNumber}</span>
+                    </td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">{row.model}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">
+                      {row.customerId ? <Link className="hover:text-[#3e8375]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
+                    </td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{row.province}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold">{row.total}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">{row.installation}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">{row.repair}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">{row.maintenance}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">{row.demo}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">{row.applicationSupport}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.lastWorkedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="px-4 py-8 text-center text-sm text-[#667085]">Chưa có máy phát sinh trong kỳ.</div>
+        )}
+      </section>
+
+      <section className="overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eef0f3] px-4 py-3">
+          <h2 className="font-semibold text-[#202124]">Toàn bộ phiếu trong kỳ</h2>
+          <div className="flex flex-wrap gap-1.5">
+            {(['', 'installation', 'repair', 'maintenance', 'demo', 'applicationSupport'] as const).map((kind) => (
+              <button
+                className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${kindFilter === kind ? 'border-[#3e8375] bg-[#eefaf3] text-[#177245]' : 'border-[#eef0f3] bg-[#fafafa] text-[#667085] hover:text-[#18181b]'}`}
+                key={kind || 'all'}
+                onClick={() => setKindFilter(kind)}
+                type="button"
+              >
+                {kind ? workLabel(kind) : 'Tất cả'}
+              </button>
+            ))}
+          </div>
+        </div>
+        {visibleWorks.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-left text-sm">
+              <thead className="text-xs uppercase text-[#667085]">
+                <tr>
+                  {['Phiếu', 'Loại', 'Ngày', 'Kỹ sư', 'Máy/model', 'Nội dung', 'Trạng thái'].map((header) => (
+                    <th className="border-b border-[#eef0f3] px-4 py-3" key={header}>{header}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleWorks.map((row) => (
+                  <tr className="hover:bg-[#fafafa]" key={`${row.kind}-${row.id}`}>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">
+                      {workHref(row) ? <Link className="hover:text-[#3e8375]" to={workHref(row)!}>{row.code}</Link> : row.code}
+                    </td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">{workLabel(row.kind)}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.date)}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">{row.engineer}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">
+                      <strong className="block">{row.machineCode}</strong>
+                      <span className="text-xs text-[#667085]">{row.model} · {row.serialNumber}</span>
+                    </td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{row.note || row.title}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">{displayLabel(row.status)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="px-4 py-8 text-center text-sm text-[#667085]">Chưa có phiếu nào cho loại này trong kỳ.</div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function KindStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl bg-[#f6f8f7] px-3 py-3">
+      <span className="text-xs font-semibold text-[#667085]">{label}</span>
+      <strong className="mt-1 block text-2xl leading-none text-[#202124]">{value}</strong>
+    </div>
+  );
+}
+
 function TableTitle({ count, title }: { count: number; title: string }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-[#eef0f3] px-4 py-3">
       <h2 className="font-semibold text-[#202124]">{title}</h2>
-      <span className="text-xs font-semibold text-[#667085]">{count} dòng</span>
+      <span className="text-xs font-semibold text-[#667085]">{count} kết quả</span>
     </div>
   );
 }
@@ -685,7 +824,7 @@ function workLabel(kind: WorkKind) {
 }
 
 function normalizeView(value: string | null): ReportView {
-  return reportTabs.some((tab) => tab.key === value) ? (value as ReportView) : 'summary';
+  return reportTabs.some((tab) => tab.key === value) || value === 'customer' ? (value as ReportView) : 'summary';
 }
 
 function currentMonthRange() {

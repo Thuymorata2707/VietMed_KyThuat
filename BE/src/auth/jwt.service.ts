@@ -46,9 +46,13 @@ export class JwtService {
       throw new UnauthorizedException('Invalid token');
     }
 
-    const payload = JSON.parse(
-      this.base64UrlDecode(encodedPayload),
-    ) as JwtPayload;
+    let payload: JwtPayload;
+
+    try {
+      payload = JSON.parse(this.base64UrlDecode(encodedPayload)) as JwtPayload;
+    } catch {
+      throw new UnauthorizedException('Invalid token');
+    }
 
     if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
       throw new UnauthorizedException('Token expired');

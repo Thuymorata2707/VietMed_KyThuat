@@ -42,8 +42,11 @@ export class MachineModelsService {
             manufacturer:
               dto.manufacturer?.trim() || businessLine.manufacturer || null,
             countryOfOrigin:
-              dto.countryOfOrigin?.trim() || businessLine.countryOfOrigin || null,
-            productCategory: dto.productCategory ?? businessLine.productCategory,
+              dto.countryOfOrigin?.trim() ||
+              businessLine.countryOfOrigin ||
+              null,
+            productCategory:
+              dto.productCategory ?? businessLine.productCategory,
             productLine: dto.productLine?.trim() || null,
             description: dto.description?.trim() || null,
             note: dto.note?.trim() || null,
@@ -70,6 +73,7 @@ export class MachineModelsService {
           ).entries()) {
             await tx.componentAccessory.create({
               data: {
+                machineModelId: created.id,
                 componentId: createdComponent.id,
                 code: this.normalizeCode(accessory.code),
                 name: accessory.name.trim(),
@@ -207,7 +211,9 @@ export class MachineModelsService {
           countryOfOrigin:
             dto.countryOfOrigin === undefined
               ? undefined
-              : dto.countryOfOrigin?.trim() || businessLine.countryOfOrigin || null,
+              : dto.countryOfOrigin?.trim() ||
+                businessLine.countryOfOrigin ||
+                null,
           productCategory: dto.productCategory,
           productLine:
             dto.productLine === undefined

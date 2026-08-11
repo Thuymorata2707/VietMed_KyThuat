@@ -27,8 +27,10 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: mysql://${MYSQL_USER:-vietmed}:${MYSQL_PASSWORD:-vietmed_password}@db:3306/${MYSQL_DATABASE:-vietmed_kythuat}
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-86400}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      ENABLE_SWAGGER: ${ENABLE_SWAGGER:-false}
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     volumes:

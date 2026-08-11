@@ -134,8 +134,6 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Lịch & báo cáo'
     : location.pathname.startsWith('/reports')
       ? 'Báo cáo'
-    : location.pathname.startsWith('/my-reports')
-      ? 'Báo cáo của tôi'
     : location.pathname.startsWith('/my-customers')
       ? 'Khách hàng phụ trách'
     : activeNavItem?.label || 'Tổng quan';
@@ -307,13 +305,15 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             <strong className="block text-[18px] leading-tight text-[#1f1f1f]">{pageTitle}</strong>
           </div>
           <div className="flex items-center gap-2.5 max-sm:w-full max-sm:flex-wrap">
-            <Link
-              className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg bg-[#18212f] px-3.5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(24,24,27,0.14)] transition hover:-translate-y-px hover:bg-[#18181b]"
-              to="/service-tickets/create"
-            >
-              <Plus size={16} />
-              Tạo phiếu
-            </Link>
+            {role === 'admin' || role === 'engineer' ? (
+              <Link
+                className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg bg-[#18212f] px-3.5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(24,24,27,0.14)] transition hover:-translate-y-px hover:bg-[#18181b]"
+                to="/service-tickets/create"
+              >
+                <Plus size={16} />
+                Tạo phiếu
+              </Link>
+            ) : null}
             <span className="inline-flex min-h-[34px] items-center whitespace-nowrap rounded-lg border border-[#b9dfc9] bg-[#edf8f2] px-2.5 py-[7px] text-[12px] font-medium text-[#1b7a4c] before:mr-[7px] before:h-[7px] before:w-[7px] before:rounded-full before:bg-[#1b7a4c] before:content-['']" title={getApiBaseUrl()}>
               Kết nối ổn định
             </span>
@@ -419,7 +419,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             }
           />
           <Route path="/account-settings" element={<AccountSettingsPage onUserUpdated={onUserUpdated} user={user} />} />
-          <Route path="/daily-work" element={<WorkReportsPage currentRole={role} user={user} />} />
+          <Route
+            path="/daily-work"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <WorkReportsPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
           <Route
             path="/application-support"
             element={
@@ -458,15 +469,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           />
           <Route
             path="/my-reports"
-            element={
-              <RequireRole
-                allowedRoles={['engineer']}
-                currentRole={role}
-                renderDenied={(message) => <AccessDeniedPage message={message} />}
-              >
-                <EngineerPerformancePage currentRole={role} user={user} />
-              </RequireRole>
-            }
+            element={<Navigate to="/engineer-performance" replace />}
           />
           <Route
             path="/engineer-performance"
@@ -496,7 +499,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/reports"
             element={
               <RequireRole
-                allowedRoles={['admin', 'manager', 'engineer']}
+                allowedRoles={['admin', 'manager']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
@@ -517,10 +520,34 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             }
           />
           <Route
+            path="/my-customers/:customerId"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <EngineerCustomersPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
             path="/my-customers"
             element={
               <RequireRole
                 allowedRoles={['admin', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <EngineerCustomersPage currentRole={role} user={user} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/customers/profile/:customerId"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'manager']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
@@ -809,7 +836,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/repairs/:id/update"
             element={
               <RequireRole
-                allowedRoles={resources.repairs.roles}
+                allowedRoles={['admin', 'engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
@@ -845,7 +872,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/installations/:id/update"
             element={
               <RequireRole
-                allowedRoles={resources.installations.roles}
+                allowedRoles={['admin', 'engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
@@ -906,11 +933,11 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
 function ComponentAccessoryTabs({ activeKey }: { activeKey: string }) {
   return (
     <div className="flex flex-wrap gap-2">
-      <Link className={activeKey === 'machine-components' ? 'primary-button compact' : 'secondary-button compact'} to="/machine-components">
-        Thành phần
-      </Link>
       <Link className={activeKey === 'component-accessories' ? 'primary-button compact' : 'secondary-button compact'} to="/component-accessories">
         Phụ kiện
+      </Link>
+      <Link className={activeKey === 'machine-components' ? 'primary-button compact' : 'secondary-button compact'} to="/machine-components">
+        Nhóm phụ kiện
       </Link>
     </div>
   );

@@ -1,4 +1,7 @@
-import { KnowledgeArticleCategory, KnowledgeArticleStatus } from '@prisma/client';
+import {
+  KnowledgeArticleCategory,
+  KnowledgeArticleStatus,
+} from '@prisma/client';
 import { Type } from 'class-transformer';
 import { IsArray, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 

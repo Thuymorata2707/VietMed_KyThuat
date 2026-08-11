@@ -1,5 +1,5 @@
-import { ArrowRight, CalendarClock, ClipboardList, Phone, Stethoscope, UserRound, Wrench } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { ArrowRight, CalendarClock, ChevronDown, ClipboardList, Phone, Stethoscope, UserRound, Wrench } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import type { CustomerMachine, CustomerSummary, OpenTaskItem, TimelineItem } from './types';
@@ -20,7 +20,7 @@ export function CustomerDetailView({
   openTasks: OpenTaskItem[];
   timeline: TimelineItem[];
 }) {
-  const returnTo = encodeURIComponent(isAdminProfile ? `/customers/profile?customerId=${customer.id}` : '/my-customers');
+  const returnTo = encodeURIComponent(isAdminProfile ? `/customers/profile/${customer.id}` : `/my-customers/${customer.id}`);
   const accessories = machines.flatMap((machine) =>
     (machine.accessories ?? []).map((accessory) => ({ ...accessory, machine })),
   );
@@ -35,15 +35,35 @@ export function CustomerDetailView({
       })),
     ),
   );
+  const [activeSection, setActiveSection] = useState<'overview' | 'machines' | 'work' | 'accessories'>('overview');
+  const [expandedWorkId, setExpandedWorkId] = useState<string | null>(null);
+  const [workSearch, setWorkSearch] = useState('');
+  const [workPage, setWorkPage] = useState(1);
+  const allAccessoriesCount = accessories.length + installationAccessories.length;
+  const filteredTimeline = timeline.filter((item) => matchWorkSearch(item, workSearch));
+  const workPageSize = 10;
+  const workTotalPages = Math.max(1, Math.ceil(filteredTimeline.length / workPageSize));
+  const safeWorkPage = Math.min(workPage, workTotalPages);
+  const pagedTimeline = filteredTimeline.slice((safeWorkPage - 1) * workPageSize, safeWorkPage * workPageSize);
+  const firstWorkIndex = filteredTimeline.length ? (safeWorkPage - 1) * workPageSize + 1 : 0;
+  const lastWorkIndex = Math.min(filteredTimeline.length, safeWorkPage * workPageSize);
+  const sectionTabs = [
+    { id: 'overview', label: 'Tổng quan', value: openTasks.length },
+    { id: 'machines', label: 'Máy', value: machines.length },
+    { id: 'work', label: 'Công việc', value: timeline.length },
+    { id: 'accessories', label: 'Phụ kiện', value: allAccessoriesCount },
+  ] as const;
 
   return (
     <div className="grid min-w-0 gap-5">
       <div className="min-w-0 rounded-[26px] border border-[#e4e4e7] bg-white p-5 shadow-[0_8px_24px_rgba(24,24,27,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#18181b]">{customer.customerCode || customer.region?.name || 'Khách hàng'}</span>
-            <h2 className="mt-1 [overflow-wrap:anywhere] text-2xl font-extrabold text-[#1f1f1f]">{customer.hospitalName || customer.name}</h2>
-            <p className="mt-1 [overflow-wrap:anywhere] text-sm font-semibold leading-6 text-[#666666]">{customer.fullAddress || [customer.address, customer.district, customer.province].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}</p>
+            <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#666666]">{customer.customerCode || customer.region?.name || 'Khách hàng'}</span>
+            <h2 className="mt-1 [overflow-wrap:anywhere] text-2xl font-extrabold leading-tight text-[#1f1f1f]">{customer.hospitalName || customer.name}</h2>
+            <p className="mt-2 max-w-[980px] [overflow-wrap:anywhere] text-sm font-semibold leading-6 text-[#666666]">
+              {customer.fullAddress || [customer.address, customer.district, customer.province].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild>
@@ -61,44 +81,60 @@ export function CustomerDetailView({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
           <InfoTile icon={<UserRound size={17} />} label="Kỹ sư phụ trách" value={customer.primaryEngineer?.fullName || 'Chưa gán'} hint={customer.primaryEngineer?.phone || customer.primaryEngineer?.email || ''} />
           <InfoTile icon={<Phone size={17} />} label="Liên hệ" value={customer.contactPerson || customer.phone || 'Chưa có'} hint={customer.contactPhone || customer.phone || ''} />
-          <InfoTile icon={<ClipboardList size={17} />} label="Trạng thái khách hàng" value={displayStatus(customer.status)} hint={categoryLabels[customer.customerType || ''] || customer.customerType || ''} />
+          <InfoTile icon={<ClipboardList size={17} />} label="Việc mở" value={`${openTasks.length}`} hint="Cần xử lý" />
+          <InfoTile icon={<Stethoscope size={17} />} label="Máy quản lý" value={`${machines.length}`} hint={displayStatus(customer.status)} />
         </div>
       </div>
 
-      <section className={panelClass}>
-        <PanelTitle title="Việc đang mở" subtitle="Cần xử lý" />
-        {detailLoading ? (
-          <EmptyState title="Đang tải việc đang mở..." />
-        ) : openTasks.length ? (
-          <div className="grid gap-3 md:grid-cols-2">
-            {openTasks.map((task) => (
-              <div className="grid min-w-0 gap-3 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3" key={`${task.kind}-${task.id}`}>
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <span className="text-xs font-semibold text-[#18181b]">{taskKindLabel(task.kind)}</span>
-                    <strong className="mt-1 block [overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{task.title}</strong>
-                  </div>
-                  <span className="rounded-lg border border-[#ededf0] bg-white px-2 py-1 text-[11px] font-bold text-[#555555]">{displayStatus(task.status)}</span>
-                </div>
-                <span className="min-w-0 [overflow-wrap:anywhere] text-xs leading-5 text-[#666666]">
-                  {[formatDate(task.date), task.machine ? machineTitle(task.machine) : task.machineLabel, task.person].filter(Boolean).join(' - ') || 'Chưa có thông tin máy/kỹ sư'}
-                </span>
-                {task.note ? <p className="line-clamp-2 text-xs leading-5 text-[#666666]">{task.note}</p> : null}
-                <Button asChild className="justify-center" variant="secondary">
-                  <Link to={task.href}>Cập nhật phiếu</Link>
-                </Button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="Không có việc đang mở cho khách hàng này" />
-        )}
+      <section className="rounded-[26px] border border-[#e4e4e7] bg-white p-2 shadow-[0_8px_24px_rgba(24,24,27,0.04)]">
+        <div className="grid gap-2 md:grid-cols-4">
+          {sectionTabs.map((tab) => (
+            <button
+              className={`flex min-h-12 items-center justify-between rounded-[18px] px-4 text-left text-sm font-extrabold transition ${
+                activeSection === tab.id ? 'bg-[#18181b] text-white shadow-[0_12px_30px_rgba(24,24,27,0.18)]' : 'bg-[#fafafa] text-[#555555] hover:bg-[#f4f4f5]'
+              }`}
+              key={tab.id}
+              onClick={() => setActiveSection(tab.id)}
+              type="button"
+            >
+              <span>{tab.label}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs ${activeSection === tab.id ? 'bg-white/14 text-white' : 'bg-white text-[#18181b]'}`}>{tab.value}</span>
+            </button>
+          ))}
+        </div>
       </section>
 
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+      {activeSection === 'overview' ? (
+        <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <section className={panelClass}>
+            <PanelTitle title="Việc cần xử lý" subtitle="Chỉ hiện các đầu việc chính" />
+            {detailLoading ? (
+              <EmptyState title="Đang tải việc đang mở..." />
+            ) : openTasks.length ? (
+              <div className="grid gap-3">
+                {openTasks.slice(0, 4).map((task) => (
+                  <TaskCompactCard key={`${task.kind}-${task.id}`} task={task} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="Không có việc đang mở cho khách hàng này" />
+            )}
+          </section>
+          <section className={panelClass}>
+            <PanelTitle title="Thông tin nhanh" subtitle="Các dữ liệu cần nhận diện" />
+            <div className="grid gap-3">
+              <InfoTile icon={<ClipboardList size={17} />} label="Loại khách" value={categoryLabels[customer.customerType || ''] || customer.customerType || 'Chưa phân loại'} hint={displayStatus(customer.status)} />
+              <InfoTile icon={<Stethoscope size={17} />} label="Máy gần nhất" value={machines[0] ? machineTitle(machines[0]) : 'Chưa có máy'} hint={machines[0]?.serialNumber ? `S/N ${machines[0].serialNumber}` : ''} />
+              <InfoTile icon={<CalendarClock size={17} />} label="Lịch sử" value={`${timeline.length} phiếu`} hint="Lắp đặt, sửa chữa, bảo trì" />
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {activeSection === 'machines' ? (
         <section className={panelClass}>
           <PanelTitle title="Máy đang quản lý" subtitle={`${machines.length} máy gắn với khách hàng này`} />
           {detailLoading ? (
@@ -113,37 +149,79 @@ export function CustomerDetailView({
             <EmptyState title="Khách hàng này chưa có máy trong dữ liệu" />
           )}
         </section>
+      ) : null}
 
+      {activeSection === 'work' ? (
         <section className={panelClass}>
-          <PanelTitle title="Lịch sử công việc" subtitle="Lắp đặt, sửa chữa, bảo trì" />
+          <PanelTitle title="Lịch sử công việc" subtitle={`${timeline.length} phiếu và biến động liên quan đến khách hàng`} />
+          <div className="grid gap-2 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3">
+            <input
+              className="h-11 rounded-xl border border-[#ded8d8] bg-white px-3 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#8a8a8a] focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.10)]"
+              onChange={(event) => {
+                setWorkSearch(event.target.value);
+                setWorkPage(1);
+                setExpandedWorkId(null);
+              }}
+              placeholder="Tìm theo mã phiếu, máy, kỹ sư, trạng thái, ghi chú..."
+              value={workSearch}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-[#666666]">
+              <span>{filteredTimeline.length} kết quả phù hợp</span>
+              <span>{filteredTimeline.length ? `Hiển thị ${firstWorkIndex}-${lastWorkIndex}` : 'Không có kết quả'}</span>
+            </div>
+          </div>
           {detailLoading ? (
             <EmptyState title="Đang tải lịch sử..." />
-          ) : timeline.length ? (
+          ) : pagedTimeline.length ? (
             <div className="grid gap-3">
-              {timeline.map((item) => (
-                <div className="grid min-w-0 grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-2xl border border-[#ededf0] bg-[#fafafa] p-3" key={`${item.kind}-${item.id}`}>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#18181b] shadow-[inset_0_0_0_1px_#eeeeee]">
-                    {item.kind === 'repair' ? <Wrench size={16} /> : item.kind === 'maintenance' ? <CalendarClock size={16} /> : item.kind === 'inventory' ? <ClipboardList size={16} /> : <Stethoscope size={16} />}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <strong className="min-w-0 [overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{item.title}</strong>
-                      <span className="rounded-lg border border-[#ededf0] bg-white px-2 py-1 text-[11px] font-bold text-[#555555]">{displayStatus(item.status)}</span>
-                    </div>
-                    <span className="mt-1 block [overflow-wrap:anywhere] text-xs text-[#666666]">
-                      {[formatDate(item.date), item.machine ? machineTitle(item.machine) : item.machineLabel, item.person].filter(Boolean).join(' - ')}
-                    </span>
-                    {item.note ? <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#666666]">{item.note}</p> : null}
-                  </div>
-                </div>
+              {pagedTimeline.map((item) => (
+                <WorkHistoryCard
+                  isExpanded={expandedWorkId === `${item.kind}-${item.id}`}
+                  item={item}
+                  key={`${item.kind}-${item.id}`}
+                  onToggle={() =>
+                    setExpandedWorkId((current) =>
+                      current === `${item.kind}-${item.id}` ? null : `${item.kind}-${item.id}`,
+                    )
+                  }
+                  returnTo={returnTo}
+                />
               ))}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  className="h-10 rounded-2xl border border-[#ded8d8] bg-white text-sm font-bold text-[#333333] transition hover:border-[#e4e4e7] hover:text-[#18181b] disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={safeWorkPage <= 1}
+                  onClick={() => {
+                    setWorkPage((current) => Math.max(1, current - 1));
+                    setExpandedWorkId(null);
+                  }}
+                  type="button"
+                >
+                  Trước
+                </button>
+                <button
+                  className="h-10 rounded-2xl border border-[#ded8d8] bg-white text-sm font-bold text-[#333333] transition hover:border-[#e4e4e7] hover:text-[#18181b] disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={safeWorkPage >= workTotalPages}
+                  onClick={() => {
+                    setWorkPage((current) => Math.min(workTotalPages, current + 1));
+                    setExpandedWorkId(null);
+                  }}
+                  type="button"
+                >
+                  Sau
+                </button>
+              </div>
+              <div className="text-center text-xs font-bold text-[#8a8a8a]">
+                Trang {safeWorkPage}/{workTotalPages}
+              </div>
             </div>
           ) : (
-            <EmptyState title="Chưa có lịch sử công việc" />
+            <EmptyState title={timeline.length ? 'Không tìm thấy công việc phù hợp' : 'Chưa có lịch sử công việc'} />
           )}
         </section>
-      </div>
+      ) : null}
 
+      {activeSection === 'accessories' ? (
       <section className={panelClass}>
         <PanelTitle title="Linh kiện và phụ kiện liên quan" subtitle="Theo máy" />
         {detailLoading ? (
@@ -154,7 +232,7 @@ export function CustomerDetailView({
               <div className="grid min-w-0 gap-2 rounded-2xl border border-[#ededf0] bg-[#fafafa] p-3" key={accessory.id}>
                 <span className="text-xs font-semibold text-[#18181b]">{accessory.componentAccessory?.component?.name || accessory.componentAccessory?.name || accessory.code || 'Phụ kiện máy'}</span>
                 <strong className="[overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{accessory.name}</strong>
-                <span className="[overflow-wrap:anywhere] text-xs leading-5 text-[#666666]">{[machineTitle(accessory.machine), accessory.serialNumber ? `S/N ${accessory.serialNumber}` : '', accessory.note || accessory.description].filter(Boolean).join(' - ')}</span>
+                <span className="[overflow-wrap:anywhere] text-xs leading-5 text-[#666666]">{[machineTitle(accessory.machine), accessory.serialNumber ? `S/N ${accessory.serialNumber}` : ''].filter(Boolean).join(' - ')}</span>
               </div>
             ))}
             {installationAccessories.map((item) => (
@@ -169,6 +247,212 @@ export function CustomerDetailView({
           <EmptyState title="Chưa ghi nhận phụ kiện hoặc linh kiện thay thế riêng cho khách hàng này" />
         )}
       </section>
+      ) : null}
+    </div>
+  );
+}
+
+function WorkHistoryCard({
+  isExpanded,
+  item,
+  onToggle,
+  returnTo,
+}: {
+  isExpanded: boolean;
+  item: TimelineItem;
+  onToggle: () => void;
+  returnTo: string;
+}) {
+  const machineLabel = item.machine ? machineTitle(item.machine) : item.machineLabel;
+  const href = workItemHref(item, returnTo);
+  const usedPartsText = formatUsedParts(item.usedParts);
+  const workLogsText = formatWorkLogs(item.workLogs);
+  const checklistText = formatChecklist(item.checklistItems);
+  const detailRows = [
+    { label: 'Mã phiếu', value: item.code },
+    { label: 'Loại việc', value: item.type ? displayStatus(item.type) : taskKindLabel(item.kind) },
+    { label: 'Ưu tiên', value: item.priority ? displayStatus(item.priority) : '' },
+    { label: 'Ngày báo/lập', value: formatDate(item.reportedAt || item.installedAt || item.date) },
+    { label: 'Lịch hẹn', value: formatDate(item.scheduledDate) },
+    { label: 'Hoàn tất', value: formatDate(item.completedAt) },
+    { label: 'Bảo hành đến', value: formatDate(item.warrantyEndDate) },
+    { label: 'Kỹ sư/người tạo', value: item.person },
+    { label: 'Thiết bị', value: machineLabel },
+  ].filter((row) => row.value);
+  const longNotes = [
+    { label: 'Mô tả ban đầu', value: item.description },
+    { label: 'Kết quả xử lý', value: item.resultNote },
+    { label: 'Vật tư/phụ kiện đã dùng', value: usedPartsText },
+    { label: 'Nhật ký xử lý', value: workLogsText },
+    { label: 'Checklist công việc', value: checklistText },
+    { label: 'Ghi chú', value: item.note && item.note !== item.description && item.note !== item.resultNote ? item.note : '' },
+  ].filter((row) => row.value);
+
+  return (
+    <article className="grid min-w-0 gap-3 rounded-2xl border border-[#ededf0] bg-[#fafafa] p-3">
+      <div className="grid min-w-0 grid-cols-[34px_minmax(0,1fr)] gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#18181b] shadow-[inset_0_0_0_1px_#eeeeee]">
+          {item.kind === 'repair' ? <Wrench size={16} /> : item.kind === 'maintenance' ? <CalendarClock size={16} /> : item.kind === 'inventory' ? <ClipboardList size={16} /> : <Stethoscope size={16} />}
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <strong className="min-w-0 [overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{item.title}</strong>
+            <span className="rounded-lg border border-[#ededf0] bg-white px-2 py-1 text-[11px] font-bold text-[#555555]">{displayStatus(item.status)}</span>
+          </div>
+          <span className="mt-1 block [overflow-wrap:anywhere] text-xs text-[#666666]">
+            {[formatDate(item.date), machineLabel, item.person].filter(Boolean).join(' - ')}
+          </span>
+          {item.note ? (
+            <span className="mt-2 line-clamp-2 block [overflow-wrap:anywhere] text-xs leading-5 text-[#52525b]">{item.note}</span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 pl-0 sm:pl-[46px]">
+        <Button onClick={onToggle} type="button" variant="secondary">
+          Chi tiết
+          <ChevronDown className={`transition ${isExpanded ? 'rotate-180' : ''}`} size={15} />
+        </Button>
+        {href ? (
+          <Button asChild variant="secondary">
+            <Link to={href}>
+              Mở phiếu
+              <ArrowRight size={15} />
+            </Link>
+          </Button>
+        ) : null}
+      </div>
+
+      {isExpanded ? (
+        <div className="grid gap-3 rounded-2xl border border-[#e4e4e7] bg-white p-3 sm:ml-[46px]">
+          {detailRows.length ? (
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {detailRows.map((row) => (
+                <div className="grid gap-1 rounded-xl bg-[#fafafa] px-3 py-2" key={row.label}>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8a8a8a]">{row.label}</span>
+                  <strong className="[overflow-wrap:anywhere] text-xs text-[#333333]">{row.value}</strong>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {longNotes.length ? (
+            <div className="grid gap-2">
+              {longNotes.map((row) => (
+                <div className="grid gap-1 rounded-xl border border-[#eeeeee] bg-white px-3 py-2" key={row.label}>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8a8a8a]">{row.label}</span>
+                  <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-xs font-medium leading-5 text-[#333333]">{row.value}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {!detailRows.length && !longNotes.length ? <EmptyState title="Phiếu này chưa có thông tin chi tiết bổ sung" /> : null}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function formatUsedParts(parts: TimelineItem['usedParts']) {
+  return (parts ?? [])
+    .map((part) =>
+      [
+        part.name,
+        part.quantity ? `SL ${part.quantity}${part.unit ? ` ${part.unit}` : ''}` : '',
+        part.serialNumber ? `S/N ${part.serialNumber}` : '',
+        part.note,
+      ]
+        .filter(Boolean)
+        .join(' - '),
+    )
+    .filter(Boolean)
+    .join('\n');
+}
+
+function formatWorkLogs(logs: TimelineItem['workLogs']) {
+  return (logs ?? [])
+    .map((log) => [log.title, log.note].filter(Boolean).join(' - '))
+    .filter(Boolean)
+    .join('\n');
+}
+
+function formatChecklist(items: TimelineItem['checklistItems']) {
+  return (items ?? [])
+    .map((item) => [item.label, item.status ? displayStatus(item.status) : ''].filter(Boolean).join(' - '))
+    .filter(Boolean)
+    .join('\n');
+}
+
+function workItemHref(item: TimelineItem, returnTo: string) {
+  if (item.kind === 'inventory') {
+    return '';
+  }
+
+  if (item.kind === 'installation') {
+    return `/installations/${item.id}/update?returnTo=${returnTo}`;
+  }
+
+  if (item.kind === 'maintenance') {
+    return `/maintenance/${item.id}/update?returnTo=${returnTo}`;
+  }
+
+  return `/repairs/${item.id}/update?returnTo=${returnTo}`;
+}
+
+function matchWorkSearch(item: TimelineItem, search: string) {
+  const keyword = search.trim().toLowerCase();
+  if (!keyword) {
+    return true;
+  }
+
+  const machineLabel = item.machine ? machineTitle(item.machine) : item.machineLabel;
+  const haystack = [
+    item.title,
+    item.code,
+    item.description,
+    item.note,
+    item.resultNote,
+    item.person,
+    item.priority,
+    item.type,
+    item.status,
+    displayStatus(item.status),
+    displayStatus(item.priority),
+    displayStatus(item.type),
+    machineLabel,
+    item.machine?.machineCode,
+    item.machine?.serialNumber,
+    item.machine?.modelName,
+    item.machine?.name,
+    taskKindLabel(item.kind),
+    formatDate(item.date),
+    formatDate(item.reportedAt),
+    formatDate(item.scheduledDate),
+    formatDate(item.completedAt),
+    formatDate(item.installedAt),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return haystack.includes(keyword);
+}
+
+function TaskCompactCard({ task }: { task: OpenTaskItem }) {
+  return (
+    <div className="grid min-w-0 gap-3 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <span className="text-xs font-semibold text-[#18181b]">{taskKindLabel(task.kind)}</span>
+          <strong className="mt-1 block [overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{task.title}</strong>
+        </div>
+        <span className="rounded-lg border border-[#ededf0] bg-white px-2 py-1 text-[11px] font-bold text-[#555555]">{displayStatus(task.status)}</span>
+      </div>
+      <span className="min-w-0 [overflow-wrap:anywhere] text-xs leading-5 text-[#666666]">
+        {[formatDate(task.date), task.machine ? machineTitle(task.machine) : task.machineLabel].filter(Boolean).join(' - ') || 'Chưa có thông tin máy'}
+      </span>
+      <Button asChild className="justify-center" variant="secondary">
+        <Link to={task.href}>Cập nhật phiếu</Link>
+      </Button>
     </div>
   );
 }

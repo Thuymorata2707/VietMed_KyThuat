@@ -106,6 +106,8 @@ type DemoReturnDraft = {
 type ServiceRow = {
   id: string;
   code?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   title?: string | null;
   description?: string | null;
   status?: string | null;
@@ -128,6 +130,8 @@ type ServiceRow = {
 type InstallationRow = {
   id: string;
   code?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   status?: string | null;
   installedAt?: string | null;
   reviewStatus?: string | null;
@@ -174,6 +178,8 @@ type BoardItem = {
   status: string;
   reviewStatus?: string | null;
   date?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   engineer?: EngineerOption | null;
   machine?: MachineSummary | null;
   customer?: { name?: string | null; hospitalName?: string | null; province?: string | null } | null;
@@ -1392,6 +1398,8 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
       status: item.status || 'PENDING',
       reviewStatus: item.reviewStatus,
       date: item.installedAt,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
       engineer: item.installedBy,
       machine,
       customer,
@@ -1412,6 +1420,8 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
     status: item.status || 'PENDING',
     reviewStatus: item.reviewStatus,
     date: isMaintenance ? item.scheduledDate : item.reportedAt,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
     engineer: item.engineer,
     machine: item.machine,
     customer: item.customer || item.machine?.customer || (item.usingDepartment ? { name: item.usingDepartment } : null),
@@ -1504,7 +1514,21 @@ function compareItemDateDesc(left: BoardItem, right: BoardItem) {
 }
 
 function compareBoardItemsByDateDesc(left: BoardItem, right: BoardItem) {
-  return compareItemDateDesc(left, right) || urgencyRank(right) - urgencyRank(left) || left.code.localeCompare(right.code);
+  return compareItemFreshnessDesc(left, right) || compareItemDateDesc(left, right) || urgencyRank(right) - urgencyRank(left) || right.code.localeCompare(left.code);
+}
+
+function compareItemFreshnessDesc(left: BoardItem, right: BoardItem) {
+  const leftTime = latestTimestamp(left.updatedAt, left.createdAt);
+  const rightTime = latestTimestamp(right.updatedAt, right.createdAt);
+  return rightTime - leftTime;
+}
+
+function latestTimestamp(...values: Array<string | null | undefined>) {
+  return values.reduce((latest, value) => {
+    if (!value) return latest;
+    const time = new Date(value).getTime();
+    return Number.isNaN(time) ? latest : Math.max(latest, time);
+  }, 0);
 }
 
 function installationTitle(item: InstallationRow) {

@@ -14,12 +14,8 @@ const allowedInventoryTransitions: Record<
     [MachineInventoryStatus.ACCESSORY_SPLIT]: [MachineInventoryStatus.IN_STOCK],
   },
   [InventoryMovementType.SPLIT_ACCESSORY]: {
-    [MachineInventoryStatus.IN_STOCK]: [
-      MachineInventoryStatus.ACCESSORY_SPLIT,
-    ],
-    [MachineInventoryStatus.RETURNED]: [
-      MachineInventoryStatus.ACCESSORY_SPLIT,
-    ],
+    [MachineInventoryStatus.IN_STOCK]: [MachineInventoryStatus.ACCESSORY_SPLIT],
+    [MachineInventoryStatus.RETURNED]: [MachineInventoryStatus.ACCESSORY_SPLIT],
   },
   [InventoryMovementType.RESERVE]: {
     [MachineInventoryStatus.IN_STOCK]: [MachineInventoryStatus.RESERVED],
@@ -44,16 +40,17 @@ const allowedInventoryTransitions: Record<
 export function getExpectedInventoryStatus(
   type: InventoryMovementType,
 ): MachineInventoryStatus | null {
-  const expected: Partial<Record<InventoryMovementType, MachineInventoryStatus>> =
-    {
-      [InventoryMovementType.IMPORT]: MachineInventoryStatus.IN_STOCK,
-      [InventoryMovementType.SPLIT_ACCESSORY]:
-        MachineInventoryStatus.ACCESSORY_SPLIT,
-      [InventoryMovementType.RESERVE]: MachineInventoryStatus.RESERVED,
-      [InventoryMovementType.INSTALL]: MachineInventoryStatus.INSTALLED,
-      [InventoryMovementType.RETURN]: MachineInventoryStatus.RETURNED,
-      [InventoryMovementType.SELL]: MachineInventoryStatus.SOLD,
-    };
+  const expected: Partial<
+    Record<InventoryMovementType, MachineInventoryStatus>
+  > = {
+    [InventoryMovementType.IMPORT]: MachineInventoryStatus.IN_STOCK,
+    [InventoryMovementType.SPLIT_ACCESSORY]:
+      MachineInventoryStatus.ACCESSORY_SPLIT,
+    [InventoryMovementType.RESERVE]: MachineInventoryStatus.RESERVED,
+    [InventoryMovementType.INSTALL]: MachineInventoryStatus.INSTALLED,
+    [InventoryMovementType.RETURN]: MachineInventoryStatus.RETURNED,
+    [InventoryMovementType.SELL]: MachineInventoryStatus.SOLD,
+  };
 
   return expected[type] ?? null;
 }
@@ -87,9 +84,7 @@ export function validateInventoryMovement(
   }
 
   if (currentStatus === nextStatus) {
-    throw new BadRequestException(
-      `Inventory status is already ${nextStatus}`,
-    );
+    throw new BadRequestException(`Inventory status is already ${nextStatus}`);
   }
 
   if (type !== InventoryMovementType.ADJUST_STATUS) {
@@ -159,9 +154,7 @@ export function validateMachineState(
     inventoryStatus === MachineInventoryStatus.SOLD &&
     status !== MachineStatus.INACTIVE
   ) {
-    throw new BadRequestException(
-      'SOLD machines must have status INACTIVE',
-    );
+    throw new BadRequestException('SOLD machines must have status INACTIVE');
   }
 }
 

@@ -173,7 +173,7 @@ function toVietnameseApiError(message: string, statusCode: number) {
   if (normalized.includes('region does not exist')) return 'Khu vực không tồn tại.';
   if (normalized.includes('engineer does not exist')) return 'Kỹ sư phụ trách không tồn tại hoặc chưa hoạt động.';
   if (normalized.includes('not found')) return 'Không tìm thấy dữ liệu cần thao tác.';
-  if (normalized.includes('limit must not be greater than')) return 'Số dòng tải lên không được vượt quá giới hạn backend cho phép.';
+  if (normalized.includes('limit must not be greater than')) return 'Số mục tải lên không được vượt quá giới hạn backend cho phép.';
   if (normalized.includes('unauthorized') || statusCode === 401) return 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ.';
   if (normalized.includes('forbidden') || statusCode === 403) return 'Bạn không có quyền thực hiện thao tác này.';
   if (statusCode === 409) return 'Dữ liệu bị trùng, vui lòng kiểm tra lại mã hoặc email.';

@@ -34,7 +34,10 @@ export class RepairsController {
   }
 
   @Get()
-  findAll(@Query() query: ListRepairsQueryDto, @CurrentUser() user: RequestUser) {
+  findAll(
+    @Query() query: ListRepairsQueryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.repairsService.findAll(query, user);
   }
 

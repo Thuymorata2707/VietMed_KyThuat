@@ -1,6 +1,9 @@
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { ApplicationSupportIssueCategory, ApplicationSupportStatus } from '@prisma/client';
+import {
+  ApplicationSupportIssueCategory,
+  ApplicationSupportStatus,
+} from '@prisma/client';
 
 export class ApplicationSupportQueryDto {
   @IsOptional()

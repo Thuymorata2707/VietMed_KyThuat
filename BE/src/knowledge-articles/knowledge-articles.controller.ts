@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -14,7 +24,10 @@ export class KnowledgeArticlesController {
   constructor(private readonly service: KnowledgeArticlesService) {}
 
   @Get()
-  findAll(@Query() query: ListKnowledgeArticlesQueryDto, @CurrentUser() user: RequestUser) {
+  findAll(
+    @Query() query: ListKnowledgeArticlesQueryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.service.findAll(query, user);
   }
 
@@ -24,12 +37,19 @@ export class KnowledgeArticlesController {
   }
 
   @Post()
-  create(@Body() dto: CreateKnowledgeArticleDto, @CurrentUser() user: RequestUser) {
+  create(
+    @Body() dto: CreateKnowledgeArticleDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.service.create(dto, user);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateKnowledgeArticleDto, @CurrentUser() user: RequestUser) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateKnowledgeArticleDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.service.update(id, dto, user);
   }
 

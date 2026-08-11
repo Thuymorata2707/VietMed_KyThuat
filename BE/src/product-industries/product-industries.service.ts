@@ -1,5 +1,14 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { BusinessLineStatus, MachineProductCategory, Prisma } from '@prisma/client';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  BusinessLineStatus,
+  MachineProductCategory,
+  Prisma,
+} from '@prisma/client';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
@@ -33,7 +42,9 @@ export class ProductIndustriesService {
               name: line.name.trim(),
               status: BusinessLineStatus.ACTIVE,
               expertiseGroup: dto.expertiseGroup,
-              productCategory: this.normalizeProductCategory(line.productCategory),
+              productCategory: this.normalizeProductCategory(
+                line.productCategory,
+              ),
               manufacturer: line.manufacturer?.trim() || null,
               countryOfOrigin: line.countryOfOrigin?.trim() || null,
             })),
@@ -52,10 +63,7 @@ export class ProductIndustriesService {
     const search = query.search?.trim();
     const where: Prisma.ProductIndustryWhereInput = search
       ? {
-          OR: [
-            { code: { contains: search,  } },
-            { name: { contains: search,  } },
-          ],
+          OR: [{ code: { contains: search } }, { name: { contains: search } }],
         }
       : {};
 
@@ -70,7 +78,10 @@ export class ProductIndustriesService {
       this.prisma.productIndustry.count({ where }),
     ]);
 
-    return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return {
+      data,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findOne(id: string) {
@@ -84,7 +95,7 @@ export class ProductIndustriesService {
 
   async update(id: string, dto: UpdateProductIndustryDto, actor?: RequestUser) {
     assertPermission(actor, PERMISSIONS.MASTER_DATA_WRITE);
-    const current = await this.findOne(id);
+    await this.findOne(id);
     if (dto.code) await this.ensureCodeAvailable(dto.code, id);
 
     return this.prisma.productIndustry.update({
@@ -93,7 +104,10 @@ export class ProductIndustriesService {
         code: dto.code ? this.normalizeCode(dto.code) : undefined,
         name: dto.name?.trim(),
         expertiseGroup: dto.expertiseGroup,
-        description: dto.description === undefined ? undefined : dto.description?.trim() || null,
+        description:
+          dto.description === undefined
+            ? undefined
+            : dto.description?.trim() || null,
         status: dto.status,
         sortOrder: dto.sortOrder,
       },
@@ -105,7 +119,9 @@ export class ProductIndustriesService {
     assertPermission(actor, PERMISSIONS.MASTER_DATA_WRITE);
     const industry = await this.findOne(id);
     if (industry.businessLines.length > 0) {
-      throw new BadRequestException('Cannot delete product industry with products');
+      throw new BadRequestException(
+        'Cannot delete product industry with products',
+      );
     }
     await this.prisma.productIndustry.delete({ where: { id } });
     return { deleted: true };
@@ -118,15 +134,26 @@ export class ProductIndustriesService {
   }
 
   private async ensureCodeAvailable(code: string, currentId?: string) {
-    const existing = await this.prisma.productIndustry.findUnique({ where: { code: this.normalizeCode(code) } });
-    if (existing && existing.id !== currentId) throw new ConflictException('Product industry code already exists');
+    const existing = await this.prisma.productIndustry.findUnique({
+      where: { code: this.normalizeCode(code) },
+    });
+    if (existing && existing.id !== currentId)
+      throw new ConflictException('Product industry code already exists');
   }
 
-  private async ensureBusinessLineCodesAvailable(lines: Array<{ code: string }>) {
-    const codes = lines.map((line) => this.normalizeCode(line.code)).filter(Boolean);
-    const duplicatedCode = codes.find((code, index) => codes.indexOf(code) !== index);
+  private async ensureBusinessLineCodesAvailable(
+    lines: Array<{ code: string }>,
+  ) {
+    const codes = lines
+      .map((line) => this.normalizeCode(line.code))
+      .filter(Boolean);
+    const duplicatedCode = codes.find(
+      (code, index) => codes.indexOf(code) !== index,
+    );
     if (duplicatedCode) {
-      throw new ConflictException(`Business line code ${duplicatedCode} is duplicated`);
+      throw new ConflictException(
+        `Business line code ${duplicatedCode} is duplicated`,
+      );
     }
     if (!codes.length) return;
 
@@ -135,7 +162,9 @@ export class ProductIndustriesService {
       select: { code: true },
     });
     if (existing.length) {
-      throw new ConflictException(`Business line code ${existing[0].code} already exists`);
+      throw new ConflictException(
+        `Business line code ${existing[0].code} already exists`,
+      );
     }
   }
 
@@ -146,7 +175,11 @@ export class ProductIndustriesService {
   private normalizeProductCategory(value?: string | null) {
     const normalized = value?.trim().toUpperCase();
     if (!normalized) return MachineProductCategory.OTHER;
-    if (Object.values(MachineProductCategory).includes(normalized as MachineProductCategory)) {
+    if (
+      Object.values(MachineProductCategory).includes(
+        normalized as MachineProductCategory,
+      )
+    ) {
       return normalized as MachineProductCategory;
     }
     return MachineProductCategory.OTHER;

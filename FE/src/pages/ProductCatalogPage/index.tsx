@@ -307,7 +307,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
               <Link to="/technical-machines" className="block cursor-pointer rounded-[18px] transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(24,24,27,0.08)]">
                 <IndustryStockCard icon={<Boxes size={18} />} label="Tổng máy" value={catalogTotals.machines} subLabel={`${catalogTotals.inStock} còn kho`} />
               </Link>
-              <IndustryStockCard icon={<Layers3 size={18} />} label="Model" value={catalogTotals.models} subLabel={`${catalogTotals.businessLines} dòng`} />
+              <IndustryStockCard icon={<Layers3 size={18} />} label="Model" value={catalogTotals.models} subLabel={`${catalogTotals.businessLines} nhóm sản phẩm`} />
               <IndustryStockCard icon={<BarChart3 size={18} />} label="Đang xem" value={visibleModels.length} subLabel="model sau lọc" />
             </div>
             <IndustryOverviewRail items={overviewIndustries} />
@@ -591,7 +591,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             compactPayload({
               machineModelId: model.id,
               serialNumber: row.serialNumber,
-              machineCode: row.machineCode,
+              machineCode: undefined,
               name: row.name || machineDefaultName(model),
               manufacturingDate: currentForm.manufacturingDate,
               warehouseImportDate: currentForm.warehouseImportDate,
@@ -780,7 +780,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                 </div>
               </div>
               <span className="rounded-full bg-[#f8fafc] px-3 py-1 text-xs font-semibold text-[#64748b]">
-                {machineRows.length} dòng hợp lệ
+                {machineRows.length} máy hợp lệ
               </span>
             </div>
             <div className="grid min-w-0 gap-4">
@@ -945,10 +945,10 @@ function ProductMachineRowsEditor({
               <label className="grid gap-2 text-sm font-semibold text-[#334155]">
                 Mã máy
                 <input
-                  className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-                  onChange={(event) => updateRow(index, { machineCode: event.target.value })}
-                  placeholder="Tự sinh nếu trống"
-                  value={row.machineCode}
+                  className="h-11 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] px-3 text-[#64748b] outline-none transition placeholder:text-[#94a3b8]"
+                  disabled
+                  placeholder="Tự sinh khi lưu"
+                  value={row.machineCode || 'Tự sinh khi lưu'}
                 />
               </label>
               <label className="grid gap-2 text-sm font-semibold text-[#334155]">

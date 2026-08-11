@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -16,7 +26,10 @@ export class ProductIndustriesController {
 
   @Roles('admin')
   @Post()
-  create(@Body() dto: CreateProductIndustryDto, @CurrentUser() user: RequestUser) {
+  create(
+    @Body() dto: CreateProductIndustryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.service.create(dto, user);
   }
 

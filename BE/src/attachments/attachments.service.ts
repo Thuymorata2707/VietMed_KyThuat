@@ -7,6 +7,16 @@ import { AttachmentType, Prisma } from '@prisma/client';
 import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import {
+  customerAccessWhere,
+  installationAccessWhere,
+  inventoryMovementAccessWhere,
+  isAdmin,
+  machineAccessWhere,
+  maintenanceAccessWhere,
+  repairAccessWhere,
+  userAccessWhere,
+} from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
@@ -67,7 +77,7 @@ export class AttachmentsService {
   ) {
     assertPermission(actor, PERMISSIONS.ATTACHMENT_CREATE);
     this.validateUploadFile(file);
-    await this.ensureEntityExists(dto.entityType, dto.entityId);
+    await this.ensureEntityExists(dto.entityType, dto.entityId, actor);
 
     const attachment = await this.prisma.$transaction(async (tx) => {
       const created = await tx.attachment.create({
@@ -120,7 +130,11 @@ export class AttachmentsService {
     assertPermission(user, PERMISSIONS.ATTACHMENT_READ);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const where = this.buildFindAllWhere(query);
+    const where = this.buildFindAllWhere(query, user);
+
+    if (query.entityType && query.entityId) {
+      await this.ensureEntityExists(query.entityType, query.entityId, user);
+    }
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.attachment.findMany({
@@ -156,6 +170,11 @@ export class AttachmentsService {
     if (!attachment) {
       throw new NotFoundException('Attachment not found');
     }
+    await this.ensureEntityExists(
+      attachment.entityType,
+      attachment.entityId,
+      user,
+    );
 
     return this.withoutFileData(attachment);
   }
@@ -172,6 +191,11 @@ export class AttachmentsService {
     if (!attachment || (!attachment.fileData && !existsSync(attachment.path))) {
       throw new NotFoundException('Attachment file not found');
     }
+    await this.ensureEntityExists(
+      attachment.entityType,
+      attachment.entityId,
+      user,
+    );
 
     return attachment;
   }
@@ -221,6 +245,7 @@ export class AttachmentsService {
 
   private buildFindAllWhere(
     query: ListAttachmentsQueryDto,
+    user?: RequestUser,
   ): Prisma.AttachmentWhereInput {
     const search = query.search?.trim();
 
@@ -229,6 +254,10 @@ export class AttachmentsService {
       entityType: query.entityType,
       entityId: query.entityId,
       type: query.type,
+      uploadedById:
+        (!query.entityType || !query.entityId) && user && !isAdmin(user)
+          ? user.id
+          : undefined,
       OR: search
         ? [
             { originalName: { contains: search } },
@@ -239,52 +268,68 @@ export class AttachmentsService {
     };
   }
 
-  private async ensureEntityExists(entityType: string, entityId: string) {
+  private async ensureEntityExists(
+    entityType: string,
+    entityId: string,
+    user?: RequestUser,
+  ) {
     if (!ALLOWED_ENTITY_TYPES.includes(entityType as never)) {
       throw new BadRequestException(`Unsupported entityType: ${entityType}`);
     }
 
-    const exists = await this.findEntity(entityType, entityId);
+    const exists = await this.findEntity(entityType, entityId, user);
 
     if (!exists) {
       throw new BadRequestException(`${entityType} does not exist`);
     }
   }
 
-  private findEntity(entityType: string, entityId: string) {
+  private findEntity(entityType: string, entityId: string, user?: RequestUser) {
     switch (entityType) {
       case 'Machine':
-        return this.prisma.machine.findUnique({ where: { id: entityId } });
+        return this.prisma.machine.findFirst({
+          where: { AND: [{ id: entityId }, machineAccessWhere(user)] },
+        });
       case 'MachineModel':
         return this.prisma.machineModel.findUnique({ where: { id: entityId } });
       case 'Repair':
-        return this.prisma.repair.findUnique({ where: { id: entityId } });
+        return this.prisma.repair.findFirst({
+          where: { AND: [{ id: entityId }, repairAccessWhere(user)] },
+        });
       case 'Maintenance':
-        return this.prisma.maintenance.findUnique({ where: { id: entityId } });
+        return this.prisma.maintenance.findFirst({
+          where: { AND: [{ id: entityId }, maintenanceAccessWhere(user)] },
+        });
       case 'Customer':
-        return this.prisma.customer.findUnique({ where: { id: entityId } });
+        return this.prisma.customer.findFirst({
+          where: { AND: [{ id: entityId }, customerAccessWhere(user)] },
+        });
       case 'EngineerProfile':
-        return this.prisma.engineerProfile.findUnique({
-          where: { id: entityId },
+        return this.prisma.engineerProfile.findFirst({
+          where: { id: entityId, user: userAccessWhere(user) },
         });
       case 'MachineInventoryMovement':
-        return this.prisma.machineInventoryMovement.findUnique({
-          where: { id: entityId },
+        return this.prisma.machineInventoryMovement.findFirst({
+          where: {
+            AND: [{ id: entityId }, inventoryMovementAccessWhere(user)],
+          },
         });
       case 'MachineInstallation':
-        return this.prisma.machineInstallation.findUnique({
-          where: { id: entityId },
+        return this.prisma.machineInstallation.findFirst({
+          where: { AND: [{ id: entityId }, installationAccessWhere(user)] },
         });
       case 'WarrantyCard':
-        return this.prisma.warrantyCard.findUnique({
-          where: { id: entityId },
+        return this.prisma.warrantyCard.findFirst({
+          where: { id: entityId, machine: machineAccessWhere(user) },
         });
       case 'BusinessLine':
         return this.prisma.businessLine.findUnique({
           where: { id: entityId },
         });
       case 'User':
-        return this.prisma.user.findUnique({ where: { id: entityId } });
+        return this.prisma.user.findFirst({
+          where: { AND: [{ id: entityId }, userAccessWhere(user)] },
+        });
       default:
         return null;
     }
@@ -304,7 +349,8 @@ export class AttachmentsService {
   }
 
   private withoutFileData<T extends { fileData?: unknown }>(attachment: T) {
-    const { fileData: _fileData, ...rest } = attachment;
+    const rest = { ...attachment };
+    delete rest.fileData;
     return rest;
   }
 

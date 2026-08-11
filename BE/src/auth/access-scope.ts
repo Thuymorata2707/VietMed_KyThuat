@@ -14,7 +14,9 @@ export function isEngineer(user?: RequestUser): boolean {
   return normalizeRoleName(user?.roleName) === 'engineer';
 }
 
-export function machineAccessWhere(user?: RequestUser): Prisma.MachineWhereInput {
+export function machineAccessWhere(
+  user?: RequestUser,
+): Prisma.MachineWhereInput {
   if (!user) {
     return {};
   }
@@ -28,7 +30,9 @@ export function machineAccessWhere(user?: RequestUser): Prisma.MachineWhereInput
         { primaryEngineer: { regionId: user.regionId } },
         { repairs: { some: { engineer: { regionId: user.regionId } } } },
         { maintenances: { some: { engineer: { regionId: user.regionId } } } },
-        { installations: { some: { installedBy: { regionId: user.regionId } } } },
+        {
+          installations: { some: { installedBy: { regionId: user.regionId } } },
+        },
         { demoLoans: { some: { engineer: { regionId: user.regionId } } } },
       ],
     };
@@ -235,10 +239,7 @@ export function inventoryMovementAccessWhere(
 
   if (isEngineer(user)) {
     return {
-      OR: [
-        { createdById: user.id },
-        { machine: machineAccessWhere(user) },
-      ],
+      OR: [{ createdById: user.id }, { machine: machineAccessWhere(user) }],
     };
   }
 

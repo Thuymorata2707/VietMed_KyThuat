@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -15,7 +25,10 @@ export class DemoLoansController {
   constructor(private readonly service: DemoLoansService) {}
 
   @Get()
-  findAll(@Query() query: ListDemoLoansQueryDto, @CurrentUser() user: RequestUser) {
+  findAll(
+    @Query() query: ListDemoLoansQueryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.service.findAll(query, user);
   }
 
@@ -35,17 +48,29 @@ export class DemoLoansController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateDemoLoanDto, @CurrentUser() user: RequestUser) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateDemoLoanDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.service.update(id, dto, user);
   }
 
   @Post(':id/handover')
-  handOver(@Param('id') id: string, @Body() dto: CompleteDemoLoanDto, @CurrentUser() user: RequestUser) {
+  handOver(
+    @Param('id') id: string,
+    @Body() dto: CompleteDemoLoanDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.service.handOver(id, dto, user);
   }
 
   @Post(':id/return')
-  returnLoan(@Param('id') id: string, @Body() dto: CompleteDemoLoanDto, @CurrentUser() user: RequestUser) {
+  returnLoan(
+    @Param('id') id: string,
+    @Body() dto: CompleteDemoLoanDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.service.returnLoan(id, dto, user);
   }
 

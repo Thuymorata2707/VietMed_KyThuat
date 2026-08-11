@@ -320,13 +320,13 @@ export type ComponentAccessoryOption = {
   code?: string | null;
   name: string;
   requiresSerial?: boolean | null;
+  machineModel?: {
+    code?: string | null;
+    name?: string | null;
+    displayName?: string | null;
+  } | null;
   component?: {
     name?: string | null;
-    machineModel?: {
-      code?: string | null;
-      name?: string | null;
-      displayName?: string | null;
-    } | null;
   } | null;
 };
 

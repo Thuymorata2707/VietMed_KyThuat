@@ -13,14 +13,27 @@ export class AppConfigService {
     'JWT_EXPIRES_IN',
   );
   readonly corsOrigins = this.readCorsOrigins();
+  readonly enableSwagger = this.readBoolean(
+    process.env.ENABLE_SWAGGER,
+    !this.isProduction(),
+  );
 
   validate() {
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL is required');
     }
 
-    if (this.isProduction() && this.jwtSecret === DEFAULT_JWT_SECRET) {
-      throw new Error('JWT_SECRET is required in production');
+    if (
+      this.isProduction() &&
+      (this.jwtSecret === DEFAULT_JWT_SECRET ||
+        this.jwtSecret === 'change-me-in-production' ||
+        this.jwtSecret.length < 32)
+    ) {
+      throw new Error('JWT_SECRET must be set to a strong value in production');
+    }
+
+    if (this.isProduction() && !process.env.CORS_ORIGINS?.trim()) {
+      throw new Error('CORS_ORIGINS is required in production');
     }
   }
 
@@ -75,5 +88,13 @@ export class AppConfigService {
     }
 
     return parsed;
+  }
+
+  private readBoolean(value: string | undefined, fallback: boolean): boolean {
+    if (value === undefined) {
+      return fallback;
+    }
+
+    return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
   }
 }

@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DailyWorkStatus, DailyWorkType, WeeklyReportStatus } from '@prisma/client';
+import {
+  DailyWorkStatus,
+  DailyWorkType,
+  WeeklyReportStatus,
+} from '@prisma/client';
 import { isAdmin, isEngineer, userAccessWhere } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -45,109 +49,112 @@ export class WeeklyReportsService {
     const targetUserId = this.resolveTargetUserId(user, userId);
     await this.ensureUserExists(targetUserId, user);
     const startDate = this.parseDate(from || this.currentWeekStart(), 'from');
-    const endDate = this.endOfDay(this.parseDate(to || from || this.currentWeekStart(), 'to'));
+    const endDate = this.endOfDay(
+      this.parseDate(to || from || this.currentWeekStart(), 'to'),
+    );
 
     if (endDate < startDate) {
       throw new BadRequestException('to must be after from');
     }
 
-    const [engineer, installations, repairs, maintenances, weeklyReports] = await Promise.all([
-      this.prisma.user.findUnique({
-        where: { id: targetUserId },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          engineerProfile: {
-            select: {
-              employeeCode: true,
-              position: true,
-              department: true,
-              expertiseGroup: true,
+    const [engineer, installations, repairs, maintenances, weeklyReports] =
+      await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: targetUserId },
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            engineerProfile: {
+              select: {
+                employeeCode: true,
+                position: true,
+                department: true,
+                expertiseGroup: true,
+              },
             },
           },
-        },
-      }),
-      this.prisma.machineInstallation.findMany({
-        where: {
-          installedById: targetUserId,
-          status: 'INSTALLED',
-          installedAt: { gte: startDate, lte: endDate },
-        },
-        include: {
-          customer: true,
-          machine: true,
-          businessLine: true,
-          plannedMachineModel: true,
-        },
-        orderBy: { installedAt: 'asc' },
-      }),
-      this.prisma.repair.findMany({
-        where: {
-          engineerId: targetUserId,
-          completedAt: { gte: startDate, lte: endDate },
-        },
-        include: {
-          machine: {
-            include: {
-              customer: true,
-              businessLine: true,
+        }),
+        this.prisma.machineInstallation.findMany({
+          where: {
+            installedById: targetUserId,
+            status: 'INSTALLED',
+            installedAt: { gte: startDate, lte: endDate },
+          },
+          include: {
+            customer: true,
+            machine: true,
+            businessLine: true,
+            plannedMachineModel: true,
+          },
+          orderBy: { installedAt: 'asc' },
+        }),
+        this.prisma.repair.findMany({
+          where: {
+            engineerId: targetUserId,
+            completedAt: { gte: startDate, lte: endDate },
+          },
+          include: {
+            machine: {
+              include: {
+                customer: true,
+                businessLine: true,
+              },
             },
           },
-        },
-        orderBy: { completedAt: 'asc' },
-      }),
-      this.prisma.maintenance.findMany({
-        where: {
-          engineerId: targetUserId,
-          completedAt: { gte: startDate, lte: endDate },
-        },
-        include: {
-          machine: {
-            include: {
-              customer: true,
-              businessLine: true,
+          orderBy: { completedAt: 'asc' },
+        }),
+        this.prisma.maintenance.findMany({
+          where: {
+            engineerId: targetUserId,
+            completedAt: { gte: startDate, lte: endDate },
+          },
+          include: {
+            machine: {
+              include: {
+                customer: true,
+                businessLine: true,
+              },
             },
           },
-        },
-        orderBy: { completedAt: 'asc' },
-      }),
-      this.prisma.weeklyReport.findMany({
-        where: {
-          userId: targetUserId,
-          rows: {
-            some: {
-              workDate: { gte: startDate, lte: endDate },
+          orderBy: { completedAt: 'asc' },
+        }),
+        this.prisma.weeklyReport.findMany({
+          where: {
+            userId: targetUserId,
+            rows: {
+              some: {
+                workDate: { gte: startDate, lte: endDate },
+              },
             },
           },
-        },
-        select: {
-          id: true,
-          weekStart: true,
-          status: true,
-          note: true,
-          submittedAt: true,
-          rows: {
-            where: {
-              workDate: { gte: startDate, lte: endDate },
-            },
-            orderBy: [{ workDate: 'asc' }, { sortOrder: 'asc' }],
-            select: {
-              id: true,
-              workDate: true,
-              customer: true,
-              machine: true,
-              content: true,
-              result: true,
-              pending: true,
-              proposal: true,
-              sortOrder: true,
+          select: {
+            id: true,
+            weekStart: true,
+            status: true,
+            note: true,
+            submittedAt: true,
+            rows: {
+              where: {
+                workDate: { gte: startDate, lte: endDate },
+              },
+              orderBy: [{ workDate: 'asc' }, { sortOrder: 'asc' }],
+              select: {
+                id: true,
+                workDate: true,
+                customer: true,
+                machine: true,
+                content: true,
+                result: true,
+                pending: true,
+                proposal: true,
+                sortOrder: true,
+              },
             },
           },
-        },
-        orderBy: { weekStart: 'asc' },
-      }),
-    ]);
+          orderBy: { weekStart: 'asc' },
+        }),
+      ]);
 
     const activities = [
       ...installations.map((item) => ({
@@ -211,18 +218,21 @@ export class WeeklyReportsService {
       })),
     ].sort((left, right) => left.date.getTime() - right.date.getTime());
 
-    const customerMap = new Map<string, {
-      id: string;
-      code?: string | null;
-      name: string;
-      status?: string | null;
-      province?: string | null;
-      phone?: string | null;
-      installationCount: number;
-      repairCount: number;
-      maintenanceCount: number;
-      machineIds: Set<string>;
-    }>();
+    const customerMap = new Map<
+      string,
+      {
+        id: string;
+        code?: string | null;
+        name: string;
+        status?: string | null;
+        province?: string | null;
+        phone?: string | null;
+        installationCount: number;
+        repairCount: number;
+        maintenanceCount: number;
+        machineIds: Set<string>;
+      }
+    >();
 
     for (const activity of activities) {
       const key = activity.customer.id || activity.customer.name || 'unknown';
@@ -297,7 +307,10 @@ export class WeeklyReportsService {
     this.assertCanUseWeeklyReports(user);
     const targetUserId = this.resolveTargetUserId(user, userId);
     await this.ensureUserExists(targetUserId, user);
-    const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
+    const parsedWeekStart = this.parseDate(
+      weekStart || this.currentWeekStart(),
+      'weekStart',
+    );
 
     return this.prisma.weeklyReport.findUnique({
       where: {
@@ -322,14 +335,19 @@ export class WeeklyReportsService {
     this.assertCanUseWeeklyReports(user);
     const targetUserId = this.resolveTargetUserId(user, userId);
     await this.ensureUserExists(targetUserId, user);
-    const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
+    const parsedWeekStart = this.parseDate(
+      weekStart || this.currentWeekStart(),
+      'weekStart',
+    );
     const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 5));
 
     const notes = await this.prisma.dailyWorkNote.findMany({
       where: {
         userId: targetUserId,
         workDate: { gte: parsedWeekStart, lte: weekEnd },
-        status: { notIn: [DailyWorkStatus.REJECTED, DailyWorkStatus.CANCELLED] },
+        status: {
+          notIn: [DailyWorkStatus.REJECTED, DailyWorkStatus.CANCELLED],
+        },
       },
       orderBy: [
         { workDate: 'asc' },
@@ -387,7 +405,10 @@ export class WeeklyReportsService {
     this.assertCanUseWeeklyReports(user);
     const targetUserId = this.resolveTargetUserId(user, userId);
     await this.ensureUserExists(targetUserId, user);
-    const parsedWeekStart = this.parseDate(weekStart || this.currentWeekStart(), 'weekStart');
+    const parsedWeekStart = this.parseDate(
+      weekStart || this.currentWeekStart(),
+      'weekStart',
+    );
     const weekEnd = this.endOfDay(this.addDays(parsedWeekStart, 5));
 
     const [installations, repairs, maintenances] = await Promise.all([
@@ -465,17 +486,25 @@ export class WeeklyReportsService {
           machine: this.formatMachineForReport(machine),
           content: `Lắp đặt ${machine.modelName || machine.name || 'thiết bị'} (${item.code})`,
           result: item.note || 'Đã lắp đặt và bàn giao.',
-          pending: item.reviewStatus === 'NEEDS_REVISION' ? item.reviewNote || 'Cần bổ sung hồ sơ lắp đặt.' : '',
-          proposal: item.warrantyEndDate ? `Theo dõi bảo hành đến ${this.formatDate(item.warrantyEndDate)}.` : '',
+          pending:
+            item.reviewStatus === 'NEEDS_REVISION'
+              ? item.reviewNote || 'Cần bổ sung hồ sơ lắp đặt.'
+              : '',
+          proposal: item.warrantyEndDate
+            ? `Theo dõi bảo hành đến ${this.formatDate(item.warrantyEndDate)}.`
+            : '',
           sortOrder: index,
         };
       }),
       ...repairs.map((item, index) => {
-        const customer = this.customerSummary(item.customer ?? item.machine?.customer, {
-          name: item.representative || item.usingDepartment,
-          phone: item.contactPhone,
-          address: item.address,
-        });
+        const customer = this.customerSummary(
+          item.customer ?? item.machine?.customer,
+          {
+            name: item.representative || item.usingDepartment,
+            phone: item.contactPhone,
+            address: item.address,
+          },
+        );
         const machine = this.machineSummary(item.machine, {
           modelName: item.modelName,
           serialNumber: item.serialNumber,
@@ -489,18 +518,28 @@ export class WeeklyReportsService {
           customer: customer.name,
           machine: this.formatMachineForReport(machine),
           content: `Sửa chữa ${item.title} (${item.code})`,
-          result: item.resultNote || item.repairMethod || item.customerFeedback || 'Đã hoàn thành sửa chữa.',
-          pending: item.reviewStatus === 'NEEDS_REVISION' ? item.reviewNote || 'Cần bổ sung hồ sơ sửa chữa.' : '',
+          result:
+            item.resultNote ||
+            item.repairMethod ||
+            item.customerFeedback ||
+            'Đã hoàn thành sửa chữa.',
+          pending:
+            item.reviewStatus === 'NEEDS_REVISION'
+              ? item.reviewNote || 'Cần bổ sung hồ sơ sửa chữa.'
+              : '',
           proposal: item.customerFeedback || '',
           sortOrder: installations.length + index,
         };
       }),
       ...maintenances.map((item, index) => {
-        const customer = this.customerSummary(item.customer ?? item.machine?.customer, {
-          name: item.representative || item.usingDepartment,
-          phone: item.contactPhone,
-          address: item.address,
-        });
+        const customer = this.customerSummary(
+          item.customer ?? item.machine?.customer,
+          {
+            name: item.representative || item.usingDepartment,
+            phone: item.contactPhone,
+            address: item.address,
+          },
+        );
         const machine = this.machineSummary(item.machine, {
           modelName: item.modelName,
           serialNumber: item.serialNumber,
@@ -515,8 +554,13 @@ export class WeeklyReportsService {
           machine: this.formatMachineForReport(machine),
           content: `Bảo trì ${item.title} (${item.code})`,
           result: item.resultNote || 'Đã hoàn thành bảo trì.',
-          pending: item.reviewStatus === 'NEEDS_REVISION' ? item.reviewNote || 'Cần bổ sung hồ sơ bảo trì.' : '',
-          proposal: item.nextDueDate ? `Lịch bảo trì tiếp theo: ${this.formatDate(item.nextDueDate)}.` : '',
+          pending:
+            item.reviewStatus === 'NEEDS_REVISION'
+              ? item.reviewNote || 'Cần bổ sung hồ sơ bảo trì.'
+              : '',
+          proposal: item.nextDueDate
+            ? `Lịch bảo trì tiếp theo: ${this.formatDate(item.nextDueDate)}.`
+            : '',
           sortOrder: installations.length + repairs.length + index,
         };
       }),
@@ -654,7 +698,9 @@ export class WeeklyReportsService {
 
     const report = await this.findAccessibleReport(id, user);
     if (report.status !== WeeklyReportStatus.SUBMITTED) {
-      throw new BadRequestException('Only submitted weekly reports can be reviewed');
+      throw new BadRequestException(
+        'Only submitted weekly reports can be reviewed',
+      );
     }
 
     const updated = await this.prisma.weeklyReport.update({
@@ -704,7 +750,9 @@ export class WeeklyReportsService {
     }
 
     if (!isAdmin(user) && report.userId !== user.id) {
-      throw new ForbiddenException('You can only access your own weekly report');
+      throw new ForbiddenException(
+        'You can only access your own weekly report',
+      );
     }
     if (isAdmin(user)) {
       await this.ensureUserExists(report.userId, user);
@@ -715,7 +763,9 @@ export class WeeklyReportsService {
 
   private assertCanUseWeeklyReports(user: RequestUser) {
     if (!isAdmin(user) && !isEngineer(user)) {
-      throw new ForbiddenException('You do not have permission for this action');
+      throw new ForbiddenException(
+        'You do not have permission for this action',
+      );
     }
   }
 
@@ -800,7 +850,9 @@ export class WeeklyReportsService {
     type: DailyWorkType;
     status: DailyWorkStatus;
   }) {
-    const timeRange = [note.startTime, note.endTime].filter(Boolean).join(' - ');
+    const timeRange = [note.startTime, note.endTime]
+      .filter(Boolean)
+      .join(' - ');
     const prefix = dailyWorkTypeLabels[note.type] || 'Công việc';
     const statusSuffix =
       note.status === DailyWorkStatus.PENDING ? ' (chờ duyệt)' : '';
@@ -838,8 +890,10 @@ export class WeeklyReportsService {
         'Chưa rõ khách hàng',
       status: customer?.status ?? null,
       province: customer?.province ?? null,
-      phone: customer?.contactPhone ?? customer?.phone ?? fallback.phone ?? null,
-      address: customer?.fullAddress ?? customer?.address ?? fallback.address ?? null,
+      phone:
+        customer?.contactPhone ?? customer?.phone ?? fallback.phone ?? null,
+      address:
+        customer?.fullAddress ?? customer?.address ?? fallback.address ?? null,
     };
   }
 
@@ -866,7 +920,8 @@ export class WeeklyReportsService {
       serialNumber: machine?.serialNumber ?? fallback.serialNumber ?? null,
       modelName: machine?.modelName ?? fallback.modelName ?? null,
       name: machine?.name ?? fallback.name ?? null,
-      productCategory: machine?.productCategory ?? fallback.productCategory ?? null,
+      productCategory:
+        machine?.productCategory ?? fallback.productCategory ?? null,
       businessLine: machine?.businessLine?.name ?? null,
     };
   }

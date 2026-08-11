@@ -124,7 +124,7 @@ const emptyForm: ArticleForm = {
   stepsText: '',
   checklistText: '',
   note: '',
-  sortOrder: '0',
+  sortOrder: '',
 };
 
 export function KnowledgeBasePage({ user }: { user: ApiUser }) {
@@ -415,8 +415,14 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
               <Field label="Nhóm phụ trách">
                 <input className="form-input" onChange={(event) => setForm({ ...form, ownerTeam: event.target.value })} value={form.ownerTeam} />
               </Field>
-              <Field label="Thứ tự">
-                <input className="form-input" onChange={(event) => setForm({ ...form, sortOrder: event.target.value })} type="number" value={form.sortOrder} />
+              <Field label="Ưu tiên hiển thị (tùy chọn)">
+                <input
+                  className="form-input"
+                  onChange={(event) => setForm({ ...form, sortOrder: event.target.value })}
+                  placeholder="Để trống nếu không cần sắp xếp riêng"
+                  type="number"
+                  value={form.sortOrder}
+                />
               </Field>
               <Field label="Chủ đề">
                 <select className="form-input" onChange={(event) => setForm({ ...form, category: event.target.value as KnowledgeArticleCategory })} value={form.category}>

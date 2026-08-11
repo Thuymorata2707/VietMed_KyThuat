@@ -32,7 +32,10 @@ export class CustomersController {
   }
 
   @Get()
-  findAll(@Query() query: ListCustomersQueryDto, @CurrentUser() user: RequestUser) {
+  findAll(
+    @Query() query: ListCustomersQueryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.customersService.findAll(query, user);
   }
 

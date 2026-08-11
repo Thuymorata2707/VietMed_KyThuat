@@ -33,7 +33,10 @@ export class DailyWorkNotesController {
   }
 
   @Post()
-  create(@Body() dto: CreateDailyWorkNoteDto, @CurrentUser() user: RequestUser) {
+  create(
+    @Body() dto: CreateDailyWorkNoteDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.dailyWorkNotesService.create(dto, user);
   }
 

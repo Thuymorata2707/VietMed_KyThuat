@@ -21,11 +21,12 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
+@Roles('admin', 'manager', 'engineer')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Roles('admin')
   @Post()
   create(@Body() dto: CreateUserDto, @CurrentUser() user: RequestUser) {
     return this.usersService.create(dto, user);
@@ -41,6 +42,7 @@ export class UsersController {
     return this.usersService.findOne(id, user);
   }
 
+  @Roles('admin')
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -50,16 +52,19 @@ export class UsersController {
     return this.usersService.update(id, dto, user);
   }
 
+  @Roles('admin')
   @Patch(':id/activate')
   activate(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.usersService.setStatus(id, UserStatus.ACTIVE, user);
   }
 
+  @Roles('admin')
   @Patch(':id/deactivate')
   deactivate(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.usersService.setStatus(id, UserStatus.INACTIVE, user);
   }
 
+  @Roles('admin')
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.usersService.remove(id, user);

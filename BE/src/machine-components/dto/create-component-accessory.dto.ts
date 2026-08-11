@@ -1,15 +1,27 @@
 import { BusinessLineStatus } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class CreateComponentAccessoryDto {
   @IsString()
   @IsNotEmpty()
-  componentId!: string;
+  machineModelId!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  code!: string;
+  componentId?: string;
+
+  @IsOptional()
+  @IsString()
+  code?: string;
 
   @IsString()
   @IsNotEmpty()

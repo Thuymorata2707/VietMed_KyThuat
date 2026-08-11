@@ -56,7 +56,7 @@ export function WeeklyReportQuickCard({ loading, report }: { loading: boolean; r
 
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg bg-[#fafafa] p-3">
-          <span className="block text-xs font-medium text-[#666666]">Dòng báo cáo</span>
+          <span className="block text-xs font-medium text-[#666666]">Mục báo cáo</span>
           <strong className="mt-1 block text-2xl leading-none text-[#1f1f1f]">{loading ? '-' : rowCount}</strong>
         </div>
         <div className="rounded-lg bg-[#fafafa] p-3">
@@ -70,7 +70,7 @@ export function WeeklyReportQuickCard({ loading, report }: { loading: boolean; r
           <FileText size={16} />
           Mở báo cáo tuần
         </Link>
-        <Link className="secondary-button justify-center" to="/my-reports">
+        <Link className="secondary-button justify-center" to="/engineer-performance">
           Xem báo cáo của tôi
         </Link>
       </div>

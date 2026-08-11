@@ -156,7 +156,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   const closedActivities = summary?.activities?.filter((activity) => ['COMPLETED', 'INSTALLED', 'APPROVED'].includes(activity.status)).length ?? 0;
   const unresolvedActivities = Math.max((summary?.activities.length ?? 0) - closedActivities, 0);
   const completionRate = summary?.activities.length ? Math.round((closedActivities / summary.activities.length) * 100) : 0;
-  const reportHomePath = isAdmin ? '/engineer-performance' : '/my-reports';
+  const reportHomePath = '/engineer-performance';
   const currentTechnicalReportHref = buildTechnicalReportHref(from, to, isAdmin ? engineerId : user.id, isAdmin, reportHomePath);
   const busiestWorkType = [...workMix].sort((left, right) => right.value - left.value)[0];
   const recentActivities = useMemo(
@@ -212,7 +212,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       <PageTitle
         eyebrow={isAdmin ? 'Báo cáo vận hành' : 'Báo cáo cá nhân'}
         title={isAdmin ? 'Hiệu suất kỹ sư' : 'Báo cáo của tôi'}
-        description={isAdmin ? 'Tải việc & chất lượng.' : 'Việc làm trong kỳ.'}
+        description={isAdmin ? 'Đào sâu một kỹ sư: tải việc, báo cáo tuần & chất lượng.' : 'Việc làm trong kỳ.'}
       />
 
       {error ? <Notice message={error} /> : null}
@@ -345,7 +345,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
       <section className="overflow-hidden rounded-[22px] border border-[#e5e5e5] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.045)]">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
-          <PanelHeader eyebrow="Nhật ký gần đây" title="Công việc trong kỳ" subtitle={`${summary?.activities.length ?? 0} đầu việc, hiển thị 10 dòng mới nhất`} />
+          <PanelHeader eyebrow="Nhật ký gần đây" title="Công việc trong kỳ" subtitle={`${summary?.activities.length ?? 0} đầu việc, hiển thị 10 mục mới nhất`} />
           {currentTechnicalReportHref ? (
             <Link className="secondary-button" to={currentTechnicalReportHref}>
               <BarChart3 size={16} />

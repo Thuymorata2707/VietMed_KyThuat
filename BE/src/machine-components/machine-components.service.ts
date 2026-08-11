@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { BusinessLineStatus, Prisma } from '@prisma/client';
 import { PaginatedResult } from '../common/paginated-result.type';
+import { normalizeCodeSegment } from '../common/code-format';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateComponentAccessoryDto } from './dto/create-component-accessory.dto';
 import { CreateMachineComponentDto } from './dto/create-machine-component.dto';
@@ -135,13 +136,20 @@ export class MachineComponentsService {
   }
 
   async createAccessory(dto: CreateComponentAccessoryDto) {
-    await this.ensureComponentExists(dto.componentId);
-    await this.ensureAccessoryCodeAvailable(dto.componentId, dto.code);
+    const componentId = this.normalizeOptionalId(dto.componentId);
+    const code =
+      dto.code?.trim() ||
+      (await this.generateAccessoryCode(dto.machineModelId));
+
+    await this.ensureMachineModelExists(dto.machineModelId);
+    await this.ensureComponentBelongsToModel(dto.machineModelId, componentId);
+    await this.ensureAccessoryCodeAvailable(dto.machineModelId, code);
 
     return this.prisma.componentAccessory.create({
       data: {
-        componentId: dto.componentId,
-        code: this.normalizeCode(dto.code),
+        machineModelId: dto.machineModelId,
+        componentId,
+        code: this.normalizeCode(code),
         name: dto.name.trim(),
         description: dto.description?.trim() || null,
         requiresSerial: dto.requiresSerial ?? true,
@@ -159,19 +167,18 @@ export class MachineComponentsService {
     const limit = query.limit ?? 100;
     const search = query.search?.trim();
     const where: Prisma.ComponentAccessoryWhereInput = {
-      componentId: query.componentId,
-      component: query.machineModelId
-        ? { machineModelId: query.machineModelId }
-        : undefined,
+      machineModelId:
+        this.normalizeOptionalId(query.machineModelId) ?? undefined,
+      componentId: this.normalizeOptionalId(query.componentId) ?? undefined,
       status: query.status,
       OR: search
         ? [
             { code: { contains: search } },
             { name: { contains: search } },
+            { machineModel: { code: { contains: search } } },
+            { machineModel: { name: { contains: search } } },
+            { machineModel: { displayName: { contains: search } } },
             { component: { name: { contains: search } } },
-            { component: { machineModel: { code: { contains: search } } } },
-            { component: { machineModel: { name: { contains: search } } } },
-            { component: { machineModel: { displayName: { contains: search } } } },
           ]
         : undefined,
     };
@@ -181,6 +188,7 @@ export class MachineComponentsService {
         where,
         include: this.accessoryInclude(),
         orderBy: [
+          { machineModel: { name: 'asc' } },
           { component: { name: 'asc' } },
           { sortOrder: 'asc' },
           { name: 'asc' },
@@ -210,20 +218,34 @@ export class MachineComponentsService {
 
   async updateAccessory(id: string, dto: UpdateComponentAccessoryDto) {
     const current = await this.findAccessory(id);
-    const componentId = dto.componentId ?? current.componentId;
-    if (dto.componentId) await this.ensureComponentExists(dto.componentId);
-    if (dto.code || dto.componentId)
-      await this.ensureAccessoryCodeAvailable(
-        componentId,
-        dto.code ?? current.code,
-        id,
+    const machineModelId = dto.machineModelId ?? current.machineModelId;
+    const componentId =
+      dto.componentId === undefined
+        ? undefined
+        : this.normalizeOptionalId(dto.componentId);
+    const nextCode =
+      dto.machineModelId && dto.machineModelId !== current.machineModelId
+        ? await this.generateAccessoryCode(dto.machineModelId)
+        : undefined;
+
+    if (dto.machineModelId) {
+      await this.ensureMachineModelExists(dto.machineModelId);
+      await this.ensureComponentBelongsToModel(
+        machineModelId,
+        componentId === undefined ? (current.componentId ?? null) : componentId,
       );
+    } else if (dto.componentId !== undefined) {
+      await this.ensureComponentBelongsToModel(machineModelId, componentId);
+    }
+    if (nextCode)
+      await this.ensureAccessoryCodeAvailable(machineModelId, nextCode, id);
 
     return this.prisma.componentAccessory.update({
       where: { id },
       data: {
-        componentId: dto.componentId,
-        code: dto.code ? this.normalizeCode(dto.code) : undefined,
+        machineModelId: dto.machineModelId,
+        componentId,
+        code: nextCode ? this.normalizeCode(nextCode) : undefined,
         name: dto.name?.trim(),
         description:
           dto.description === undefined
@@ -267,12 +289,21 @@ export class MachineComponentsService {
       throw new BadRequestException('Machine model does not exist');
   }
 
-  private async ensureComponentExists(id: string) {
+  private async ensureComponentBelongsToModel(
+    machineModelId: string,
+    componentId?: string | null,
+  ) {
+    if (!componentId) return;
     const component = await this.prisma.machineComponent.findUnique({
-      where: { id },
+      where: { id: componentId },
     });
     if (!component)
       throw new BadRequestException('Machine component does not exist');
+    if (component.machineModelId !== machineModelId) {
+      throw new BadRequestException(
+        'Component does not belong to the selected machine model',
+      );
+    }
   }
 
   private async ensureComponentCodeAvailable(
@@ -290,13 +321,16 @@ export class MachineComponentsService {
   }
 
   private async ensureAccessoryCodeAvailable(
-    componentId: string,
+    machineModelId: string,
     code: string,
     currentId?: string,
   ) {
     const accessory = await this.prisma.componentAccessory.findUnique({
       where: {
-        componentId_code: { componentId, code: this.normalizeCode(code) },
+        machineModelId_code: {
+          machineModelId,
+          code: this.normalizeCode(code),
+        },
       },
     });
     if (accessory && accessory.id !== currentId)
@@ -305,6 +339,39 @@ export class MachineComponentsService {
 
   private normalizeCode(code: string) {
     return code.toUpperCase().trim();
+  }
+
+  private async generateAccessoryCode(machineModelId: string) {
+    const machineModel = await this.prisma.machineModel.findUnique({
+      where: { id: machineModelId },
+      select: { code: true, name: true },
+    });
+    const prefix = `${normalizeCodeSegment(machineModel?.code || machineModel?.name, 'PK')}-PK`;
+    const latest = await this.prisma.componentAccessory.findFirst({
+      where: {
+        machineModelId,
+        code: {
+          startsWith: `${prefix}-`,
+        },
+      },
+      orderBy: {
+        code: 'desc',
+      },
+      select: {
+        code: true,
+      },
+    });
+    const latestNumber = latest?.code
+      ? Number(latest.code.slice(prefix.length + 1))
+      : 0;
+    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
+
+    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  private normalizeOptionalId(id?: string | null) {
+    const normalized = id?.trim();
+    return normalized || null;
   }
 
   private componentInclude() {
@@ -323,11 +390,8 @@ export class MachineComponentsService {
 
   private accessoryInclude() {
     return {
-      component: {
-        include: {
-          machineModel: { include: { businessLine: true } },
-        },
-      },
+      machineModel: { include: { businessLine: true } },
+      component: true,
       _count: {
         select: {
           machineAccessories: true,

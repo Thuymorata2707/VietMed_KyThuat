@@ -69,6 +69,33 @@ export type MachineHistory = {
   deviceName?: string | null;
   modelName?: string | null;
   serialNumber?: string | null;
+  workLogs?: WorkOperationLog[];
+  usedParts?: WorkOperationPart[];
+  checklistItems?: WorkOperationChecklist[];
+};
+
+export type WorkOperationLog = {
+  id?: string;
+  title?: string | null;
+  note?: string | null;
+  stepTime?: string | null;
+};
+
+export type WorkOperationPart = {
+  id?: string;
+  name?: string | null;
+  quantity?: string | number | null;
+  unit?: string | null;
+  serialNumber?: string | null;
+  status?: string | null;
+  note?: string | null;
+};
+
+export type WorkOperationChecklist = {
+  id?: string;
+  label?: string | null;
+  status?: string | null;
+  note?: string | null;
 };
 
 export type DirectMachineRef = {
@@ -140,12 +167,25 @@ export type TimelineItem = {
   id: string;
   kind: 'installation' | 'repair' | 'maintenance' | 'inventory';
   title: string;
+  code?: string | null;
+  description?: string | null;
   machine?: CustomerMachine;
   machineLabel?: string;
   date?: string | null;
   status?: string | null;
   note?: string | null;
   person?: string | null;
+  priority?: string | null;
+  type?: string | null;
+  reportedAt?: string | null;
+  scheduledDate?: string | null;
+  installedAt?: string | null;
+  completedAt?: string | null;
+  resultNote?: string | null;
+  warrantyEndDate?: string | null;
+  workLogs?: WorkOperationLog[];
+  usedParts?: WorkOperationPart[];
+  checklistItems?: WorkOperationChecklist[];
 };
 
 export type OpenTaskItem = TimelineItem & {

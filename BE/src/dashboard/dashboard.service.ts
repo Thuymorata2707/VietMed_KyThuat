@@ -4,9 +4,6 @@ import {
   customerAccessWhere,
   inventoryMovementAccessWhere,
   installationAccessWhere,
-  isAdmin,
-  isEngineer,
-  isManager,
   machineAccessWhere,
   maintenanceAccessWhere,
   repairAccessWhere,
@@ -358,8 +355,11 @@ export class DashboardService {
         engineerName: item.engineer?.fullName || item.engineer?.email || null,
         customerId: item.customerId || item.machine?.customerId || null,
         machineId: item.machineId,
-        productIndustryId: item.machine?.businessLine?.productIndustry?.id || null,
-        productIndustryName: item.machine?.businessLine?.productIndustry?.name || 'Chưa phân ngành',
+        productIndustryId:
+          item.machine?.businessLine?.productIndustry?.id || null,
+        productIndustryName:
+          item.machine?.businessLine?.productIndustry?.name ||
+          'Chưa phân ngành',
       })),
       ...maintenances.map((item) => ({
         id: item.id,
@@ -372,8 +372,11 @@ export class DashboardService {
         engineerName: item.engineer?.fullName || item.engineer?.email || null,
         customerId: item.customerId || item.machine?.customerId || null,
         machineId: item.machineId,
-        productIndustryId: item.machine?.businessLine?.productIndustry?.id || null,
-        productIndustryName: item.machine?.businessLine?.productIndustry?.name || 'Chưa phân ngành',
+        productIndustryId:
+          item.machine?.businessLine?.productIndustry?.id || null,
+        productIndustryName:
+          item.machine?.businessLine?.productIndustry?.name ||
+          'Chưa phân ngành',
       })),
       ...installations.map((item) => {
         const productIndustry =
@@ -399,13 +402,27 @@ export class DashboardService {
       }),
     ];
 
-    const customers = new Set(tasks.map((item) => item.customerId).filter(Boolean));
-    const machines = new Set(tasks.map((item) => item.machineId).filter(Boolean));
-    const completed = tasks.filter((item) => this.isCompletedTask(item.kind, item.status)).length;
-    const open = tasks.filter((item) => !this.isClosedTask(item.kind, item.status)).length;
-    const waitingReview = tasks.filter((item) => item.reviewStatus === 'PENDING').length;
-    const overdue = tasks.filter((item) => this.isOverdueTask(item.kind, item.status)).length;
-    const completionRate = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
+    const customers = new Set(
+      tasks.map((item) => item.customerId).filter(Boolean),
+    );
+    const machines = new Set(
+      tasks.map((item) => item.machineId).filter(Boolean),
+    );
+    const completed = tasks.filter((item) =>
+      this.isCompletedTask(item.kind, item.status),
+    ).length;
+    const open = tasks.filter(
+      (item) => !this.isClosedTask(item.kind, item.status),
+    ).length;
+    const waitingReview = tasks.filter(
+      (item) => item.reviewStatus === 'PENDING',
+    ).length;
+    const overdue = tasks.filter((item) =>
+      this.isOverdueTask(item.kind, item.status),
+    ).length;
+    const completionRate = tasks.length
+      ? Math.round((completed / tasks.length) * 100)
+      : 0;
     const typeCounts = {
       repair: tasks.filter((item) => item.kind === 'repair').length,
       maintenance: tasks.filter((item) => item.kind === 'maintenance').length,
@@ -447,6 +464,7 @@ export class DashboardService {
     const limit = Math.min(Math.max(Number(query.limit) || 25, 1), 100);
     const search = query.search?.trim();
     const businessLineId = query.businessLineId?.trim();
+    const productIndustryId = query.productIndustryId?.trim();
     const installState = query.installState?.trim();
     const accessScope = machineAccessWhere(user);
     const baseFilters: Prisma.MachineWhereInput[] = [];
@@ -454,17 +472,17 @@ export class DashboardService {
     if (search) {
       baseFilters.push({
         OR: [
-          { machineCode: { contains: search,  } },
-          { serialNumber: { contains: search,  } },
-          { name: { contains: search,  } },
-          { modelName: { contains: search,  } },
-          { manufacturer: { contains: search,  } },
+          { machineCode: { contains: search } },
+          { serialNumber: { contains: search } },
+          { name: { contains: search } },
+          { modelName: { contains: search } },
+          { manufacturer: { contains: search } },
           {
             customer: {
               OR: [
-                { name: { contains: search,  } },
-                { hospitalName: { contains: search,  } },
-                { customerCode: { contains: search,  } },
+                { name: { contains: search } },
+                { hospitalName: { contains: search } },
+                { customerCode: { contains: search } },
               ],
             },
           },
@@ -473,17 +491,15 @@ export class DashboardService {
               some: {
                 customer: {
                   OR: [
-                    { name: { contains: search,  } },
+                    { name: { contains: search } },
                     {
                       hospitalName: {
                         contains: search,
-                        
                       },
                     },
                     {
                       customerCode: {
                         contains: search,
-                        
                       },
                     },
                   ],
@@ -495,9 +511,9 @@ export class DashboardService {
             accessories: {
               some: {
                 OR: [
-                  { name: { contains: search,  } },
-                  { code: { contains: search,  } },
-                  { serialNumber: { contains: search,  } },
+                  { name: { contains: search } },
+                  { code: { contains: search } },
+                  { serialNumber: { contains: search } },
                 ],
               },
             },
@@ -524,6 +540,14 @@ export class DashboardService {
       });
     }
 
+    if (productIndustryId) {
+      baseFilters.push({
+        businessLine: {
+          productIndustryId,
+        },
+      });
+    }
+
     const filterWhere: Prisma.MachineWhereInput = {
       AND: [accessScope, ...baseFilters],
     };
@@ -539,150 +563,158 @@ export class DashboardService {
 
     const [total, filteredTotal, businessLineCounts, machines] =
       await Promise.all([
-      this.prisma.machine.count({ where: accessScope }),
-      this.prisma.machine.count({ where }),
-      this.prisma.machine.groupBy({
-        by: ['businessLineId'],
-        where: filterWhere,
-        _count: {
-          _all: true,
-        },
-      }),
-      this.prisma.machine.findMany({
-        where,
-        select: {
-          id: true,
-          machineCode: true,
-          serialNumber: true,
-          machineModelId: true,
-          modelName: true,
-          name: true,
-          manufacturer: true,
-          productCategory: true,
-          status: true,
-          inventoryStatus: true,
-          dataStatus: true,
-          createdSource: true,
-          installDate: true,
-          warrantyStartDate: true,
-          warrantyEndDate: true,
-          businessLine: {
-            select: {
-              id: true,
-              code: true,
-              name: true,
-              productCategory: true,
-            },
+        this.prisma.machine.count({ where: accessScope }),
+        this.prisma.machine.count({ where }),
+        this.prisma.machine.groupBy({
+          by: ['businessLineId'],
+          where: filterWhere,
+          _count: {
+            _all: true,
           },
-          customer: {
-            select: {
-              id: true,
-              customerCode: true,
-              name: true,
-              hospitalName: true,
-              phone: true,
-              contactPerson: true,
-              contactPhone: true,
-              province: true,
-              district: true,
-              address: true,
-              fullAddress: true,
-            },
-          },
-          installedBy: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-              phone: true,
-            },
-          },
-          primaryEngineer: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-              phone: true,
-            },
-          },
-          installations: {
-            select: {
-              id: true,
-              code: true,
-              status: true,
-              installedAt: true,
-              receiverInstallAddress: true,
-              receiverRepresentative: true,
-              receiverPhone: true,
-              customer: {
-                select: {
-                  id: true,
-                  customerCode: true,
-                  name: true,
-                  hospitalName: true,
-                  phone: true,
-                  contactPerson: true,
-                  contactPhone: true,
-                  province: true,
-                  district: true,
-                  address: true,
-                  fullAddress: true,
-                },
-              },
-              installedBy: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  email: true,
-                  phone: true,
-                },
-              },
-              warrantyCard: {
-                select: {
-                  id: true,
-                  code: true,
-                  status: true,
-                  startDate: true,
-                  endDate: true,
-                },
-              },
-            },
-            orderBy: {
-              installedAt: 'desc',
-            },
-            take: 1,
-          },
-          accessories: {
-            select: {
-              id: true,
-              code: true,
-              name: true,
-              serialNumber: true,
-              description: true,
-              note: true,
-              componentAccessory: {
-                select: {
-                  id: true,
-                  code: true,
-                  name: true,
-                  component: {
-                    select: {
-                      id: true,
-                      code: true,
-                      name: true,
-                    },
+        }),
+        this.prisma.machine.findMany({
+          where,
+          select: {
+            id: true,
+            machineCode: true,
+            serialNumber: true,
+            machineModelId: true,
+            modelName: true,
+            name: true,
+            manufacturer: true,
+            productCategory: true,
+            status: true,
+            inventoryStatus: true,
+            dataStatus: true,
+            createdSource: true,
+            installDate: true,
+            warrantyStartDate: true,
+            warrantyEndDate: true,
+            businessLine: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                productCategory: true,
+                productIndustry: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                    expertiseGroup: true,
                   },
                 },
               },
             },
-            orderBy: [{ name: 'asc' }, { serialNumber: 'asc' }],
+            customer: {
+              select: {
+                id: true,
+                customerCode: true,
+                name: true,
+                hospitalName: true,
+                phone: true,
+                contactPerson: true,
+                contactPhone: true,
+                province: true,
+                district: true,
+                address: true,
+                fullAddress: true,
+              },
+            },
+            installedBy: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+            primaryEngineer: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+            installations: {
+              select: {
+                id: true,
+                code: true,
+                status: true,
+                installedAt: true,
+                receiverInstallAddress: true,
+                receiverRepresentative: true,
+                receiverPhone: true,
+                customer: {
+                  select: {
+                    id: true,
+                    customerCode: true,
+                    name: true,
+                    hospitalName: true,
+                    phone: true,
+                    contactPerson: true,
+                    contactPhone: true,
+                    province: true,
+                    district: true,
+                    address: true,
+                    fullAddress: true,
+                  },
+                },
+                installedBy: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+                warrantyCard: {
+                  select: {
+                    id: true,
+                    code: true,
+                    status: true,
+                    startDate: true,
+                    endDate: true,
+                  },
+                },
+              },
+              orderBy: {
+                installedAt: 'desc',
+              },
+              take: 1,
+            },
+            accessories: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                serialNumber: true,
+                description: true,
+                note: true,
+                componentAccessory: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                    component: {
+                      select: {
+                        id: true,
+                        code: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+              orderBy: [{ name: 'asc' }, { serialNumber: 'asc' }],
+            },
           },
-        },
-        orderBy: [{ businessLine: { name: 'asc' } }, { serialNumber: 'asc' }],
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-    ]);
+          orderBy: [{ businessLine: { name: 'asc' } }, { serialNumber: 'asc' }],
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+      ]);
 
     const businessLineIds = businessLineCounts
       .map((item) => item.businessLineId)
@@ -699,6 +731,14 @@ export class DashboardService {
             code: true,
             name: true,
             productCategory: true,
+            productIndustry: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                expertiseGroup: true,
+              },
+            },
           },
         })
       : [];
@@ -716,9 +756,34 @@ export class DashboardService {
           code: businessLine?.code ?? null,
           name: businessLine?.name ?? 'Chưa phân ngành',
           productCategory: businessLine?.productCategory ?? 'OTHER',
+          productIndustry: businessLine?.productIndustry ?? null,
           count: item._count._all,
         };
       })
+      .sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.name.localeCompare(b.name);
+      });
+    const productIndustryGroups = Array.from(
+      businessLineGroups.reduce((map, businessLine) => {
+        const productIndustry = businessLine.productIndustry;
+        const key = productIndustry?.id ?? '__unassigned__';
+        const current = map.get(key) ?? {
+          id: productIndustry?.id ?? null,
+          code: productIndustry?.code ?? null,
+          name: productIndustry?.name ?? 'Chưa phân ngành',
+          expertiseGroup: productIndustry?.expertiseGroup ?? null,
+          count: 0,
+          businessLines: 0,
+        };
+
+        current.count += businessLine.count;
+        current.businessLines += 1;
+        map.set(key, current);
+        return map;
+      }, new Map<string, { id: string | null; code: string | null; name: string; expertiseGroup: string | null; count: number; businessLines: number }>()),
+    )
+      .map(([, group]) => group)
       .sort((a, b) => {
         if (b.count !== a.count) return b.count - a.count;
         return a.name.localeCompare(b.name);
@@ -731,6 +796,7 @@ export class DashboardService {
       limit,
       totalPages: Math.max(Math.ceil(filteredTotal / limit), 1),
       businessLines: businessLineGroups,
+      productIndustries: productIndustryGroups,
       machines: machines.map((machine) => {
         const latestInstallation = machine.installations[0] ?? null;
         const currentInstallation =
@@ -981,8 +1047,10 @@ export class DashboardService {
               code: currentInstallation.code,
               status: currentInstallation.status,
               installedAt: currentInstallation.installedAt,
-              receiverInstallAddress: currentInstallation.receiverInstallAddress,
-              receiverRepresentative: currentInstallation.receiverRepresentative,
+              receiverInstallAddress:
+                currentInstallation.receiverInstallAddress,
+              receiverRepresentative:
+                currentInstallation.receiverRepresentative,
               receiverPhone: currentInstallation.receiverPhone,
               warrantyCard: currentInstallation.warrantyCard,
             }
@@ -1481,8 +1549,14 @@ export class DashboardService {
     const to = query.to?.trim();
 
     if (from || to) {
-      const start = this.parseDateInput(from || this.firstDayOfCurrentMonth(now), 'from');
-      const endDate = this.parseDateInput(to || from || this.firstDayOfCurrentMonth(now), 'to');
+      const start = this.parseDateInput(
+        from || this.firstDayOfCurrentMonth(now),
+        'from',
+      );
+      const endDate = this.parseDateInput(
+        to || from || this.firstDayOfCurrentMonth(now),
+        'to',
+      );
       const end = new Date(endDate);
       end.setDate(end.getDate() + 1);
 
@@ -1546,22 +1620,20 @@ export class DashboardService {
 
     tasks.forEach((task) => {
       const engineerId = task.engineerId || '__unassigned__';
-      const current =
-        map.get(engineerId) ??
-        {
-          engineerId,
-          engineerName: task.engineerName || 'Chưa phân kỹ sư',
-          total: 0,
-          repair: 0,
-          maintenance: 0,
-          installation: 0,
-          completed: 0,
-          open: 0,
-          waitingReview: 0,
-          overdue: 0,
-          customers: new Set<string>(),
-          machines: new Set<string>(),
-        };
+      const current = map.get(engineerId) ?? {
+        engineerId,
+        engineerName: task.engineerName || 'Chưa phân kỹ sư',
+        total: 0,
+        repair: 0,
+        maintenance: 0,
+        installation: 0,
+        completed: 0,
+        open: 0,
+        waitingReview: 0,
+        overdue: 0,
+        customers: new Set<string>(),
+        machines: new Set<string>(),
+      };
 
       current.total += 1;
       current[task.kind] += 1;
@@ -1612,18 +1684,16 @@ export class DashboardService {
 
     tasks.forEach((task) => {
       const productIndustryId = task.productIndustryId || '__unassigned__';
-      const current =
-        map.get(productIndustryId) ??
-        {
-          productIndustryId,
-          productIndustryName: task.productIndustryName || 'Chưa phân ngành',
-          total: 0,
-          repair: 0,
-          maintenance: 0,
-          installation: 0,
-          completed: 0,
-          open: 0,
-        };
+      const current = map.get(productIndustryId) ?? {
+        productIndustryId,
+        productIndustryName: task.productIndustryName || 'Chưa phân ngành',
+        total: 0,
+        repair: 0,
+        maintenance: 0,
+        installation: 0,
+        completed: 0,
+        open: 0,
+      };
 
       current.total += 1;
       current[task.kind] += 1;
@@ -1632,7 +1702,9 @@ export class DashboardService {
       map.set(productIndustryId, current);
     });
 
-    return Array.from(map.values()).sort((left, right) => right.total - left.total);
+    return Array.from(map.values()).sort(
+      (left, right) => right.total - left.total,
+    );
   }
 
   private buildDailyTrend(tasks: TechnicalTask[], start: Date, end: Date) {
@@ -1674,7 +1746,8 @@ export class DashboardService {
   }
 
   private isClosedTask(kind: TechnicalTaskKind, status: string) {
-    if (kind === 'installation') return ['INSTALLED', 'CANCELLED'].includes(status);
+    if (kind === 'installation')
+      return ['INSTALLED', 'CANCELLED'].includes(status);
     return ['COMPLETED', 'CANCELLED'].includes(status);
   }
 

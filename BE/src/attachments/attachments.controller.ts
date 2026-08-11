@@ -96,8 +96,10 @@ export class AttachmentsController {
     @CurrentUser() user: RequestUser,
     @Res() res: Response,
   ) {
-    const attachment =
-      await this.attachmentsService.findFileByStoredName(storedName, user);
+    const attachment = await this.attachmentsService.findFileByStoredName(
+      storedName,
+      user,
+    );
 
     res.setHeader('Content-Type', attachment.mimeType);
     res.setHeader('X-Content-Type-Options', 'nosniff');

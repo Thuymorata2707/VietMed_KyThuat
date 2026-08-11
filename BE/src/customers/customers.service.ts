@@ -125,6 +125,15 @@ export class CustomersService {
               take: 30,
               include: {
                 engineer: { select: this.userSummarySelect() },
+                workLogs: {
+                  orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+                },
+                usedParts: {
+                  orderBy: [{ usedAt: 'asc' }, { createdAt: 'asc' }],
+                },
+                checklistItems: {
+                  orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+                },
               },
             },
             maintenances: {
@@ -132,6 +141,15 @@ export class CustomersService {
               take: 30,
               include: {
                 engineer: { select: this.userSummarySelect() },
+                workLogs: {
+                  orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+                },
+                usedParts: {
+                  orderBy: [{ usedAt: 'asc' }, { createdAt: 'asc' }],
+                },
+                checklistItems: {
+                  orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+                },
               },
             },
             installations: {
@@ -140,6 +158,15 @@ export class CustomersService {
               include: {
                 installedBy: { select: this.userSummarySelect() },
                 warrantyCard: true,
+                workLogs: {
+                  orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+                },
+                usedParts: {
+                  orderBy: [{ usedAt: 'asc' }, { createdAt: 'asc' }],
+                },
+                checklistItems: {
+                  orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+                },
               },
             },
             inventoryMovements: {
@@ -179,6 +206,15 @@ export class CustomersService {
           take: 50,
           include: {
             engineer: { select: this.userSummarySelect() },
+            workLogs: {
+              orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+            },
+            usedParts: {
+              orderBy: [{ usedAt: 'asc' }, { createdAt: 'asc' }],
+            },
+            checklistItems: {
+              orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+            },
             machine: {
               select: {
                 id: true,
@@ -194,6 +230,15 @@ export class CustomersService {
           take: 50,
           include: {
             engineer: { select: this.userSummarySelect() },
+            workLogs: {
+              orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+            },
+            usedParts: {
+              orderBy: [{ usedAt: 'asc' }, { createdAt: 'asc' }],
+            },
+            checklistItems: {
+              orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+            },
             machine: {
               select: {
                 id: true,
@@ -210,6 +255,15 @@ export class CustomersService {
           include: {
             installedBy: { select: this.userSummarySelect() },
             warrantyCard: true,
+            workLogs: {
+              orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+            },
+            usedParts: {
+              orderBy: [{ usedAt: 'asc' }, { createdAt: 'asc' }],
+            },
+            checklistItems: {
+              orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+            },
             machine: {
               select: {
                 id: true,
@@ -526,7 +580,9 @@ export class CustomersService {
       },
     });
     const latestNumber = latest?.customerCode
-      ? Number(latest.customerCode.slice(latest.customerCode.lastIndexOf('-') + 1))
+      ? Number(
+          latest.customerCode.slice(latest.customerCode.lastIndexOf('-') + 1),
+        )
       : 0;
     const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
 
@@ -573,14 +629,14 @@ export class CustomersService {
       primaryEngineerId: query.primaryEngineerId,
       OR: search
         ? [
-            { customerCode: { contains: search,  } },
-            { name: { contains: search,  } },
-            { shortName: { contains: search,  } },
-            { hospitalName: { contains: search,  } },
-            { phone: { contains: search,  } },
-            { taxCode: { contains: search,  } },
-            { contactPerson: { contains: search,  } },
-            { fullAddress: { contains: search,  } },
+            { customerCode: { contains: search } },
+            { name: { contains: search } },
+            { shortName: { contains: search } },
+            { hospitalName: { contains: search } },
+            { phone: { contains: search } },
+            { taxCode: { contains: search } },
+            { contactPerson: { contains: search } },
+            { fullAddress: { contains: search } },
           ]
         : undefined,
     };

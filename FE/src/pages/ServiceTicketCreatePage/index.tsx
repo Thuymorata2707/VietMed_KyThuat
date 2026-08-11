@@ -374,7 +374,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const createTicketMutation = useMutation({
     mutationFn: () => createTicket(kind, form, visibleMachineModels),
     onSuccess: async () => {
-      setSuccess(role === 'engineer' ? 'Đã tạo phiếu. Admin sẽ kiểm tra thông tin máy nếu cần.' : 'Đã tạo phiếu.');
+      setSuccess('Đã tạo phiếu.');
       setForm(emptyTicketForm(user, kind));
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['service-tickets', 'board'] }),
@@ -605,7 +605,6 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
-
       <ServiceCreateOperationalGuide currentStep={currentStep} kind={kind} />
 
       <form className="grid min-w-0 gap-5 font-sans min-[1320px]:grid-cols-[minmax(0,1fr)_380px]" onSubmit={submit}>
@@ -794,7 +793,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
         <aside className="grid min-w-0 gap-4 self-start min-[1320px]:sticky min-[1320px]:top-5">
           <div className={sidePanelClass}>
-            <span className={eyebrowClass}>Kiểm tra</span>
+            <span className={eyebrowClass}>Phiếu đang tạo</span>
             <h2 className={`${sectionTitleClass} mb-4`}>Tóm tắt</h2>
             <div className="grid gap-3 text-sm text-[#333333]">
               <SummaryRow label="Loại phiếu" value={ticketKindLabel(kind)} />
@@ -881,6 +880,48 @@ function RepairFields({ form, models, updateForm }: { form: TicketForm; models: 
         <textarea className={textareaClass} onChange={(event) => updateForm({ repairMethod: event.target.value })} value={form.repairMethod} />
       </label>
     </>
+  );
+}
+
+function ServiceCreateOperationalGuide({ currentStep, kind }: { currentStep: CreateTicketStep; kind: TicketKind }) {
+  const steps: Array<{ id: CreateTicketStep; number: string; title: string; description: string }> = [
+    { id: 'setup', number: '1', title: 'Loại phiếu', description: ticketKindLabel(kind) },
+    {
+      id: 'records',
+      number: '2',
+      title: 'Khách hàng & máy',
+      description: kind === 'installation' ? 'Máy lắp đặt' : 'Máy đang sử dụng',
+    },
+    {
+      id: 'work',
+      number: '3',
+      title: 'Nội dung kỹ thuật',
+      description: kind === 'repair' ? 'Lỗi và xử lý' : kind === 'maintenance' ? 'Bảo trì và lịch hẹn' : 'Bàn giao và bảo hành',
+    },
+  ];
+
+  return (
+    <section className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white p-3 shadow-[0_8px_24px_rgba(24,24,27,0.04)] md:grid-cols-3">
+      {steps.map((step) => {
+        const isActive = step.id === currentStep;
+        return (
+          <div
+            className={`grid min-h-[88px] grid-cols-[38px_minmax(0,1fr)] items-center gap-3 rounded-[18px] border p-3 ${
+              isActive ? 'border-[#18181b] bg-[#18181b] text-white' : 'border-[#ededf0] bg-[#fafafa] text-[#1f1f1f]'
+            }`}
+            key={step.id}
+          >
+            <span className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-extrabold ${isActive ? 'bg-white text-[#18181b]' : 'bg-white text-[#18181b] shadow-[inset_0_0_0_1px_#e4e4e7]'}`}>
+              {step.number}
+            </span>
+            <div className="min-w-0">
+              <strong className="block truncate text-sm font-extrabold">{step.title}</strong>
+              <span className={`mt-1 block truncate text-xs font-semibold ${isActive ? 'text-white/75' : 'text-[#666666]'}`}>{step.description}</span>
+            </div>
+          </div>
+        );
+      })}
+    </section>
   );
 }
 
@@ -1362,54 +1403,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <span>{label}</span>
       <strong className="text-right text-[#1f1f1f]">{value || '-'}</strong>
     </div>
-  );
-}
-
-function ServiceCreateOperationalGuide({ currentStep, kind }: { currentStep: CreateTicketStep; kind: TicketKind }) {
-  const machineHint = kind === 'installation' ? 'Máy kho hoặc máy nhập mới' : 'Máy đã lắp tại khách';
-  const workHint = kind === 'repair' ? 'Lỗi, kiểm tra, phương án sửa' : kind === 'maintenance' ? 'Lịch, checklist, ghi chú' : 'Bàn giao, bảo hành, thiết bị kèm';
-  const steps: Array<{ id: CreateTicketStep; eyebrow: string; title: string; description: string }> = [
-    {
-      id: 'setup',
-      eyebrow: '1. Loại phiếu',
-      title: ticketKindLabel(kind),
-      description: 'Loại việc & kỹ sư.',
-    },
-    {
-      id: 'records',
-      eyebrow: '2. Hồ sơ',
-      title: 'Khách hàng & máy',
-      description: `${machineHint}; tạo nhanh nếu thiếu.`,
-    },
-    {
-      id: 'work',
-      eyebrow: '3. Nội dung',
-      title: 'Thông tin công việc',
-      description: workHint,
-    },
-  ];
-
-  return (
-    <section className="grid gap-2 rounded-[24px] bg-[#f6f8f7] p-3 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)] md:grid-cols-3">
-      {steps.map((step) => {
-        const active = step.id === currentStep;
-        return (
-          <div
-            className={[
-              'grid gap-1 rounded-[18px] px-4 py-3 transition',
-              active
-                ? 'bg-[#18181b] text-white shadow-[0_14px_28px_rgba(24,24,27,0.2)]'
-                : 'bg-white text-[#202124] shadow-[0_10px_24px_rgba(24,24,27,0.08)]',
-            ].join(' ')}
-            key={step.id}
-          >
-            <span className={`text-xs font-bold uppercase ${active ? 'text-[#d7f5e6]' : 'text-[#2f6f63]'}`}>{step.eyebrow}</span>
-            <strong className="text-sm">{step.title}</strong>
-            <span className={`text-xs font-medium ${active ? 'text-[#edf2f7]' : 'text-[#667085]'}`}>{step.description}</span>
-          </div>
-        );
-      })}
-    </section>
   );
 }
 
