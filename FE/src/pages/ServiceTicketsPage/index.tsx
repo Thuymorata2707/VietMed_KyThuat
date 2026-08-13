@@ -12,6 +12,7 @@ import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
 import { displayLabel } from '../../utils/displayLabels';
 import { isTechnicalUser, technicalUserName } from '../../utils/technicalUsers';
+import { hasDeleteRequestNote } from '../../utils/workDeleteRequests';
 
 type ServiceTicketKind = 'repairs' | 'maintenance';
 type BoardKind = ServiceTicketKind | 'installations';
@@ -117,6 +118,7 @@ type ServiceRow = {
   scheduledDate?: string | null;
   completedAt?: string | null;
   reviewStatus?: string | null;
+  reviewNote?: string | null;
   engineer?: EngineerOption | null;
   customer?: {
     name?: string | null;
@@ -135,6 +137,7 @@ type InstallationRow = {
   status?: string | null;
   installedAt?: string | null;
   reviewStatus?: string | null;
+  reviewNote?: string | null;
   installedBy?: EngineerOption | null;
   installedDeviceItems?: Array<{
     itemName?: string | null;
@@ -177,6 +180,7 @@ type BoardItem = {
   kind: 'repair' | 'maintenance' | 'installation';
   status: string;
   reviewStatus?: string | null;
+  reviewNote?: string | null;
   date?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -1452,6 +1456,7 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
       kind: 'installation',
       status: item.status || 'PENDING',
       reviewStatus: item.reviewStatus,
+      reviewNote: item.reviewNote,
       date: item.installedAt,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
@@ -1474,6 +1479,7 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
     kind: isMaintenance ? 'maintenance' : 'repair',
     status: item.status || 'PENDING',
     reviewStatus: item.reviewStatus,
+    reviewNote: item.reviewNote,
     date: isMaintenance ? item.scheduledDate : item.reportedAt,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
@@ -1611,7 +1617,7 @@ function alertBadges(item: BoardItem): Array<{ label: string; tone: 'good' | 'wa
   const badges: Array<{ label: string; tone: 'good' | 'warn' | 'danger' | 'neutral' }> = [];
 
   if (!item.engineer?.id) badges.push({ label: 'Chưa phân kỹ sư', tone: 'danger' });
-  if (item.reviewStatus === 'PENDING') badges.push({ label: 'Chờ xác nhận', tone: 'warn' });
+  if (item.reviewStatus === 'PENDING') badges.push({ label: hasDeleteRequestNote(item) ? 'Chờ duyệt xóa' : 'Chờ xác nhận', tone: hasDeleteRequestNote(item) ? 'danger' : 'warn' });
   if (item.reviewStatus === 'NEEDS_REVISION') badges.push({ label: 'Cần bổ sung', tone: 'danger' });
   if (item.status === 'WAITING_PARTS') badges.push({ label: 'Chờ linh kiện', tone: 'danger' });
   if (item.status === 'OVERDUE') badges.push({ label: 'Quá hạn', tone: 'danger' });

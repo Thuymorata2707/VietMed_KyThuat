@@ -9,6 +9,7 @@ import { PageTitle } from '../../components/PageTitle';
 import { checklistForCategory } from '../../config/medicalDeviceChecklists';
 import { queryKeys } from '../../lib/queryKeys';
 import { isTechnicalUser, technicalUserName } from '../../utils/technicalUsers';
+import { hasDeleteRequestNote } from '../../utils/workDeleteRequests';
 
 type WorkKind = 'repair' | 'maintenance' | 'installation';
 type WorkFilter = 'action' | 'unassigned' | 'review' | 'active' | 'closed' | 'all';
@@ -274,7 +275,16 @@ export function AdminWorkAssignmentPage() {
       return { item, status };
     },
     onSuccess: async ({ item, status }) => {
-      setSuccess(status === 'APPROVED' ? `Đã xác nhận ${item.code}.` : `Đã trả ${item.code} về kỹ sư bổ sung.`);
+      const deleteRequest = isDeleteRequest(item);
+      setSuccess(
+        status === 'APPROVED'
+          ? deleteRequest
+            ? `Đã duyệt xóa ${item.code}.`
+            : `Đã xác nhận ${item.code}.`
+          : deleteRequest
+            ? `Đã từ chối yêu cầu xóa ${item.code}.`
+            : `Đã trả ${item.code} về kỹ sư bổ sung.`,
+      );
       setReviewNoteByKey((current) => ({ ...current, [item.key]: '' }));
       await queryClient.invalidateQueries({ queryKey: ['work-assignments', 'dashboard'] });
     },
@@ -843,9 +853,10 @@ function WorkDispatchRow({
 }) {
   const closed = isClosed(item.status);
   const pendingReview = item.reviewStatus === 'PENDING';
+  const deleteRequest = isDeleteRequest(item);
   const lockedAssignment = closed || pendingReview;
   const workflowTone = workTone(item);
-  const workflowLabel = closed ? 'Hoàn tất' : pendingReview ? 'Chờ duyệt' : 'Đang mở';
+  const workflowLabel = closed ? 'Hoàn tất' : deleteRequest ? 'Chờ duyệt xóa' : pendingReview ? 'Chờ duyệt' : 'Đang mở';
 
   return (
     <article className={`grid min-w-0 items-start gap-3.5 border-b border-[#ededf0] px-4 py-4 last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(220px,300px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(130px,190px)_minmax(220px,280px)] ${workRowClass(workflowTone)}`}>
@@ -894,7 +905,7 @@ function WorkDispatchRow({
               <div className="min-w-0">
                 <p className={`text-sm font-semibold ${closed ? 'text-[#177245]' : 'text-[#9b5a17]'}`}>{workflowLabel}</p>
                 <p className="text-[11px] leading-4 text-[#7b7b7b]">
-                  {closed ? 'Đã khóa thao tác' : 'Đang chờ admin duyệt hồ sơ'}
+                  {closed ? 'Đã khóa thao tác' : deleteRequest ? 'Đang chờ admin duyệt xóa phiếu' : 'Đang chờ admin duyệt hồ sơ'}
                 </p>
               </div>
             </div>
@@ -942,15 +953,15 @@ function WorkDispatchRow({
             <textarea
               className="form-input min-h-16"
               onChange={(event) => onReviewNoteChange(event.target.value)}
-              placeholder="Ghi chú nếu trả kỹ sư bổ sung"
+              placeholder={deleteRequest ? 'Ghi chú nếu không duyệt xóa' : 'Ghi chú nếu trả kỹ sư bổ sung'}
               value={reviewNote}
             />
             <div className="flex flex-wrap justify-end gap-2">
               <button className="secondary-button" disabled={reviewingKey === item.key} onClick={() => onReview(item, 'NEEDS_REVISION')} type="button">
-                Trả về sửa
+                {deleteRequest ? 'Không duyệt xóa' : 'Trả về sửa'}
               </button>
               <button className="primary-button" disabled={reviewingKey === item.key} onClick={() => onReview(item, 'APPROVED')} type="button">
-                {reviewingKey === item.key ? 'Saving' : 'Confirm'}
+                {reviewingKey === item.key ? 'Saving' : deleteRequest ? 'Duyệt xóa' : 'Confirm'}
               </button>
             </div>
           </div>
@@ -1217,6 +1228,7 @@ function actionLabel(item: WorkItem) {
   const slaState = slaStateForItem(item);
   if (slaState === 'overdue') return 'Quá hạn SLA';
   if (slaState === 'due-soon') return 'Sắp đến hạn SLA';
+  if (isDeleteRequest(item)) return 'Cần duyệt xóa phiếu';
   if (item.reviewStatus === 'PENDING') return 'Cần xác nhận báo cáo';
   if (item.reviewStatus === 'APPROVED' && isClosed(item.status)) return 'Đã hoàn tất';
   if (item.reviewStatus === 'APPROVED') return 'Đã duyệt';
@@ -1229,6 +1241,7 @@ function actionTone(item: WorkItem): Tone {
   const slaState = slaStateForItem(item);
   if (slaState === 'overdue') return 'danger';
   if (slaState === 'due-soon') return 'warn';
+  if (isDeleteRequest(item)) return 'danger';
   if (item.reviewStatus === 'PENDING') return 'warn';
   if (item.reviewStatus === 'APPROVED') return 'good';
   if (!item.engineer?.id) return 'danger';
@@ -1378,6 +1391,10 @@ function reviewStatusLabel(value?: WorkReviewStatus | null) {
   if (value === 'APPROVED') return 'Admin đã xác nhận';
   if (value === 'NEEDS_REVISION') return 'Cần kỹ sư bổ sung';
   return '';
+}
+
+function isDeleteRequest(item: WorkItem) {
+  return hasDeleteRequestNote(item);
 }
 
 function reviewStatusTone(value?: WorkReviewStatus | null): Tone {

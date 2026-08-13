@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Eye, Loader2, RefreshCw, Save } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, RefreshCw, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
@@ -7,15 +7,17 @@ import { DateInput } from '../../components/DateInput';
 import { ModelInfoFields } from '../../components/ModelInfoFields';
 import { Notice } from '../../components/Notice';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { WorkAttachmentsPanel } from '../../components/WorkAttachmentsPanel';
 import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { useWorkAttachments } from '../../hooks/useWorkAttachments';
 import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 import { machineModelName, machineModelOptionLabel, machineProductName } from '../../utils/machineDisplayName';
 import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
-import type { AttachmentType, CreateTicketForm, InstallationDeviceItem, InstallationTask, TaskAttachment } from '../EngineerTasksPage/types';
-import { attachmentTypeLabel, emptyCreateTicketForm, emptyInstallationDeviceItem, formatFileSize, normalizeInstallationDeviceItems } from '../EngineerTasksPage/utils';
+import type { CreateTicketForm, InstallationDeviceItem, InstallationTask } from '../EngineerTasksPage/types';
+import { emptyCreateTicketForm, emptyInstallationDeviceItem, normalizeInstallationDeviceItems } from '../EngineerTasksPage/utils';
 
 type EngineerOption = {
   id: string;
@@ -80,13 +82,14 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
   const [stockMachines, setStockMachines] = useState<StockMachine[]>([]);
   const [form, setForm] = useState<CreateTicketForm>(() => emptyCreateTicketForm('installation'));
-  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
-  const [loadingAttachments, setLoadingAttachments] = useState(false);
-  const [uploadingAttachment, setUploadingAttachment] = useState(false);
-  const [attachmentType, setAttachmentType] = useState<AttachmentType>('MACHINE_PHOTO');
-  const [attachmentTitle, setAttachmentTitle] = useState('');
-  const [attachmentDescription, setAttachmentDescription] = useState('');
-  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const attachmentsPanel = useWorkAttachments({
+    entityId: id,
+    entityType: 'MachineInstallation',
+    initialType: 'MACHINE_PHOTO',
+    onError: setError,
+    onSuccess: setSuccess,
+    uploadSuccessMessage: (count) => `Đã tải ${count} ảnh/tài liệu lên phiếu lắp đặt.`,
+  });
   const isAdmin = role === 'admin';
   const selectedMachine =
     stockMachines.find((machine) => machine.id === form.machineId) ||
@@ -164,7 +167,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
       if (isAdmin) {
         await loadEngineers();
       }
-      await loadAttachments();
+      await attachmentsPanel.loadAttachments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được phiếu lắp đặt.');
     } finally {
@@ -268,86 +271,6 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
     updateForm({ machineId });
     setMachineSerialNumber(machine.serialNumber || '');
     setMachineCode(machine.machineCode || '');
-  }
-
-  async function loadAttachments() {
-    if (!id) return;
-
-    setLoadingAttachments(true);
-
-    try {
-      const response = await apiFetch<Paginated<TaskAttachment>>(`/attachments?entityType=MachineInstallation&entityId=${id}&limit=100`);
-      setAttachments(response.data);
-    } catch {
-      setAttachments([]);
-    } finally {
-      setLoadingAttachments(false);
-    }
-  }
-
-  async function uploadAttachment() {
-    if (!attachmentFiles.length) return;
-
-    setUploadingAttachment(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      for (const file of attachmentFiles) {
-        const body = new FormData();
-        body.append('entityType', 'MachineInstallation');
-        body.append('entityId', id);
-        body.append('type', attachmentType);
-        if (attachmentTitle.trim()) body.append('title', attachmentFiles.length > 1 ? `${attachmentTitle.trim()} - ${file.name}` : attachmentTitle.trim());
-        if (attachmentDescription.trim()) body.append('description', attachmentDescription.trim());
-        body.append('file', file);
-
-        await apiFetch('/attachments', {
-          method: 'POST',
-          body,
-        });
-      }
-      setAttachmentTitle('');
-      setAttachmentDescription('');
-      setAttachmentFiles([]);
-      setSuccess(`Đã tải ${attachmentFiles.length} ảnh/tài liệu lên phiếu lắp đặt.`);
-      await loadAttachments();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được ảnh/tài liệu.');
-    } finally {
-      setUploadingAttachment(false);
-    }
-  }
-
-  async function downloadAttachment(attachment: TaskAttachment) {
-    try {
-      const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
-        headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
-      });
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = attachment.originalName;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      setError('Không tải được tệp đính kèm.');
-    }
-  }
-
-  async function viewAttachment(attachment: TaskAttachment) {
-    try {
-      const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
-        headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
-      });
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch {
-      setError('Không mở được tệp đính kèm.');
-    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -742,88 +665,23 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               </button>
             </div>
 
-            <section className={sidePanelClass}>
-              <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#f0e6e6] pb-4">
-                <div>
-                  <span className={eyebrowClass}>Tài liệu hiện trường</span>
-                  <h2 className={sectionTitleClass}>Ảnh và biên bản</h2>
-                </div>
-                <strong className="rounded-full border border-[#e5e5e5] bg-[#fafafa] px-2.5 py-1 text-sm text-[#333333]">{attachments.length}</strong>
-              </div>
-
-              <div className="grid gap-2">
-                {loadingAttachments ? (
-                  <div className="flex min-h-20 items-center justify-center gap-2 text-sm text-[#666666]">
-                    <Loader2 className="spin-icon" size={16} />
-                    Đang tải tài liệu...
-                  </div>
-                ) : null}
-
-                {!loadingAttachments && attachments.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-[#e5e5e5] bg-[#fafafa] p-4 text-center text-sm text-[#666666]">
-                    Chưa có ảnh hoặc tài liệu nào cho phiếu này.
-                  </div>
-                ) : null}
-
-                {!loadingAttachments
-                  ? attachments.map((attachment) => (
-                      <article className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3" key={attachment.id}>
-                        <div className="min-w-0">
-                          <span className="text-xs font-medium text-[#666666]">{attachmentTypeLabel(attachment.type)}</span>
-                          <strong className="mt-1 block truncate text-sm text-[#1f1f1f]">{attachment.title || attachment.originalName}</strong>
-                          <small className="block truncate text-xs text-[#666666]">
-                            {attachment.originalName} - {formatFileSize(attachment.size)}
-                          </small>
-                        </div>
-                        <div className="flex gap-2">
-                        <button className="icon-button" onClick={() => void viewAttachment(attachment)} title="Xem" type="button">
-                          <Eye size={16} />
-                        </button>
-                        <button className="icon-button" onClick={() => downloadAttachment(attachment)} title="Download" type="button">
-                          <Download size={16} />
-                        </button>
-                        </div>
-                      </article>
-                    ))
-                  : null}
-              </div>
-
-              <div className="mt-4 grid min-w-0 gap-3 border-t border-[#eeeeee] pt-4">
-                <label className={labelClass}>
-                  Loại tài liệu
-                  <select className={fieldClass} onChange={(event) => setAttachmentType(event.target.value as AttachmentType)} value={attachmentType}>
-                    {attachmentOptionsByKind.installation.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={labelClass}>
-                  Tên hiển thị
-                  <input className={fieldClass} onChange={(event) => setAttachmentTitle(event.target.value)} placeholder="VD: Ảnh serial sau lắp đặt" value={attachmentTitle} />
-                </label>
-                <label className={labelClass}>
-                  Ghi chú
-                  <textarea className={`${textareaClass} min-h-24`} onChange={(event) => setAttachmentDescription(event.target.value)} value={attachmentDescription} />
-                </label>
-                <label className={labelClass}>
-                  File
-                  <input
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    className="w-full min-w-0 rounded-2xl border border-dashed border-[#ded8d8] bg-[#ffffff] px-4 py-3 text-sm font-semibold text-[#333333]"
-                    multiple
-                    onChange={(event) => setAttachmentFiles(Array.from(event.target.files ?? []))}
-                    type="file"
-                  />
-                  {attachmentFiles.length ? <span className="text-xs font-semibold text-[#666666]">Đã chọn {attachmentFiles.length} file</span> : null}
-                </label>
-                <button className="primary-button" disabled={uploadingAttachment || !attachmentFiles.length} onClick={() => void uploadAttachment()} type="button">
-                  {uploadingAttachment ? <Loader2 className="spin-icon" size={17} /> : null}
-                  {uploadingAttachment ? 'Đang tải lên' : `Tải lên ${attachmentFiles.length || ''} file`}
-                </button>
-              </div>
-            </section>
+            <WorkAttachmentsPanel
+              {...attachmentsPanel}
+              descriptionClassName={textareaClass}
+              fieldClassName={fieldClass}
+              labelClassName={labelClass}
+              loading={attachmentsPanel.loadingAttachments}
+              onDescriptionChange={attachmentsPanel.setAttachmentDescription}
+              onDownload={attachmentsPanel.downloadAttachment}
+              onFilesChange={attachmentsPanel.setAttachmentFiles}
+              onTitleChange={attachmentsPanel.setAttachmentTitle}
+              onTypeChange={attachmentsPanel.setAttachmentType}
+              onUpload={attachmentsPanel.uploadAttachment}
+              onView={attachmentsPanel.viewAttachment}
+              options={attachmentOptionsByKind.installation}
+              titlePlaceholder="VD: Ảnh serial sau lắp đặt"
+              uploading={attachmentsPanel.uploadingAttachment}
+            />
 
             <div className={sidePanelClass}>
               <span className={eyebrowClass}>Trạng thái</span>

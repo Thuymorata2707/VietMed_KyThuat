@@ -8,7 +8,6 @@ import { PageFrame } from '../../components/PageFrame';
 import { EngineerTaskRow } from './components/EngineerTaskRow';
 import { QuickWorkLogPanel } from './components/QuickWorkLogPanel';
 import { TaskAttachmentsPanel } from './components/TaskAttachmentsPanel';
-import { TaskUpdateFormPanel } from './components/TaskUpdateFormPanel';
 import {
   attachmentOptionsByKind,
   businessTabs,
@@ -1329,30 +1328,18 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
               </div>
             ) : null}
 
-            <TaskUpdateFormPanel
-              addInstallationEditDeviceItem={addInstallationEditDeviceItem}
-              completionBlockers={selectedCompletionBlockers}
-              customerFeedback={customerFeedback}
-              installationDate={installationDate}
-              installationEditForm={installationEditForm}
-              machineModelOptions={machineModelOptions}
-              nextDueDate={nextDueDate}
-              onClose={() => setSelectedTask(null)}
-              onSubmit={handleSubmit}
-              removeInstallationEditDeviceItem={removeInstallationEditDeviceItem}
-              resultNote={resultNote}
-              saving={saving}
-              setCustomerFeedback={setCustomerFeedback}
-              setInstallationDate={setInstallationDate}
-              setNextDueDate={setNextDueDate}
-              setResultNote={setResultNote}
-              setStatus={setStatus}
-              status={status}
-              task={selectedTask}
-              updateInstallationEditDeviceItem={updateInstallationEditDeviceItem}
-              updateInstallationEditForm={updateInstallationEditForm}
-              user={user}
-            />
+            <section className="rounded-[16px] border border-[#dbeafe] bg-[#eff6ff] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#1d4ed8]">Cập nhật phiếu</span>
+                  <h3 className="mt-1 text-base font-bold text-[#172554]">Mở trang cập nhật riêng để xử lý đầy đủ thông tin phiếu.</h3>
+                </div>
+                <Link className="task-action" to={taskUpdateHref(selectedTask)}>
+                  Mở trang cập nhật
+                  <ArrowRight size={16} />
+                </Link>
+              </div>
+            </section>
 
             <TaskAttachmentsPanel
               attachmentDescription={attachmentDescription}

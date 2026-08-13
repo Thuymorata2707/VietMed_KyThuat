@@ -1,11 +1,14 @@
 import { MaintenanceStatus, MaintenanceType } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsDateString,
   IsEnum,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
+import { UsedPartDto } from '../../common/dto/used-part.dto';
 
 export class UpdateMaintenanceDto {
   @IsOptional()
@@ -80,4 +83,10 @@ export class UpdateMaintenanceDto {
   @IsOptional()
   @IsString()
   serialNumber?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UsedPartDto)
+  usedParts?: UsedPartDto[];
 }

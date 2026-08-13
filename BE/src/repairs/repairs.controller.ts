@@ -13,6 +13,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { DeleteWorkTaskDto } from '../common/dto/delete-work-task.dto';
 import { ReviewWorkTaskDto } from '../common/dto/review-work-task.dto';
 import { RequestUser } from '../common/request-user.type';
 import { AssignRepairDto } from './dto/assign-repair.dto';
@@ -100,9 +101,13 @@ export class RepairsController {
     return this.repairsService.review(id, dto, user);
   }
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
-    return this.repairsService.remove(id, user);
+  remove(
+    @Param('id') id: string,
+    @Body() dto: DeleteWorkTaskDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.repairsService.remove(id, user, dto);
   }
 }

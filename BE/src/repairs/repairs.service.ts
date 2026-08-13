@@ -15,7 +15,15 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
 import { isAdmin, isEngineer, repairAccessWhere } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
+import { DeleteWorkTaskDto } from '../common/dto/delete-work-task.dto';
 import { ReviewWorkTaskDto } from '../common/dto/review-work-task.dto';
+import {
+  buildDeleteRequestNote,
+  deleteRequestDisplayNote,
+  isApprovedDeleteReview,
+  isDeleteRequest,
+} from '../common/work-delete-request';
+import { replaceWorkUsedParts } from '../common/work-used-parts';
 import { shortDateCode } from '../common/code-format';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
@@ -337,6 +345,17 @@ export class RepairsService {
           });
         }
 
+        if (dto.usedParts !== undefined) {
+          await replaceWorkUsedParts({
+            actor,
+            machineId: updated.machineId,
+            owner: { field: 'repairId', id: updated.id, kind: 'REPAIR' },
+            parts: dto.usedParts,
+            prisma: this.prisma,
+            tx,
+          });
+        }
+
         await this.auditLogsService.create(
           {
             action: AUDIT_ACTIONS.UPDATE,
@@ -388,10 +407,76 @@ export class RepairsService {
     );
   }
 
-  async remove(id: string, actor: RequestUser) {
-    assertPermission(actor, PERMISSIONS.REPAIR_DELETE);
+  async remove(id: string, actor: RequestUser, dto?: DeleteWorkTaskDto) {
     const repair = await this.findOne(id, actor);
 
+    if (!isAdmin(actor)) {
+      return this.requestDelete(id, repair, actor, dto?.reason);
+    }
+
+    assertPermission(actor, PERMISSIONS.REPAIR_DELETE);
+    return this.deleteRepair(id, repair, actor);
+  }
+
+  private async requestDelete(
+    id: string,
+    repair: Awaited<ReturnType<RepairsService['findOne']>>,
+    actor: RequestUser,
+    reason?: string | null,
+  ) {
+    if (repair.reviewStatus === WorkReviewStatus.PENDING && isDeleteRequest(repair.reviewNote)) {
+      throw new BadRequestException('Delete request is already pending review');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const next = await tx.repair.update({
+        where: { id },
+        data: {
+          reviewStatus: WorkReviewStatus.PENDING,
+          reviewNote: buildDeleteRequestNote(reason),
+          reviewedAt: null,
+          reviewerId: null,
+        },
+        include: this.defaultInclude(),
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.STATUS_CHANGE,
+          entityType: 'Repair',
+          entityId: id,
+          actor,
+          metadata: {
+            action: 'REQUEST_DELETE',
+            code: repair.code,
+            reason: reason?.trim() || null,
+          },
+        },
+        tx,
+      );
+
+      return next;
+    });
+
+    await this.notificationsService
+      .createForAdmins({
+        title: 'Phiếu sửa chữa chờ duyệt xóa',
+        message: `${actor.email} yêu cầu xóa phiếu ${repair.code}: ${deleteRequestDisplayNote(updated.reviewNote)}`,
+        href: '/service-tickets',
+        entityType: 'Repair',
+        entityId: repair.id,
+        createdById: actor.id,
+      })
+      .catch(() => null);
+
+    return { deleteRequested: true, item: updated };
+  }
+
+  private async deleteRepair(
+    id: string,
+    repair: Awaited<ReturnType<RepairsService['findOne']>>,
+    actor: RequestUser,
+  ) {
     await this.prisma.$transaction(async (tx) => {
       await tx.repair.delete({
         where: { id },
@@ -621,6 +706,39 @@ export class RepairsService {
     }
 
     const reviewNote = this.cleanOptionalString(dto.reviewNote);
+    if (isDeleteRequest(repair.reviewNote)) {
+      if (isApprovedDeleteReview(dto.status)) {
+        return this.deleteRepair(id, repair, actor);
+      }
+
+      const rejected = await this.prisma.repair.update({
+        where: { id },
+        data: {
+          reviewStatus: WorkReviewStatus.NEEDS_REVISION,
+          reviewNote,
+          reviewedAt: new Date(),
+          reviewerId: actor.id,
+        },
+        include: this.defaultInclude(),
+      });
+
+      if (rejected.engineerId) {
+        await this.notificationsService
+          .create({
+            userId: rejected.engineerId,
+            title: 'Yêu cầu xóa phiếu sửa chữa chưa được duyệt',
+            message: `Admin chưa duyệt xóa phiếu ${rejected.code}: ${reviewNote}`,
+            href: '/my-tasks',
+            entityType: 'Repair',
+            entityId: rejected.id,
+            createdById: actor.id,
+          })
+          .catch(() => null);
+      }
+
+      return rejected;
+    }
+
     if (dto.status === WorkReviewStatus.NEEDS_REVISION && !reviewNote) {
       throw new BadRequestException(
         'reviewNote is required when returning a repair',
@@ -1172,6 +1290,7 @@ export class RepairsService {
           },
         },
       },
+      usedParts: true,
       customer: {
         include: {
           region: true,
@@ -1208,4 +1327,5 @@ export class RepairsService {
       },
     };
   }
+
 }

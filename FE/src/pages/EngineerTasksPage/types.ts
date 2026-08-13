@@ -103,6 +103,7 @@ export type RepairTask = WorkReviewFields & {
     email?: string | null;
   } | null;
   machine?: TaskMachine | null;
+  usedParts?: WorkOperationPart[];
   customer?: {
     name?: string | null;
     fullAddress?: string | null;
@@ -137,6 +138,7 @@ export type MaintenanceTask = WorkReviewFields & {
   modelName?: string | null;
   serialNumber?: string | null;
   machine?: TaskMachine | null;
+  usedParts?: WorkOperationPart[];
   customer?: {
     name?: string | null;
     fullAddress?: string | null;
@@ -307,10 +309,15 @@ export type CreateTicketForm = {
 };
 
 export type WorkOperationPart = {
+  id?: string | null;
   name: string;
-  quantity?: number;
+  quantity?: number | string | null;
+  componentAccessoryId?: string | null;
+  inventoryItemId?: string | null;
+  unit?: string | null;
   serialNumber?: string | null;
-  unitCost?: number | null;
+  unitCost?: number | string | null;
+  totalCost?: number | string | null;
   status?: 'PLANNED' | 'USED' | 'WAITING' | 'RETURNED';
   note?: string | null;
 };

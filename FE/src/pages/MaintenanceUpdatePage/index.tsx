@@ -1,18 +1,36 @@
-import { ArrowLeft, Download, Eye, Loader2, RefreshCw, Save } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
+import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
+import { CustomerSiteFields } from '../../components/CustomerSiteFields';
 import { Notice } from '../../components/Notice';
 import { DateInput } from '../../components/DateInput';
-import { ModelInfoFields } from '../../components/ModelInfoFields';
+import { DeleteRequestReviewPanel } from '../../components/DeleteRequestReviewPanel';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { WorkAttachmentsPanel } from '../../components/WorkAttachmentsPanel';
+import { WorkMachineModelFields, modelIdByName } from '../../components/WorkMachineModelFields';
+import { UsedPartDraft, WorkAccessoryOption, WorkUsedPartsEditor } from '../../components/WorkUsedPartsEditor';
 import { appendChecklistLines, checklistForCategory } from '../../config/medicalDeviceChecklists';
-import { machineDisplayName, machineModelOptionLabel, machineProductName } from '../../utils/machineDisplayName';
+import { useWorkAttachments } from '../../hooks/useWorkAttachments';
+import {
+  workEyebrowClass,
+  workFieldClass,
+  workLabelClass,
+  workPanelClass,
+  workSectionDescriptionClass,
+  workSectionHeaderClass,
+  workSectionTitleClass,
+  workSidePanelClass,
+  workStepBadgeClass,
+  workTextareaClass,
+} from '../../styles/workFormClasses';
+import { deleteRequestReason, deleteWorkTicket, isDeletedResponse, isDeleteRequest, reviewDeleteWorkTicket } from '../../utils/workDeleteRequests';
+import { buildUsedParts, fetchModelAccessories, normalizeUsedPartsPayload } from '../../utils/workParts';
 import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
-import type { AttachmentType, MaintenanceTask, TaskAttachment } from '../EngineerTasksPage/types';
-import { attachmentTypeLabel, formatFileSize, statusLabel } from '../EngineerTasksPage/utils';
+import type { MaintenanceTask } from '../EngineerTasksPage/types';
+import { statusLabel } from '../EngineerTasksPage/utils';
 
 type EngineerOption = {
   id: string;
@@ -26,6 +44,7 @@ type StockMachine = {
   serialNumber?: string | null;
   modelName?: string | null;
   name?: string | null;
+  machineModel?: { id?: string | null } | null;
   customer?: { id?: string | null; name?: string | null } | null;
 };
 
@@ -79,19 +98,29 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
   const [engineers, setEngineers] = useState<EngineerOption[]>([]);
   const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
   const [installedMachines, setInstalledMachines] = useState<StockMachine[]>([]);
+  const [accessories, setAccessories] = useState<WorkAccessoryOption[]>([]);
+  const [usedParts, setUsedParts] = useState<UsedPartDraft[]>([]);
+  const [loadingAccessories, setLoadingAccessories] = useState(false);
   const [form, setForm] = useState<MaintenanceForm>(() => emptyForm());
-  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
-  const [loadingAttachments, setLoadingAttachments] = useState(false);
-  const [uploadingAttachment, setUploadingAttachment] = useState(false);
-  const [attachmentType, setAttachmentType] = useState<AttachmentType>('MAINTENANCE_FORM');
-  const [attachmentTitle, setAttachmentTitle] = useState('');
-  const [attachmentDescription, setAttachmentDescription] = useState('');
-  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const attachmentsPanel = useWorkAttachments({
+    entityId: id,
+    entityType: 'Maintenance',
+    initialType: 'MAINTENANCE_FORM',
+    onError: setError,
+    onSuccess: setSuccess,
+    uploadSuccessMessage: (count) => `Đã tải ${count} ảnh/tài liệu lên phiếu bảo trì.`,
+  });
   const standardChecklist = checklistForCategory(detail?.machine?.productCategory || detail?.modelName || detail?.deviceName, 'maintenance');
+  const selectedMachineModelId = form.machineModelId || detail?.machine?.machineModel?.id || modelIdByName(machineModels, form.modelName);
+  const pendingDeleteRequest = isDeleteRequest(detail);
 
   useEffect(() => {
     void loadDetail();
   }, [id]);
+
+  useEffect(() => {
+    void loadAccessories(selectedMachineModelId);
+  }, [selectedMachineModelId]);
 
   async function loadDetail() {
     if (!id) return;
@@ -103,12 +132,13 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
       const maintenance = await apiFetch<MaintenanceTask>(`/maintenance/${id}`);
       setDetail(maintenance);
       setForm(buildForm(maintenance));
+      setUsedParts(buildUsedParts(maintenance.usedParts));
       await loadMachineModels();
       await loadInstalledMachines();
       if (isAdmin) {
         await loadEngineers();
       }
-      await loadAttachments();
+      await attachmentsPanel.loadAttachments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được phiếu bảo trì.');
     } finally {
@@ -147,6 +177,22 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
     }
   }
 
+  async function loadAccessories(machineModelId: string) {
+    if (!machineModelId) {
+      setAccessories([]);
+      return;
+    }
+
+    setLoadingAccessories(true);
+    try {
+      setAccessories(await fetchModelAccessories(machineModelId));
+    } catch {
+      setAccessories([]);
+    } finally {
+      setLoadingAccessories(false);
+    }
+  }
+
   function syncAddressFromCustomer() {
     const c = detail?.customer || detail?.machine?.customer;
     if (!c) return;
@@ -156,21 +202,6 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
       address: (detail?.customer ? (detail.customer.fullAddress || detail.customer.address || '') : '') || form.address,
       contactPhone: (detail?.customer ? (detail.customer.contactPhone || detail.customer.phone || '') : '') || form.contactPhone,
     });
-  }
-
-  async function loadAttachments() {
-    if (!id) return;
-
-    setLoadingAttachments(true);
-
-    try {
-      const response = await apiFetch<Paginated<TaskAttachment>>(`/attachments?entityType=Maintenance&entityId=${id}&limit=100`);
-      setAttachments(response.data);
-    } catch {
-      setAttachments([]);
-    } finally {
-      setLoadingAttachments(false);
-    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -201,6 +232,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
           deviceName: form.deviceName.trim() || undefined,
           modelName: form.modelName.trim() || undefined,
           serialNumber: form.serialNumber.trim() || undefined,
+          usedParts: normalizeUsedPartsPayload(usedParts),
         }),
       });
       setSuccess('Đã cập nhật phiếu bảo trì.');
@@ -212,68 +244,60 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
     }
   }
 
-  async function uploadAttachment() {
-    if (!attachmentFiles.length) return;
+  async function deleteTicket() {
+    const reason = isAdmin ? '' : window.prompt('Nhập lý do yêu cầu xóa phiếu bảo trì:')?.trim();
+    if (!isAdmin && !reason) return;
 
-    setUploadingAttachment(true);
+    const message = isAdmin
+      ? 'Xóa vĩnh viễn phiếu bảo trì này?'
+      : 'Gửi yêu cầu xóa phiếu bảo trì để admin duyệt?';
+    if (!window.confirm(message)) return;
+
+    setSaving(true);
     setError('');
     setSuccess('');
 
     try {
-      for (const file of attachmentFiles) {
-        const body = new FormData();
-        body.append('entityType', 'Maintenance');
-        body.append('entityId', id);
-        body.append('type', attachmentType);
-        if (attachmentTitle.trim()) body.append('title', attachmentFiles.length > 1 ? `${attachmentTitle.trim()} - ${file.name}` : attachmentTitle.trim());
-        if (attachmentDescription.trim()) body.append('description', attachmentDescription.trim());
-        body.append('file', file);
+      const response = await deleteWorkTicket(`/maintenance/${id}`, reason);
 
-        await apiFetch('/attachments', {
-          method: 'POST',
-          body,
-        });
+      if (response.deleted) {
+        navigate(returnTo);
+        return;
       }
-      setAttachmentTitle('');
-      setAttachmentDescription('');
-      setAttachmentFiles([]);
-      setSuccess(`Đã tải ${attachmentFiles.length} ảnh/tài liệu lên phiếu bảo trì.`);
-      await loadAttachments();
+
+      if (response.deleteRequested) {
+        setSuccess('Đã gửi yêu cầu xóa phiếu. Admin sẽ duyệt trước khi xóa.');
+        await loadDetail();
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được ảnh/tài liệu.');
+      setError(err instanceof Error ? err.message : 'Không xóa được phiếu bảo trì.');
     } finally {
-      setUploadingAttachment(false);
+      setSaving(false);
     }
   }
 
-  async function downloadAttachment(attachment: TaskAttachment) {
-    try {
-      const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
-        headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
-      });
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = attachment.originalName;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      setError('Không tải được tệp đính kèm.');
-    }
-  }
+  async function reviewDeleteRequest(approved: boolean) {
+    const reviewNote = approved ? '' : window.prompt('Nhập lý do không duyệt xóa phiếu:')?.trim();
+    if (!approved && !reviewNote) return;
 
-  async function viewAttachment(attachment: TaskAttachment) {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
     try {
-      const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
-        headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
-      });
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch {
-      setError('Không mở được tệp đính kèm.');
+      const response = await reviewDeleteWorkTicket<MaintenanceTask>(`/maintenance/${id}/review`, approved, reviewNote);
+
+      if (isDeletedResponse(response)) {
+        navigate(returnTo);
+        return;
+      }
+
+      setSuccess(approved ? 'Đã duyệt xóa phiếu bảo trì.' : 'Đã từ chối yêu cầu xóa phiếu bảo trì.');
+      await loadDetail();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không duyệt được yêu cầu xóa phiếu.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -358,58 +382,17 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 ) : null}
                 <DateInput className={labelClass} label="Ngày bảo trì" onChange={(value) => updateForm({ scheduledDate: value })} value={form.scheduledDate} />
                 <DateInput className={labelClass} label="Lịch bảo trì tiếp theo" onChange={(value) => updateForm({ nextDueDate: value })} value={form.nextDueDate} />
-                <label className={`${labelClass} md:col-span-2`}>
-                  Chọn máy đã lắp đặt
-                  <select
-                    className={fieldClass}
-                    onChange={(event) => {
-                      const machine = installedMachines.find((m) => m.id === event.target.value);
-                      if (machine) {
-                        updateForm({
-                          serialNumber: machine.serialNumber || '',
-                          modelName: machine.modelName || machine.name || '',
-                          deviceName: machine.name || machine.modelName || '',
-                          machineModelId: '',
-                        });
-                      }
-                    }}
-                    value=""
-                  >
-                    <option value="">-- Chọn máy đã lắp đặt (hoặc nhập tay S/N) --</option>
-                    {installedMachines.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {[m.machineCode, m.serialNumber ? `S/N ${m.serialNumber}` : '', m.modelName || m.name].filter(Boolean).join(' - ')}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={labelClass}>
-                  S/N máy
-                  <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
-                </label>
-                <label className={labelClass}>
-                  Model / tên thiết bị
-                  <select
-                    className={fieldClass}
-                    onChange={(event) => {
-                      const model = machineModels.find((item) => item.id === event.target.value);
-                      updateForm({
-                        machineModelId: event.target.value,
-                        modelName: model?.name || model?.displayName || model?.code || '',
-                        deviceName: machineProductName(model) || machineDisplayName(model) || model?.displayName || model?.name || model?.code || '',
-                      });
-                    }}
-                    value={form.machineModelId || modelIdByName(machineModels, form.modelName)}
-                  >
-                    <option value="">Chọn model</option>
-                    {machineModels.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {machineModelLabel(model)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <ModelInfoFields className="md:col-span-2" model={machineModels.find((model) => model.id === (form.machineModelId || modelIdByName(machineModels, form.modelName)))} />
+                <WorkMachineModelFields
+                  deviceName={form.deviceName}
+                  fieldClassName={fieldClass}
+                  installedMachines={installedMachines}
+                  labelClassName={labelClass}
+                  machineModelId={form.machineModelId}
+                  machineModels={machineModels}
+                  modelName={form.modelName}
+                  onChange={updateForm}
+                  serialNumber={form.serialNumber}
+                />
                 <label className={`${labelClass} md:col-span-2`}>
                   Checklist
                   <textarea className={textareaClass} onChange={(event) => updateForm({ checklistText: event.target.value })} placeholder="Mỗi dòng là một hạng mục kiểm tra" value={form.checklistText} />
@@ -428,6 +411,14 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
+            <WorkUsedPartsEditor
+              accessories={accessories}
+              items={usedParts}
+              loading={loadingAccessories}
+              modelSelected={Boolean(selectedMachineModelId)}
+              onChange={setUsedParts}
+            />
+
             <div className={panelClass}>
               <div className={sectionHeaderClass}>
                 <span className={stepBadgeClass}>2</span>
@@ -437,33 +428,29 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                   <p className={sectionDescriptionClass}>Liên hệ & địa chỉ.</p>
                 </div>
               </div>
-              <div className="grid min-w-0 gap-5 md:grid-cols-2">
-                <label className={labelClass}>
-                  <span className="flex items-center gap-2">
-                    Đơn vị sử dụng
-                    <button className="text-xs font-medium text-[#b5121b] hover:underline" onClick={syncAddressFromCustomer} type="button">
-                      <RefreshCw size={13} className="inline" /> Lấy từ hồ sơ
-                    </button>
-                  </span>
-                  <input className={fieldClass} onChange={(event) => updateForm({ usingDepartment: event.target.value })} value={form.usingDepartment} />
-                </label>
-                <label className={labelClass}>
-                  Người đại diện
-                  <input className={fieldClass} onChange={(event) => updateForm({ representative: event.target.value })} value={form.representative} />
-                </label>
-                <label className={labelClass}>
-                  Số điện thoại
-                  <input className={fieldClass} onChange={(event) => updateForm({ contactPhone: event.target.value })} value={form.contactPhone} />
-                </label>
-                <label className={`${labelClass} md:col-span-2`}>
-                  Địa chỉ
-                  <input className={fieldClass} onChange={(event) => updateForm({ address: event.target.value })} value={form.address} />
-                </label>
-              </div>
+              <CustomerSiteFields
+                address={form.address}
+                contactPhone={form.contactPhone}
+                fieldClassName={fieldClass}
+                labelClassName={labelClass}
+                onChange={updateForm}
+                onSync={syncAddressFromCustomer}
+                representative={form.representative}
+                usingDepartment={form.usingDepartment}
+              />
             </div>
           </section>
 
           <aside className="grid min-w-0 gap-4 self-start min-[1320px]:sticky min-[1320px]:top-5">
+            {isAdmin && pendingDeleteRequest ? (
+              <DeleteRequestReviewPanel
+                disabled={saving}
+                onApprove={() => void reviewDeleteRequest(true)}
+                onReject={() => void reviewDeleteRequest(false)}
+                reason={deleteRequestReason(detail)}
+              />
+            ) : null}
+
             <div className={sidePanelClass}>
               <span className={eyebrowClass}>Tóm tắt máy</span>
               <div className="mt-3 grid gap-3 text-sm text-[#333333]">
@@ -474,93 +461,32 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
               </div>
             </div>
 
-            <section className={sidePanelClass}>
-              <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#f0e6e6] pb-4">
-                <div>
-                  <span className={eyebrowClass}>Tài liệu hiện trường</span>
-                  <h2 className={sectionTitleClass}>Ảnh và biên bản</h2>
-                </div>
-                <strong className="rounded-full border border-[#e5e5e5] bg-[#fafafa] px-2.5 py-1 text-sm text-[#333333]">{attachments.length}</strong>
-              </div>
-
-              <div className="grid gap-2">
-                {loadingAttachments ? (
-                  <div className="flex min-h-20 items-center justify-center gap-2 text-sm text-[#666666]">
-                    <Loader2 className="spin-icon" size={16} />
-                    Đang tải tài liệu...
-                  </div>
-                ) : null}
-
-                {!loadingAttachments && attachments.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-[#e5e5e5] bg-[#fafafa] p-4 text-center text-sm text-[#666666]">
-                    Chưa có ảnh hoặc tài liệu nào cho phiếu này.
-                  </div>
-                ) : null}
-
-                {!loadingAttachments
-                  ? attachments.map((attachment) => (
-                      <article className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3" key={attachment.id}>
-                        <div className="min-w-0">
-                          <span className="text-xs font-medium text-[#666666]">{attachmentTypeLabel(attachment.type)}</span>
-                          <strong className="mt-1 block truncate text-sm text-[#1f1f1f]">{attachment.title || attachment.originalName}</strong>
-                          <small className="block truncate text-xs text-[#666666]">
-                            {attachment.originalName} - {formatFileSize(attachment.size)}
-                          </small>
-                        </div>
-                        <div className="flex gap-2">
-                        <button className="icon-button" onClick={() => void viewAttachment(attachment)} title="Xem" type="button">
-                          <Eye size={16} />
-                        </button>
-                        <button className="icon-button" onClick={() => downloadAttachment(attachment)} title="Download" type="button">
-                          <Download size={16} />
-                        </button>
-                        </div>
-                      </article>
-                    ))
-                  : null}
-              </div>
-
-              <div className="mt-4 grid min-w-0 gap-3 border-t border-[#eeeeee] pt-4">
-                <label className={labelClass}>
-                  Loại tài liệu
-                  <select className={fieldClass} onChange={(event) => setAttachmentType(event.target.value as AttachmentType)} value={attachmentType}>
-                    {attachmentOptionsByKind.maintenance.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={labelClass}>
-                  Tên hiển thị
-                  <input className={fieldClass} onChange={(event) => setAttachmentTitle(event.target.value)} placeholder="VD: Phiếu bảo trì có chữ ký" value={attachmentTitle} />
-                </label>
-                <label className={labelClass}>
-                  Ghi chú
-                  <textarea className={`${textareaClass} min-h-24`} onChange={(event) => setAttachmentDescription(event.target.value)} value={attachmentDescription} />
-                </label>
-                <label className={labelClass}>
-                  File
-                  <input
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    className="w-full min-w-0 rounded-2xl border border-dashed border-[#ded8d8] bg-[#ffffff] px-4 py-3 text-sm font-semibold text-[#333333]"
-                    multiple
-                    onChange={(event) => setAttachmentFiles(Array.from(event.target.files ?? []))}
-                    type="file"
-                  />
-                  {attachmentFiles.length ? <span className="text-xs font-semibold text-[#666666]">Đã chọn {attachmentFiles.length} file</span> : null}
-                </label>
-                <button className="primary-button" disabled={uploadingAttachment || !attachmentFiles.length} onClick={() => void uploadAttachment()} type="button">
-                  {uploadingAttachment ? <Loader2 className="spin-icon" size={17} /> : null}
-                  {uploadingAttachment ? 'Đang tải lên' : `Tải lên ${attachmentFiles.length || ''} file`}
-                </button>
-              </div>
-            </section>
+            <WorkAttachmentsPanel
+              {...attachmentsPanel}
+              descriptionClassName={textareaClass}
+              fieldClassName={fieldClass}
+              labelClassName={labelClass}
+              loading={attachmentsPanel.loadingAttachments}
+              onDescriptionChange={attachmentsPanel.setAttachmentDescription}
+              onDownload={attachmentsPanel.downloadAttachment}
+              onFilesChange={attachmentsPanel.setAttachmentFiles}
+              onTitleChange={attachmentsPanel.setAttachmentTitle}
+              onTypeChange={attachmentsPanel.setAttachmentType}
+              onUpload={attachmentsPanel.uploadAttachment}
+              onView={attachmentsPanel.viewAttachment}
+              options={attachmentOptionsByKind.maintenance}
+              titlePlaceholder="VD: Phiếu bảo trì có chữ ký"
+              uploading={attachmentsPanel.uploadingAttachment}
+            />
 
             <div className="rounded-[22px] border border-[#e4e4e7] bg-[#f4f4f5] p-3 shadow-[0_16px_40px_rgba(24,24,27,0.08)]">
               <div className="grid gap-2 sm:grid-cols-2 min-[1320px]:grid-cols-1">
                 <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
                   Hủy
+                </button>
+                <button className="secondary-button justify-center text-[#b5121b]" disabled={saving} onClick={() => void deleteTicket()} type="button">
+                  <Trash2 size={17} />
+                  {isAdmin ? 'Xóa phiếu' : 'Yêu cầu xóa'}
                 </button>
                 <button className="primary-button" disabled={saving} type="submit">
                   {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
@@ -693,23 +619,13 @@ function dateInputValue(value?: string | null) {
   return value ? value.slice(0, 10) : '';
 }
 
-function machineModelLabel(model: MachineModelOption) {
-  return machineModelOptionLabel(model) || model.code || model.displayName || model.name || 'Model';
-}
-
-function modelIdByName(models: MachineModelOption[], value: string) {
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) return '';
-  return models.find((model) => [model.name, model.displayName, model.code].filter(Boolean).some((item) => String(item).trim().toLowerCase() === normalized))?.id || '';
-}
-
-const panelClass = 'rounded-[24px] border border-[#e4e4e7] bg-white/95 p-5 shadow-[0_8px_24px_rgba(24,24,27,0.05)] sm:p-6';
-const sidePanelClass = 'rounded-[24px] border border-[#e4e4e7] bg-[#ffffff] p-5 shadow-[0_8px_24px_rgba(24,24,27,0.04)]';
-const sectionHeaderClass = 'mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#e4e4e7] pb-4';
-const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#18181b] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(24,24,27,0.24)]';
-const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#18181b]';
-const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
-const sectionDescriptionClass = 'mt-1 text-xs font-medium leading-5 text-[#8a8f99]';
-const labelClass = 'grid min-w-0 content-start gap-2 text-sm font-semibold text-[#333333]';
-const fieldClass = 'h-12 w-full min-w-0 rounded-2xl border border-[#ded8d8] bg-[#ffffff] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)] disabled:bg-[#f3f6f9] disabled:text-[#666666]';
-const textareaClass = 'min-h-32 w-full min-w-0 resize-y rounded-2xl border border-[#ded8d8] bg-[#ffffff] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1f1f1f] outline-none transition focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]';
+const panelClass = workPanelClass;
+const sidePanelClass = workSidePanelClass;
+const sectionHeaderClass = workSectionHeaderClass;
+const stepBadgeClass = workStepBadgeClass;
+const eyebrowClass = workEyebrowClass;
+const sectionTitleClass = workSectionTitleClass;
+const sectionDescriptionClass = workSectionDescriptionClass;
+const labelClass = workLabelClass;
+const fieldClass = workFieldClass;
+const textareaClass = workTextareaClass;

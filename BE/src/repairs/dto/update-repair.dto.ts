@@ -1,5 +1,7 @@
 import { RepairPriority, RepairStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsArray, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { UsedPartDto } from '../../common/dto/used-part.dto';
 
 export class UpdateRepairDto {
   @IsOptional()
@@ -77,4 +79,10 @@ export class UpdateRepairDto {
   @IsOptional()
   @IsString()
   repairMethod?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UsedPartDto)
+  usedParts?: UsedPartDto[];
 }
