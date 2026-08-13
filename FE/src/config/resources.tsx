@@ -223,6 +223,7 @@ export const resources: Record<string, ResourceConfig> = {
       { key: 'machineModel.name', label: 'Tên model' },
       { key: 'machineModel.code', label: 'Model' },
       { key: 'component.name', label: 'Nhóm phụ kiện' },
+      { key: 'quantity', label: 'SL tiêu chuẩn' },
       { key: 'requiresSerial', label: 'Cần S/N' },
     ],
   },

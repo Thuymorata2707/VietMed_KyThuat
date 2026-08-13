@@ -31,6 +31,12 @@ export class UpdateComponentAccessoryDto {
   description?: string | null;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  quantity?: number;
+
+  @IsOptional()
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   requiresSerial?: boolean;

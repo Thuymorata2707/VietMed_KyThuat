@@ -152,6 +152,7 @@ export class MachineComponentsService {
         code: this.normalizeCode(code),
         name: dto.name.trim(),
         description: dto.description?.trim() || null,
+        quantity: dto.quantity ?? 1,
         requiresSerial: dto.requiresSerial ?? true,
         sortOrder: dto.sortOrder ?? 0,
         status: dto.status ?? BusinessLineStatus.ACTIVE,
@@ -251,6 +252,7 @@ export class MachineComponentsService {
           dto.description === undefined
             ? undefined
             : dto.description?.trim() || null,
+        quantity: dto.quantity,
         requiresSerial: dto.requiresSerial,
         sortOrder: dto.sortOrder,
         status: dto.status,

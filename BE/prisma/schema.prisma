@@ -718,6 +718,7 @@ model ComponentAccessory {
   code           String
   name           String
   description    String?
+  quantity       Int                @default(1)
   requiresSerial Boolean            @default(true)
   sortOrder      Int                @default(0)
   status         BusinessLineStatus @default(ACTIVE)

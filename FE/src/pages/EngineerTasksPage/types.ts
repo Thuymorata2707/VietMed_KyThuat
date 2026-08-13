@@ -319,6 +319,7 @@ export type ComponentAccessoryOption = {
   id: string;
   code?: string | null;
   name: string;
+  quantity?: number | null;
   requiresSerial?: boolean | null;
   machineModel?: {
     code?: string | null;

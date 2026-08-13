@@ -513,7 +513,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       accessory.component?.name ? `Nhóm: ${accessory.component.name}` : '',
       accessory.machineModel?.code ? `Model: ${accessory.machineModel.code}` : '',
     ].filter(Boolean).join('; ');
-    const line = [accessory.name, '1', '', '', note].join(' | ');
+    const line = [accessory.name, String(accessory.quantity || 1), '', '', note].join(' | ');
 
     setMaterialsText((current) => [current.trim(), line].filter(Boolean).join('\n'));
   }

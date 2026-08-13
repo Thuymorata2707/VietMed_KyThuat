@@ -56,6 +56,13 @@ function slug(value) {
     .slice(0, 36);
 }
 
+function defaultQuantity(name) {
+  const normalized = String(name || '').toLowerCase();
+  if (normalized.includes('cáp') || normalized.includes('dây')) return 2;
+  if (normalized.includes('đầu dò')) return 2;
+  return 1;
+}
+
 async function main() {
   const models = await prisma.machineModel.findMany({
     where: { status: 'ACTIVE' },
@@ -79,6 +86,7 @@ async function main() {
 
     for (const [index, [name, description]] of templates.entries()) {
       const code = `${modelPrefix}-PK-${String(index + 1).padStart(3, '0')}`;
+      const quantity = defaultQuantity(name);
       const existing = await prisma.componentAccessory.findUnique({
         where: {
           machineModelId_code: {
@@ -99,6 +107,7 @@ async function main() {
         update: {
           name,
           description,
+          quantity,
           requiresSerial: true,
           sortOrder: index,
           status: 'ACTIVE',
@@ -108,6 +117,7 @@ async function main() {
           code,
           name,
           description,
+          quantity,
           requiresSerial: true,
           sortOrder: index,
           status: 'ACTIVE',

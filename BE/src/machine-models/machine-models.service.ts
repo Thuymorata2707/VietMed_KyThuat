@@ -78,6 +78,7 @@ export class MachineModelsService {
                 code: this.normalizeCode(accessory.code),
                 name: accessory.name.trim(),
                 description: accessory.description?.trim() || null,
+                quantity: accessory.quantity ?? 1,
                 requiresSerial: accessory.requiresSerial ?? true,
                 sortOrder: accessoryIndex,
                 status: BusinessLineStatus.ACTIVE,
