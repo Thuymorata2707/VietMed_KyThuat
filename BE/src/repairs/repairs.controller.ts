@@ -51,6 +51,11 @@ export class RepairsController {
     return this.repairsService.getPriorities();
   }
 
+  @Get('next-code')
+  async nextCode(@Query('date') date?: string) {
+    return { code: await this.repairsService.previewCode(date) };
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.repairsService.findOne(id, user);

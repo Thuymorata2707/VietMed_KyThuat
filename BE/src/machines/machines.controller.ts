@@ -58,6 +58,11 @@ export class MachinesController {
     return this.machinesService.getInventoryStatuses();
   }
 
+  @Get('next-code')
+  async nextCode(@Query('source') source?: string) {
+    return { code: await this.machinesService.previewCode(source) };
+  }
+
   @Get('serial/:serialNumber')
   findBySerialNumber(
     @Param('serialNumber') serialNumber: string,

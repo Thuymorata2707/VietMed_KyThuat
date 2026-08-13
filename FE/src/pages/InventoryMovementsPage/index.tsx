@@ -281,7 +281,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
       </div>
 
       {tab === 'history' ? (
-        <HistoryTable loading={loading} movements={filteredMovements} />
+        <HistoryTable loading={loading} movements={filteredMovements} resetKey={`history-${query}`} />
       ) : (
         <section className="grid gap-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -297,6 +297,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
             loading={loading}
             machines={filteredMachines}
             mode={tab}
+            resetKey={`${tab}-${statusFilter}-${query}`}
             canManageInventory={currentRole === 'admin'}
             returnTo={returnToInventory}
             splitAccessoryMachineIds={splitAccessoryMachineIds}
@@ -417,6 +418,7 @@ function MachineTable({
   loading,
   machines,
   mode,
+  resetKey,
   canManageInventory,
   returnTo,
   splitAccessoryMachineIds,
@@ -426,145 +428,151 @@ function MachineTable({
   loading: boolean;
   machines: Machine[];
   mode: 'stock' | 'installed';
+  resetKey: string;
   canManageInventory: boolean;
   returnTo: string;
   splitAccessoryMachineIds: Set<string>;
   onMove: (machine: Machine, action: MovementAction) => void;
   onView: (machine: Machine) => void;
 }) {
+  const pagination = usePagedRows(machines, resetKey);
+
   return (
-    <div className="overflow-x-auto rounded-[22px] border border-[#e4e4e7] bg-white font-sans shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
-      <table className="w-full min-w-[1040px] border-collapse">
-        <thead>
-          <tr>
-            {['Máy', 'Serial / Model', 'Khách hàng', 'Trạng thái', mode === 'installed' ? 'Bảo hành / Kỹ sư' : 'Phụ kiện', 'Thao tác'].map((header) => (
-              <th className="border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3 text-left text-xs font-medium text-[#666666]" key={header}>
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? <LoadingRows columns={6} /> : null}
-          {!loading && machines.map((machine) => (
-            <tr
-              className="cursor-pointer even:bg-[#fcfdff] hover:bg-[#fafafa] focus:bg-[#fafafa] focus:outline-none focus-visible:shadow-[inset_3px_0_0_#18181b]"
-              key={machine.id}
-              onClick={() => onView(machine)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  onView(machine);
-                }
-              }}
-              tabIndex={0}
-            >
-              <td className={cellClass}>
-                <strong className="block text-[#1f1f1f]">{machine.machineCode || 'Chưa có mã máy'}</strong>
-                <span className="mt-1 block text-xs text-[#666666]">{machine.name || machine.modelName || 'Thiết bị'}</span>
-              </td>
-              <td className={cellClass}>
-                <span className="block font-semibold text-[#18181b]">{machine.serialNumber || '-'}</span>
-                <span className="mt-1 block text-xs text-[#666666]">{machine.machineModel?.code || machine.modelName || machine.machineModel?.name || '-'}</span>
-              </td>
-              <td className={cellClass}>
-                <span className="block max-w-[220px] truncate">{machine.customer?.name || '-'}</span>
-                {machine.customer?.province ? <span className="mt-1 block text-xs text-[#666666]">{machine.customer.province}</span> : null}
-              </td>
-              <td className={cellClass}>
-                <StatusBadge value={machine.inventoryStatus} />
-                {machine.status && machine.status !== 'ACTIVE' ? <span className="ml-2 text-xs font-medium text-[#9b5a17]">{displayLabel(machine.status)}</span> : null}
-              </td>
-              <td className={cellClass}>
-                {mode === 'installed' ? (
-                  <>
-                    <span className="block">{machine.warrantyEndDate ? formatValue(machine.warrantyEndDate) : 'Chưa có hạn BH'}</span>
-                    <span className="text-xs text-[#666666]">{machine.primaryEngineer?.fullName || machine.primaryEngineer?.email || 'Chưa có kỹ sư'}</span>
-                  </>
-                ) : (
-                  `${machine.accessories?.length ?? 0} phụ kiện`
-                )}
-              </td>
-              <td className={`${cellClass} min-w-[260px]`}>
-                <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
+    <>
+      <div className="overflow-x-auto rounded-t-[22px] border border-[#e4e4e7] bg-white font-sans shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
+        <table className="w-full min-w-[1040px] border-collapse">
+          <thead>
+            <tr>
+              {['Máy', 'Serial / Model', 'Khách hàng', 'Trạng thái', mode === 'installed' ? 'Bảo hành / Kỹ sư' : 'Phụ kiện', 'Thao tác'].map((header) => (
+                <th className="border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3 text-left text-xs font-medium text-[#666666]" key={header}>
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? <LoadingRows columns={6} /> : null}
+            {!loading && pagination.rows.map((machine) => (
+              <tr
+                className="cursor-pointer even:bg-[#fcfdff] hover:bg-[#fafafa] focus:bg-[#fafafa] focus:outline-none focus-visible:shadow-[inset_3px_0_0_#18181b]"
+                key={machine.id}
+                onClick={() => onView(machine)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onView(machine);
+                  }
+                }}
+                tabIndex={0}
+              >
+                <td className={cellClass}>
+                  <strong className="block text-[#1f1f1f]">{machine.machineCode || 'Chưa có mã máy'}</strong>
+                  <span className="mt-1 block text-xs text-[#666666]">{machine.name || machine.modelName || 'Thiết bị'}</span>
+                </td>
+                <td className={cellClass}>
+                  <span className="block font-semibold text-[#18181b]">{machine.serialNumber || '-'}</span>
+                  <span className="mt-1 block text-xs text-[#666666]">{machine.machineModel?.code || machine.modelName || machine.machineModel?.name || '-'}</span>
+                </td>
+                <td className={cellClass}>
+                  <span className="block max-w-[220px] truncate">{machine.customer?.name || '-'}</span>
+                  {machine.customer?.province ? <span className="mt-1 block text-xs text-[#666666]">{machine.customer.province}</span> : null}
+                </td>
+                <td className={cellClass}>
+                  <StatusBadge value={machine.inventoryStatus} />
+                  {machine.status && machine.status !== 'ACTIVE' ? <span className="ml-2 text-xs font-medium text-[#9b5a17]">{displayLabel(machine.status)}</span> : null}
+                </td>
+                <td className={cellClass}>
                   {mode === 'installed' ? (
                     <>
-                      {canManageInventory ? (
-                        <button className="secondary-button" onClick={() => onMove(machine, movementActions.return)} type="button">
-                          <RotateCcw size={15} />
-                          Thu hồi
-                        </button>
-                      ) : null}
-                      <Link className="secondary-button" to={`/service-tickets/create?kind=repair&machineId=${machine.id}&returnTo=${returnTo}`}>
-                        <Wrench size={15} />
-                        Sửa chữa
-                      </Link>
-                      <Link className="secondary-button" to={`/service-tickets/create?kind=maintenance&machineId=${machine.id}&returnTo=${returnTo}`}>
-                        <ClipboardCheck size={15} />
-                        Bảo trì
-                      </Link>
+                      <span className="block">{machine.warrantyEndDate ? formatValue(machine.warrantyEndDate) : 'Chưa có hạn BH'}</span>
+                      <span className="text-xs text-[#666666]">{machine.primaryEngineer?.fullName || machine.primaryEngineer?.email || 'Chưa có kỹ sư'}</span>
                     </>
                   ) : (
-                    <>
-                      {canManageInventory && machine.inventoryStatus === 'IN_STOCK' ? (
-                        <button className="secondary-button" onClick={() => onMove(machine, movementActions.reserve)} type="button">
-                          <ClipboardCheck size={15} />
-                          Giữ máy
-                        </button>
-                      ) : null}
-                      {canInstallFromInventory(machine) ? (
-                        <Link className="primary-button" to={`/installations/create?machineId=${machine.id}&returnTo=${returnTo}`}>
-                          <PackageCheck size={15} />
-                          Lắp đặt
-                        </Link>
-                      ) : null}
-                      {machine.inventoryStatus === 'RETURNED' ? (
-                        <>
-                          <Link className="secondary-button" to={`/service-tickets/create?kind=repair&machineId=${machine.id}&returnTo=${returnTo}`}>
-                            <Wrench size={15} />
-                            Sửa/kiểm tra
-                          </Link>
-                          {canManageInventory ? (
-                            <button className="primary-button" onClick={() => onMove(machine, movementActions.returnToCustomer)} type="button">
-                              <PackageCheck size={15} />
-                              Trả khách
-                            </button>
-                          ) : null}
-                        </>
-                      ) : null}
-                      {canManageInventory && (machine.inventoryStatus === 'RETURNED' || machine.inventoryStatus === 'ACCESSORY_SPLIT') ? (
-                        <button className="primary-button" onClick={() => onMove(machine, movementActions.import)} type="button">
-                          <PackageCheck size={15} />
-                          Nhập lại kho
-                        </button>
-                      ) : null}
-                      {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || (machine.inventoryStatus === 'RETURNED' && machine.status !== 'REPAIRING')) ? (
-                        <button className="secondary-button" onClick={() => onMove(machine, movementActions.splitAccessory)} type="button">
-                          <Split size={15} />
-                          Tách phụ kiện
-                        </button>
-                      ) : null}
-                      {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RESERVED') && !splitAccessoryMachineIds.has(machine.id) ? (
-                        <button className="secondary-button" onClick={() => onMove(machine, movementActions.sell)} type="button">
-                          <ShoppingCart size={15} />
-                          Bán
-                        </button>
-                      ) : null}
-                      {splitAccessoryMachineIds.has(machine.id) ? (
-                        <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-2 text-xs font-bold text-[#9b5a17]">
-                          Đã tách phụ kiện, không xuất bán
-                        </span>
-                      ) : null}
-                    </>
+                    `${machine.accessories?.length ?? 0} phụ kiện`
                   )}
-                </div>
-              </td>
-            </tr>
-          ))}
-          {!loading && machines.length === 0 ? <EmptyRow columns={6} /> : null}
-        </tbody>
-      </table>
-    </div>
+                </td>
+                <td className={`${cellClass} min-w-[260px]`}>
+                  <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
+                    {mode === 'installed' ? (
+                      <>
+                        {canManageInventory ? (
+                          <button className="secondary-button" onClick={() => onMove(machine, movementActions.return)} type="button">
+                            <RotateCcw size={15} />
+                            Thu hồi
+                          </button>
+                        ) : null}
+                        <Link className="secondary-button" to={`/service-tickets/create?kind=repair&machineId=${machine.id}&returnTo=${returnTo}`}>
+                          <Wrench size={15} />
+                          Sửa chữa
+                        </Link>
+                        <Link className="secondary-button" to={`/service-tickets/create?kind=maintenance&machineId=${machine.id}&returnTo=${returnTo}`}>
+                          <ClipboardCheck size={15} />
+                          Bảo trì
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        {canManageInventory && machine.inventoryStatus === 'IN_STOCK' ? (
+                          <button className="secondary-button" onClick={() => onMove(machine, movementActions.reserve)} type="button">
+                            <ClipboardCheck size={15} />
+                            Giữ máy
+                          </button>
+                        ) : null}
+                        {canInstallFromInventory(machine) ? (
+                          <Link className="primary-button" to={`/installations/create?machineId=${machine.id}&returnTo=${returnTo}`}>
+                            <PackageCheck size={15} />
+                            Lắp đặt
+                          </Link>
+                        ) : null}
+                        {machine.inventoryStatus === 'RETURNED' ? (
+                          <>
+                            <Link className="secondary-button" to={`/service-tickets/create?kind=repair&machineId=${machine.id}&returnTo=${returnTo}`}>
+                              <Wrench size={15} />
+                              Sửa/kiểm tra
+                            </Link>
+                            {canManageInventory ? (
+                              <button className="primary-button" onClick={() => onMove(machine, movementActions.returnToCustomer)} type="button">
+                                <PackageCheck size={15} />
+                                Trả khách
+                              </button>
+                            ) : null}
+                          </>
+                        ) : null}
+                        {canManageInventory && (machine.inventoryStatus === 'RETURNED' || machine.inventoryStatus === 'ACCESSORY_SPLIT') ? (
+                          <button className="primary-button" onClick={() => onMove(machine, movementActions.import)} type="button">
+                            <PackageCheck size={15} />
+                            Nhập lại kho
+                          </button>
+                        ) : null}
+                        {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || (machine.inventoryStatus === 'RETURNED' && machine.status !== 'REPAIRING')) ? (
+                          <button className="secondary-button" onClick={() => onMove(machine, movementActions.splitAccessory)} type="button">
+                            <Split size={15} />
+                            Tách phụ kiện
+                          </button>
+                        ) : null}
+                        {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RESERVED') && !splitAccessoryMachineIds.has(machine.id) ? (
+                          <button className="secondary-button" onClick={() => onMove(machine, movementActions.sell)} type="button">
+                            <ShoppingCart size={15} />
+                            Bán
+                          </button>
+                        ) : null}
+                        {splitAccessoryMachineIds.has(machine.id) ? (
+                          <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-2 text-xs font-bold text-[#9b5a17]">
+                            Đã tách phụ kiện, không xuất bán
+                          </span>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!loading && machines.length === 0 ? <EmptyRow columns={6} /> : null}
+          </tbody>
+        </table>
+      </div>
+      <InventoryTablePager {...pagination} disabled={loading} label="máy" />
+    </>
   );
 }
 
@@ -687,39 +695,105 @@ function PreviewField({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function HistoryTable({ loading, movements }: { loading: boolean; movements: InventoryMovement[] }) {
+function HistoryTable({ loading, movements, resetKey }: { loading: boolean; movements: InventoryMovement[]; resetKey: string }) {
+  const pagination = usePagedRows(movements, resetKey);
+
   return (
-    <div className="overflow-x-auto rounded-[22px] border border-[#e4e4e7] bg-white font-sans shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
-      <table className="w-full min-w-[980px] border-collapse">
-        <thead>
-          <tr>
-            {['Mã phiếu', 'Loại', 'Máy', 'Chuyển trạng thái', 'Khách hàng', 'Người tạo', 'Ngày'].map((header) => (
-              <th className="border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3 text-left text-xs font-medium text-[#666666]" key={header}>
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? <LoadingRows columns={7} /> : null}
-          {!loading && movements.map((movement) => (
-            <tr className="even:bg-[#fcfdff] hover:bg-[#fafafa]" key={movement.id}>
-              <td className={cellClass}>{movement.code || '-'}</td>
-              <td className={cellClass}>{displayLabel(movement.type)}</td>
-              <td className={cellClass}>{movement.machine ? machineLabel(movement.machine) : '-'}</td>
-              <td className={cellClass}>
-                <span>{movement.fromStatus ? displayLabel(movement.fromStatus) : '-'}</span>
-                <span className="px-2 text-[#8a8a8a]">→</span>
-                <StatusBadge value={movement.toStatus} />
-              </td>
-              <td className={cellClass}>{movement.customer?.name || '-'}</td>
-              <td className={cellClass}>{movement.createdBy?.fullName || movement.createdBy?.email || '-'}</td>
-              <td className={cellClass}>{formatValue(movement.occurredAt)}</td>
+    <>
+      <div className="overflow-x-auto rounded-t-[22px] border border-[#e4e4e7] bg-white font-sans shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
+        <table className="w-full min-w-[980px] border-collapse">
+          <thead>
+            <tr>
+              {['Mã phiếu', 'Loại', 'Máy', 'Chuyển trạng thái', 'Khách hàng', 'Người tạo', 'Ngày'].map((header) => (
+                <th className="border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3 text-left text-xs font-medium text-[#666666]" key={header}>
+                  {header}
+                </th>
+              ))}
             </tr>
-          ))}
-          {!loading && movements.length === 0 ? <EmptyRow columns={7} /> : null}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {loading ? <LoadingRows columns={7} /> : null}
+            {!loading && pagination.rows.map((movement) => (
+              <tr className="even:bg-[#fcfdff] hover:bg-[#fafafa]" key={movement.id}>
+                <td className={cellClass}>{movement.code || '-'}</td>
+                <td className={cellClass}>{displayLabel(movement.type)}</td>
+                <td className={cellClass}>{movement.machine ? machineLabel(movement.machine) : '-'}</td>
+                <td className={cellClass}>
+                  <span>{movement.fromStatus ? displayLabel(movement.fromStatus) : '-'}</span>
+                  <span className="px-2 text-[#8a8a8a]">→</span>
+                  <StatusBadge value={movement.toStatus} />
+                </td>
+                <td className={cellClass}>{movement.customer?.name || '-'}</td>
+                <td className={cellClass}>{movement.createdBy?.fullName || movement.createdBy?.email || '-'}</td>
+                <td className={cellClass}>{formatValue(movement.occurredAt)}</td>
+              </tr>
+            ))}
+            {!loading && movements.length === 0 ? <EmptyRow columns={7} /> : null}
+          </tbody>
+        </table>
+      </div>
+      <InventoryTablePager {...pagination} disabled={loading} label="phiếu" />
+    </>
+  );
+}
+
+function usePagedRows<T>(items: T[], resetKey: string) {
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const rows = items.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [items.length, resetKey]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  return {
+    page: currentPage,
+    pageSize,
+    rows,
+    total: items.length,
+    totalPages,
+    onPageChange: setPage,
+  };
+}
+
+function InventoryTablePager({
+  disabled,
+  label,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+}: {
+  disabled: boolean;
+  label: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const first = total ? (page - 1) * pageSize + 1 : 0;
+  const last = Math.min(total, page * pageSize);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-b-[22px] border-x border-b border-[#e4e4e7] bg-[#fafafa] px-4 py-3 text-sm font-medium text-[#666666]">
+      <span>{total ? `${first}-${last}/${total} ${label}` : `0 ${label}`}</span>
+      <div className="flex items-center gap-2">
+        <button className="secondary-button compact" disabled={disabled || page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))} type="button">
+          Trước
+        </button>
+        <span>Trang {page}/{totalPages}</span>
+        <button className="secondary-button compact" disabled={disabled || page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))} type="button">
+          Sau
+        </button>
+      </div>
     </div>
   );
 }

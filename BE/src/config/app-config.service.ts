@@ -12,6 +12,26 @@ export class AppConfigService {
     86400,
     'JWT_EXPIRES_IN',
   );
+  readonly rateLimitWindowMs = this.parsePositiveInteger(
+    process.env.RATE_LIMIT_WINDOW_MS,
+    60_000,
+    'RATE_LIMIT_WINDOW_MS',
+  );
+  readonly rateLimitMax = this.parsePositiveInteger(
+    process.env.RATE_LIMIT_MAX,
+    this.isProduction() ? 300 : 1000,
+    'RATE_LIMIT_MAX',
+  );
+  readonly authRateLimitMax = this.parsePositiveInteger(
+    process.env.AUTH_RATE_LIMIT_MAX,
+    20,
+    'AUTH_RATE_LIMIT_MAX',
+  );
+  readonly uploadMaxFileSizeBytes = this.parsePositiveInteger(
+    process.env.UPLOAD_MAX_FILE_SIZE_BYTES,
+    10 * 1024 * 1024,
+    'UPLOAD_MAX_FILE_SIZE_BYTES',
+  );
   readonly corsOrigins = this.readCorsOrigins();
   readonly enableSwagger = this.readBoolean(
     process.env.ENABLE_SWAGGER,

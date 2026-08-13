@@ -744,6 +744,13 @@ export class MaintenanceService {
     return Object.values(MaintenanceType);
   }
 
+  previewCode(date?: string) {
+    return this.generateMaintenanceCode(
+      this.prisma,
+      this.parseOptionalDate(date, 'date') ?? new Date(),
+    );
+  }
+
   private validateCreateMaintenance(dto: CreateMaintenanceDto) {
     if (!dto.title?.trim() || !dto.scheduledDate) {
       throw new BadRequestException('title and scheduledDate are required');

@@ -467,6 +467,19 @@ function TechnicalWorkRegister({
 }) {
   const rows = report?.rows ?? [];
   const summary = report?.summary;
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [from, rows.length, to]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   return (
     <section className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-white p-4 shadow-[0_18px_46px_rgba(24,24,27,0.06)]">
@@ -532,7 +545,7 @@ function TechnicalWorkRegister({
                   </td>
                 </tr>
               ) : null}
-              {!loading && rows.map((row) => (
+              {!loading && pagedRows.map((row) => (
                 <tr className="hover:bg-[#fafafa]" key={`${row.kind}-${row.id}`}>
                   <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.date)}</td>
                   <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{workKindLabel(row.kind)}</td>
@@ -557,8 +570,50 @@ function TechnicalWorkRegister({
             </tbody>
           </table>
         </div>
+        <RegisterTablePager
+          disabled={loading}
+          page={currentPage}
+          pageSize={pageSize}
+          total={rows.length}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
       </div>
     </section>
+  );
+}
+
+function RegisterTablePager({
+  disabled,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+}: {
+  disabled: boolean;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const first = total ? (page - 1) * pageSize + 1 : 0;
+  const last = Math.min(total, page * pageSize);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eef0f3] bg-[#fafafa] px-4 py-3 text-sm font-medium text-[#667085]">
+      <span>{total ? `${first}-${last}/${total} phiếu` : '0 phiếu'}</span>
+      <div className="flex items-center gap-2">
+        <button className="secondary-button compact" disabled={disabled || page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))} type="button">
+          Trước
+        </button>
+        <span>Trang {page}/{totalPages}</span>
+        <button className="secondary-button compact" disabled={disabled || page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))} type="button">
+          Sau
+        </button>
+      </div>
+    </div>
   );
 }
 

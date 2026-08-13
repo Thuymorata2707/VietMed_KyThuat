@@ -1,6 +1,6 @@
 import { Loader2, Plus, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -17,6 +17,8 @@ type Role = {
 export function AdminRolesPage() {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [name, setName] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
@@ -49,6 +51,16 @@ export function AdminRolesPage() {
     if (!keyword) return roles;
     return roles.filter((role) => role.name.toLowerCase().includes(keyword));
   }, [query, roles]);
+  const totalPages = Math.max(1, Math.ceil(filteredRoles.length / pageSize));
+  const pagedRoles = filteredRoles.slice((Math.min(page, totalPages) - 1) * pageSize, Math.min(page, totalPages) * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   function openCreateModal() {
     setName('');
@@ -110,7 +122,7 @@ export function AdminRolesPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredRoles.map((role) => (
+              {pagedRoles.map((role) => (
                 <tr key={role.id}>
                   <td className="border-b border-[#eeeeee] px-3.5 py-[13px]">
                     <div className="flex items-center gap-2 text-[#1f1f1f]">
@@ -145,6 +157,14 @@ export function AdminRolesPage() {
             </tbody>
           </table>
         </div>
+        <TablePager
+          disabled={loading}
+          page={Math.min(page, totalPages)}
+          pageSize={pageSize}
+          total={filteredRoles.length}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
       </section>
 
       {isModalOpen ? (
@@ -178,6 +198,40 @@ export function AdminRolesPage() {
         </div>
       ) : null}
     </PageFrame>
+  );
+}
+
+function TablePager({
+  disabled,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+}: {
+  disabled: boolean;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const first = total ? (page - 1) * pageSize + 1 : 0;
+  const last = Math.min(total, page * pageSize);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eeeeee] bg-[#fafafa] px-4 py-3 text-sm font-medium text-[#666666]">
+      <span>{total ? `${first}-${last}/${total} vai trò` : '0 vai trò'}</span>
+      <div className="flex items-center gap-2">
+        <button className="secondary-button compact" disabled={disabled || page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))} type="button">
+          Trước
+        </button>
+        <span>Trang {page}/{totalPages}</span>
+        <button className="secondary-button compact" disabled={disabled || page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))} type="button">
+          Sau
+        </button>
+      </div>
+    </div>
   );
 }
 

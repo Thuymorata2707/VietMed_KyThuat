@@ -73,6 +73,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   const [note, setNote] = useState('');
   const [machineSerialNumber, setMachineSerialNumber] = useState('');
   const [machineCode, setMachineCode] = useState('');
+  const [machinePreviewCode, setMachinePreviewCode] = useState('');
   const [machineAccessoriesText, setMachineAccessoriesText] = useState('');
   const [installedById, setInstalledById] = useState('');
   const [engineers, setEngineers] = useState<EngineerOption[]>([]);
@@ -116,6 +117,29 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
   useEffect(() => {
     loadDetail();
   }, [id]);
+
+  useEffect(() => {
+    if (machineCode) {
+      setMachinePreviewCode(machineCode);
+      return;
+    }
+
+    let cancelled = false;
+    const source = selectedMachine?.modelName || selectedMachine?.name || detail?.plannedMachineModel?.code || detail?.plannedMachineModel?.name || detail?.plannedModelName || 'MAY';
+    const params = new URLSearchParams({ source });
+
+    void apiFetch<{ code?: string | null }>(`/machines/next-code?${params.toString()}`)
+      .then((result) => {
+        if (!cancelled) setMachinePreviewCode(result.code || '');
+      })
+      .catch(() => {
+        if (!cancelled) setMachinePreviewCode('');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [machineCode, selectedMachine?.modelName, selectedMachine?.name, detail?.plannedMachineModel?.code, detail?.plannedMachineModel?.name, detail?.plannedModelName]);
 
   async function loadDetail() {
     if (!id) return;
@@ -565,7 +589,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                 </label>
                 <label className={labelClass}>
                   Mã máy nội bộ
-                  <input className={fieldClass} disabled placeholder="Tự sinh khi lưu" value={machineCode || 'Tự sinh khi lưu'} />
+                  <input className={fieldClass} disabled placeholder="Đang sinh mã..." value={machineCode || machinePreviewCode || 'Đang sinh mã...'} />
                 </label>
                 <div className="md:col-span-2">
                   {accessoryMode ? (

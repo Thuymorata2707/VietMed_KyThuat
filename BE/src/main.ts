@@ -1,7 +1,9 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { createRateLimitMiddleware } from './common/middleware/rate-limit.middleware';
 import { AppConfigService } from './config/app-config.service';
 
 async function bootstrap() {
@@ -9,11 +11,13 @@ async function bootstrap() {
   const config = app.get(AppConfigService);
   config.validate();
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  app.use(helmet());
 
   app.enableCors({
     origin: config.corsOrigins,
     credentials: true,
   });
+  app.use(createRateLimitMiddleware(config));
 
   app.useGlobalPipes(
     new ValidationPipe({

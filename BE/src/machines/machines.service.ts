@@ -829,6 +829,10 @@ export class MachinesService {
     return Object.values(MachineInventoryStatus);
   }
 
+  previewCode(source?: string) {
+    return this.generateMachineCode(source || 'MAY');
+  }
+
   private validateCreateMachine(dto: CreateMachineDto) {
     if (
       !dto.serialNumber?.trim() ||

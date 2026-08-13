@@ -161,6 +161,10 @@ export class MachineComponentsService {
     });
   }
 
+  previewAccessoryCode(machineModelId: string) {
+    return this.generateAccessoryCode(machineModelId);
+  }
+
   async findAccessories(
     query: ListComponentAccessoriesQueryDto,
   ): Promise<PaginatedResult<unknown>> {

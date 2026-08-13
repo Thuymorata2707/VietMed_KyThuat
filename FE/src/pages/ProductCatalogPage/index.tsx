@@ -561,6 +561,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
   const supportsEndoscopyChecklist = isEndoscopyMachineModel(selectedModel);
   const machineRows = useMemo(() => parseProductMachineRows(form.machineRows), [form.machineRows]);
   const duplicatedSerial = useMemo(() => findDuplicatedSerial(machineRows), [machineRows]);
+  const [machinePreviewCode, setMachinePreviewCode] = useState('');
 
   useEffect(() => {
     if (!modelsQuery.data) return;
@@ -578,6 +579,24 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
       };
     });
   }, [models, modelsQuery.data, searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const source = selectedModel?.code || selectedModel?.name || 'MAY';
+    const params = new URLSearchParams({ source });
+
+    void apiFetch<{ code?: string | null }>(`/machines/next-code?${params.toString()}`)
+      .then((result) => {
+        if (!cancelled) setMachinePreviewCode(result.code || '');
+      })
+      .catch(() => {
+        if (!cancelled) setMachinePreviewCode('');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedModel?.code, selectedModel?.name]);
 
   const createMachineMutation = useMutation({
     mutationFn: async ({ currentForm, model }: { currentForm: ProductForm; model: MachineModel }) => {
@@ -790,6 +809,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                   accessoryMode={supportsEndoscopyChecklist ? 'endoscopy' : supportsProbes ? 'probe' : 'generic'}
                   defaultAccessoriesText={form.accessoriesText}
                   defaultMachineName={selectedModel ? machineDefaultName(selectedModel) : ''}
+                  machinePreviewCode={machinePreviewCode}
                   onChange={(value) => updateField('machineRows', value)}
                   value={form.machineRows}
                 />
@@ -849,7 +869,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                 machineRows.slice(0, 4).map((row, index) => (
                   <div className="rounded-2xl border border-[#e2e8f0] bg-[#fbfdff] px-3 py-2" key={`${row.serialNumber}-${index}`}>
                     <strong className="block truncate text-sm text-[#172033]">{row.serialNumber}</strong>
-                    <span className="mt-0.5 block truncate text-xs font-medium text-[#64748b]">{row.machineCode || 'Tự sinh mã máy'}</span>
+                    <span className="mt-0.5 block truncate text-xs font-medium text-[#64748b]">{row.machineCode || previewMachineCodeAt(machinePreviewCode, index) || 'Đang sinh mã máy'}</span>
                   </div>
                 ))
               ) : (
@@ -880,12 +900,14 @@ function ProductMachineRowsEditor({
   accessoryMode,
   defaultAccessoriesText,
   defaultMachineName,
+  machinePreviewCode,
   value,
   onChange,
 }: {
   accessoryMode: 'probe' | 'endoscopy' | 'generic';
   defaultAccessoriesText: string;
   defaultMachineName: string;
+  machinePreviewCode: string;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -947,8 +969,8 @@ function ProductMachineRowsEditor({
                 <input
                   className="h-11 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] px-3 text-[#64748b] outline-none transition placeholder:text-[#94a3b8]"
                   disabled
-                  placeholder="Tự sinh khi lưu"
-                  value={row.machineCode || 'Tự sinh khi lưu'}
+                  placeholder="Đang sinh mã..."
+                  value={row.machineCode || previewMachineCodeAt(machinePreviewCode, index) || 'Đang sinh mã...'}
                 />
               </label>
               <label className="grid gap-2 text-sm font-semibold text-[#334155]">
@@ -1020,6 +1042,20 @@ function ProductModelTable({
   models: MachineModel[];
   stockByModel: Record<string, ModelStock>;
 }) {
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(models.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedModels = models.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [catalogSearch, models.length]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
   return (
     <section className="overflow-hidden rounded-2xl border border-[#d8e0ea] bg-white shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e4e7] bg-[#f8fafc] px-4 py-3">
@@ -1041,7 +1077,7 @@ function ProductModelTable({
             </tr>
           </thead>
           <tbody>
-            {models.map((model) => (
+            {pagedModels.map((model) => (
               <ModelRow
                 canAddProduct={canAddProduct}
                 catalogSearch={catalogSearch}
@@ -1053,7 +1089,49 @@ function ProductModelTable({
           </tbody>
         </table>
       </div>
+      <ProductTablePager
+        disabled={false}
+        page={currentPage}
+        pageSize={pageSize}
+        total={models.length}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
     </section>
+  );
+}
+
+function ProductTablePager({
+  disabled,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+}: {
+  disabled: boolean;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const first = total ? (page - 1) * pageSize + 1 : 0;
+  const last = Math.min(total, page * pageSize);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e4e4e7] bg-[#f8fafc] px-4 py-3 text-sm font-medium text-[#64748b]">
+      <span>{total ? `${first}-${last}/${total} model` : '0 model'}</span>
+      <div className="flex items-center gap-2">
+        <button className="secondary-button compact" disabled={disabled || page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))} type="button">
+          Trước
+        </button>
+        <span>Trang {page}/{totalPages}</span>
+        <button className="secondary-button compact" disabled={disabled || page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))} type="button">
+          Sau
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -1879,6 +1957,16 @@ function findDuplicatedSerial(rows: ProductMachineRow[]) {
     seen.add(key);
   }
   return '';
+}
+
+function previewMachineCodeAt(baseCode: string, index: number) {
+  if (!baseCode) return '';
+  const match = baseCode.match(/^(.*-)(\d+)$/);
+  if (!match) return index === 0 ? baseCode : `${baseCode}-${String(index + 1).padStart(3, '0')}`;
+
+  const [, prefix, numberText] = match;
+  const nextNumber = Number(numberText) + index;
+  return `${prefix}${String(nextNumber).padStart(numberText.length, '0')}`;
 }
 
 function flattenTemplateAccessories(model: MachineModel) {

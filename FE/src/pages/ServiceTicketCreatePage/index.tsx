@@ -168,6 +168,8 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const [machineOptions, setMachineOptions] = useState<Array<PickerOption<MachineOption>>>([]);
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
   const [showQuickMachine, setShowQuickMachine] = useState(false);
+  const [ticketPreviewCode, setTicketPreviewCode] = useState('');
+  const [quickMachinePreviewCode, setQuickMachinePreviewCode] = useState('');
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const scope = fixedKind === 'installation' || initialKind === 'installation' ? 'installation' : 'service';
@@ -424,6 +426,44 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     }));
   }, [fixedKind, initialCustomerId, initialMachineId, initialWarrantyStatus, kind, returnTo]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const date = kind === 'repair' ? form.reportedAt : form.scheduledDate;
+    const endpoint = kind === 'repair' ? '/repairs/next-code' : kind === 'maintenance' ? '/maintenance/next-code' : '/installations/next-code';
+    const params = new URLSearchParams();
+    if (date) params.set('date', date);
+
+    void apiFetch<{ code?: string | null }>(`${endpoint}?${params.toString()}`)
+      .then((result) => {
+        if (!cancelled) setTicketPreviewCode(result.code || '');
+      })
+      .catch(() => {
+        if (!cancelled) setTicketPreviewCode('');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, form.reportedAt, form.scheduledDate]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const source = selectedModel?.code || selectedModel?.name || quickMachineForm.modelName || quickMachineForm.name || 'MAY';
+    const params = new URLSearchParams({ source });
+
+    void apiFetch<{ code?: string | null }>(`/machines/next-code?${params.toString()}`)
+      .then((result) => {
+        if (!cancelled) setQuickMachinePreviewCode(result.code || '');
+      })
+      .catch(() => {
+        if (!cancelled) setQuickMachinePreviewCode('');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedModel?.code, selectedModel?.name, quickMachineForm.modelName, quickMachineForm.name]);
+
   function updateForm(patch: Partial<TicketForm>) {
     setForm((current) => ({ ...current, ...patch }));
   }
@@ -622,6 +662,10 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
               <div className="grid gap-5 md:grid-cols-2">
                 <label className={labelClass}>
+                  Mã phiếu
+                  <input className={fieldClass} disabled value={ticketPreviewCode || 'Đang sinh mã...'} />
+                </label>
+                <label className={labelClass}>
                   Loại phiếu
                   <select className={fieldClass} disabled={Boolean(fixedKind)} onChange={(event) => changeKind(event.target.value as TicketKind)} value={kind}>
                     <option value="repair">Sửa chữa</option>
@@ -742,6 +786,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                   models={visibleMachineModels}
                   onCreate={createMachine}
                   selectedModel={selectedModel}
+                  previewCode={quickMachinePreviewCode}
                   supportsAccessories={Boolean(quickMachineAccessoryMode)}
                   accessoryMode={quickMachineAccessoryMode}
                   updateForm={(patch) => setQuickMachineForm((current) => ({ ...current, ...patch }))}
@@ -797,6 +842,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
             <h2 className={`${sectionTitleClass} mb-4`}>Tóm tắt</h2>
             <div className="grid gap-3 text-sm text-[#333333]">
               <SummaryRow label="Loại phiếu" value={ticketKindLabel(kind)} />
+              <SummaryRow label="Mã phiếu" value={ticketPreviewCode || 'Đang sinh mã'} />
               <SummaryRow label="Thiết bị" value={kind === 'installation' ? installationDeviceSummary.summary || 'Chưa chọn' : selectedMachine ? machineLabel(selectedMachine) : 'Chưa chọn'} />
               <SummaryRow label="Khách hàng" value={customerNameForSummary(selectedMachine, customers, form.customerId)} />
               <SummaryRow label="Kỹ sư" value={engineers.find((engineer) => engineer.id === form.engineerId)?.fullName || 'Chưa phân công'} />
@@ -1241,6 +1287,7 @@ function QuickMachinePanel({
   kind,
   models,
   onCreate,
+  previewCode,
   selectedModel,
   accessoryMode,
   supportsAccessories,
@@ -1254,6 +1301,7 @@ function QuickMachinePanel({
   kind: TicketKind;
   models: MachineModelOption[];
   onCreate: () => void;
+  previewCode: string;
   selectedModel?: MachineModelOption;
   supportsAccessories: boolean;
   updateForm: (patch: Partial<QuickMachineForm>) => void;
@@ -1293,6 +1341,10 @@ function QuickMachinePanel({
           <label className={labelClass}>
             Serial Number
             <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
+          </label>
+          <label className={labelClass}>
+            Mã máy
+            <input className={fieldClass} disabled value={previewCode || 'Đang sinh mã...'} />
           </label>
           <div className={`${labelClass} rounded-2xl border border-[#dbe6f3] bg-white px-3 py-2.5`}>
             Khách hàng của phiếu

@@ -121,6 +121,8 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
   const [engineerId, setEngineerId] = useState(() => (isAdmin ? searchParams.get('engineerId') || '' : user.id));
   const [productIndustryId, setProductIndustryId] = useState(() => searchParams.get('productIndustryId') || '');
   const [workType, setWorkType] = useState(() => normalizeWorkType(searchParams.get('workType')));
+  const [engineerPage, setEngineerPage] = useState(1);
+  const engineerPageSize = 10;
 
   const requestParams = useMemo(() => {
     const params = new URLSearchParams({ from, to });
@@ -165,7 +167,18 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
   const maxEngineerTotal = useMemo(() => Math.max(...(data?.byEngineer ?? []).map((item) => item.total), 1), [data]);
   const maxIndustryTotal = useMemo(() => Math.max(...(data?.byIndustry ?? []).map((item) => item.total), 1), [data]);
   const maxTrendTotal = useMemo(() => Math.max(...(data?.trend ?? []).map((item) => item.total), 1), [data]);
+  const engineerTotalPages = Math.max(1, Math.ceil((data?.byEngineer.length ?? 0) / engineerPageSize));
+  const currentEngineerPage = Math.min(engineerPage, engineerTotalPages);
+  const pagedEngineers = (data?.byEngineer ?? []).slice((currentEngineerPage - 1) * engineerPageSize, currentEngineerPage * engineerPageSize);
   const weeklyReportHref = buildWeeklyReportHref(weekStart, isAdmin ? engineerId : user.id);
+
+  useEffect(() => {
+    setEngineerPage(1);
+  }, [engineerId, from, productIndustryId, to, workType]);
+
+  useEffect(() => {
+    setEngineerPage((current) => Math.min(current, engineerTotalPages));
+  }, [engineerTotalPages]);
 
   return (
     <PageFrame>
@@ -327,7 +340,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
                   </tr>
                 </thead>
                 <tbody>
-                  {data.byEngineer.map((item) => (
+                  {pagedEngineers.map((item) => (
                     <tr className="border-b border-[#f1f1f1] last:border-b-0" key={item.engineerId}>
                       <td className="px-4 py-3 font-semibold text-[#1f1f1f]">{item.engineerName}</td>
                       <td className="px-4 py-3">{item.total}</td>
@@ -350,10 +363,55 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
                 </tbody>
               </table>
             </div>
+            <TablePager
+              disabled={loading}
+              label="kỹ sư"
+              page={currentEngineerPage}
+              pageSize={engineerPageSize}
+              total={data.byEngineer.length}
+              totalPages={engineerTotalPages}
+              onPageChange={setEngineerPage}
+            />
           </section>
         </>
       ) : null}
     </PageFrame>
+  );
+}
+
+function TablePager({
+  disabled,
+  label,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+}: {
+  disabled: boolean;
+  label: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const first = total ? (page - 1) * pageSize + 1 : 0;
+  const last = Math.min(total, page * pageSize);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eeeeee] bg-[#fafafa] px-4 py-3 text-sm font-medium text-[#666666]">
+      <span>{total ? `${first}-${last}/${total} ${label}` : `0 ${label}`}</span>
+      <div className="flex items-center gap-2">
+        <button className="secondary-button compact" disabled={disabled || page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))} type="button">
+          Trước
+        </button>
+        <span>Trang {page}/{totalPages}</span>
+        <button className="secondary-button compact" disabled={disabled || page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))} type="button">
+          Sau
+        </button>
+      </div>
+    </div>
   );
 }
 

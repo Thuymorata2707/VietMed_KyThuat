@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
@@ -496,6 +496,20 @@ function CatalogModelTable({
   onOpenModel: (modelId: string) => void;
   stockByModel: Record<string, ModelStock>;
 }) {
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(models.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedModels = models.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [catalogSearch, models.length]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
   return (
     <section className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e4e7] bg-[#fafafa] px-4 py-3">
@@ -521,7 +535,7 @@ function CatalogModelTable({
             </tr>
           </thead>
           <tbody>
-            {models.map((model) => (
+            {pagedModels.map((model) => (
               <CatalogModelRow
                 canAddProduct={canAddProduct}
                 catalogSearch={catalogSearch}
@@ -534,7 +548,52 @@ function CatalogModelTable({
           </tbody>
         </table>
       </div>
+      <TablePager
+        disabled={false}
+        label="model"
+        page={currentPage}
+        pageSize={pageSize}
+        total={models.length}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
     </section>
+  );
+}
+
+function TablePager({
+  disabled,
+  label,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+}: {
+  disabled: boolean;
+  label: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const first = total ? (page - 1) * pageSize + 1 : 0;
+  const last = Math.min(total, page * pageSize);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eeeeee] bg-[#fafafa] px-4 py-3 text-sm font-medium text-[#666666]">
+      <span>{total ? `${first}-${last}/${total} ${label}` : `0 ${label}`}</span>
+      <div className="flex items-center gap-2">
+        <button className="secondary-button compact" disabled={disabled || page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))} type="button">
+          Trước
+        </button>
+        <span>Trang {page}/{totalPages}</span>
+        <button className="secondary-button compact" disabled={disabled || page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))} type="button">
+          Sau
+        </button>
+      </div>
+    </div>
   );
 }
 

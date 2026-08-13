@@ -284,6 +284,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   const [loadingMachineDetail, setLoadingMachineDetail] = useState(false);
   const [editingMachine, setEditingMachine] = useState<DashboardMachine | null>(null);
   const [editForm, setEditForm] = useState<EditMachineForm>(() => emptyEditMachineForm());
+  const [editMachinePreviewCode, setEditMachinePreviewCode] = useState('');
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkForm, setBulkForm] = useState<BulkMachineForm>(() => emptyBulkMachineForm());
   const [templateAccessories, setTemplateAccessories] = useState<TemplateAccessory[]>([]);
@@ -362,6 +363,30 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     if (isMachineEditRoute) return;
     setEditingMachine(null);
   }, [isMachineEditRoute]);
+
+  useEffect(() => {
+    if (editForm.machineCode) {
+      setEditMachinePreviewCode(editForm.machineCode);
+      return;
+    }
+
+    let cancelled = false;
+    const model = machineModels.find((item) => item.id === editForm.machineModelId);
+    const source = model?.code || model?.name || editForm.modelName || editForm.name || 'MAY';
+    const params = new URLSearchParams({ source });
+
+    void apiFetch<{ code?: string | null }>(`/machines/next-code?${params.toString()}`)
+      .then((result) => {
+        if (!cancelled) setEditMachinePreviewCode(result.code || '');
+      })
+      .catch(() => {
+        if (!cancelled) setEditMachinePreviewCode('');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editForm.machineCode, editForm.machineModelId, editForm.modelName, editForm.name, machineModels]);
 
   async function loadTechnicalMachines() {
     setLoading(true);
@@ -742,6 +767,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             loadingAccessoryTemplates={loadingAccessoryTemplates}
             machine={recordMachine}
             machineModels={machineModels}
+            previewCode={editMachinePreviewCode}
             saving={saving}
             templateAccessories={templateAccessories}
             onAddAccessory={addAccessoryForm}
@@ -987,7 +1013,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <div className="grid gap-3 md:grid-cols-2">
               <label className={editLabelClass}>
                 Mã máy
-                <input className={editFieldClass} disabled placeholder="Tự sinh khi lưu" value={editForm.machineCode || 'Tự sinh khi lưu'} />
+                <input className={editFieldClass} disabled placeholder="Đang sinh mã..." value={editForm.machineCode || editMachinePreviewCode || 'Đang sinh mã...'} />
               </label>
               <label className={editLabelClass}>
                 Serial
@@ -2119,6 +2145,7 @@ function MachineEditForm({
   loadingAccessoryTemplates,
   machine,
   machineModels,
+  previewCode,
   saving,
   templateAccessories,
   onAddAccessory,
@@ -2140,6 +2167,7 @@ function MachineEditForm({
   loadingAccessoryTemplates: boolean;
   machine: DashboardMachine | null;
   machineModels: MachineModelOption[];
+  previewCode: string;
   saving: boolean;
   templateAccessories: TemplateAccessory[];
   onAddAccessory: () => void;
@@ -2180,7 +2208,7 @@ function MachineEditForm({
       <div className="grid gap-3 md:grid-cols-2">
         <label className={editLabelClass}>
           Mã máy
-          <input className={editFieldClass} disabled placeholder="Tự sinh khi lưu" value={editForm.machineCode || 'Tự sinh khi lưu'} />
+          <input className={editFieldClass} disabled placeholder="Đang sinh mã..." value={editForm.machineCode || previewCode || 'Đang sinh mã...'} />
         </label>
         <label className={editLabelClass}>
           Serial

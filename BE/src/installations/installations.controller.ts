@@ -47,6 +47,16 @@ export class InstallationsController {
     return this.installationsService.getStatuses();
   }
 
+  @Get('next-code')
+  async nextCode(@Query('date') date?: string) {
+    return { code: await this.installationsService.previewCode(date) };
+  }
+
+  @Get('next-machine-code')
+  async nextMachineCode(@Query('source') source?: string) {
+    return { code: await this.installationsService.previewMachineCode(source) };
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.installationsService.findOne(id, user);

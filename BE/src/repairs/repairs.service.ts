@@ -723,6 +723,13 @@ export class RepairsService {
     return Object.values(RepairPriority);
   }
 
+  previewCode(date?: string) {
+    return this.generateRepairCode(
+      this.prisma,
+      this.parseOptionalDate(date) ?? new Date(),
+    );
+  }
+
   private validateCreateRepair(dto: CreateRepairDto) {
     if (!dto.title?.trim()) {
       throw new BadRequestException('title is required');

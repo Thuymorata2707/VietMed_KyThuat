@@ -1,6 +1,6 @@
 import { Building2, Loader2, MapPinned, PackageSearch, Plus, RefreshCw, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -56,6 +56,8 @@ export function AdminRegionsPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
@@ -116,7 +118,18 @@ export function AdminRegionsPage() {
       [region.name, region.code].join(' ').toLowerCase().includes(keyword),
     );
   }, [query, regions]);
+  const totalPages = Math.max(1, Math.ceil(filteredRegions.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRegions = filteredRegions.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const existingRegionCodes = useMemo(() => new Set(regions.map((region) => region.code.toUpperCase())), [regions]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   function selectRegion(region: Region) {
     setSelectedRegion(region);
@@ -200,7 +213,7 @@ export function AdminRegionsPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredRegions.map((region) => (
+              {pagedRegions.map((region) => (
                 <tr
                   className={`cursor-pointer border-b border-[#eeeeee] transition last:border-b-0 hover:bg-[#fafafa] ${
                     selectedRegion?.id === region.id ? 'bg-[#f4f4f5]' : ''
@@ -246,6 +259,15 @@ export function AdminRegionsPage() {
             <span>Thử đổi từ khóa tìm kiếm hoặc tạo khu vực mới.</span>
           </div>
         ) : null}
+        <TablePager
+          disabled={loading}
+          label="khu vực"
+          page={currentPage}
+          pageSize={pageSize}
+          total={filteredRegions.length}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
       </section>
 
       {selectedRegion ? (
@@ -437,6 +459,42 @@ export function AdminRegionsPage() {
         </div>
       ) : null}
     </PageFrame>
+  );
+}
+
+function TablePager({
+  disabled,
+  label,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+}: {
+  disabled: boolean;
+  label: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const first = total ? (page - 1) * pageSize + 1 : 0;
+  const last = Math.min(total, page * pageSize);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eeeeee] bg-[#fafafa] px-4 py-3 text-sm font-medium text-[#666666]">
+      <span>{total ? `${first}-${last}/${total} ${label}` : `0 ${label}`}</span>
+      <div className="flex items-center gap-2">
+        <button className="secondary-button compact" disabled={disabled || page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))} type="button">
+          Trước
+        </button>
+        <span>Trang {page}/{totalPages}</span>
+        <button className="secondary-button compact" disabled={disabled || page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))} type="button">
+          Sau
+        </button>
+      </div>
+    </div>
   );
 }
 

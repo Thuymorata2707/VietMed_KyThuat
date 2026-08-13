@@ -51,6 +51,11 @@ export class MaintenanceController {
     return this.maintenanceService.getTypes();
   }
 
+  @Get('next-code')
+  async nextCode(@Query('date') date?: string) {
+    return { code: await this.maintenanceService.previewCode(date) };
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.maintenanceService.findOne(id, user);

@@ -67,6 +67,11 @@ export class MachineComponentsController {
     return this.service.findAccessories(query);
   }
 
+  @Get('component-accessories/next-code')
+  async nextAccessoryCode(@Query('machineModelId') machineModelId: string) {
+    return { code: await this.service.previewAccessoryCode(machineModelId) };
+  }
+
   @Get('component-accessories/:id')
   findAccessory(@Param('id') id: string) {
     return this.service.findAccessory(id);

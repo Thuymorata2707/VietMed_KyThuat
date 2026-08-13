@@ -1253,6 +1253,17 @@ export class InstallationsService {
     return Object.values(InstallationStatus);
   }
 
+  previewCode(date?: string) {
+    return this.generateInstallationCode(
+      this.prisma,
+      this.parseOptionalDate(date, 'date') ?? new Date(),
+    );
+  }
+
+  previewMachineCode(source?: string) {
+    return this.generateMachineCode(this.prisma, source || 'MAY');
+  }
+
   private buildHandoverDeviceRows(installation: any): Array<{
     itemName: string;
     model: string;

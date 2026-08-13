@@ -122,6 +122,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
   const [quickMachineOpen, setQuickMachineOpen] = useState(false);
   const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm(user));
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(emptyQuickMachineForm());
+  const [quickMachinePreviewCode, setQuickMachinePreviewCode] = useState('');
   const [currentStep, setCurrentStep] = useState<DemoCreateStep>('records');
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
@@ -153,6 +154,25 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
   const customers = optionsQuery.data?.customers ?? [];
   const engineers = optionsQuery.data?.engineers ?? [];
   const machineModels = optionsQuery.data?.machineModels ?? [];
+  const selectedQuickMachineModel = machineModels.find((model) => model.id === quickMachineForm.machineModelId);
+
+  useEffect(() => {
+    let cancelled = false;
+    const source = selectedQuickMachineModel?.code || selectedQuickMachineModel?.name || quickMachineForm.name || 'MAY';
+    const params = new URLSearchParams({ source });
+
+    void apiFetch<{ code?: string | null }>(`/machines/next-code?${params.toString()}`)
+      .then((result) => {
+        if (!cancelled) setQuickMachinePreviewCode(result.code || '');
+      })
+      .catch(() => {
+        if (!cancelled) setQuickMachinePreviewCode('');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedQuickMachineModel?.code, selectedQuickMachineModel?.name, quickMachineForm.name]);
   const machines = optionsQuery.data?.machines ?? [];
   const regions = optionsQuery.data?.regions ?? [];
   const selectedCustomer = useMemo(
@@ -448,6 +468,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
                   form={quickMachineForm}
                   loading={createMachineMutation.isPending}
                   machineModels={machineModels}
+                  previewCode={quickMachinePreviewCode}
                   onChange={(patch) => setQuickMachineForm((current) => ({ ...current, ...patch }))}
                   onSubmit={() => createMachineMutation.mutate()}
                 />
@@ -716,12 +737,14 @@ function QuickMachinePanel({
   form,
   loading,
   machineModels,
+  previewCode,
   onChange,
   onSubmit,
 }: {
   form: QuickMachineForm;
   loading: boolean;
   machineModels: MachineModelOption[];
+  previewCode: string;
   onChange: (patch: Partial<QuickMachineForm>) => void;
   onSubmit: () => void;
 }) {
@@ -749,7 +772,7 @@ function QuickMachinePanel({
         </label>
         <label className={labelClass}>
           Mã máy
-          <input className={fieldClass} disabled placeholder="Tự sinh khi lưu" value={form.machineCode || 'Tự sinh khi lưu'} />
+          <input className={fieldClass} disabled placeholder="Đang sinh mã..." value={form.machineCode || previewCode || 'Đang sinh mã...'} />
         </label>
         <label className={`${labelClass} md:col-span-3`}>
           Tên máy

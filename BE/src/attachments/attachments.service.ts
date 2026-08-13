@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { AttachmentType, Prisma } from '@prisma/client';
 import { existsSync, unlinkSync } from 'fs';
-import { join } from 'path';
+import { extname, join } from 'path';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import {
   customerAccessWhere,
@@ -20,6 +20,7 @@ import {
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
+import { AppConfigService } from '../config/app-config.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListAttachmentsQueryDto } from './dto/list-attachments-query.dto';
 import { UploadAttachmentDto } from './dto/upload-attachment.dto';
@@ -44,6 +45,7 @@ const ALLOWED_MIME_TYPES = [
   'image/webp',
   'application/pdf',
 ] as const;
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf']);
 
 @Injectable()
 export class AttachmentsService {
@@ -52,6 +54,7 @@ export class AttachmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly config: AppConfigService,
   ) {}
 
   getUploadRoot() {
@@ -66,6 +69,17 @@ export class AttachmentsService {
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype as never)) {
       throw new BadRequestException(
         'Only JPEG, PNG, WEBP and PDF files are allowed',
+      );
+    }
+
+    if (file.size > this.config.uploadMaxFileSizeBytes) {
+      throw new BadRequestException('Uploaded file is too large');
+    }
+
+    const extension = extname(file.originalname || '').toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(extension)) {
+      throw new BadRequestException(
+        'Only .jpg, .jpeg, .png, .webp and .pdf files are allowed',
       );
     }
   }

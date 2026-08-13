@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, BarChart3, CalendarDays, Download, Loader2, MapPinned, PackageCheck, Table2, Users, Wrench } from 'lucide-react';
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api';
 import { DateInput } from '../../components/DateInput';
@@ -126,6 +126,7 @@ const reportTabs: Array<{ key: ReportView; label: string; icon: ReactNode }> = [
 
 const reportFieldClass =
   'h-11 min-w-0 rounded-2xl border border-[#ded8d8] bg-[#ffffff] px-3.5 text-sm font-semibold text-[#1f1f1f] outline-none transition hover:border-[#e4e4e7] focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]';
+const reportTablePageSize = 10;
 
 export function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -378,6 +379,8 @@ function KindTable({ report }: { report: TechnicalReport }) {
 }
 
 function GroupTable({ onSelect, rows, title }: { onSelect?: (id: string) => void; rows: TechnicalReportGroup[]; title: string }) {
+  const pagination = usePagedRows(rows, title);
+
   return (
     <section className="overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
       <TableTitle count={rows.length} title={title} />
@@ -397,7 +400,7 @@ function GroupTable({ onSelect, rows, title }: { onSelect?: (id: string) => void
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {pagination.rows.map((row) => (
               <tr className="hover:bg-[#fafafa]" key={row.id}>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">
                   {onSelect ? (
@@ -423,11 +426,14 @@ function GroupTable({ onSelect, rows, title }: { onSelect?: (id: string) => void
           </tbody>
         </table>
       </div>
+      <ReportTablePager {...pagination} label="kết quả" />
     </section>
   );
 }
 
 function MachineGroupTable({ rows, title }: { rows: TechnicalMachineGroup[]; title: string }) {
+  const pagination = usePagedRows(rows, title);
+
   return (
     <section className="overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
       <TableTitle count={rows.length} title={title} />
@@ -449,7 +455,7 @@ function MachineGroupTable({ rows, title }: { rows: TechnicalMachineGroup[]; tit
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {pagination.rows.map((row) => (
               <tr className="hover:bg-[#fafafa]" key={row.id}>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">
                   <strong className="block text-[#202124]">{row.machineCode}</strong>
@@ -473,6 +479,7 @@ function MachineGroupTable({ rows, title }: { rows: TechnicalMachineGroup[]; tit
           </tbody>
         </table>
       </div>
+      <ReportTablePager {...pagination} label="máy" />
     </section>
   );
 }
@@ -499,6 +506,8 @@ function TrendPanel({ rows }: { rows: WorkReportRow[] }) {
 }
 
 function DetailTable({ rows }: { rows: WorkReportRow[] }) {
+  const pagination = usePagedRows(rows, 'details');
+
   return (
     <section className="overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
       <TableTitle count={rows.length} title="Chi tiết tất cả phiếu trong kỳ" />
@@ -517,7 +526,7 @@ function DetailTable({ rows }: { rows: WorkReportRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {pagination.rows.map((row) => (
               <tr className="hover:bg-[#fafafa]" key={`${row.kind}-${row.id}`}>
                 <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">
                   {workHref(row) ? <Link className="hover:text-[#3e8375]" to={workHref(row)!}>{row.code}</Link> : row.code}
@@ -538,6 +547,7 @@ function DetailTable({ rows }: { rows: WorkReportRow[] }) {
           </tbody>
         </table>
       </div>
+      <ReportTablePager {...pagination} label="phiếu" />
     </section>
   );
 }
@@ -604,6 +614,8 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
     [customerId, group, report.rows],
   );
   const visibleWorks = kindFilter ? workRows.filter((row) => row.kind === kindFilter) : workRows;
+  const machinePagination = usePagedRows(machineRows, customerId);
+  const workPagination = usePagedRows(visibleWorks, `${customerId}-${kindFilter || 'all'}`);
 
   if (!group) {
     return (
@@ -663,7 +675,7 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
                 </tr>
               </thead>
               <tbody>
-                {machineRows.map((row) => (
+                {machinePagination.rows.map((row) => (
                   <tr className="hover:bg-[#fafafa]" key={row.id}>
                     <td className="border-b border-[#f1f2f4] px-4 py-3">
                       <strong className="block text-[#202124]">{row.machineCode}</strong>
@@ -689,6 +701,7 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
         ) : (
           <div className="px-4 py-8 text-center text-sm text-[#667085]">Chưa có máy phát sinh trong kỳ.</div>
         )}
+        <ReportTablePager {...machinePagination} label="máy" />
       </section>
 
       <section className="overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
@@ -718,7 +731,7 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
                 </tr>
               </thead>
               <tbody>
-                {visibleWorks.map((row) => (
+                {workPagination.rows.map((row) => (
                   <tr className="hover:bg-[#fafafa]" key={`${row.kind}-${row.id}`}>
                     <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">
                       {workHref(row) ? <Link className="hover:text-[#3e8375]" to={workHref(row)!}>{row.code}</Link> : row.code}
@@ -740,6 +753,7 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
         ) : (
           <div className="px-4 py-8 text-center text-sm text-[#667085]">Chưa có phiếu nào cho loại này trong kỳ.</div>
         )}
+        <ReportTablePager {...workPagination} label="phiếu" />
       </section>
     </div>
   );
@@ -759,6 +773,67 @@ function TableTitle({ count, title }: { count: number; title: string }) {
     <div className="flex items-center justify-between gap-3 border-b border-[#eef0f3] px-4 py-3">
       <h2 className="font-semibold text-[#202124]">{title}</h2>
       <span className="text-xs font-semibold text-[#667085]">{count} kết quả</span>
+    </div>
+  );
+}
+
+function usePagedRows<T>(rows: T[], resetKey: string) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(rows.length / reportTablePageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = rows.slice((currentPage - 1) * reportTablePageSize, currentPage * reportTablePageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [resetKey, rows.length]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  return {
+    disabled: false,
+    page: currentPage,
+    pageSize: reportTablePageSize,
+    rows: pagedRows,
+    total: rows.length,
+    totalPages,
+    onPageChange: setPage,
+  };
+}
+
+function ReportTablePager({
+  disabled,
+  label,
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+}: {
+  disabled: boolean;
+  label: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const first = total ? (page - 1) * pageSize + 1 : 0;
+  const last = Math.min(total, page * pageSize);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eef0f3] bg-[#fafafa] px-4 py-3 text-sm font-medium text-[#667085]">
+      <span>{total ? `${first}-${last}/${total} ${label}` : `0 ${label}`}</span>
+      <div className="flex items-center gap-2">
+        <button className="secondary-button compact" disabled={disabled || page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))} type="button">
+          Trước
+        </button>
+        <span>Trang {page}/{totalPages}</span>
+        <button className="secondary-button compact" disabled={disabled || page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))} type="button">
+          Sau
+        </button>
+      </div>
     </div>
   );
 }
