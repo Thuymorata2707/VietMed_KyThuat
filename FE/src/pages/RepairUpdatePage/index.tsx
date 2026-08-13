@@ -51,6 +51,7 @@ type RepairForm = {
   status: string;
   priority: string;
   engineerId: string;
+  machineId: string;
   resultNote: string;
   customerFeedback: string;
   conditionAssessment: string;
@@ -110,7 +111,16 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
     uploadSuccessMessage: (count) => `Đã tải ${count} ảnh/tài liệu lên phiếu sửa chữa.`,
   });
   const repairChecklist = checklistForCategory(detail?.machine?.productCategory || detail?.modelName || detail?.deviceName, 'repair');
-  const selectedMachineModelId = form.machineModelId || detail?.machine?.machineModel?.id || modelIdByName(machineModels, form.modelName);
+  const detailMachineModelId = form.machineId === (detail?.machine?.id || '') ? detail?.machine?.machineModel?.id || '' : '';
+  const selectedMachineModelId = form.machineModelId || modelIdByName(machineModels, form.modelName) || detailMachineModelId;
+  const selectedAccessoryModel = machineModels.find((model) => model.id === selectedMachineModelId);
+  const selectedAccessoryModelLabel = selectedAccessoryModel
+    ? [selectedAccessoryModel.code, selectedAccessoryModel.displayName || selectedAccessoryModel.name].filter(Boolean).join(' - ')
+    : form.modelName;
+  const installedMachineOptions =
+    detail?.machine?.id && !installedMachines.some((machine) => machine.id === detail.machine?.id)
+      ? [detail.machine as StockMachine, ...installedMachines]
+      : installedMachines;
   const pendingDeleteRequest = isDeleteRequest(detail);
 
   useEffect(() => {
@@ -147,6 +157,14 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
 
   function updateForm(patch: Partial<RepairForm>) {
     setForm((current) => ({ ...current, ...patch }));
+  }
+
+  function updateMachineForm(patch: Partial<RepairForm>) {
+    const nextModelId = patch.machineModelId ?? form.machineModelId;
+    if ((patch.machineId && patch.machineId !== form.machineId) || (nextModelId && nextModelId !== selectedMachineModelId)) {
+      setUsedParts([]);
+    }
+    updateForm(patch);
   }
 
   async function loadEngineers() {
@@ -220,6 +238,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 engineerId: form.engineerId || null,
               }
             : {}),
+          machineId: form.machineId || undefined,
           resultNote: form.resultNote.trim() || undefined,
           customerFeedback: form.customerFeedback.trim() || undefined,
           conditionAssessment: form.conditionAssessment.trim() || undefined,
@@ -381,12 +400,14 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 <WorkMachineModelFields
                   deviceName={form.deviceName}
                   fieldClassName={fieldClass}
-                  installedMachines={installedMachines}
+                  installedMachines={installedMachineOptions}
                   labelClassName={labelClass}
+                  lockedByMachine={Boolean(form.machineId)}
                   machineModelId={form.machineModelId}
                   machineModels={machineModels}
                   modelName={form.modelName}
-                  onChange={updateForm}
+                  onChange={updateMachineForm}
+                  selectedMachineId={form.machineId}
                   serialNumber={form.serialNumber}
                 />
                 <label className={`${labelClass} md:col-span-2`}>
@@ -404,6 +425,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
               accessories={accessories}
               items={usedParts}
               loading={loadingAccessories}
+              modelLabel={selectedAccessoryModelLabel}
               modelSelected={Boolean(selectedMachineModelId)}
               onChange={setUsedParts}
             />
@@ -523,6 +545,7 @@ function emptyForm(): RepairForm {
     status: 'IN_PROGRESS',
     priority: 'NORMAL',
     engineerId: '',
+    machineId: '',
     resultNote: '',
     customerFeedback: '',
     conditionAssessment: '',
@@ -544,6 +567,7 @@ function buildForm(repair: RepairTask): RepairForm {
     status: repair.status || 'IN_PROGRESS',
     priority: repair.priority || 'NORMAL',
     engineerId: repair.engineer?.id || '',
+    machineId: repair.machine?.id || '',
     resultNote: repair.resultNote || '',
     customerFeedback: repair.customerFeedback || '',
     conditionAssessment: repair.conditionAssessment || '',
@@ -553,7 +577,7 @@ function buildForm(repair: RepairTask): RepairForm {
     address: repair.address || (repair.customer ? (repair.customer.fullAddress || repair.customer.address || '') : ''),
     contactPhone: repair.contactPhone || (repair.customer ? (repair.customer.contactPhone || repair.customer.phone || '') : ''),
     deviceName: repair.deviceName || repair.machine?.modelName || '',
-    machineModelId: '',
+    machineModelId: repair.machine?.machineModel?.id || '',
     modelName: repair.modelName || repair.machine?.modelName || '',
     serialNumber: repair.serialNumber || repair.machine?.serialNumber || '',
   };

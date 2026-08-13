@@ -33,11 +33,14 @@ type WorkMachineModelFieldsProps = {
   fieldClassName: string;
   installedMachines: WorkMachineOption[];
   labelClassName: string;
+  lockedByMachine?: boolean;
   machineModelId: string;
   machineModels: WorkMachineModelOption[];
+  selectedMachineId?: string;
   modelName: string;
   onChange: (patch: {
     deviceName?: string;
+    machineId?: string;
     machineModelId?: string;
     modelName?: string;
     serialNumber?: string;
@@ -50,14 +53,17 @@ export function WorkMachineModelFields({
   fieldClassName,
   installedMachines,
   labelClassName,
+  lockedByMachine = false,
   machineModelId,
   machineModels,
+  selectedMachineId = '',
   modelName,
   onChange,
   serialNumber,
 }: WorkMachineModelFieldsProps) {
   const selectedModelId = machineModelId || modelIdByName(machineModels, modelName);
   const selectedModel = machineModels.find((model) => model.id === selectedModelId);
+  const selectedMachine = selectedMachineId ? installedMachines.find((machine) => machine.id === selectedMachineId) : null;
 
   return (
     <>
@@ -68,17 +74,24 @@ export function WorkMachineModelFields({
           onChange={(event) => {
             const machine = installedMachines.find((item) => item.id === event.target.value);
             if (machine) {
+              const machineModelName = machine.modelName || machine.name || '';
               onChange({
+                machineId: machine.id,
                 serialNumber: machine.serialNumber || '',
-                modelName: machine.modelName || machine.name || '',
+                modelName: machineModelName,
                 deviceName: machine.name || machine.modelName || '',
-                machineModelId: machine.machineModel?.id || '',
+                machineModelId: machine.machineModel?.id || modelIdByName(machineModels, machineModelName),
               });
             }
           }}
-          value=""
+          value={selectedMachineId}
         >
           <option value="">-- Chọn máy đã lắp đặt (hoặc nhập tay S/N) --</option>
+          {selectedMachine && !installedMachines.some((machine) => machine.id === selectedMachine.id) ? (
+            <option value={selectedMachine.id}>
+              {[selectedMachine.machineCode, selectedMachine.serialNumber ? `S/N ${selectedMachine.serialNumber}` : '', selectedMachine.modelName || selectedMachine.name].filter(Boolean).join(' - ')}
+            </option>
+          ) : null}
           {installedMachines.map((machine) => (
             <option key={machine.id} value={machine.id}>
               {[machine.machineCode, machine.serialNumber ? `S/N ${machine.serialNumber}` : '', machine.modelName || machine.name].filter(Boolean).join(' - ')}
@@ -91,9 +104,10 @@ export function WorkMachineModelFields({
         <input className={fieldClassName} onChange={(event) => onChange({ serialNumber: event.target.value })} value={serialNumber} />
       </label>
       <label className={labelClassName}>
-        Model / tên thiết bị
+        {lockedByMachine ? 'Model máy đã khóa theo máy chọn' : 'Model / tên thiết bị'}
         <select
           className={fieldClassName}
+          disabled={lockedByMachine}
           onChange={(event) => {
             const model = machineModels.find((item) => item.id === event.target.value);
             onChange({
@@ -111,6 +125,7 @@ export function WorkMachineModelFields({
             </option>
           ))}
         </select>
+        {lockedByMachine ? <span className="text-xs font-semibold text-[#8a8f99]">Phụ kiện thay thế sẽ lấy theo model này.</span> : null}
       </label>
       <ModelInfoFields className="md:col-span-2" model={selectedModel} />
     </>

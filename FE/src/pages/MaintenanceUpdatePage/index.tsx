@@ -52,6 +52,7 @@ type MaintenanceForm = {
   status: string;
   type: string;
   engineerId: string;
+  machineId: string;
   scheduledDate: string;
   nextDueDate: string;
   resultNote: string;
@@ -111,7 +112,16 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
     uploadSuccessMessage: (count) => `Đã tải ${count} ảnh/tài liệu lên phiếu bảo trì.`,
   });
   const standardChecklist = checklistForCategory(detail?.machine?.productCategory || detail?.modelName || detail?.deviceName, 'maintenance');
-  const selectedMachineModelId = form.machineModelId || detail?.machine?.machineModel?.id || modelIdByName(machineModels, form.modelName);
+  const detailMachineModelId = form.machineId === (detail?.machine?.id || '') ? detail?.machine?.machineModel?.id || '' : '';
+  const selectedMachineModelId = form.machineModelId || modelIdByName(machineModels, form.modelName) || detailMachineModelId;
+  const selectedAccessoryModel = machineModels.find((model) => model.id === selectedMachineModelId);
+  const selectedAccessoryModelLabel = selectedAccessoryModel
+    ? [selectedAccessoryModel.code, selectedAccessoryModel.displayName || selectedAccessoryModel.name].filter(Boolean).join(' - ')
+    : form.modelName;
+  const installedMachineOptions =
+    detail?.machine?.id && !installedMachines.some((machine) => machine.id === detail.machine?.id)
+      ? [detail.machine as StockMachine, ...installedMachines]
+      : installedMachines;
   const pendingDeleteRequest = isDeleteRequest(detail);
 
   useEffect(() => {
@@ -148,6 +158,14 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
 
   function updateForm(patch: Partial<MaintenanceForm>) {
     setForm((current) => ({ ...current, ...patch }));
+  }
+
+  function updateMachineForm(patch: Partial<MaintenanceForm>) {
+    const nextModelId = patch.machineModelId ?? form.machineModelId;
+    if ((patch.machineId && patch.machineId !== form.machineId) || (nextModelId && nextModelId !== selectedMachineModelId)) {
+      setUsedParts([]);
+    }
+    updateForm(patch);
   }
 
   async function loadEngineers() {
@@ -221,6 +239,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 engineerId: form.engineerId || null,
               }
             : {}),
+          machineId: form.machineId || undefined,
           scheduledDate: form.scheduledDate || undefined,
           nextDueDate: form.nextDueDate || undefined,
           resultNote: form.resultNote.trim() || undefined,
@@ -385,12 +404,14 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 <WorkMachineModelFields
                   deviceName={form.deviceName}
                   fieldClassName={fieldClass}
-                  installedMachines={installedMachines}
+                  installedMachines={installedMachineOptions}
                   labelClassName={labelClass}
+                  lockedByMachine={Boolean(form.machineId)}
                   machineModelId={form.machineModelId}
                   machineModels={machineModels}
                   modelName={form.modelName}
-                  onChange={updateForm}
+                  onChange={updateMachineForm}
+                  selectedMachineId={form.machineId}
                   serialNumber={form.serialNumber}
                 />
                 <label className={`${labelClass} md:col-span-2`}>
@@ -415,6 +436,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
               accessories={accessories}
               items={usedParts}
               loading={loadingAccessories}
+              modelLabel={selectedAccessoryModelLabel}
               modelSelected={Boolean(selectedMachineModelId)}
               onChange={setUsedParts}
             />
@@ -506,6 +528,7 @@ function emptyForm(): MaintenanceForm {
     status: 'IN_PROGRESS',
     type: 'PERIODIC',
     engineerId: '',
+    machineId: '',
     scheduledDate: '',
     nextDueDate: '',
     resultNote: '',
@@ -527,6 +550,7 @@ function buildForm(maintenance: MaintenanceTask): MaintenanceForm {
     status: maintenance.status || 'IN_PROGRESS',
     type: maintenance.type || 'PERIODIC',
     engineerId: maintenance.engineer?.id || '',
+    machineId: maintenance.machine?.id || '',
     scheduledDate: dateInputValue(maintenance.scheduledDate),
     nextDueDate: dateInputValue(maintenance.nextDueDate),
     resultNote: maintenance.resultNote || '',
@@ -536,7 +560,7 @@ function buildForm(maintenance: MaintenanceTask): MaintenanceForm {
     address: maintenance.address || (maintenance.customer ? (maintenance.customer.fullAddress || maintenance.customer.address || '') : ''),
     contactPhone: maintenance.contactPhone || (maintenance.customer ? (maintenance.customer.contactPhone || maintenance.customer.phone || '') : ''),
     deviceName: maintenance.deviceName || maintenance.machine?.modelName || '',
-    machineModelId: '',
+    machineModelId: maintenance.machine?.machineModel?.id || '',
     modelName: maintenance.modelName || maintenance.machine?.modelName || '',
     serialNumber: maintenance.serialNumber || maintenance.machine?.serialNumber || '',
   };
