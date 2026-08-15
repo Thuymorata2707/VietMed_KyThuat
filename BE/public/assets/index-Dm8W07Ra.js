@@ -1,0 +1,1 @@
+import{j as e}from"./index-CWYAy-AG.js";import{P as r}from"./index-CyVgurmu.js";import{P as i}from"./index-BWk23Sxc.js";function m({message:n}){return e.jsx(r,{children:e.jsx(i,{eyebrow:"Phân quyền",title:"Không có quyền truy cập",description:n||"Tài khoản hiện tại chưa được mở quyền cho màn này."})})}export{m as AccessDeniedPage};

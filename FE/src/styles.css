@@ -1,34 +1,80 @@
 @layer theme, base, components, utilities, app;
 
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --font-sans: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-xs: calc(var(--radius) * 0.5);
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: calc(var(--radius) * 0.875);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
 }
 
 @layer base {
 :root {
-  --color-brand: #18181b;
-  --color-brand-dark: #09090b;
-  --color-brand-soft: #f4f4f5;
-  --color-brand-border: #e4e4e7;
-  --color-surface: #ffffff;
-  --color-surface-muted: #fafafa;
-  --color-page: #f4f4f5;
-  --color-border: #e4e4e7;
-  --color-text: #18181b;
-  --color-muted: #71717a;
-  --color-muted-strong: #3f3f46;
-  --color-border-soft: #ededf0;
-  --color-field-border: #d4d4d8;
-  --color-panel: #fafafa;
-  --color-accent: #0f766e;
-  --color-accent-soft: #ecfdf9;
-  --color-accent-border: #99f6e4;
-  --color-info: #2563eb;
-  --color-info-soft: #eff6ff;
-  --color-info-border: #bfdbfe;
+  --background: #f7f8f7;
+  --foreground: oklch(0.145 0 0);
+  --card: #fbfdfc;
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: #f6f8f7;
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: #f6f8f7;
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: #eef6f4;
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.75rem;
+  --color-brand: var(--primary);
+  --color-brand-dark: oklch(0.145 0 0);
+  --color-brand-soft: var(--secondary);
+  --color-brand-border: var(--border);
+  --color-surface: var(--card);
+  --color-surface-muted: #f6f8f7;
+  --color-page: var(--background);
+  --color-border: var(--border);
+  --color-text: var(--foreground);
+  --color-muted: var(--muted-foreground);
+  --color-muted-strong: var(--secondary-foreground);
+  --color-border-soft: var(--border);
+  --color-field-border: var(--input);
+  --color-panel: #f6f8f7;
+  --color-accent: oklch(0.43 0.095 166);
+  --color-accent-soft: oklch(0.97 0.018 166);
+  --color-accent-border: oklch(0.86 0.05 166);
+  --color-info: oklch(0.45 0.12 260);
+  --color-info-soft: oklch(0.97 0.014 260);
+  --color-info-border: oklch(0.86 0.045 260);
   --color-mint: #047857;
   --color-mint-soft: #ecfdf5;
   --color-mint-border: #bbf7d0;
@@ -41,14 +87,14 @@
   --color-danger: #b4232f;
   --color-danger-bg: #fff1f3;
   --color-danger-border: #fecdd3;
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 22px;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
-  --shadow-panel: 0 14px 34px rgba(15, 23, 42, 0.06);
-  --shadow-hover: 0 18px 42px rgba(15, 23, 42, 0.09);
-  --focus-ring: 0 0 0 4px rgba(15, 118, 110, 0.14);
-  --shadow-modal: 0 28px 80px rgba(15, 23, 42, 0.24);
+  --radius-sm: calc(var(--radius) * 0.8);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.35);
+  --shadow-sm: 0 1px 2px rgba(32, 38, 46, 0.05);
+  --shadow-panel: 0 8px 22px rgba(32, 38, 46, 0.055);
+  --shadow-hover: 0 12px 28px rgba(32, 38, 46, 0.08);
+  --focus-ring: 0 0 0 3px color-mix(in oklch, var(--ring) 32%, transparent);
+  --shadow-modal: 0 22px 64px rgba(32, 38, 46, 0.22);
   color: var(--color-text);
   background: var(--color-page);
   font-family: var(--font-sans);
@@ -70,9 +116,9 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(244, 244, 245, 0.98) 380px),
-    linear-gradient(rgba(24, 24, 27, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(24, 24, 27, 0.02) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(241, 243, 245, 0.98) 360px),
+    linear-gradient(rgba(32, 38, 46, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(32, 38, 46, 0.014) 1px, transparent 1px),
     var(--color-page);
   background-size:
     auto,
@@ -100,6 +146,10 @@ table {
   font: inherit;
   font-family: var(--font-sans);
   letter-spacing: 0;
+}
+
+table {
+  font-variant-numeric: tabular-nums;
 }
 
 button {
@@ -190,17 +240,17 @@ p {
 
 .icon-button {
   @apply h-[34px] w-[34px] border bg-white;
-  border-color: var(--color-border);
+  border-color: var(--input);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
-  color: var(--color-muted-strong);
+  color: var(--foreground);
 }
 
 .icon-button:hover,
 .secondary-button:hover {
-  border-color: var(--color-accent-border);
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
+  border-color: var(--input);
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .icon-button.danger:hover {
@@ -211,8 +261,8 @@ p {
 .secondary-button,
 .primary-button,
 .danger-button {
-  @apply min-h-10 gap-2 whitespace-nowrap px-[14px] text-[14px] font-semibold;
-  border-radius: var(--radius-sm);
+  @apply min-h-9 gap-2 whitespace-nowrap px-4 text-sm font-medium;
+  border-radius: var(--radius-md);
 }
 
 .form-input {
@@ -229,28 +279,30 @@ p {
 
 .secondary-button {
   @apply border bg-white;
-  border-color: var(--color-border);
+  border-color: var(--input);
   box-shadow: var(--shadow-sm);
-  color: var(--color-muted-strong);
+  color: var(--foreground);
 }
 
 .primary-button {
   @apply text-white;
-  background: var(--color-brand);
-  box-shadow: 0 12px 24px rgba(24, 24, 27, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-sm);
 }
 
 .primary-button:hover {
-  background: var(--color-brand-dark);
+  background: color-mix(in oklch, var(--primary) 90%, transparent);
 }
 
 .danger-button {
   @apply text-white;
-  background: var(--color-danger);
+  background: var(--destructive);
 }
 
 .surface-card {
-  @apply border bg-white;
+  @apply border;
+  background: var(--color-surface);
   border-color: var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
@@ -290,66 +342,58 @@ p {
 
 .app-shell {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(244, 244, 245, 0.96) 340px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(241, 243, 245, 0.98) 340px),
     var(--color-page);
 }
 
 .app-sidebar {
-  background:
-    linear-gradient(180deg, #ffffff 0%, #f4f4f5 100%);
+  background: #fbfcfd;
 }
 
 .app-header {
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 1px 0 rgba(228, 228, 231, 0.9), 0 16px 40px rgba(24, 24, 27, 0.04);
+  background: rgba(251, 252, 253, 0.94);
+  box-shadow: 0 1px 0 rgba(216, 222, 230, 0.92);
 }
 
 .page-kicker {
-  color: var(--color-brand);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .page-title-card {
-  background:
-    radial-gradient(circle at 8% 12%, rgba(15, 118, 110, 0.10), transparent 30%),
-    radial-gradient(circle at 76% 8%, rgba(37, 99, 235, 0.06), transparent 28%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.9));
-  border: 1px solid var(--color-brand-border);
+  background: #f6f8f7;
+  border: 1px solid #e4e9e6;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-panel);
-  max-width: 880px;
-  overflow: hidden;
-  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  max-width: none;
+  overflow: visible;
+  padding: 22px 24px;
   position: relative;
   width: 100%;
 }
 
 .page-title-card__glow {
-  background:
-    radial-gradient(circle at 92% 10%, rgba(255, 255, 255, 0.94), transparent 34%),
-    radial-gradient(circle at 72% 78%, rgba(14, 165, 233, 0.075), transparent 28%);
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
+  display: none;
 }
 
 .page-heading {
   color: var(--color-text);
-  font-size: clamp(24px, 2.8vw, 32px);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.08;
+  font-size: clamp(28px, 2.7vw, 38px);
+  font-weight: 620;
+  letter-spacing: 0;
+  line-height: 1.16;
+  max-width: 24ch;
 }
 
 .page-description {
   color: var(--color-muted);
   display: -webkit-box;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.55;
   max-width: 58ch;
   overflow: hidden;
   -webkit-box-orient: vertical;
@@ -377,6 +421,92 @@ p {
   }
 }
 
+.app-shell table {
+  border-collapse: collapse;
+}
+
+.app-shell th {
+  background: #f6f8fa !important;
+  color: #5d6877 !important;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+  text-transform: none;
+}
+
+.app-shell td {
+  color: var(--color-text);
+}
+
+.app-shell tr {
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.app-shell tr:hover {
+  background-color: #f7f9fb !important;
+}
+
+.app-shell [class*="rounded-[18px]"],
+.app-shell [class*="rounded-[20px]"],
+.app-shell [class*="rounded-[22px]"],
+.app-shell [class*="rounded-[24px]"],
+.app-shell [class*="rounded-[28px]"],
+.app-shell .rounded-2xl,
+.app-shell .rounded-3xl {
+  border-radius: var(--radius-lg) !important;
+}
+
+.app-shell .rounded-lg,
+.app-shell .rounded-xl {
+  border-radius: var(--radius-md) !important;
+}
+
+.app-shell [class*="shadow-[0_8px"],
+.app-shell [class*="shadow-[0_10px"],
+.app-shell [class*="shadow-[0_12px"],
+.app-shell [class*="shadow-[0_14px"],
+.app-shell [class*="shadow-[0_16px"],
+.app-shell [class*="shadow-[0_18px"],
+.app-shell [class*="shadow-[0_20px"],
+.app-shell [class*="shadow-[0_22px"],
+.app-shell [class*="shadow-[0_24px"],
+.app-shell [class*="shadow-[0_30px"],
+.app-shell [class*="shadow-[inset"] {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.app-shell [class*="bg-gradient-to"],
+.app-shell [class*="bg-[linear-gradient"],
+.app-shell [class*="bg-[radial-gradient"] {
+  background-image: none !important;
+}
+
+.app-shell :is(section, article, aside, div)[class*="border"][class*="bg-white"][class*="p-"],
+.app-shell :is(section, article, aside, div)[class*="border"][class*="bg-[#ffffff]"][class*="p-"] {
+  background-color: #fbfdfc !important;
+  border-color: #e4e9e6 !important;
+}
+
+.app-shell :is(section, article, aside, div)[class*="bg-[#fafafa]"][class*="p-"],
+.app-shell :is(section, article, aside, div)[class*="bg-[#f4f4f5]"][class*="p-"] {
+  background-color: #f6f8f7 !important;
+}
+
+.app-shell input,
+.app-shell select,
+.app-shell textarea {
+  border-color: var(--color-field-border) !important;
+}
+
+.app-shell input:focus,
+.app-shell select:focus,
+.app-shell textarea:focus {
+  border-color: var(--color-brand) !important;
+  box-shadow: var(--focus-ring) !important;
+}
+
 .crud-modal-backdrop {
   align-items: center;
   background: rgba(24, 24, 27, 0.42);
@@ -402,7 +532,7 @@ p {
 
 .form-panel-heading {
   align-items: flex-start;
-  background: #ffffff;
+  background: var(--color-surface);
   border: 1px solid rgba(226, 232, 240, 0.86);
   border-radius: 22px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.045);
@@ -1015,7 +1145,7 @@ p {
 }
 
 .operation-filter-panel {
-  background: #ffffff;
+  background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);

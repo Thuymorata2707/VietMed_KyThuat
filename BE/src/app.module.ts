@@ -1,3 +1,5 @@
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
@@ -35,6 +37,10 @@ import { WorkOperationsModule } from './work-operations/work-operations.module';
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'public'),
+      exclude: ['/api*'],
+    }),
     PrismaModule,
     AppConfigModule,
     ApplicationSupportModule,

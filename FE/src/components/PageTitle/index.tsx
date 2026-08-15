@@ -10,8 +10,8 @@ export function PageTitle({ eyebrow, title, description }: PageTitleProps) {
       <div className="page-title-card__glow" />
       <div className="relative">
         <span className="page-kicker inline-block">{eyebrow}</span>
-        <h1 className="page-heading mt-1.5">{title}</h1>
-        <p className="page-description mt-2">{description}</p>
+        <h1 className="page-heading mt-2">{title}</h1>
+        <p className="page-description mt-2.5">{description}</p>
       </div>
     </div>
   );

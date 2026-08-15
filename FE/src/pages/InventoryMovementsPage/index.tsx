@@ -470,7 +470,7 @@ function MachineTable({
                   <span className="mt-1 block text-xs text-[#666666]">{machine.name || machine.modelName || 'Thiết bị'}</span>
                 </td>
                 <td className={cellClass}>
-                  <span className="block font-semibold text-[#18181b]">{machine.serialNumber || '-'}</span>
+                  <MachineSerialLink machine={machine} />
                   <span className="mt-1 block text-xs text-[#666666]">{machine.machineModel?.code || machine.modelName || machine.machineModel?.name || '-'}</span>
                 </td>
                 <td className={cellClass}>
@@ -624,7 +624,7 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <PreviewField label="Mã máy" value={machine.machineCode || 'Chưa có mã'} />
-                  <PreviewField label="Serial" value={machine.serialNumber || 'Chưa có serial'} />
+                  <PreviewField label="Serial" value={<MachineSerialLink machine={machine} />} />
                   <PreviewField label="Model" value={machine.machineModel?.code || machine.modelName || machine.machineModel?.name || 'Chưa có model'} />
                   <PreviewField label="Tên thiết bị" value={machine.name || machine.machineModel?.name || 'Chưa có tên'} />
                 </div>
@@ -683,6 +683,22 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
         </footer>
       </section>
     </div>
+  );
+}
+
+function MachineSerialLink({ machine }: { machine: Machine }) {
+  if (!machine.serialNumber) {
+    return <span className="block font-semibold text-[#18181b]">-</span>;
+  }
+
+  return (
+    <Link
+      className="block w-fit font-semibold text-[#18181b] underline decoration-[#cbd5e1] underline-offset-4 transition hover:text-[#0f5ea8] hover:decoration-[#0f5ea8]"
+      onClick={(event) => event.stopPropagation()}
+      to={`/technical-machines/${machine.id}`}
+    >
+      {machine.serialNumber}
+    </Link>
   );
 }
 

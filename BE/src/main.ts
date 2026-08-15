@@ -8,11 +8,19 @@ import { AppConfigService } from './config/app-config.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.setGlobalPrefix('api');
   const config = app.get(AppConfigService);
   config.validate();
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
-  app.use(helmet());
-
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          imgSrc: ["'self'", 'data:', 'https:'],
+        },
+      },
+    }),
+  );
   app.enableCors({
     origin: config.corsOrigins,
     credentials: true,

@@ -1,0 +1,1 @@
+function o(e){const n=a(e.role?.name??e.roleName);return e.status!=="INACTIVE"&&(n==="engineer"||!!e.engineerProfile)}function r(e){return e.fullName||e.email}function a(e){return(e||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}export{o as i,r as t};
