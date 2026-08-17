@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, Loader2, Plus, Trash2, Umbrella, X } from 'lucide-react';
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
@@ -121,7 +121,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     enabled: isAdmin,
     queryKey: queryKeys.dailyWork.engineers,
     queryFn: async () => {
-      const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&roleName=engineer&status=ACTIVE');
+      const result = await apiFetch<Paginated<ApiUser>>('/users?limit=100&status=ACTIVE');
       return result?.data ?? [];
     },
   });
@@ -147,8 +147,22 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     queryFn: () => apiFetch<DailyWorkNote[]>(`/daily-work-notes?${notesParams}`),
   });
 
+  const yearNotesParams = useMemo(() => {
+    const year = viewDate.getFullYear();
+    const params = new URLSearchParams({ from: `${year}-01-01`, to: `${year}-12-31` });
+    if (isAdmin && selectedEngineerId) params.set('userId', selectedEngineerId);
+    return params.toString();
+  }, [isAdmin, selectedEngineerId, viewDate]);
+
+  const yearNotesQuery = useQuery({
+    enabled: !isAdmin || Boolean(selectedEngineerId),
+    queryKey: queryKeys.dailyWork.notes(yearNotesParams),
+    queryFn: () => apiFetch<DailyWorkNote[]>(`/daily-work-notes?${yearNotesParams}`),
+  });
+
   const notes = notesQuery.data ?? [];
-  const loading = notesQuery.isLoading || notesQuery.isFetching || engineersQuery.isFetching;
+  const yearNotes = yearNotesQuery.data ?? [];
+  const loading = notesQuery.isLoading || notesQuery.isFetching || yearNotesQuery.isFetching || engineersQuery.isFetching;
 
   const saveNoteMutation = useMutation({
     mutationFn: async ({ noteId, payload }: { noteId?: string; payload: DailyWorkPayload }) => {
@@ -197,6 +211,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     formError ||
     (engineersQuery.error instanceof Error ? engineersQuery.error.message : '') ||
     (notesQuery.error instanceof Error ? notesQuery.error.message : '') ||
+    (yearNotesQuery.error instanceof Error ? yearNotesQuery.error.message : '') ||
     (mutationError instanceof Error ? mutationError.message : '');
 
   const calendarDays = useMemo(() => buildCalendarDays(viewDate), [viewDate]);
@@ -307,6 +322,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
   const selectedEngineer = engineers.find((engineer) => engineer.id === selectedEngineerId);
   const selectedDayNotes = selectedDayDate ? notesByDate[selectedDayDate] || [] : [];
+  const leaveSummary = useMemo(() => buildLeaveSummary(viewDate, notes, yearNotes), [notes, viewDate, yearNotes]);
 
   return (
     <PageFrame>
@@ -315,11 +331,11 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
         <div className="relative z-10 min-w-0">
           <span className="relative mb-2 inline-flex items-center gap-2 rounded-xl border border-[#e4e4e7] bg-white/75 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#18181b]"><CalendarDays size={15} /> Lịch kỹ sư</span>
           <h1 className="relative mb-2.5 text-[clamp(30px,4vw,46px)] font-extrabold leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Lịch làm việc của tôi'}</h1>
-          <p className="relative max-w-3xl text-sm font-semibold leading-6 text-[#666666]">{isAdmin ? 'Lịch kỹ sư.' : 'Lịch của tôi.'}</p>
+          <p className="relative max-w-3xl text-sm font-semibold leading-6 text-[#666666]">{isAdmin ? 'Lịch nhân sự, nghỉ phép và công tháng.' : 'Lịch của tôi, nghỉ phép và công tháng.'}</p>
         </div>
         {isAdmin ? (
           <label className="relative z-10 grid min-w-0 gap-2 text-sm font-bold text-[#333333] min-[1180px]:min-w-[min(360px,100%)]">
-            Chọn kỹ sư
+            Chọn nhân sự
             <select
               className="min-h-12 rounded-2xl border border-[#ded8d8] bg-white/95 px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]"
               onChange={(event) => {
@@ -340,6 +356,34 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
+
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <StatCard
+          label="Phép tháng"
+          value={`${formatWorkCount(leaveSummary.monthlyLeaveUsed)} / 1`}
+          note={`Còn ${formatWorkCount(leaveSummary.monthlyLeaveRemaining)} ngày`}
+        />
+        <StatCard
+          label="Phép năm"
+          value={`${formatWorkCount(leaveSummary.yearlyLeaveUsed)} / 12`}
+          note={`Còn ${formatWorkCount(leaveSummary.yearlyLeaveRemaining)} ngày`}
+        />
+        <StatCard
+          label="Phép được hưởng"
+          value={formatWorkCount(leaveSummary.accruedLeave)}
+          note={`Tính đến ${monthLabel(viewDate)}`}
+        />
+        <StatCard
+          label="Công chuẩn tháng"
+          value={formatWorkCount(leaveSummary.standardWork)}
+          note="T2-T7 tính 1 công, CN nghỉ"
+        />
+        <StatCard
+          label="Công làm việc tháng"
+          value={formatWorkCount(leaveSummary.actualWork)}
+          note={`Trừ ${formatWorkCount(leaveSummary.monthlyLeaveUsed)} ngày phép`}
+        />
+      </section>
 
       <section className="grid gap-3 md:grid-cols-5">
         {scheduleTypeOptions.map((option) => (
@@ -437,7 +481,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
               <div>
                 <span className="block text-xs font-medium text-[#18181b]">Công việc trong ngày</span>
                 <h2 className="mt-1 text-[#1f1f1f]">{formatDateTitle(selectedDayDate)}</h2>
-                <p className="mt-1 text-sm text-[#666666]">{selectedEngineer?.fullName || selectedEngineer?.email || 'Kỹ sư'}</p>
+                <p className="mt-1 text-sm text-[#666666]">{selectedEngineer?.fullName || selectedEngineer?.email || 'Nhân sự'}</p>
               </div>
               <button className="icon-button" onClick={() => setSelectedDayDate('')} type="button">
                 <X size={16} />
@@ -585,6 +629,99 @@ function emptyForm(workDate: string): NoteForm {
     color: colorOptions[0].value,
     type: 'WORK',
   };
+}
+
+function StatCard({ label, note, value }: { label: string; note: string; value: string }) {
+  return (
+    <article className="grid min-h-[104px] gap-2 rounded-[14px] border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
+      <span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.08em] text-[#64748b]">
+        <Umbrella size={15} />
+        {label}
+      </span>
+      <strong className="text-2xl font-extrabold leading-none text-[#18181b]">{value}</strong>
+      <span className="text-xs font-semibold leading-5 text-[#666666]">{note}</span>
+    </article>
+  );
+}
+
+function buildLeaveSummary(viewDate: Date, monthNotes: DailyWorkNote[], yearNotes: DailyWorkNote[]) {
+  const standardWork = countStandardWork(startOfMonth(viewDate), endOfMonth(viewDate));
+  const approvedMonthlyLeaveNotes = monthNotes.filter(isCountableLeave);
+  const approvedYearlyLeaveNotes = yearNotes.filter(isCountableLeave);
+  const monthlyLeaveUsed = sumLeaveDays(approvedMonthlyLeaveNotes);
+  const yearlyLeaveUsed = sumLeaveDays(approvedYearlyLeaveNotes);
+  const accruedLeave = Math.min(viewDate.getMonth() + 1, 12);
+  const yearlyLeaveRemaining = Math.max(12 - yearlyLeaveUsed, 0);
+  const monthlyLeaveRemaining = Math.max(1 - monthlyLeaveUsed, 0);
+  const actualWork = Math.max(standardWork - monthlyLeaveUsed, 0);
+
+  return {
+    accruedLeave,
+    actualWork,
+    monthlyLeaveRemaining,
+    monthlyLeaveUsed,
+    standardWork,
+    yearlyLeaveRemaining,
+    yearlyLeaveUsed,
+  };
+}
+
+function isCountableLeave(note: DailyWorkNote) {
+  return note.type === 'LEAVE' && note.status !== 'REJECTED' && note.status !== 'CANCELLED';
+}
+
+function sumLeaveDays(notes: DailyWorkNote[]) {
+  return notes.reduce((total, note) => total + countLeaveValue(note), 0);
+}
+
+function countLeaveValue(note: DailyWorkNote) {
+  const date = dateFromInput(toDateInput(note.workDate));
+  const workValue = workDayValue(date);
+  if (!note.startTime || !note.endTime || workValue === 0) return workValue;
+
+  const timedValue = timeRangeWorkValue(date, note.startTime, note.endTime);
+  return Math.min(workValue, timedValue || workValue);
+}
+
+function countStandardWork(from: Date, to: Date) {
+  let total = 0;
+  const cursor = new Date(from);
+  while (cursor <= to) {
+    total += workDayValue(cursor);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return total;
+}
+
+function workDayValue(date: Date) {
+  const weekday = date.getDay();
+  if (weekday === 0) return 0;
+  return 1;
+}
+
+function timeRangeWorkValue(date: Date, startTime: string, endTime: string) {
+  const start = parseTimeToMinutes(startTime);
+  const end = parseTimeToMinutes(endTime);
+  if (start === null || end === null || end <= start) return 0;
+
+  const weekday = date.getDay();
+  const morning = overlapMinutes(start, end, 8 * 60, 12 * 60);
+  const afternoon = overlapMinutes(start, end, 13 * 60, 17 * 60);
+  return (morning + afternoon) / (8 * 60);
+}
+
+function parseTimeToMinutes(value: string) {
+  const [hour, minute] = value.split(':').map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+}
+
+function overlapMinutes(start: number, end: number, rangeStart: number, rangeEnd: number) {
+  return Math.max(0, Math.min(end, rangeEnd) - Math.max(start, rangeStart));
+}
+
+function formatWorkCount(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 function buildCalendarDays(date: Date) {

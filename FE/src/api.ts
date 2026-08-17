@@ -64,6 +64,11 @@ export function setToken(token: string) {
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  void fetch(`${API_BASE_URL}/auth/logout`, {
+    credentials: 'include',
+    headers: { 'X-CSRF-Protection': '1' },
+    method: 'POST',
+  }).catch(() => null);
 }
 
 export function getStoredUser(): ApiUser | null {
@@ -94,8 +99,13 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  if (isUnsafeMethod(options.method)) {
+    headers.set('X-CSRF-Protection', '1');
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
+    credentials: options.credentials ?? 'include',
     headers,
   });
 
@@ -141,11 +151,11 @@ export async function apiFetchAllPages<T>(path: string, pageSize = 100): Promise
 }
 
 export async function login(identifier: string, password: string) {
-  const result = await apiFetch<{ accessToken: string; user: ApiUser }>('/auth/login', {
+  const result = await apiFetch<{ accessToken?: string; user: ApiUser }>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ identifier, password }),
   });
-  setToken(result.accessToken);
+  localStorage.removeItem(TOKEN_KEY);
   setStoredUser(result.user);
   return result.user;
 }
@@ -160,6 +170,11 @@ function withPagination(path: string, page: number, limit: number) {
   params.set('page', String(page));
   params.set('limit', String(limit));
   return `${pathname}?${params.toString()}`;
+}
+
+function isUnsafeMethod(method?: string) {
+  const normalized = (method || 'GET').toUpperCase();
+  return normalized !== 'GET' && normalized !== 'HEAD' && normalized !== 'OPTIONS';
 }
 
 function toVietnameseApiError(message: string, statusCode: number) {

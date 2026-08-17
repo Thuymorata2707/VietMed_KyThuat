@@ -995,21 +995,12 @@ function ProductMachineRowsEditor({
 
             <div className="rounded-2xl border border-[#e2e8f0] bg-[#fbfdff] p-3">
               <span className="mb-3 block text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Phụ kiện của máy này</span>
-              {accessoryMode === 'generic' ? (
-                <textarea
-                  className="min-h-24 w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2 text-sm text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-                  onChange={(event) => updateRow(index, { accessoriesText: event.target.value })}
-                  placeholder={'Bộ dây nguồn | ACC-001\nCáp kết nối | ACC-002'}
-                  value={formatMachineAccessoriesText(row.accessoriesText)}
-                />
-              ) : (
-                <MachineAccessoryEditor
-                  compact
-                  mode={accessoryMode}
-                  onChange={(nextAccessories) => updateRow(index, { accessoriesText: nextAccessories })}
-                  value={row.accessoriesText || defaultAccessoriesText}
-                />
-              )}
+              <MachineAccessoryEditor
+                compact
+                mode={accessoryMode}
+                onChange={(nextAccessories) => updateRow(index, { accessoriesText: nextAccessories })}
+                value={row.accessoriesText || defaultAccessoriesText}
+              />
             </div>
           </div>
         ))}

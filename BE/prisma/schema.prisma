@@ -74,7 +74,7 @@ model ProductIndustry {
 
   code           String             @unique
   name           String
-  description    String?
+  description    String? @db.Text
   expertiseGroup ExpertiseGroup
   status         BusinessLineStatus @default(ACTIVE)
   sortOrder      Int                @default(0)
@@ -638,8 +638,8 @@ model BusinessLine {
   contactPerson   String?
   contactPhone    String?
   contactEmail    String?
-  description     String?
-  note            String?
+  description     String? @db.Text
+  note            String? @db.Text
   expertiseGroup  ExpertiseGroup         @default(IMAGING)
 
   productIndustryId String?
@@ -671,8 +671,8 @@ model MachineModel {
   countryOfOrigin String?
   productCategory MachineProductCategory @default(OTHER)
   productLine     String?
-  description     String?
-  note            String?
+  description     String? @db.Text
+  note            String? @db.Text
 
   machines                Machine[]
   components              MachineComponent[]

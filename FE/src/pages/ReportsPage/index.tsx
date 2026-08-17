@@ -9,6 +9,7 @@ import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
 import { displayLabel } from '../../utils/displayLabels';
+import { exportReportXlsx } from '../../utils/xlsxExport';
 
 type ReportView = 'summary' | 'kinds' | 'customers' | 'machines' | 'models' | 'provinces' | 'details' | 'customer';
 type WorkKind = 'installation' | 'repair' | 'maintenance' | 'demo' | 'applicationSupport';
@@ -201,7 +202,7 @@ export function ReportsPage() {
 
   function exportCsv() {
     if (!report) return;
-    exportRows(`bao-cao-tong-hop-${from}-${to}.csv`, report.rows);
+    exportRows(`bao-cao-tong-hop-${from}-${to}.xlsx`, report.rows, 'BÁO CÁO TỔNG HỢP', `${formatDate(from)} - ${formatDate(to)}`);
   }
 
   return (
@@ -215,7 +216,7 @@ export function ReportsPage() {
           />
           <button className="secondary-button" disabled={!report} onClick={exportCsv} type="button">
             <Download size={16} />
-            Xuất CSV
+            Xuất Excel
           </button>
         </div>
 
@@ -639,11 +640,11 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
         <button
           className="secondary-button"
           disabled={!workRows.length}
-          onClick={() => exportRows(`bao-cao-khach-hang-${report.filters.from}-${report.filters.to}.csv`, workRows)}
+          onClick={() => exportRows(`bao-cao-khach-hang-${report.filters.from}-${report.filters.to}.xlsx`, workRows, `BÁO CÁO KHÁCH HÀNG - ${group.label}`, `${formatDate(report.filters.from)} - ${formatDate(report.filters.to)}`)}
           type="button"
         >
           <Download size={16} />
-          Xuất CSV
+          Xuất Excel
         </button>
       </div>
 
@@ -941,11 +942,12 @@ function setOrDelete(params: URLSearchParams, key: string, value: string) {
   else params.delete(key);
 }
 
-function exportRows(filename: string, rows: WorkReportRow[]) {
+function exportRows(filename: string, rows: WorkReportRow[], title: string, subtitle: string) {
   const headers = ['Mã phiếu', 'Loại', 'Ngày', 'Kỹ sư', 'Khách hàng', 'Tỉnh', 'Máy', 'Model', 'Serial', 'Nội dung', 'Trạng thái'];
-  const lines = [
-    headers,
-    ...rows.map((row) => [
+  exportReportXlsx({
+    columns: headers,
+    filename,
+    rows: rows.map((row) => [
       row.code,
       workLabel(row.kind),
       formatDate(row.date),
@@ -958,17 +960,8 @@ function exportRows(filename: string, rows: WorkReportRow[]) {
       row.note || row.title,
       displayLabel(row.status),
     ]),
-  ];
-  const csv = lines.map((line) => line.map(csvCell).join(',')).join('\n');
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function csvCell(value: unknown) {
-  return `"${String(value ?? '').replaceAll('"', '""')}"`;
+    sheetName: 'Bao cao',
+    subtitle,
+    title,
+  });
 }

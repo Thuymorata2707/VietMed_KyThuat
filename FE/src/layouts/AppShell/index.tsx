@@ -2,7 +2,7 @@ import { Bell, ChevronDown, ChevronsLeft, ChevronsRight, LogOut, Plus } from 'lu
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { ApiUser, apiFetch, clearToken, getApiBaseUrl, getToken } from '../../api';
+import { ApiUser, apiFetch, clearToken, getApiBaseUrl } from '../../api';
 import { getRoleName, roleLabel } from '../../auth/roles';
 import { Brand } from '../../components/Brand';
 import { RequireRole } from '../../components/RequireRole';
@@ -144,11 +144,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   }, [location.pathname]);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-
-    const url = `${getApiBaseUrl()}/notifications/stream?token=${encodeURIComponent(token)}`;
-    const events = new EventSource(url);
+    const url = `${getApiBaseUrl()}/notifications/stream`;
+    const events = new EventSource(url, { withCredentials: true });
 
     function refreshRealtimeQueries() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list });

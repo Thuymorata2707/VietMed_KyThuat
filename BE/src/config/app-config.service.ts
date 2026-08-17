@@ -5,6 +5,16 @@ const DEFAULT_JWT_SECRET = 'vietmed-dev-secret';
 @Injectable()
 export class AppConfigService {
   readonly nodeEnv = process.env.NODE_ENV ?? 'development';
+  readonly authCookieName =
+    process.env.AUTH_COOKIE_NAME?.trim() || 'vietmed_access_token';
+  readonly authCookieDomain = process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined;
+  readonly authCookieSecure = this.readBoolean(
+    process.env.AUTH_COOKIE_SECURE,
+    this.isProduction(),
+  );
+  readonly authCookieSameSite = this.readCookieSameSite(
+    process.env.AUTH_COOKIE_SAME_SITE,
+  );
   readonly port = this.parsePort(process.env.PORT);
   readonly jwtSecret = this.readJwtSecret();
   readonly jwtExpiresInSeconds = this.parsePositiveInteger(
@@ -116,5 +126,15 @@ export class AppConfigService {
     }
 
     return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+  }
+
+  private readCookieSameSite(value?: string): 'lax' | 'strict' | 'none' {
+    const normalized = value?.trim().toLowerCase();
+
+    if (normalized === 'lax' || normalized === 'strict' || normalized === 'none') {
+      return normalized;
+    }
+
+    return this.isProduction() ? 'none' : 'lax';
   }
 }

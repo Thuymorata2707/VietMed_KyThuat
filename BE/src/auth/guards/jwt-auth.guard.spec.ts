@@ -10,6 +10,9 @@ describe('JwtAuthGuard', () => {
       findUnique: jest.fn(),
     },
   };
+  const config = {
+    authCookieName: 'vietmed_access_token',
+  };
   const request: { headers: Record<string, string>; user?: unknown } = {
     headers: {},
   };
@@ -26,7 +29,11 @@ describe('JwtAuthGuard', () => {
   });
 
   it('rejects requests without bearer token', async () => {
-    const guard = new JwtAuthGuard(jwtService as never, prisma as never);
+    const guard = new JwtAuthGuard(
+      jwtService as never,
+      prisma as never,
+      config as never,
+    );
 
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
       UnauthorizedException,
@@ -44,7 +51,11 @@ describe('JwtAuthGuard', () => {
       role: { name: 'engineer' },
     });
     request.headers.authorization = 'Bearer valid-token';
-    const guard = new JwtAuthGuard(jwtService as never, prisma as never);
+    const guard = new JwtAuthGuard(
+      jwtService as never,
+      prisma as never,
+      config as never,
+    );
 
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
       UnauthorizedException,
@@ -68,7 +79,11 @@ describe('JwtAuthGuard', () => {
       role: { name: 'admin' },
     });
     request.headers.authorization = 'Bearer valid-token';
-    const guard = new JwtAuthGuard(jwtService as never, prisma as never);
+    const guard = new JwtAuthGuard(
+      jwtService as never,
+      prisma as never,
+      config as never,
+    );
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(request.user).toEqual({
@@ -78,5 +93,26 @@ describe('JwtAuthGuard', () => {
       roleName: 'admin',
       regionId: 'region-1',
     });
+  });
+
+  it('accepts the auth cookie when no bearer token is present', async () => {
+    jwtService.verify.mockReturnValue({ id: 'user-1' });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'active@example.com',
+      status: 'ACTIVE',
+      roleId: 'role-1',
+      regionId: 'region-1',
+      role: { name: 'engineer' },
+    });
+    request.headers.cookie = 'other=value; vietmed_access_token=cookie-token';
+    const guard = new JwtAuthGuard(
+      jwtService as never,
+      prisma as never,
+      config as never,
+    );
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(jwtService.verify).toHaveBeenCalledWith('cookie-token');
   });
 });

@@ -83,6 +83,7 @@ export function useWorkAttachments({
   async function downloadAttachment(attachment: TaskAttachment) {
     try {
       const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
+        credentials: 'include',
         headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
       });
       const blob = await response.blob();
@@ -100,6 +101,7 @@ export function useWorkAttachments({
   async function viewAttachment(attachment: TaskAttachment) {
     try {
       const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
+        credentials: 'include',
         headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
       });
       const blob = await response.blob();

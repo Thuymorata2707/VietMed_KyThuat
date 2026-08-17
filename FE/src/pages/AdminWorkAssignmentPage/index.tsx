@@ -1515,6 +1515,7 @@ function formatAttachmentSize(size: number) {
 async function downloadReviewAttachment(attachment: ReviewAttachment) {
   const token = getToken();
   const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
+    credentials: 'include',
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 
@@ -1536,6 +1537,7 @@ async function downloadReviewAttachment(attachment: ReviewAttachment) {
 async function viewReviewAttachment(attachment: ReviewAttachment) {
   const token = getToken();
   const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
+    credentials: 'include',
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 

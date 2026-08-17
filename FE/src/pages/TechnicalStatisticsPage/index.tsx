@@ -10,6 +10,7 @@ import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
+import { exportReportXlsx } from '../../utils/xlsxExport';
 
 type EngineerOption = {
   id: string;
@@ -202,7 +203,7 @@ export function TechnicalStatisticsPage({ currentRole, user }: TechnicalStatisti
           {data ? (
             <button className="secondary-button" onClick={() => exportEngineerCsv(data)} type="button">
               <FileText size={16} />
-              Xuất CSV
+              Xuất Excel
             </button>
           ) : null}
           <Link
@@ -595,9 +596,10 @@ function formatDay(value: string) {
 
 function exportEngineerCsv(data: TechnicalStatistics) {
   const headers = ['Kỹ sư', 'Tổng', 'Sửa chữa', 'Bảo trì', 'Lắp đặt', 'Hoàn tất', 'Đang mở', 'Chờ xác nhận', 'Khách hàng', 'Máy', 'Tỷ lệ hoàn tất'];
-  const lines = [
-    headers,
-    ...data.byEngineer.map((item) => [
+  exportReportXlsx({
+    columns: headers,
+    filename: `thong-ke-ky-thuat-${data.period.start.slice(0, 10)}-${data.period.end.slice(0, 10)}.xlsx`,
+    rows: data.byEngineer.map((item) => [
       item.engineerName,
       item.total,
       item.repair,
@@ -610,17 +612,8 @@ function exportEngineerCsv(data: TechnicalStatistics) {
       item.machines,
       `${item.completionRate}%`,
     ]),
-  ];
-  const csv = lines.map((line) => line.map(csvCell).join(',')).join('\n');
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `thong-ke-ky-thuat-${data.period.start.slice(0, 10)}-${data.period.end.slice(0, 10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function csvCell(value: unknown) {
-  return `"${String(value ?? '').replaceAll('"', '""')}"`;
+    sheetName: 'Thong ke',
+    subtitle: `${formatDay(data.period.start)} - ${formatDay(data.period.end)}`,
+    title: 'THỐNG KÊ KỸ THUẬT',
+  });
 }

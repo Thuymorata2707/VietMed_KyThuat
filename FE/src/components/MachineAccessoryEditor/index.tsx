@@ -7,12 +7,13 @@ type MachineAccessoryEditorProps = {
   value: string;
   onChange: (value: string) => void;
   compact?: boolean;
-  mode?: 'probe' | 'endoscopy';
+  mode?: 'probe' | 'endoscopy' | 'generic';
 };
 
 export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe' }: MachineAccessoryEditorProps) {
   const items = parseMachineAccessoriesInput(value, [], { keepBlank: true });
   const isEndoscopy = mode === 'endoscopy';
+  const isProbe = mode === 'probe';
   const fieldClass = 'h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
   const labelClass = 'grid w-full min-w-0 gap-2 text-sm font-medium text-[#333333]';
 
@@ -53,11 +54,11 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
       <div className="machine-accessory-header flex flex-wrap items-center justify-between gap-3">
         <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#333333]">
           <ScanLine size={17} className="text-[#18181b]" />
-          {isEndoscopy ? 'Phụ kiện nội soi đi kèm' : 'Đầu dò đi kèm'}
+          {isEndoscopy ? 'Phụ kiện nội soi đi kèm' : isProbe ? 'Đầu dò đi kèm' : 'Phụ kiện đi kèm'}
         </span>
         <button className="secondary-button compact" onClick={addItem} type="button">
           <Plus size={16} />
-          {isEndoscopy ? 'Add accessory' : 'Add probe'}
+          {isProbe ? 'Add probe' : 'Add accessory'}
         </button>
       </div>
 
@@ -90,10 +91,8 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
             <div className="machine-accessory-row grid w-full min-w-0 gap-3 rounded-lg border border-[#eeeeee] bg-white p-3" key={`${item.id ?? 'new'}-${index}`}>
               <div className={fieldsClass}>
                 <label className={labelClass}>
-                  {isEndoscopy ? 'Tên phụ kiện' : 'Ký hiệu đầu dò'}
-                  {isEndoscopy ? (
-                    <input className={fieldClass} onChange={(event) => updateItem(index, { code: event.target.value, name: event.target.value })} value={accessoryName} />
-                  ) : (
+                  {isEndoscopy ? 'Tên phụ kiện' : isProbe ? 'Ký hiệu đầu dò' : 'Tên phụ kiện'}
+                  {isProbe ? (
                     <select className={fieldClass} onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
                       <option value="">Chọn đầu dò</option>
                       {ultrasoundProbeOptions.map((option) => (
@@ -102,6 +101,8 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
                         </option>
                       ))}
                     </select>
+                  ) : (
+                    <input className={fieldClass} onChange={(event) => updateItem(index, { code: event.target.value, name: event.target.value })} value={accessoryName} />
                   )}
                 </label>
                 {hasModelField ? (
@@ -111,7 +112,7 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
                   </label>
                 ) : null}
                 <label className={labelClass}>
-                  {isEndoscopy ? 'S/N hoặc số lượng/ghi chú' : 'S/N đầu dò'}
+                  {isProbe ? 'S/N đầu dò (nếu có)' : 'Serial phụ kiện (nếu có)'}
                   <input className={fieldClass} onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
                 </label>
               </div>
@@ -127,7 +128,9 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
         <div className="machine-accessory-empty rounded-lg border border-dashed border-[#d6d6d6] bg-white px-4 py-5 text-sm leading-6 text-[#666666]">
           {isEndoscopy
             ? 'Tích các phụ kiện có trong checklist hoặc bấm thêm phụ kiện khác nếu checklist chưa có.'
-            : 'Mỗi máy siêu âm thường có khoảng 6 đầu dò. Bấm thêm đầu dò để nhập ký hiệu và S/N thực tế.'}
+            : isProbe
+              ? 'Mỗi máy siêu âm thường có khoảng 6 đầu dò. Bấm thêm đầu dò để nhập ký hiệu và S/N thực tế.'
+              : 'Bấm thêm phụ kiện để nhập tên và serial nếu có. Không có serial thì để trống.'}
         </div>
       ) : null}
     </div>

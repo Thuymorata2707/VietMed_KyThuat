@@ -314,7 +314,7 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
             />
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            <Link className="secondary-button bg-white" to={`/technical-machines?installState=INSTALLED${industryId ? `&productIndustryId=${industryId}` : ''}`}>
+            <Link className="secondary-button bg-white" to={`/technical-machines${industryId ? `?productIndustryId=${industryId}` : ''}`}>
               <Boxes size={17} />
               Danh sách máy quản lý
             </Link>
@@ -422,7 +422,7 @@ function CatalogPortalHero({
           <p className="mt-3 max-w-2xl text-[15px] font-medium leading-7 text-[#667085]">Ngành hàng, model và tồn kho.</p>
         </div>
         <div className="flex flex-wrap gap-2 min-[960px]:justify-end">
-          <Link className="secondary-button bg-white/86" to="/technical-machines?installState=INSTALLED">
+          <Link className="secondary-button bg-white/86" to="/technical-machines">
             <Boxes size={17} />
             Danh sách máy quản lý
           </Link>

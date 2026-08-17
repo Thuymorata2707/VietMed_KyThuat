@@ -332,6 +332,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
       if (token) headers.set('Authorization', `Bearer ${token}`);
 
       const response = await fetch(`${getApiBaseUrl()}/installations/${id}/handover-docx`, {
+        credentials: 'include',
         headers,
       });
 

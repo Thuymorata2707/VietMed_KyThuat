@@ -9,17 +9,17 @@ import { queryKeys } from './lib/queryKeys';
 import { LoginPage } from './pages/LoginPage';
 
 function App() {
-  const [user, setUser] = useState<ApiUser | null>(() => (getToken() ? getStoredUser() : null));
-  const hasToken = Boolean(getToken());
+  const [user, setUser] = useState<ApiUser | null>(() => (getToken() || getStoredUser() ? getStoredUser() : null));
+  const hasStoredSession = Boolean(getToken() || getStoredUser());
   const currentUserQuery = useQuery({
     queryKey: queryKeys.auth.me,
     queryFn: () => apiFetch<ApiUser>('/auth/me'),
-    enabled: hasToken,
+    enabled: hasStoredSession,
     retry: false,
   });
 
   useEffect(() => {
-    if (!hasToken) {
+    if (!hasStoredSession) {
       setUser(null);
       return;
     }
@@ -37,9 +37,9 @@ function App() {
       queryClient.clear();
       setUser(null);
     }
-  }, [currentUserQuery.data, currentUserQuery.error, hasToken]);
+  }, [currentUserQuery.data, currentUserQuery.error, hasStoredSession]);
 
-  const checkingSession = hasToken && currentUserQuery.isPending && !user;
+  const checkingSession = hasStoredSession && currentUserQuery.isPending && !user;
 
   if (checkingSession) {
     return <Splash />;

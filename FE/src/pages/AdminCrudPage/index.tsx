@@ -971,7 +971,6 @@ function InitialBusinessLinesEditor({ value, onChange }: { value: string; onChan
         {editableRows.map((row, index) => (
           <div className="initial-business-line-row" key={index}>
             <input
-              className="uppercase"
               onChange={(event) => updateRow(index, { code: event.target.value })}
               placeholder="Mã nhóm"
               value={row.code}
@@ -1898,7 +1897,7 @@ function parseInitialBusinessLinesForEditor(value: string): InitialBusinessLineR
     const parsed = JSON.parse(value) as InitialBusinessLineRow[];
     if (Array.isArray(parsed)) {
       return parsed.map((row) => ({
-        code: String(row?.code ?? '').trim().toUpperCase(),
+        code: String(row?.code ?? '').trim(),
         countryOfOrigin: String(row?.countryOfOrigin ?? '').trim(),
         manufacturer: String(row?.manufacturer ?? '').trim(),
         name: String(row?.name ?? '').trim(),
@@ -1916,7 +1915,7 @@ function parseInitialBusinessLinesForEditor(value: string): InitialBusinessLineR
     .map((line) => {
       const [code = '', name = '', productCategory = '', manufacturer = '', countryOfOrigin = ''] = line.split('|').map((part) => part.trim());
       return {
-        code: code.toUpperCase(),
+        code,
         countryOfOrigin,
         manufacturer,
         name,
@@ -1928,7 +1927,7 @@ function parseInitialBusinessLinesForEditor(value: string): InitialBusinessLineR
 function serializeInitialBusinessLines(rows: InitialBusinessLineRow[]) {
   const normalized = rows
     .map((row) => ({
-      code: row.code.trim().toUpperCase(),
+      code: row.code.trim(),
       countryOfOrigin: row.countryOfOrigin.trim(),
       manufacturer: row.manufacturer.trim(),
       name: row.name.trim(),

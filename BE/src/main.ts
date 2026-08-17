@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { createRateLimitMiddleware } from './common/middleware/rate-limit.middleware';
+import { createCsrfProtectionMiddleware } from './common/middleware/csrf-protection.middleware';
 import { AppConfigService } from './config/app-config.service';
 
 async function bootstrap() {
@@ -22,9 +23,21 @@ async function bootstrap() {
     }),
   );
   app.enableCors({
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'X-CSRF-Protection',
+    ],
+    exposedHeaders: [
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+    ],
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     origin: config.corsOrigins,
     credentials: true,
   });
+  app.use(createCsrfProtectionMiddleware(config));
   app.use(createRateLimitMiddleware(config));
 
   app.useGlobalPipes(

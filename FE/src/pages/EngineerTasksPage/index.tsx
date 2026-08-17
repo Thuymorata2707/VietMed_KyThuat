@@ -574,6 +574,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     try {
       const token = getToken();
       const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
+        credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
@@ -601,6 +602,7 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
     try {
       const token = getToken();
       const response = await fetch(`${getApiBaseUrl()}${attachment.url}`, {
+        credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 

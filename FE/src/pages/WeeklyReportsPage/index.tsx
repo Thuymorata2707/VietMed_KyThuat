@@ -9,6 +9,7 @@ import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
+import { exportReportXlsx } from '../../utils/xlsxExport';
 
 type WeeklyReportsPageProps = {
   currentRole: RoleName;
@@ -362,20 +363,16 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   }
 
   function exportCsv() {
-    const lines = [
-      ['Ngày', 'Khách hàng', 'Máy', 'Nội dung', 'Kết quả', 'Tồn đọng', 'Đề xuất'],
-      ...rows
+    exportReportXlsx({
+      columns: ['Ngày', 'Khách hàng', 'Máy', 'Nội dung', 'Kết quả', 'Tồn đọng', 'Đề xuất'],
+      filename: `bao-cao-tuan-${weekStart}.xlsx`,
+      rows: rows
         .filter((row) => [row.customer, row.machine, row.content, row.result, row.pending, row.proposal].some((value) => value.trim()))
         .map((row) => [formatDate(row.workDate), row.customer, row.machine, row.content, row.result, row.pending, row.proposal]),
-    ];
-    const csv = `\uFEFF${lines.map((line) => line.map(csvCell).join(',')).join('\n')}`;
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `bao-cao-tuan-${weekStart}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+      sheetName: 'Bao cao tuan',
+      subtitle: `${formatDate(weekStart)} - ${formatDate(weekEnd)}`,
+      title: 'BÁO CÁO TUẦN',
+    });
   }
 
   const selectedEngineer = engineers.find((engineer) => engineer.id === selectedEngineerId);
@@ -443,7 +440,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             </span>
             <button className="secondary-button" onClick={exportCsv} type="button">
               <Download size={16} />
-              Xuất CSV
+              Xuất Excel
             </button>
             {!isAdmin ? (
               <>
@@ -747,8 +744,4 @@ function formatDate(value: string) {
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat('vi-VN').format(date);
-}
-
-function csvCell(value: string) {
-  return `"${value.replaceAll('"', '""')}"`;
 }

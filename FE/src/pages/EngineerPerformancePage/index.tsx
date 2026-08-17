@@ -9,6 +9,7 @@ import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
+import { exportReportXlsx } from '../../utils/xlsxExport';
 
 type EngineerPerformancePageProps = {
   currentRole: RoleName;
@@ -185,9 +186,10 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   }
 
   function exportCsv() {
-    const lines = [
-      ['Ngày', 'Loại việc', 'Mã phiếu', 'Khách hàng', 'Máy', 'Nội dung', 'Kết quả'],
-      ...(summary?.activities ?? []).map((activity) => [
+    exportReportXlsx({
+      columns: ['Ngày', 'Loại việc', 'Mã phiếu', 'Khách hàng', 'Máy', 'Nội dung', 'Kết quả'],
+      filename: `hieu-suat-ky-su-${from}-${to}.xlsx`,
+      rows: (summary?.activities ?? []).map((activity) => [
         formatDate(activity.date),
         activityKindLabel(activity.kind),
         activity.code,
@@ -196,15 +198,10 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
         activity.title,
         activity.result || '',
       ]),
-    ];
-    const csv = `\uFEFF${lines.map((line) => line.map(csvCell).join(',')).join('\n')}`;
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `hieu-suat-ky-su-${from}-${to}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+      sheetName: 'Hieu suat',
+      subtitle: `${formatDate(from)} - ${formatDate(to)}`,
+      title: 'BÁO CÁO HIỆU SUẤT KỸ SƯ',
+    });
   }
 
   return (
@@ -245,7 +242,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             </button>
             <button className="secondary-button" disabled={!summary?.activities.length} onClick={exportCsv} type="button">
               <Download size={16} />
-              CSV
+              Excel
             </button>
           </div>
         </div>
@@ -582,10 +579,6 @@ function formatDate(value: string) {
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat('vi-VN').format(date);
-}
-
-function csvCell(value: string) {
-  return `"${value.replaceAll('"', '""')}"`;
 }
 
 const fieldClass = 'min-h-11 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';

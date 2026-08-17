@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { RequestUser } from '../../common/request-user.type';
+import { AppConfigService } from '../../config/app-config.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '../jwt.service';
 
@@ -18,6 +19,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly config: AppConfigService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -57,11 +59,10 @@ export class JwtAuthGuard implements CanActivate {
 
   private extractBearerToken(request: Request): string {
     const authorization = request.headers.authorization;
-    const queryToken =
-      typeof request.query?.token === 'string' ? request.query.token : '';
+    const cookieToken = this.extractCookieToken(request);
 
-    if (queryToken && request.path === '/notifications/stream') {
-      return queryToken;
+    if (cookieToken) {
+      return cookieToken;
     }
 
     if (!authorization) {
@@ -75,5 +76,20 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     return token;
+  }
+
+  private extractCookieToken(request: Request) {
+    const rawCookie = request.headers.cookie;
+    if (!rawCookie) return '';
+
+    const cookies = rawCookie.split(';');
+    for (const cookie of cookies) {
+      const [rawName, ...rawValue] = cookie.trim().split('=');
+      if (rawName === this.config.authCookieName) {
+        return decodeURIComponent(rawValue.join('='));
+      }
+    }
+
+    return '';
   }
 }
