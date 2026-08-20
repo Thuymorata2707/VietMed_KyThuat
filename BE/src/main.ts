@@ -23,11 +23,7 @@ async function bootstrap() {
     }),
   );
   app.enableCors({
-    allowedHeaders: [
-      'Authorization',
-      'Content-Type',
-      'X-CSRF-Protection',
-    ],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-CSRF-Protection'],
     exposedHeaders: [
       'X-RateLimit-Limit',
       'X-RateLimit-Remaining',
