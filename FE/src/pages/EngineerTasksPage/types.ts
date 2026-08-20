@@ -85,14 +85,21 @@ export type RepairTask = WorkReviewFields & {
   customerFeedback?: string | null;
   usingDepartment?: string | null;
   representative?: string | null;
+  representativePosition?: string | null;
   address?: string | null;
   contactPhone?: string | null;
   deviceName?: string | null;
   modelName?: string | null;
   serialNumber?: string | null;
   warrantyStatus?: string | null;
+  warrantyTerm?: string | null;
+  receivedAccessories?: string | null;
+  preliminaryCause?: string | null;
   conditionAssessment?: string | null;
   repairMethod?: string | null;
+  repairCostItems?: string | null;
+  totalRepairCost?: string | null;
+  repairCostInWords?: string | null;
   engineer?: {
     id?: string | null;
     fullName?: string | null;
@@ -318,6 +325,8 @@ export type WorkOperationPart = {
   serialNumber?: string | null;
   unitCost?: number | string | null;
   totalCost?: number | string | null;
+  unitPrice?: number | string | null;
+  totalPrice?: number | string | null;
   status?: 'PLANNED' | 'USED' | 'WAITING' | 'RETURNED';
   note?: string | null;
 };
@@ -328,6 +337,8 @@ export type ComponentAccessoryOption = {
   name: string;
   quantity?: number | null;
   requiresSerial?: boolean | null;
+  salePrice?: number | string | null;
+  unitCost?: number | string | null;
   machineModel?: {
     code?: string | null;
     name?: string | null;
@@ -352,7 +363,7 @@ export type WorkOperationChecklistItem = {
 
 export type WorkOperationsResponse = {
   workLogs: Array<WorkOperationLog & { id: string }>;
-  usedParts: Array<WorkOperationPart & { id: string; quantity: number; totalCost?: number | null }>;
+  usedParts: Array<WorkOperationPart & { id: string; quantity: number; totalCost?: number | null; totalPrice?: number | null }>;
   checklistItems: Array<WorkOperationChecklistItem & { id: string }>;
 };
 

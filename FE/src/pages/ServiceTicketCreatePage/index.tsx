@@ -97,13 +97,20 @@ type TicketForm = {
   modelName: string;
   nextDueDate: string;
   priority: string;
+  preliminaryCause: string;
   repairMethod: string;
+  receivedAccessories: string;
+  repairCostInWords: string;
+  repairCostItems: string;
   reportedAt: string;
   representative: string;
+  representativePosition: string;
   scheduledDate: string;
   serialNumber: string;
   title: string;
+  totalRepairCost: string;
   usingDepartment: string;
+  warrantyTerm: string;
   warrantyEndDate: string;
   warrantyStartDate: string;
   warrantyStatus: string;
@@ -157,11 +164,12 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const initialMachineId = searchParams.get('machineId') ?? '';
   const initialCustomerId = searchParams.get('customerId') ?? '';
   const initialWarrantyStatus = searchParams.get('warrantyStatus') ?? '';
+  const initialTemplate = searchParams.get('template') ?? '';
   const returnTo = searchParams.get('returnTo') ?? '';
   const role = getRoleName(user);
   const [kind, setKind] = useState<TicketKind>(initialKind);
   const [currentStep, setCurrentStep] = useState<CreateTicketStep>('setup');
-  const [form, setForm] = useState<TicketForm>(() => emptyTicketForm(user, initialKind));
+  const [form, setForm] = useState<TicketForm>(() => applyTicketTemplate(emptyTicketForm(user, initialKind), initialTemplate));
   const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm(user));
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(() => emptyQuickMachineForm());
   const [customerOptions, setCustomerOptions] = useState<Array<PickerOption<CustomerOption>>>([]);
@@ -418,13 +426,13 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       setSearchParams(compactSearchParams({ kind, machineId: initialMachineId, customerId: initialCustomerId, returnTo, warrantyStatus: initialWarrantyStatus }));
     }
     setForm((current) => ({
-      ...emptyTicketForm(user, kind),
+      ...applyTicketTemplate(emptyTicketForm(user, kind), initialTemplate),
       customerId: current.customerId || initialCustomerId,
       engineerId: current.engineerId,
       machineId: '',
       warrantyStatus: initialWarrantyStatus || current.warrantyStatus,
     }));
-  }, [fixedKind, initialCustomerId, initialMachineId, initialWarrantyStatus, kind, returnTo]);
+  }, [fixedKind, initialCustomerId, initialMachineId, initialTemplate, initialWarrantyStatus, kind, returnTo]);
 
   useEffect(() => {
     let cancelled = false;
@@ -894,6 +902,10 @@ function RepairFields({ form, models, updateForm }: { form: TicketForm; models: 
         <input className={fieldClass} onChange={(event) => updateForm({ representative: event.target.value })} value={form.representative} />
       </label>
       <label className={labelClass}>
+        Chức vụ
+        <input className={fieldClass} onChange={(event) => updateForm({ representativePosition: event.target.value })} value={form.representativePosition} />
+      </label>
+      <label className={labelClass}>
         Số điện thoại
         <input className={fieldClass} onChange={(event) => updateForm({ contactPhone: event.target.value })} value={form.contactPhone} />
       </label>
@@ -903,6 +915,10 @@ function RepairFields({ form, models, updateForm }: { form: TicketForm; models: 
           <option value="IN_WARRANTY">Còn bảo hành</option>
           <option value="OUT_OF_WARRANTY">Hết bảo hành</option>
         </select>
+      </label>
+      <label className={labelClass}>
+        Thời hạn bảo hành
+        <input className={fieldClass} onChange={(event) => updateForm({ warrantyTerm: event.target.value })} placeholder="VD: đến 31/12/2026 hoặc 12 tháng" value={form.warrantyTerm} />
       </label>
       <label className={wideLabelClass}>
         Địa chỉ
@@ -918,12 +934,32 @@ function RepairFields({ form, models, updateForm }: { form: TicketForm; models: 
         <textarea className={textareaClass} onChange={(event) => updateForm({ description: event.target.value })} value={form.description} />
       </label>
       <label className={wideLabelClass}>
-        Kiểm tra tình trạng thiết bị
+        Tình trạng thiết bị lúc nhận
         <textarea className={textareaClass} onChange={(event) => updateForm({ conditionAssessment: event.target.value })} value={form.conditionAssessment} />
+      </label>
+      <label className={wideLabelClass}>
+        Phụ kiện nhận kèm
+        <textarea className={textareaClass} onChange={(event) => updateForm({ receivedAccessories: event.target.value })} placeholder="Mỗi dòng một phụ kiện hoặc tình trạng phụ kiện" value={form.receivedAccessories} />
+      </label>
+      <label className={wideLabelClass}>
+        Sơ bộ xác định nguyên nhân
+        <textarea className={textareaClass} onChange={(event) => updateForm({ preliminaryCause: event.target.value })} value={form.preliminaryCause} />
       </label>
       <label className={wideLabelClass}>
         Phương pháp sửa chữa
         <textarea className={textareaClass} onChange={(event) => updateForm({ repairMethod: event.target.value })} value={form.repairMethod} />
+      </label>
+      <label className={wideLabelClass}>
+        Bảng hư hỏng / biện pháp / chi phí
+        <textarea className={textareaClass} onChange={(event) => updateForm({ repairCostItems: event.target.value })} placeholder="VD: 1. Hư hỏng - Biện pháp khắc phục - Chi phí" value={form.repairCostItems} />
+      </label>
+      <label className={labelClass}>
+        Tổng chi phí sửa chữa
+        <input className={fieldClass} onChange={(event) => updateForm({ totalRepairCost: event.target.value })} value={form.totalRepairCost} />
+      </label>
+      <label className={labelClass}>
+        Bằng chữ
+        <input className={fieldClass} onChange={(event) => updateForm({ repairCostInWords: event.target.value })} value={form.repairCostInWords} />
       </label>
     </>
   );
@@ -1494,17 +1530,34 @@ function emptyTicketForm(user: ApiUser, kind: TicketKind): TicketForm {
     modelName: '',
     nextDueDate: '',
     priority: 'NORMAL',
+    preliminaryCause: '',
     repairMethod: '',
+    receivedAccessories: '',
+    repairCostInWords: '',
+    repairCostItems: '',
     reportedAt: kind === 'repair' ? date : '',
     representative: '',
+    representativePosition: '',
     scheduledDate: kind !== 'repair' ? date : '',
     serialNumber: '',
     title: '',
+    totalRepairCost: '',
     usingDepartment: '',
+    warrantyTerm: '',
     warrantyEndDate: '',
     warrantyStartDate: kind === 'installation' ? date : '',
     warrantyStatus: 'IN_WARRANTY',
     installedDeviceItems: kind === 'installation' ? [] : [emptyInstallationDeviceItem()],
+  };
+}
+
+function applyTicketTemplate(form: TicketForm, template: string): TicketForm {
+  if (template !== 'receive-device') return form;
+
+  return {
+    ...form,
+    title: form.title || 'Phiếu nhận thiết bị',
+    description: form.description || 'Tiếp nhận thiết bị để kiểm tra/sửa chữa.',
   };
 }
 
@@ -1558,14 +1611,21 @@ async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineMo
         reportedAt: form.reportedAt || undefined,
         usingDepartment: form.usingDepartment.trim() || undefined,
         representative: form.representative.trim() || undefined,
+        representativePosition: form.representativePosition.trim() || undefined,
         address: form.address.trim() || undefined,
         contactPhone: form.contactPhone.trim() || undefined,
         deviceName: form.deviceName.trim() || undefined,
         modelName: form.modelName.trim() || undefined,
         serialNumber: form.serialNumber.trim() || undefined,
         warrantyStatus: form.warrantyStatus,
+        warrantyTerm: form.warrantyTerm.trim() || undefined,
+        receivedAccessories: form.receivedAccessories.trim() || undefined,
+        preliminaryCause: form.preliminaryCause.trim() || undefined,
         conditionAssessment: form.conditionAssessment.trim() || undefined,
         repairMethod: form.repairMethod.trim() || undefined,
+        repairCostItems: form.repairCostItems.trim() || undefined,
+        totalRepairCost: form.totalRepairCost.trim() || undefined,
+        repairCostInWords: form.repairCostInWords.trim() || undefined,
       }),
     });
   }

@@ -55,15 +55,22 @@ type RepairForm = {
   resultNote: string;
   customerFeedback: string;
   conditionAssessment: string;
+  preliminaryCause: string;
   repairMethod: string;
+  receivedAccessories: string;
+  repairCostInWords: string;
+  repairCostItems: string;
   usingDepartment: string;
   representative: string;
+  representativePosition: string;
   address: string;
   contactPhone: string;
   deviceName: string;
   machineModelId: string;
   modelName: string;
   serialNumber: string;
+  totalRepairCost: string;
+  warrantyTerm: string;
 };
 
 type MachineModelOption = {
@@ -242,14 +249,21 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
           resultNote: form.resultNote.trim() || undefined,
           customerFeedback: form.customerFeedback.trim() || undefined,
           conditionAssessment: form.conditionAssessment.trim() || undefined,
+          preliminaryCause: form.preliminaryCause.trim() || undefined,
           repairMethod: form.repairMethod.trim() || undefined,
+          receivedAccessories: form.receivedAccessories.trim() || undefined,
+          repairCostInWords: form.repairCostInWords.trim() || undefined,
+          repairCostItems: form.repairCostItems.trim() || undefined,
           usingDepartment: form.usingDepartment.trim() || undefined,
           representative: form.representative.trim() || undefined,
+          representativePosition: form.representativePosition.trim() || undefined,
           address: form.address.trim() || undefined,
           contactPhone: form.contactPhone.trim() || undefined,
           deviceName: form.deviceName.trim() || undefined,
           modelName: form.modelName.trim() || undefined,
           serialNumber: form.serialNumber.trim() || undefined,
+          totalRepairCost: form.totalRepairCost.trim() || undefined,
+          warrantyTerm: form.warrantyTerm.trim() || undefined,
           usedParts: normalizeUsedPartsPayload(usedParts),
         }),
       });
@@ -410,13 +424,37 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                   selectedMachineId={form.machineId}
                   serialNumber={form.serialNumber}
                 />
+                <label className={labelClass}>
+                  Thời hạn bảo hành
+                  <input className={fieldClass} onChange={(event) => updateForm({ warrantyTerm: event.target.value })} value={form.warrantyTerm} />
+                </label>
                 <label className={`${labelClass} md:col-span-2`}>
-                  Kiểm tra tình trạng thiết bị
+                  Tình trạng thiết bị lúc nhận
                   <textarea className={textareaClass} onChange={(event) => updateForm({ conditionAssessment: event.target.value })} value={form.conditionAssessment} />
+                </label>
+                <label className={`${labelClass} md:col-span-2`}>
+                  Phụ kiện nhận kèm
+                  <textarea className={textareaClass} onChange={(event) => updateForm({ receivedAccessories: event.target.value })} value={form.receivedAccessories} />
+                </label>
+                <label className={`${labelClass} md:col-span-2`}>
+                  Sơ bộ xác định nguyên nhân
+                  <textarea className={textareaClass} onChange={(event) => updateForm({ preliminaryCause: event.target.value })} value={form.preliminaryCause} />
                 </label>
                 <label className={`${labelClass} md:col-span-2`}>
                   Phương án sửa chữa
                   <textarea className={textareaClass} onChange={(event) => updateForm({ repairMethod: event.target.value })} value={form.repairMethod} />
+                </label>
+                <label className={`${labelClass} md:col-span-2`}>
+                  Hư hỏng / biện pháp / chi phí
+                  <textarea className={textareaClass} onChange={(event) => updateForm({ repairCostItems: event.target.value })} value={form.repairCostItems} />
+                </label>
+                <label className={labelClass}>
+                  Tổng chi phí sửa chữa
+                  <input className={fieldClass} onChange={(event) => updateForm({ totalRepairCost: event.target.value })} value={form.totalRepairCost} />
+                </label>
+                <label className={labelClass}>
+                  Bằng chữ
+                  <input className={fieldClass} onChange={(event) => updateForm({ repairCostInWords: event.target.value })} value={form.repairCostInWords} />
                 </label>
               </div>
             </div>
@@ -449,6 +487,10 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 representative={form.representative}
                 usingDepartment={form.usingDepartment}
               />
+              <label className={`${labelClass} mt-5`}>
+                Chức vụ người đại diện
+                <input className={fieldClass} onChange={(event) => updateForm({ representativePosition: event.target.value })} value={form.representativePosition} />
+              </label>
             </div>
 
             <div className={panelClass}>
@@ -549,15 +591,22 @@ function emptyForm(): RepairForm {
     resultNote: '',
     customerFeedback: '',
     conditionAssessment: '',
+    preliminaryCause: '',
     repairMethod: '',
+    receivedAccessories: '',
+    repairCostInWords: '',
+    repairCostItems: '',
     usingDepartment: '',
     representative: '',
+    representativePosition: '',
     address: '',
     contactPhone: '',
     deviceName: '',
     machineModelId: '',
     modelName: '',
     serialNumber: '',
+    totalRepairCost: '',
+    warrantyTerm: '',
   };
 }
 
@@ -571,15 +620,22 @@ function buildForm(repair: RepairTask): RepairForm {
     resultNote: repair.resultNote || '',
     customerFeedback: repair.customerFeedback || '',
     conditionAssessment: repair.conditionAssessment || '',
+    preliminaryCause: repair.preliminaryCause || '',
     repairMethod: repair.repairMethod || '',
+    receivedAccessories: repair.receivedAccessories || '',
+    repairCostInWords: repair.repairCostInWords || '',
+    repairCostItems: repair.repairCostItems || '',
     usingDepartment: repair.usingDepartment || c?.name || '',
     representative: repair.representative || (repair.customer ? (repair.customer.contactPerson || '') : ''),
+    representativePosition: repair.representativePosition || '',
     address: repair.address || (repair.customer ? (repair.customer.fullAddress || repair.customer.address || '') : ''),
     contactPhone: repair.contactPhone || (repair.customer ? (repair.customer.contactPhone || repair.customer.phone || '') : ''),
     deviceName: repair.deviceName || repair.machine?.modelName || '',
     machineModelId: repair.machine?.machineModel?.id || '',
     modelName: repair.modelName || repair.machine?.modelName || '',
     serialNumber: repair.serialNumber || repair.machine?.serialNumber || '',
+    totalRepairCost: repair.totalRepairCost || '',
+    warrantyTerm: repair.warrantyTerm || '',
   };
 }
 

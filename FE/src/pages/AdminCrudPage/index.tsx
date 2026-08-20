@@ -29,6 +29,7 @@ type PaginationState = {
 type InitialBusinessLineRow = {
   code: string;
   countryOfOrigin: string;
+  id?: string;
   manufacturer: string;
   name: string;
   productCategory: string;
@@ -738,13 +739,19 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
 
     try {
       const fields = visibleFields(config.fields, isEditing, form, options, config.endpoint, row);
-      const payload = isMachinesEndpoint(config.endpoint) ? buildMachinePayload(fields, form, row) : buildPayload(fields, form);
+      const payloadFields = isEditing && isProductIndustriesEndpoint(config.endpoint)
+        ? fields.filter((field) => field.name !== 'businessLinesText')
+        : fields;
+      const payload = isMachinesEndpoint(config.endpoint) ? buildMachinePayload(payloadFields, form, row) : buildPayload(payloadFields, form);
 
       if (isEditing) {
         await apiFetch(`${config.endpoint}/${id}`, {
           method: 'PATCH',
           body: JSON.stringify(payload),
         });
+        if (isProductIndustriesEndpoint(config.endpoint)) {
+          await syncProductIndustryBusinessLines(id, form.businessLinesText || '', row, form);
+        }
         setSuccess(`Đã cập nhật ${config.entityLabel}.`);
       } else {
         await apiFetch(config.endpoint, {
@@ -947,7 +954,7 @@ function InitialBusinessLinesEditor({ value, onChange }: { value: string; onChan
   const editableRows = rows.length ? rows : [emptyInitialBusinessLineRow()];
 
   function setRows(nextRows: InitialBusinessLineRow[]) {
-    onChange(serializeInitialBusinessLines(nextRows));
+    onChange(serializeInitialBusinessLinesForEditor(nextRows));
   }
 
   function updateRow(index: number, patch: Partial<InitialBusinessLineRow>) {
@@ -1009,7 +1016,7 @@ function InitialBusinessLinesEditor({ value, onChange }: { value: string; onChan
           </div>
         ))}
       </div>
-      <p className="field-hint">Tạo ngành hàng xong, các nhóm này sẽ dùng ngay để thêm model.</p>
+      <p className="field-hint">Dùng cho model.</p>
     </div>
   );
 }
@@ -1791,6 +1798,9 @@ function buildInitialForm(fields: CrudField[], row: TableRow | null, options: Op
       }
 
       const rawValue = readPath(row, field.valuePath || field.name);
+      if (field.name === 'businessLinesText' && isProductIndustriesEndpoint(endpoint)) {
+        return [field.name, serializeInitialBusinessLinesForEditor(readInitialBusinessLines(row))];
+      }
       if (Array.isArray(rawValue)) {
         return [field.name, rawValue.join('\n')];
       }
@@ -1899,6 +1909,7 @@ function parseInitialBusinessLinesForEditor(value: string): InitialBusinessLineR
       return parsed.map((row) => ({
         code: String(row?.code ?? '').trim(),
         countryOfOrigin: String(row?.countryOfOrigin ?? '').trim(),
+        id: typeof row?.id === 'string' ? row.id : undefined,
         manufacturer: String(row?.manufacturer ?? '').trim(),
         name: String(row?.name ?? '').trim(),
         productCategory: normalizeInitialBusinessLineCategory(row?.productCategory),
@@ -1929,6 +1940,7 @@ function serializeInitialBusinessLines(rows: InitialBusinessLineRow[]) {
     .map((row) => ({
       code: row.code.trim(),
       countryOfOrigin: row.countryOfOrigin.trim(),
+      id: row.id,
       manufacturer: row.manufacturer.trim(),
       name: row.name.trim(),
       productCategory: normalizeInitialBusinessLineCategory(row.productCategory),
@@ -1936,6 +1948,19 @@ function serializeInitialBusinessLines(rows: InitialBusinessLineRow[]) {
     .filter(hasInitialBusinessLineValue);
 
   return normalized.length ? JSON.stringify(normalized) : '';
+}
+
+function serializeInitialBusinessLinesForEditor(rows: InitialBusinessLineRow[]) {
+  const normalized = rows.map((row) => ({
+    code: row.code.trim(),
+    countryOfOrigin: row.countryOfOrigin.trim(),
+    id: row.id,
+    manufacturer: row.manufacturer.trim(),
+    name: row.name.trim(),
+    productCategory: normalizeInitialBusinessLineCategory(row.productCategory),
+  }));
+
+  return normalized.some(hasInitialBusinessLineValue) ? JSON.stringify(normalized) : '';
 }
 
 function emptyInitialBusinessLineRow(): InitialBusinessLineRow {
@@ -1946,6 +1971,58 @@ function emptyInitialBusinessLineRow(): InitialBusinessLineRow {
     name: '',
     productCategory: 'OTHER',
   };
+}
+
+function readInitialBusinessLines(row: TableRow | null): InitialBusinessLineRow[] {
+  const businessLines = readPath(row ?? {}, 'businessLines');
+  if (!Array.isArray(businessLines)) return [];
+
+  return businessLines
+    .filter((line): line is TableRow => Boolean(line && typeof line === 'object'))
+    .map((line) => ({
+      code: String(readPath(line, 'code') ?? '').trim(),
+      countryOfOrigin: String(readPath(line, 'countryOfOrigin') ?? '').trim(),
+      id: String(readPath(line, 'id') ?? '').trim() || undefined,
+      manufacturer: String(readPath(line, 'manufacturer') ?? '').trim(),
+      name: String(readPath(line, 'name') ?? '').trim(),
+      productCategory: normalizeInitialBusinessLineCategory(String(readPath(line, 'productCategory') ?? '')),
+    }));
+}
+
+async function syncProductIndustryBusinessLines(industryId: string, value: string, currentRow: TableRow | null, form: FormState) {
+  const existingRows = readInitialBusinessLines(currentRow);
+  const existingIds = new Set(existingRows.map((line) => line.id).filter((id): id is string => Boolean(id)));
+  const nextRows = parseInitialBusinessLinesForEditor(value).filter((line) => line.code && line.name);
+  const nextIds = new Set(nextRows.map((line) => line.id).filter((id): id is string => Boolean(id)));
+
+  for (const line of nextRows) {
+    const payload = {
+      code: line.code,
+      countryOfOrigin: line.countryOfOrigin || null,
+      expertiseGroup: form.expertiseGroup || undefined,
+      manufacturer: line.manufacturer || null,
+      name: line.name,
+      productCategory: normalizeInitialBusinessLineCategory(line.productCategory),
+      productIndustryId: industryId,
+    };
+
+    if (line.id && existingIds.has(line.id)) {
+      await apiFetch(`/business-lines/${line.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+    } else {
+      await apiFetch('/business-lines', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    }
+  }
+
+  for (const existing of existingRows) {
+    if (!existing.id || nextIds.has(existing.id)) continue;
+    await apiFetch(`/business-lines/${existing.id}`, { method: 'DELETE' });
+  }
 }
 
 function hasInitialBusinessLineValue(row: InitialBusinessLineRow) {
@@ -1982,6 +2059,10 @@ function textareaPlaceholder(field: CrudField) {
 
 function isMachinesEndpoint(endpoint?: string) {
   return endpoint === '/machines';
+}
+
+function isProductIndustriesEndpoint(endpoint?: string) {
+  return endpoint === '/product-industries';
 }
 
 function isCustomersEndpoint(endpoint?: string) {

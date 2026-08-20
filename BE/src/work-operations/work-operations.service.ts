@@ -142,19 +142,20 @@ export class WorkOperationsService {
   async usedPartsSummary({
     user,
     engineerId,
+    from,
+    to,
     weekStart,
   }: {
     user: RequestUser;
     engineerId?: string;
+    from?: string;
+    to?: string;
     weekStart?: string;
   }) {
     if (!isAdmin(user))
       throw new ForbiddenException('Only admin can view used parts summary');
-    const start = this.parseDate(
-      weekStart || this.currentWeekStart(),
-      'weekStart',
-    );
-    const end = this.endOfDay(this.addDays(start, 6));
+    const start = this.parseDate(from || weekStart || this.currentWeekStart(), from ? 'from' : 'weekStart');
+    const end = this.endOfDay(to ? this.parseDate(to, 'to') : this.addDays(start, 6));
 
     const parts = await this.prisma.usedPart.findMany({
       where: {
@@ -189,11 +190,14 @@ export class WorkOperationsService {
         engineerName: string;
         quantity: number;
         totalCost: number;
+        totalRevenue: number;
+        grossProfit: number;
         waiting: number;
         used: number;
       }
     >();
     let totalCost = 0;
+    let totalRevenue = 0;
     let waiting = 0;
     let used = 0;
 
@@ -205,16 +209,22 @@ export class WorkOperationsService {
           part.createdBy?.fullName || part.createdBy?.email || 'Không rõ kỹ sư',
         quantity: 0,
         totalCost: 0,
+        totalRevenue: 0,
+        grossProfit: 0,
         waiting: 0,
         used: 0,
       };
       const quantity = Number(part.quantity);
       const cost = Number(part.totalCost ?? 0);
+      const revenue = Number(part.totalPrice ?? 0);
       current.quantity += quantity;
       current.totalCost += cost;
+      current.totalRevenue += revenue;
+      current.grossProfit += revenue - cost;
       if (part.status === UsedPartStatus.WAITING) current.waiting += 1;
       if (part.status === UsedPartStatus.USED) current.used += 1;
       totalCost += cost;
+      totalRevenue += revenue;
       if (part.status === UsedPartStatus.WAITING) waiting += 1;
       if (part.status === UsedPartStatus.USED) used += 1;
       byEngineer.set(engineerKey, current);
@@ -223,9 +233,13 @@ export class WorkOperationsService {
     return {
       weekStart: start,
       weekEnd: end,
+      from: start,
+      to: end,
       totals: {
         parts: parts.length,
         totalCost,
+        totalRevenue,
+        grossProfit: totalRevenue - totalCost,
         waiting,
         used,
       },
@@ -237,6 +251,8 @@ export class WorkOperationsService {
         quantity: Number(part.quantity),
         unitCost: part.unitCost === null ? null : Number(part.unitCost),
         totalCost: part.totalCost === null ? null : Number(part.totalCost),
+        unitPrice: part.unitPrice === null ? null : Number(part.unitPrice),
+        totalPrice: part.totalPrice === null ? null : Number(part.totalPrice),
         task: this.partTaskSummary(part),
       })),
     };
@@ -305,6 +321,7 @@ export class WorkOperationsService {
   ): Prisma.UsedPartCreateManyInput {
     const quantity = item.quantity ?? 1;
     const unitCost = item.unitCost ?? null;
+    const unitPrice = item.unitPrice ?? null;
     return {
       kind,
       ...relation,
@@ -314,6 +331,8 @@ export class WorkOperationsService {
       serialNumber: this.cleanOptional(item.serialNumber),
       unitCost,
       totalCost: unitCost === null ? null : quantity * unitCost,
+      unitPrice,
+      totalPrice: unitPrice === null ? null : quantity * unitPrice,
       status: item.status ?? UsedPartStatus.USED,
       inventoryItemId: this.cleanOptional(item.inventoryItemId),
       note: this.cleanOptional(item.note),

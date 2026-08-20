@@ -40,6 +40,12 @@ export async function replaceWorkUsedParts({
       quantity: part.quantity,
       unit: part.unit,
       serialNumber: part.serialNumber,
+      unitCost: part.unitCost,
+      totalCost:
+        part.unitCost === null ? null : part.quantity * part.unitCost,
+      unitPrice: part.unitPrice,
+      totalPrice:
+        part.unitPrice === null ? null : part.quantity * part.unitPrice,
       inventoryItemId: part.componentAccessoryId,
       note: part.note,
       usedAt: new Date(),
@@ -60,6 +66,8 @@ async function normalizeWorkUsedParts(
       quantity: Number(part.quantity || 0),
       unit: part.unit?.trim() || null,
       serialNumber: part.serialNumber?.trim() || null,
+      unitCost: part.unitCost === undefined || part.unitCost === null ? null : Number(part.unitCost),
+      unitPrice: part.unitPrice === undefined || part.unitPrice === null ? null : Number(part.unitPrice),
       note: part.note?.trim() || null,
     }))
     .filter((part) => part.quantity > 0 && (part.componentAccessoryId || part.name));
@@ -98,10 +106,20 @@ async function normalizeWorkUsedParts(
 
   return cleanedParts.map((part) => {
     const accessory = part.componentAccessoryId ? accessoryMap.get(part.componentAccessoryId) : null;
+    const defaultUnitCost =
+      accessory?.unitCost === undefined || accessory?.unitCost === null
+        ? null
+        : Number(accessory.unitCost);
+    const defaultUnitPrice =
+      accessory?.salePrice === undefined || accessory?.salePrice === null
+        ? null
+        : Number(accessory.salePrice);
     return {
       ...part,
       name: accessory?.name || part.name,
       unit: part.unit || 'cái',
+      unitCost: part.unitCost ?? defaultUnitCost,
+      unitPrice: part.unitPrice ?? defaultUnitPrice,
     };
   });
 }

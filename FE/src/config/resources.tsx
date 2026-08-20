@@ -149,7 +149,7 @@ export const resources: Record<string, ResourceConfig> = {
     ],
   },
   'business-lines': {
-    title: 'Sản phẩm & Thiết bị',
+    title: 'Danh mục thiết bị',
     description: 'Ngành, model, serial.',
     endpoint: '/business-lines',
     icon: <BriefcaseBusiness size={20} />,
@@ -224,6 +224,8 @@ export const resources: Record<string, ResourceConfig> = {
       { key: 'machineModel.code', label: 'Model' },
       { key: 'component.name', label: 'Nhóm phụ kiện' },
       { key: 'quantity', label: 'SL tiêu chuẩn' },
+      { key: 'unitCost', label: 'Giá vốn' },
+      { key: 'salePrice', label: 'Giá bán' },
       { key: 'requiresSerial', label: 'Cần S/N' },
     ],
   },

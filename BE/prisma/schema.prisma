@@ -74,7 +74,7 @@ model ProductIndustry {
 
   code           String             @unique
   name           String
-  description    String? @db.Text
+  description    String?            @db.Text
   expertiseGroup ExpertiseGroup
   status         BusinessLineStatus @default(ACTIVE)
   sortOrder      Int                @default(0)
@@ -638,8 +638,8 @@ model BusinessLine {
   contactPerson   String?
   contactPhone    String?
   contactEmail    String?
-  description     String? @db.Text
-  note            String? @db.Text
+  description     String?                @db.Text
+  note            String?                @db.Text
   expertiseGroup  ExpertiseGroup         @default(IMAGING)
 
   productIndustryId String?
@@ -671,8 +671,8 @@ model MachineModel {
   countryOfOrigin String?
   productCategory MachineProductCategory @default(OTHER)
   productLine     String?
-  description     String? @db.Text
-  note            String? @db.Text
+  description     String?                @db.Text
+  note            String?                @db.Text
 
   machines                Machine[]
   components              MachineComponent[]
@@ -720,6 +720,8 @@ model ComponentAccessory {
   description    String?
   quantity       Int                @default(1)
   requiresSerial Boolean            @default(true)
+  unitCost       Decimal?           @db.Decimal(15, 2)
+  salePrice      Decimal?           @db.Decimal(15, 2)
   sortOrder      Int                @default(0)
   status         BusinessLineStatus @default(ACTIVE)
 
@@ -1128,16 +1130,23 @@ model Repair {
   reviewerId   String?
   reviewer     User?            @relation("RepairReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
 
-  usingDepartment     String?
-  representative      String?
-  address             String?
-  contactPhone        String?
-  deviceName          String?
-  modelName           String?
-  serialNumber        String?
-  warrantyStatus      String?
-  conditionAssessment String?
-  repairMethod        String?
+  usingDepartment        String?
+  representative         String?
+  representativePosition String?
+  address                String?
+  contactPhone           String?
+  deviceName             String?
+  modelName              String?
+  serialNumber           String?
+  warrantyStatus         String?
+  warrantyTerm           String?
+  receivedAccessories    String? @db.Text
+  preliminaryCause       String? @db.Text
+  conditionAssessment    String?
+  repairMethod           String?
+  repairCostItems        String? @db.Text
+  totalRepairCost        String?
+  repairCostInWords      String?
 
   workLogs       WorkLog[]
   usedParts      UsedPart[]
@@ -1205,6 +1214,8 @@ model UsedPart {
   serialNumber    String?
   unitCost        Decimal?       @db.Decimal(15, 2)
   totalCost       Decimal?       @db.Decimal(15, 2)
+  unitPrice       Decimal?       @db.Decimal(15, 2)
+  totalPrice      Decimal?       @db.Decimal(15, 2)
   status          UsedPartStatus @default(USED)
   inventoryItemId String?
   note            String?        @db.Text

@@ -48,6 +48,10 @@ export class SyncUsedPartDto {
   unitCost?: number | null;
 
   @IsOptional()
+  @IsNumber()
+  unitPrice?: number | null;
+
+  @IsOptional()
   @IsEnum(UsedPartStatus)
   status?: UsedPartStatus;
 

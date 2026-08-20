@@ -410,15 +410,13 @@ function CatalogPortalHero({
   totals: { businessLines: number; industries: number; inStock: number; machines: number; models: number };
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] bg-[#f6f8f7] px-5 py-6 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)] md:px-6">
-      <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_80%_20%,rgba(62,131,117,0.14),transparent_32%),radial-gradient(circle_at_100%_90%,rgba(180,83,9,0.08),transparent_34%)]" />
+    <section className="relative overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white px-5 py-5 shadow-[0_14px_36px_rgba(24,24,27,0.06)] md:px-6">
       <div className="relative grid gap-5 min-[960px]:grid-cols-[minmax(0,1fr)_auto] min-[960px]:items-end">
         <div>
-          <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-white/82 px-3 text-xs font-semibold text-[#4b5563] shadow-[0_8px_22px_rgba(24,24,27,0.06)]">
-            <span className="h-2 w-2 rounded-full bg-[#3e8375]" />
-            Danh mục kỹ thuật
+          <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-[#eefaf3] px-3 text-xs font-semibold text-[#177245]">
+            Hồ sơ thiết bị
           </span>
-          <h1 className="mt-4 text-[clamp(32px,4vw,56px)] font-semibold leading-[1.05] text-[#202124]">Sản phẩm & Thiết bị</h1>
+          <h1 className="mt-3 text-[clamp(30px,3.4vw,48px)] font-semibold leading-[1.08] text-[#202124]">Danh mục thiết bị</h1>
           <p className="mt-3 max-w-2xl text-[15px] font-medium leading-7 text-[#667085]">Ngành hàng, model và tồn kho.</p>
         </div>
         <div className="flex flex-wrap gap-2 min-[960px]:justify-end">
@@ -455,7 +453,7 @@ function IndustryPortalCard({ item }: { item: { id: string; name: string; expert
 
   return (
     <Link
-      className="group relative min-h-[156px] overflow-hidden rounded-[24px] bg-white/94 p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_8px_22px_rgba(24,24,27,0.045)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[inset_0_0_0_1px_rgba(62,131,117,0.22),0_16px_34px_rgba(24,24,27,0.08)]"
+      className="group relative grid min-h-[168px] content-between overflow-hidden rounded-[18px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_28px_rgba(24,24,27,0.05)] transition hover:-translate-y-0.5 hover:border-[#3e8375]/35 hover:shadow-[0_18px_38px_rgba(24,24,27,0.08)]"
       to={`/product-catalog/industries/${item.id}`}
     >
       <div className="relative grid grid-cols-[44px_minmax(0,1fr)] gap-3">
@@ -467,7 +465,7 @@ function IndustryPortalCard({ item }: { item: { id: string; name: string; expert
           <span className="mt-1 block text-sm font-medium text-[#667085]">{item.expertise}</span>
         </span>
       </div>
-      <div className="relative mt-4 grid gap-3">
+      <div className="relative grid gap-3">
         <div className="flex flex-wrap gap-2 text-xs font-semibold">
           <span className="rounded-full bg-[#f4f4f5] px-2.5 py-1 text-[#3f3f46]">{item.modelCount} model</span>
           <span className="rounded-full bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{item.stock.inStock}/{item.stock.total} còn kho</span>

@@ -268,7 +268,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     <PageFrame>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle
-          eyebrow="Sản phẩm & Thiết bị"
+          eyebrow="Danh mục thiết bị"
           title="Danh sách sản phẩm"
           description="Model & tồn kho."
         />
@@ -476,7 +476,7 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
     <PageFrame>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle
-          eyebrow="Sản phẩm & Thiết bị"
+          eyebrow="Danh mục thiết bị"
           title={detail ? modelShortLabel(detail) : 'Chi tiết model'}
           description="Máy & phụ kiện."
         />
@@ -710,7 +710,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
       <div className="overflow-hidden rounded-[22px] border border-[#dbe6f3] bg-[radial-gradient(circle_at_top_left,rgba(186,230,253,0.38),transparent_30%),linear-gradient(135deg,#f8fbff_0%,#eef6ff_54%,#f9fafb_100%)] p-4 shadow-[0_14px_34px_rgba(15,23,42,0.07)] md:p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2563eb]">Sản phẩm & Thiết bị</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2563eb]">Danh mục thiết bị</span>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#172033] md:text-4xl">Nhập máy vào kho</h1>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-[#64748b]">
               Model, serial, phụ kiện.

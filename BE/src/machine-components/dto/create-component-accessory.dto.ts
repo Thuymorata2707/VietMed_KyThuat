@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsInt,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -41,6 +42,18 @@ export class CreateComponentAccessoryDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   requiresSerial?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  unitCost?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  salePrice?: number;
 
   @IsOptional()
   @Type(() => Number)

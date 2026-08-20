@@ -50,6 +50,10 @@ export class UpdateRepairDto {
 
   @IsOptional()
   @IsString()
+  representativePosition?: string | null;
+
+  @IsOptional()
+  @IsString()
   address?: string | null;
 
   @IsOptional()
@@ -74,11 +78,35 @@ export class UpdateRepairDto {
 
   @IsOptional()
   @IsString()
+  warrantyTerm?: string | null;
+
+  @IsOptional()
+  @IsString()
+  receivedAccessories?: string | null;
+
+  @IsOptional()
+  @IsString()
+  preliminaryCause?: string | null;
+
+  @IsOptional()
+  @IsString()
   conditionAssessment?: string | null;
 
   @IsOptional()
   @IsString()
   repairMethod?: string | null;
+
+  @IsOptional()
+  @IsString()
+  repairCostItems?: string | null;
+
+  @IsOptional()
+  @IsString()
+  totalRepairCost?: string | null;
+
+  @IsOptional()
+  @IsString()
+  repairCostInWords?: string | null;
 
   @IsOptional()
   @IsArray()

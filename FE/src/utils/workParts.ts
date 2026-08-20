@@ -9,6 +9,8 @@ export type WorkPartRecord = {
   quantity?: number | string | null;
   serialNumber?: string | null;
   unit?: string | null;
+  unitCost?: number | string | null;
+  unitPrice?: number | string | null;
 };
 
 export function buildUsedParts(parts?: WorkPartRecord[]): UsedPartDraft[] {
@@ -19,6 +21,8 @@ export function buildUsedParts(parts?: WorkPartRecord[]): UsedPartDraft[] {
     quantity: Number(part.quantity || 1),
     serialNumber: part.serialNumber || '',
     unit: part.unit || 'cái',
+    unitCost: Number(part.unitCost || 0),
+    unitPrice: Number(part.unitPrice || 0),
   }));
 }
 
@@ -31,6 +35,8 @@ export function normalizeUsedPartsPayload(parts: UsedPartDraft[]) {
       quantity: Number(part.quantity || 0),
       serialNumber: part.serialNumber.trim() || undefined,
       unit: part.unit.trim() || undefined,
+      unitCost: Number(part.unitCost || 0) || undefined,
+      unitPrice: Number(part.unitPrice || 0) || undefined,
     }))
     .filter((part) => part.quantity > 0 && (part.componentAccessoryId || part.name));
 }

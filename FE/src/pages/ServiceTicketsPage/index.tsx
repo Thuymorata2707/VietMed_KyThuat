@@ -232,6 +232,7 @@ type TechnicalReport = {
 
 type TicketPortalCard = {
   actionLabel: string;
+  actionHref?: string;
   countKey: TicketScope;
   description: string;
   disabled?: boolean;
@@ -243,7 +244,7 @@ type TicketPortalCard = {
 
 const serviceTicketOptions: TicketPortalCard[] = [
   {
-    actionLabel: 'Mở phiếu sửa chữa',
+    actionLabel: 'Xem sửa chữa',
     countKey: 'repairs',
     description: 'Lỗi máy & linh kiện.',
     icon: <Wrench size={23} />,
@@ -252,7 +253,26 @@ const serviceTicketOptions: TicketPortalCard[] = [
     value: 'repairs',
   },
   {
-    actionLabel: 'Mở phiếu bảo trì',
+    actionLabel: 'Tạo phiếu nhận',
+    actionHref: '/service-tickets/create?kind=repair&template=receive-device&returnTo=/service-tickets',
+    countKey: 'repairs',
+    description: 'Tiếp nhận máy, phụ kiện.',
+    icon: <Archive size={23} />,
+    label: 'Nhận thiết bị',
+    meta: 'PNTB',
+    value: 'repairs',
+  },
+  {
+    actionLabel: 'Mở phiếu trả',
+    countKey: 'repairs',
+    description: 'Kết quả & chi phí.',
+    icon: <Download size={23} />,
+    label: 'Trả thiết bị',
+    meta: 'PTTB',
+    value: 'repairs',
+  },
+  {
+    actionLabel: 'Xem bảo trì',
     countKey: 'maintenance',
     description: 'Lịch & nghiệm thu.',
     icon: <ClipboardCheck size={23} />,
@@ -261,7 +281,7 @@ const serviceTicketOptions: TicketPortalCard[] = [
     value: 'maintenance',
   },
   {
-    actionLabel: 'Mở phiếu lắp đặt',
+    actionLabel: 'Xem lắp đặt',
     countKey: 'installations',
     description: 'Bàn giao & bảo hành.',
     icon: <Stethoscope size={23} />,
@@ -270,9 +290,9 @@ const serviceTicketOptions: TicketPortalCard[] = [
     value: 'installations',
   },
   {
-    actionLabel: 'Mở luồng demo',
+    actionLabel: 'Xem demo',
     countKey: 'demo',
-    description: 'Bàn giao dùng thử, hạn thu hồi, phiếu nhận lại thiết bị.',
+    description: 'Bàn giao & thu hồi.',
     icon: <Archive size={23} />,
     label: 'Demo / dùng thử',
     meta: 'Bàn giao máy demo',
@@ -314,9 +334,10 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
       <PageFrame>
         <TicketPortalHero loading={loading} onRefresh={() => void overviewQuery.refetch()} />
         {error ? <Notice message={error} /> : null}
-        <section className="grid gap-3 xl:grid-cols-2">
+        <TicketPortalSummary counts={overviewCounts} loading={loading} />
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {serviceTicketOptions.map((item) => (
-            <TicketPortalCardButton count={overviewCounts[item.countKey]} item={item} key={item.value} onSelect={setSelectedKind} />
+            <TicketPortalCardButton count={overviewCounts[item.countKey]} item={item} key={item.label} onSelect={setSelectedKind} />
           ))}
         </section>
         {role !== 'engineer' ? (
@@ -397,19 +418,17 @@ function useTechnicalWorkRegister(from: string, to: string, enabled: boolean) {
 
 function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh: () => void }) {
   return (
-    <section className="relative overflow-hidden rounded-[26px] bg-[#f6f7f9] px-5 py-6 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)] md:px-6">
-      <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_70%_20%,rgba(62,131,117,0.12),transparent_32%),radial-gradient(circle_at_100%_80%,rgba(189,130,72,0.10),transparent_34%)]" />
+    <section className="relative overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white px-5 py-5 shadow-[0_14px_36px_rgba(24,24,27,0.06)] md:px-6">
       <div className="relative grid gap-5 min-[980px]:grid-cols-[minmax(0,1fr)_auto] min-[980px]:items-end">
         <div>
-          <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-white/82 px-3 text-xs font-semibold text-[#4b5563] shadow-[0_8px_22px_rgba(24,24,27,0.06)]">
-            <span className="h-2 w-2 rounded-full bg-[#3e8375]" />
-            Bàn điều phối kỹ thuật
+          <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-[#eefaf3] px-3 text-xs font-semibold text-[#177245]">
+            Bàn điều phối
           </span>
-          <h1 className="mt-4 max-w-[760px] text-[clamp(32px,4vw,56px)] font-semibold leading-[1.05] text-[#202124]">
-            Sổ công việc kỹ thuật
+          <h1 className="mt-3 max-w-[760px] text-[clamp(30px,3.4vw,48px)] font-semibold leading-[1.08] text-[#202124]">
+            Trung tâm phiếu kỹ thuật
           </h1>
           <p className="mt-3 max-w-2xl text-[15px] font-medium leading-7 text-[#667085]">
-            Điều phối & tổng hợp công việc.
+            Theo dõi sửa chữa, bảo trì, lắp đặt và máy demo trên cùng một màn.
           </p>
         </div>
         <button className="secondary-button bg-white/90 shadow-[0_8px_20px_rgba(24,24,27,0.06)]" disabled={loading} onClick={onRefresh} type="button">
@@ -421,33 +440,68 @@ function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh:
   );
 }
 
+function TicketPortalSummary({ counts, loading }: { counts: Record<TicketScope, number>; loading: boolean }) {
+  const total = counts.repairs + counts.maintenance + counts.installations + counts.demo;
+  return (
+    <section className="grid gap-3 rounded-[20px] border border-[#e4e4e7] bg-[#fafafa] p-3 sm:grid-cols-4">
+      <PortalMetric label="Tổng phiếu" loading={loading} value={total} />
+      <PortalMetric label="Sửa chữa" loading={loading} value={counts.repairs} />
+      <PortalMetric label="Bảo trì" loading={loading} value={counts.maintenance} />
+      <PortalMetric label="Lắp đặt/demo" loading={loading} value={counts.installations + counts.demo} />
+    </section>
+  );
+}
+
+function PortalMetric({ label, loading, value }: { label: string; loading: boolean; value: number }) {
+  return (
+    <div className="rounded-2xl bg-white px-4 py-3 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)]">
+      <span className="text-xs font-semibold text-[#667085]">{label}</span>
+      <strong className="mt-1 block text-2xl leading-none text-[#202124]">{loading ? '-' : value}</strong>
+    </div>
+  );
+}
+
 function TicketPortalCardButton({ count, item, onSelect }: { count: number; item: TicketPortalCard; onSelect: (value: TicketScope) => void }) {
   const isDisabled = Boolean(item.disabled);
+  const className = [
+    'group grid min-h-[156px] content-between gap-4 rounded-[18px] border border-[#e4e4e7] bg-white p-4 text-left shadow-[0_10px_28px_rgba(24,24,27,0.05)] transition',
+    isDisabled ? 'cursor-pointer opacity-80' : 'hover:-translate-y-0.5 hover:border-[#3e8375]/35 hover:shadow-[0_18px_38px_rgba(24,24,27,0.08)]',
+  ].join(' ');
+  const content = (
+    <>
+      <span className="flex items-start justify-between gap-3">
+        <span className={`${ticketPortalIconClass(item.value)} flex h-11 w-11 items-center justify-center rounded-2xl`}>
+          {item.icon}
+        </span>
+        <strong className="text-[26px] leading-none text-[#202124]">{count}</strong>
+      </span>
+      <span className="grid min-w-0 gap-1.5">
+        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7a8699]">{item.meta}</span>
+        <strong className="text-[20px] font-semibold leading-tight text-[#202124]">{item.label}</strong>
+        <span className="text-sm font-medium leading-6 text-[#667085]">{item.description}</span>
+      </span>
+      <span className="inline-flex items-center justify-between gap-2 border-t border-[#eef0f3] pt-3 text-sm font-semibold text-[#3e8375]">
+        <span>{item.actionLabel}</span>
+        <ArrowRight className={isDisabled ? '' : 'transition group-hover:translate-x-1'} size={16} />
+      </span>
+    </>
+  );
+
+  if (item.actionHref) {
+    return (
+      <Link className={className} to={item.actionHref}>
+        {content}
+      </Link>
+    );
+  }
 
   return (
     <button
-      className={[
-        'group grid min-h-[132px] grid-cols-[48px_minmax(0,1fr)] items-center gap-4 rounded-[22px] bg-white/92 p-4 text-left shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_8px_22px_rgba(24,24,27,0.045)] transition sm:grid-cols-[48px_minmax(0,1fr)_auto]',
-        isDisabled ? 'cursor-pointer opacity-80' : 'hover:-translate-y-0.5 hover:bg-white hover:shadow-[inset_0_0_0_1px_rgba(62,131,117,0.24),0_16px_34px_rgba(24,24,27,0.08)]',
-      ].join(' ')}
+      className={className}
       onClick={() => onSelect(item.value)}
       type="button"
     >
-      <span className={`${ticketPortalIconClass(item.value)} flex h-12 w-12 items-center justify-center rounded-2xl`}>
-        {item.icon}
-      </span>
-      <span className="grid min-w-0 gap-1">
-        <span className="text-xs font-semibold text-[#7a8699]">{item.meta}</span>
-        <strong className="truncate text-[21px] font-semibold leading-tight text-[#202124]">{item.label}</strong>
-        <span className="line-clamp-2 text-sm font-medium leading-6 text-[#667085]">{item.description}</span>
-      </span>
-      <span className="col-span-2 grid grid-cols-[auto_1fr] items-center gap-3 border-t border-[#eef0f3] pt-3 sm:col-span-1 sm:grid-cols-1 sm:justify-items-end sm:border-0 sm:pt-0">
-        <span className="text-[28px] font-semibold leading-none text-[#202124]">{count}</span>
-        <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-semibold text-[#3e8375]">
-          {item.actionLabel}
-          <ArrowRight className={isDisabled ? '' : 'transition group-hover:translate-x-1'} size={16} />
-        </span>
-      </span>
+      {content}
     </button>
   );
 }

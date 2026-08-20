@@ -220,16 +220,16 @@ export function parseMaterialRows(value: string): WorkOperationPart[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [name, quantityText, serialNumber, unitCostText, note] = line.split('|').map((part) => part.trim());
+      const [name, quantityText, serialNumber, unitPriceText, note] = line.split('|').map((part) => part.trim());
       const quantity = Number(quantityText || 1);
-      const unitCost = unitCostText ? Number(unitCostText.replaceAll(',', '')) : null;
+      const unitPrice = unitPriceText ? Number(unitPriceText.replaceAll(',', '')) : null;
       const normalized = `${name} ${note || ''}`.toLowerCase();
       const status: WorkOperationPart['status'] = normalized.includes('chờ') || normalized.includes('waiting') ? 'WAITING' : 'USED';
       return {
         name,
         quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
         serialNumber: serialNumber || null,
-        unitCost: unitCost !== null && Number.isFinite(unitCost) ? unitCost : null,
+        unitPrice: unitPrice !== null && Number.isFinite(unitPrice) ? unitPrice : null,
         status,
         note: note || null,
       };
@@ -254,7 +254,7 @@ export function parseWorkLogRows(value: string): WorkOperationLog[] {
 
 export function materialRowsToText(parts: WorkOperationsResponse['usedParts']) {
   return parts
-    .map((part) => [part.name, part.quantity || 1, part.serialNumber || '', part.unitCost ?? '', part.note || ''].join(' | '))
+    .map((part) => [part.name, part.quantity || 1, part.serialNumber || '', part.unitPrice ?? '', part.note || ''].join(' | '))
     .join('\n');
 }
 

@@ -142,6 +142,8 @@ type UsedPartsSummary = {
   totals: {
     parts: number;
     totalCost: number;
+    totalRevenue: number;
+    grossProfit: number;
     waiting: number;
     used: number;
   };
@@ -150,6 +152,8 @@ type UsedPartsSummary = {
     engineerName: string;
     quantity: number;
     totalCost: number;
+    totalRevenue: number;
+    grossProfit: number;
     waiting: number;
     used: number;
   }>;
@@ -159,6 +163,8 @@ type UsedPartsSummary = {
     quantity: number;
     unitCost?: number | null;
     totalCost?: number | null;
+    unitPrice?: number | null;
+    totalPrice?: number | null;
     status: 'PLANNED' | 'USED' | 'WAITING' | 'RETURNED';
     task?: { kind: WorkKind; id: string; code: string; title: string } | null;
     createdBy?: { fullName?: string | null; email?: string | null } | null;
@@ -213,10 +219,16 @@ export function AdminWorkAssignmentPage() {
     },
   });
 
-  const currentWeekStart = useMemo(() => toDateInput(startOfWeek(new Date())), []);
+  const currentMonthRange = useMemo(() => {
+    const now = new Date();
+    return {
+      from: toDateInput(new Date(now.getFullYear(), now.getMonth(), 1)),
+      to: toDateInput(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+    };
+  }, []);
   const usedPartsSummaryQuery = useQuery({
-    queryKey: ['work-operations', 'used-parts-summary', currentWeekStart],
-    queryFn: () => apiFetch<UsedPartsSummary>(`/work-operations/used-parts/summary?weekStart=${currentWeekStart}`),
+    queryKey: ['work-operations', 'used-parts-summary', currentMonthRange.from, currentMonthRange.to],
+    queryFn: () => apiFetch<UsedPartsSummary>(`/work-operations/used-parts/summary?from=${currentMonthRange.from}&to=${currentMonthRange.to}`),
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   });
@@ -716,7 +728,7 @@ function UsedPartsSummaryPanel({ loading, summary }: { loading: boolean; summary
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#64748b]">Vật tư phát sinh</span>
-          <h2 className="mt-1 text-base font-semibold text-[#1f1f1f]">Tuần này</h2>
+          <h2 className="mt-1 text-base font-semibold text-[#1f1f1f]">Tháng này</h2>
         </div>
         {loading ? <Loader2 className="spin-icon text-[#64748b]" size={17} /> : <PackageCheck className="text-[#177245]" size={18} />}
       </div>
@@ -724,7 +736,7 @@ function UsedPartsSummaryPanel({ loading, summary }: { loading: boolean; summary
       <div className="mt-3 grid min-w-0 grid-cols-3 gap-2">
         <MiniMetric label="Linh kiện" value={summary?.totals.parts ?? 0} />
         <MiniMetric label="Chờ" value={summary?.totals.waiting ?? 0} />
-        <MiniMetric label="Chi phí" value={formatMoney(summary?.totals.totalCost ?? 0)} />
+        <MiniMetric label="Doanh thu" value={formatMoney(summary?.totals.totalRevenue ?? 0)} />
       </div>
 
       <div className="mt-3 grid gap-2">
@@ -732,9 +744,9 @@ function UsedPartsSummaryPanel({ loading, summary }: { loading: boolean; summary
           <div className="min-w-0 rounded-xl border border-[#e4e4e7] bg-[#fafafa] p-2.5" key={engineer.engineerId}>
             <div className="flex items-center justify-between gap-2 text-sm font-bold text-[#18181b]">
               <span className="min-w-0 truncate">{engineer.engineerName}</span>
-              <span className="shrink-0">{formatMoney(engineer.totalCost)}</span>
+              <span className="shrink-0">{formatMoney(engineer.totalRevenue)}</span>
             </div>
-            <p className="mt-1 text-xs font-semibold text-[#666666]">{engineer.quantity} SL · {engineer.waiting} chờ linh kiện</p>
+            <p className="mt-1 text-xs font-semibold text-[#666666]">{engineer.quantity} SL · lãi {formatMoney(engineer.grossProfit)}</p>
           </div>
         ))}
         {!loading && !summary?.byEngineer.length ? (
@@ -1461,14 +1473,6 @@ function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN');
-}
-
-function startOfWeek(value: Date) {
-  const date = new Date(value);
-  const day = date.getDay() || 7;
-  date.setDate(date.getDate() - day + 1);
-  date.setHours(0, 0, 0, 0);
-  return date;
 }
 
 function toDateInput(value: Date) {

@@ -46,6 +46,10 @@ export class CreateRepairDto {
 
   @IsOptional()
   @IsString()
+  representativePosition?: string;
+
+  @IsOptional()
+  @IsString()
   address?: string;
 
   @IsOptional()
@@ -70,9 +74,33 @@ export class CreateRepairDto {
 
   @IsOptional()
   @IsString()
+  warrantyTerm?: string;
+
+  @IsOptional()
+  @IsString()
+  receivedAccessories?: string;
+
+  @IsOptional()
+  @IsString()
+  preliminaryCause?: string;
+
+  @IsOptional()
+  @IsString()
   conditionAssessment?: string;
 
   @IsOptional()
   @IsString()
   repairMethod?: string;
+
+  @IsOptional()
+  @IsString()
+  repairCostItems?: string;
+
+  @IsOptional()
+  @IsString()
+  totalRepairCost?: string;
+
+  @IsOptional()
+  @IsString()
+  repairCostInWords?: string;
 }

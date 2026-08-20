@@ -30,6 +30,16 @@ export class UsedPartDto {
   serialNumber?: string | null;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  unitCost?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number | null;
+
+  @IsOptional()
   @IsString()
   note?: string | null;
 }
