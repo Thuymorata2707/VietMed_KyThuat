@@ -70,6 +70,7 @@ type ComponentAccessory = {
   id: string;
   code: string;
   name: string;
+  quantity?: number | null;
   requiresSerial?: boolean;
 };
 
@@ -106,6 +107,7 @@ type MachineAccessory = {
   id: string;
   code?: string | null;
   name: string;
+  quantity?: number | null;
   serialNumber?: string | null;
   note?: string | null;
   componentAccessory?: {
@@ -272,7 +274,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
           title="Danh sách sản phẩm"
           description="Model & tồn kho."
         />
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2 max-sm:w-full max-sm:justify-start">
           {canAddProduct ? (
             <Link className="primary-button" to="/business-lines/add-product">
               <Plus size={17} />
@@ -317,7 +319,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
       </section>
 
       <section className="grid gap-4">
-        <div className="grid gap-3 rounded-2xl border border-[#e4e4e7] bg-white p-3 shadow-[0_10px_30px_rgba(24,24,27,0.06)] md:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
+        <div className="grid gap-3 rounded-2xl border border-[#e4e4e7] bg-white p-3 shadow-[0_10px_30px_rgba(24,24,27,0.06)] min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(260px,380px)]">
           <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
             <button
               className={industryTabClass(selectedIndustryId === allIndustriesKey)}
@@ -559,8 +561,8 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
   );
   const supportsProbes = isUltrasoundMachineModel(selectedModel);
   const supportsEndoscopyChecklist = isEndoscopyMachineModel(selectedModel);
-  const machineRows = useMemo(() => parseProductMachineRows(form.machineRows), [form.machineRows]);
-  const duplicatedSerial = useMemo(() => findDuplicatedSerial(machineRows), [machineRows]);
+  const machineRows = useMemo(() => parseProductMachineRows(form.machineRows, supportsEndoscopyChecklist), [form.machineRows, supportsEndoscopyChecklist]);
+  const duplicatedSerial = useMemo(() => findDuplicatedSerial(machineRows, supportsEndoscopyChecklist), [machineRows, supportsEndoscopyChecklist]);
   const [machinePreviewCode, setMachinePreviewCode] = useState('');
 
   useEffect(() => {
@@ -600,16 +602,26 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
   const createMachineMutation = useMutation({
     mutationFn: async ({ currentForm, model }: { currentForm: ProductForm; model: MachineModel }) => {
-      const rows = parseProductMachineRows(currentForm.machineRows);
+      const isEndoscopy = isEndoscopyMachineModel(model);
+      const rows = parseProductMachineRows(currentForm.machineRows, isEndoscopy);
 
       for (const row of rows) {
         const accessories = parseTemplateAccessoryLines(row.accessoriesText || currentForm.accessoriesText, model);
+        const machineSerialNumber = isEndoscopy ? getEndoscopyMachineSerial(accessories) : row.serialNumber;
+        const missingCoreSerials = isEndoscopy ? missingEndoscopyCoreSerials(accessories) : [];
+        if (missingCoreSerials.length) {
+          throw new Error(`Máy nội soi cần serial: ${missingCoreSerials.join(', ')}.`);
+        }
+        if (!machineSerialNumber) {
+          throw new Error('Vui lòng nhập serial máy.');
+        }
+
         await apiFetch('/machines', {
           method: 'POST',
           body: JSON.stringify(
             compactPayload({
               machineModelId: model.id,
-              serialNumber: row.serialNumber,
+              serialNumber: machineSerialNumber,
               machineCode: undefined,
               name: row.name || machineDefaultName(model),
               manufacturingDate: currentForm.manufacturingDate,
@@ -686,8 +698,16 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
     const rows = machineRows;
     if (!rows.length) {
-      setFormError('Vui lòng nhập ít nhất một serial máy.');
+      setFormError(supportsEndoscopyChecklist ? 'Vui lòng nhập serial Bộ xử lý và Nguồn sáng.' : 'Vui lòng nhập ít nhất một serial máy.');
       return;
+    }
+
+    if (supportsEndoscopyChecklist) {
+      const missingCoreSerials = rows.flatMap((row) => missingEndoscopyCoreSerials(parseTemplateAccessoryLines(row.accessoriesText || form.accessoriesText, selectedModel)));
+      if (missingCoreSerials.length) {
+        setFormError(`Máy nội soi cần serial: ${[...new Set(missingCoreSerials)].join(', ')}.`);
+        return;
+      }
     }
 
     if (duplicatedSerial) {
@@ -847,7 +867,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                 </div>
                 <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f8fafc] px-3 py-2">
                   <span>Kho</span>
-                  <strong className="rounded-full border border-[#bbf7d0] bg-[#f0fdf4] px-2.5 py-1 text-xs text-[#15803d]">In stock</strong>
+                  <strong className="rounded-full border border-[#bbf7d0] bg-[#f0fdf4] px-2.5 py-1 text-xs text-[#15803d]">Trong kho</strong>
                 </div>
               </div>
               {selectedModel && productNoteText(selectedModel) ? (
@@ -866,12 +886,15 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
             </div>
             <div className="mt-4 grid gap-2">
               {machineRows.length ? (
-                machineRows.slice(0, 4).map((row, index) => (
-                  <div className="rounded-2xl border border-[#e2e8f0] bg-[#fbfdff] px-3 py-2" key={`${row.serialNumber}-${index}`}>
-                    <strong className="block truncate text-sm text-[#172033]">{row.serialNumber}</strong>
+                machineRows.slice(0, 4).map((row, index) => {
+                  const displaySerial = supportsEndoscopyChecklist ? getEndoscopyMachineSerial(parseMachineAccessoriesInput(row.accessoriesText || form.accessoriesText)) : row.serialNumber;
+                  return (
+                  <div className="rounded-2xl border border-[#e2e8f0] bg-[#fbfdff] px-3 py-2" key={`${displaySerial}-${index}`}>
+                    <strong className="block truncate text-sm text-[#172033]">{displaySerial}</strong>
                     <span className="mt-0.5 block truncate text-xs font-medium text-[#64748b]">{row.machineCode || previewMachineCodeAt(machinePreviewCode, index) || 'Đang sinh mã máy'}</span>
                   </div>
-                ))
+                );
+                })
               ) : (
                 <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4 text-sm font-medium leading-6 text-[#64748b]">
                   Dán serial ở ô bên trái, preview sẽ hiện tại đây.
@@ -883,11 +906,11 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
           <div className="flex flex-wrap justify-end gap-2">
             <button className="secondary-button" onClick={() => navigate('/product-catalog')} type="button">
-              Cancel
+              Hủy
             </button>
             <button className="primary-button" disabled={saving || loading || !canAddProduct || !machineRows.length || Boolean(duplicatedSerial)} type="submit">
               {saving ? <Loader2 className="spin-icon" size={17} /> : <PackagePlus size={17} />}
-              {saving ? 'Saving' : machineRows.length > 1 ? `Save ${machineRows.length} Products` : 'Save Product'}
+              {saving ? 'Đang lưu' : machineRows.length > 1 ? `Lưu ${machineRows.length} máy` : 'Lưu máy'}
             </button>
           </div>
         </aside>
@@ -954,7 +977,7 @@ function ProductMachineRowsEditor({
       <div className="grid gap-3">
         {editableRows.map((row, index) => (
           <div className="grid gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-3 shadow-[0_8px_20px_rgba(15,23,42,0.035)]" key={index}>
-            <div className="grid gap-3 lg:grid-cols-[minmax(170px,1fr)_minmax(150px,0.8fr)_minmax(170px,1fr)_auto]">
+            <div className="grid gap-3 min-[1180px]:grid-cols-[minmax(160px,1fr)_minmax(140px,0.72fr)_minmax(160px,1fr)_auto]">
               <label className="grid gap-2 text-sm font-semibold text-[#334155]">
                 Serial
                 <input
@@ -1014,7 +1037,7 @@ function ProductMachineRowsEditor({
             pasteBulk(event.target.value);
             event.currentTarget.value = '';
           }}
-          placeholder={'Mỗi dòng: Serial | Mã máy | Tên máy\nAF3-2605-00012 | MAY-00012\nAF3-2605-00013'}
+          placeholder={'Serial | Mã máy | Tên máy\nAF3-2605-00012 | MAY-00012'}
         />
         <span className="mt-2 block text-xs font-medium leading-5 text-[#64748b]">Dán danh sách, rồi bấm ra ngoài.</span>
       </details>
@@ -1056,29 +1079,16 @@ function ProductModelTable({
         </div>
         <span className="rounded-full border border-[#dbe6f3] bg-white px-3 py-1 text-xs font-bold text-[#334155]">{models.length} model</span>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-[920px] w-full border-collapse text-left">
-          <thead className="bg-white text-xs font-bold uppercase tracking-[0.08em] text-[#64748b]">
-            <tr className="border-b border-[#e4e4e7]">
-              <th className="px-4 py-3">Model</th>
-              <th className="px-4 py-3">Sản phẩm</th>
-              <th className="px-4 py-3">Hãng</th>
-              <th className="px-4 py-3">Kho</th>
-              <th className="px-4 py-3 text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pagedModels.map((model) => (
-              <ModelRow
-                canAddProduct={canAddProduct}
-                catalogSearch={catalogSearch}
-                key={model.id}
-                model={model}
-                stock={stockByModel[model.id]}
-              />
-            ))}
-          </tbody>
-        </table>
+      <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3">
+        {pagedModels.map((model) => (
+          <ProductModelCard
+            canAddProduct={canAddProduct}
+            catalogSearch={catalogSearch}
+            key={model.id}
+            model={model}
+            stock={stockByModel[model.id]}
+          />
+        ))}
       </div>
       <ProductTablePager
         disabled={false}
@@ -1089,6 +1099,85 @@ function ProductModelTable({
         onPageChange={setPage}
       />
     </section>
+  );
+}
+
+function ProductModelCard({
+  canAddProduct,
+  catalogSearch,
+  model,
+  stock,
+}: {
+  canAddProduct: boolean;
+  catalogSearch: string;
+  model: MachineModel;
+  stock?: ModelStock;
+}) {
+  const detailHref = `/business-lines/models/${model.id}${catalogSearch}`;
+  const total = stock?.total ?? 0;
+  const inStock = stock?.inStock ?? 0;
+  const soldOrManaged = Math.max(total - inStock, 0);
+
+  return (
+    <article className="grid min-h-[246px] content-between gap-4 rounded-[18px] border border-[#e4e4e7] bg-white p-4 shadow-[0_8px_22px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-[#b8cbe1] hover:shadow-[0_18px_38px_rgba(15,23,42,0.08)]">
+      <Link className="grid gap-4 text-left" to={detailHref}>
+        <div className="flex min-w-0 gap-3">
+          <ModelImage model={model} />
+          <div className="min-w-0">
+            <span className="text-xs font-bold text-[#64748b]">{model.businessLine?.productIndustry?.name ?? 'Chưa phân ngành'}</span>
+            <strong className="mt-1 block truncate text-[17px] font-semibold text-[#172033]">{modelShortLabel(model)}</strong>
+            <span className="mt-1 block line-clamp-2 text-sm leading-5 text-[#667085]">{modelDetailLabel(model)}</span>
+          </div>
+        </div>
+
+        <div className="grid gap-2 rounded-[14px] bg-[#f8fafc] p-3">
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="font-semibold text-[#667085]">Hãng</span>
+            <strong className="truncate text-[#172033]">{model.manufacturer || 'Chưa có'}</strong>
+          </div>
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="font-semibold text-[#667085]">Nhóm</span>
+            <strong className="truncate text-[#172033]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</strong>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <ModelStockBox label="Còn kho" value={inStock} tone="good" />
+          <ModelStockBox label="Đang quản lý" value={soldOrManaged} tone="neutral" />
+          <ModelStockBox label="Tổng" value={total} tone="dark" />
+        </div>
+      </Link>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#eef2f7] pt-3">
+        <Link className="secondary-button compact" to={detailHref}>
+          Xem chi tiết
+        </Link>
+        {canAddProduct ? (
+          <Link className="primary-button compact" to={`/business-lines/add-product?modelId=${model.id}`}>
+            <PackagePlus size={16} />
+            Thêm máy
+          </Link>
+        ) : (
+          <span className="text-[13px] font-semibold text-[#667085]">Chỉ xem</span>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function ModelStockBox({ label, tone, value }: { label: string; tone: 'dark' | 'good' | 'neutral'; value: number }) {
+  const toneClass =
+    tone === 'good'
+      ? 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]'
+      : tone === 'dark'
+        ? 'border-[#d4d4d8] bg-[#18181b] text-white'
+        : 'border-[#dbe6f3] bg-white text-[#334155]';
+
+  return (
+    <span className={`grid rounded-[12px] border px-2 py-2 text-center ${toneClass}`}>
+      <strong className="text-lg leading-none">{value}</strong>
+      <span className="mt-1 text-[11px] font-bold leading-tight">{label}</span>
+    </span>
   );
 }
 
@@ -1392,7 +1481,7 @@ function ModelCard({
 
   return (
     <article
-      className="grid min-w-0 cursor-pointer gap-4 px-4 py-3 transition hover:bg-[#fafafa] min-[1120px]:grid-cols-[minmax(320px,1fr)_180px_220px_auto] min-[1120px]:items-center"
+      className="grid min-w-0 cursor-pointer gap-4 px-4 py-3 transition hover:bg-[#fafafa] min-[1180px]:grid-cols-[minmax(280px,1fr)_160px_200px_auto] min-[1180px]:items-center"
       onClick={() => navigate(detailHref)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -1490,7 +1579,7 @@ function ModelDetailBlock({
         </div>
       </div>
 
-      <div className="grid min-w-0 gap-4 p-5 min-[1320px]:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-4 p-5 min-[1380px]:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
         <div className="grid min-w-0 gap-4 self-start">
           {canEditImage ? (
             <div className="rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-4">
@@ -1882,7 +1971,12 @@ function buildProductOptions(models: MachineModel[]) {
 }
 
 function productNoteText(model: MachineModel) {
-  return [model.note, model.businessLine?.note].filter(Boolean).join('\n');
+  return [model.note, model.businessLine?.note]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split('\n'))
+    .map((line) => line.trim())
+    .filter((line) => line && !/import nhanh|nguồn:|vietmed\.vn|collections\/all/i.test(line))
+    .join('\n');
 }
 
 function emptyProductForm(machineModelId: string): ProductForm {
@@ -1895,8 +1989,12 @@ function emptyProductForm(machineModelId: string): ProductForm {
   };
 }
 
-function parseProductMachineRows(value: string): ProductMachineRow[] {
-  return parseProductMachineRowsForEditor(value).filter((row) => row.serialNumber);
+function parseProductMachineRows(value: string, isEndoscopy = false): ProductMachineRow[] {
+  return parseProductMachineRowsForEditor(value).filter((row) => {
+    if (row.serialNumber) return true;
+    if (!isEndoscopy) return false;
+    return Boolean(getEndoscopyMachineSerial(parseMachineAccessoriesInput(row.accessoriesText)));
+  });
 }
 
 function parseProductMachineRowsForEditor(value: string): ProductMachineRow[] {
@@ -1940,11 +2038,13 @@ function serializeProductMachineRows(rows: ProductMachineRow[]) {
   return normalizedRows.some((row) => row.serialNumber || row.machineCode || row.name || row.accessoriesText) ? JSON.stringify(normalizedRows) : '';
 }
 
-function findDuplicatedSerial(rows: ProductMachineRow[]) {
+function findDuplicatedSerial(rows: ProductMachineRow[], isEndoscopy = false) {
   const seen = new Set<string>();
   for (const row of rows) {
-    const key = row.serialNumber.toLowerCase();
-    if (seen.has(key)) return row.serialNumber;
+    const serialNumber = isEndoscopy ? getEndoscopyMachineSerial(parseMachineAccessoriesInput(row.accessoriesText)) : row.serialNumber;
+    const key = serialNumber.toLowerCase();
+    if (!key) continue;
+    if (seen.has(key)) return serialNumber;
     seen.add(key);
   }
   return '';
@@ -1975,6 +2075,7 @@ function buildTemplateAccessoriesText(model: MachineModel) {
       componentAccessoryId: accessory.id,
       code: accessory.code,
       name: accessory.code || accessory.name,
+      quantity: accessory.quantity ?? 1,
       serialNumber: '',
     })),
   );
@@ -1993,8 +2094,23 @@ function parseTemplateAccessoryLines(value: string, model: MachineModel) {
       componentAccessoryId: template.id,
       code: template.code,
       name: template.code || template.name,
+      quantity: item.quantity ?? template.quantity ?? 1,
       serialNumber: item.serialNumber,
     };
+  });
+}
+
+const endoscopyCoreAccessoryNames = ['Bộ xử lý', 'Nguồn sáng'];
+
+function getEndoscopyMachineSerial(accessories: Array<{ name?: string; code?: string; serialNumber?: string }>) {
+  const processor = accessories.find((accessory) => accessory.name === 'Bộ xử lý' || accessory.code === 'Bộ xử lý');
+  return processor?.serialNumber?.trim() || '';
+}
+
+function missingEndoscopyCoreSerials(accessories: Array<{ name?: string; code?: string; serialNumber?: string }>) {
+  return endoscopyCoreAccessoryNames.filter((name) => {
+    const accessory = accessories.find((item) => item.name === name || item.code === name);
+    return !accessory?.serialNumber?.trim();
   });
 }
 

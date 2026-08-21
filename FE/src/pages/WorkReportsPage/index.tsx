@@ -56,40 +56,27 @@ export function WorkReportsPage({ currentRole, initialTab = 'calendar', user }: 
   return (
     <>
       <PageFrame>
-        <section className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_8px_24px_rgba(24,24,27,0.05)]">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-[#64748b]">Công việc & báo cáo</span>
-              <h1 className="mt-1 text-[clamp(24px,2.6vw,34px)] font-bold leading-tight tracking-[-0.03em] text-[#18181b]">Lịch & báo cáo kỹ thuật</h1>
-              <p className="mt-1 max-w-[760px] text-sm leading-6 text-[#666666]">
-                Lịch, ngày, tuần.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-2 md:grid-cols-3">
-            {tabs.map((tab) => {
-              const active = tab.value === currentTab;
-              return (
-                <button
-                  className={`grid min-h-[86px] gap-1 rounded-[16px] border p-3 text-left transition ${
-                    active
-                      ? 'border-[#18181b] bg-[#18181b] text-white shadow-[0_14px_30px_rgba(24,24,27,0.18)]'
-                      : 'border-[#e4e4e7] bg-[#fafafa] text-[#333333] hover:border-[#c7c7cc] hover:bg-white'
-                  }`}
-                  key={tab.value}
-                  onClick={() => selectTab(tab.value)}
-                  type="button"
-                >
-                  <span className="inline-flex items-center gap-2 text-sm font-extrabold">
+        <section className="rounded-[18px] border border-[#e4e4e7] bg-white p-3 shadow-[0_8px_24px_rgba(24,24,27,0.05)]">
+            <div className="grid gap-2 rounded-[14px] bg-[#f7f8fa] p-1 md:grid-cols-3">
+              {tabs.map((tab) => {
+                const active = tab.value === currentTab;
+                return (
+                  <button
+                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-[11px] px-3 text-sm font-bold transition ${
+                      active
+                        ? 'bg-[#18181b] text-white shadow-[0_8px_18px_rgba(24,24,27,0.16)]'
+                        : 'text-[#667085] hover:bg-white hover:text-[#18181b]'
+                    }`}
+                    key={tab.value}
+                    onClick={() => selectTab(tab.value)}
+                    type="button"
+                  >
                     {tab.icon}
                     {tab.label}
-                  </span>
-                  <span className={`text-xs font-semibold leading-5 ${active ? 'text-white/74' : 'text-[#666666]'}`}>{tab.description}</span>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
         </section>
       </PageFrame>
 

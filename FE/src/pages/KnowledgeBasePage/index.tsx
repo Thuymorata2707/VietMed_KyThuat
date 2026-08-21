@@ -367,7 +367,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
 
           {!loading && articles.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#d7e0eb] bg-[#fafafa] p-8 text-center text-sm text-[#666666]">
-              Chưa có bài kinh nghiệm phù hợp. {canContribute ? 'Bấm Add Article để tạo bài đầu tiên.' : 'Vui lòng thử từ khóa khác.'}
+              Chưa có bài kinh nghiệm phù hợp.
             </div>
           ) : null}
 
@@ -396,12 +396,11 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
           <form className="grid max-h-[92dvh] w-full max-w-4xl overflow-hidden rounded-[26px] border border-[#e4e4e7] bg-white shadow-[0_30px_90px_rgba(24,24,27,0.26)]" onSubmit={handleSubmit}>
             <div className="flex items-start justify-between gap-4 border-b border-[#ededf0] p-5">
               <div>
-                <h2 className="text-xl font-semibold text-[#1f1f1f]">{editingArticle ? 'Edit Article' : 'Add Article'}</h2>
-                <p className="mt-1 text-sm text-[#666666]">Mỗi dòng là một mục.</p>
+                <h2 className="text-xl font-semibold text-[#1f1f1f]">{editingArticle ? 'Sửa bài viết' : 'Thêm bài viết'}</h2>
               </div>
               <button className="secondary-button compact" onClick={() => setIsFormOpen(false)} type="button">
                 <X size={16} />
-                Cancel
+                Hủy
               </button>
             </div>
 

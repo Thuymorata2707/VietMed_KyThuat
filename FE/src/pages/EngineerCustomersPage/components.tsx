@@ -515,11 +515,10 @@ function InfoTile({ icon, label, value, hint }: { icon: ReactNode; label: string
   );
 }
 
-function PanelTitle({ title, subtitle }: { title: string; subtitle: string }) {
+function PanelTitle({ title }: { title: string; subtitle: string }) {
   return (
     <div>
       <h3 className="text-base font-extrabold text-[#1f1f1f]">{title}</h3>
-      <p className="mt-1 line-clamp-1 text-xs font-medium leading-5 text-[#8a8f99]">{subtitle}</p>
     </div>
   );
 }

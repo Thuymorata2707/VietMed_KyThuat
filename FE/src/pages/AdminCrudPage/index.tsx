@@ -385,10 +385,9 @@ export function AdminCrudPage({
                 {!loading && filteredRows.length === 0 ? (
                   <tr>
                     <td colSpan={tableColumnCount}>
-                      <div className="table-state empty-state">
-                        <strong>Không có dữ liệu phù hợp</strong>
-                        <span>Thử đổi từ khóa tìm kiếm hoặc tạo mới {config.entityLabel}.</span>
-                      </div>
+                    <div className="table-state empty-state">
+                      <strong>Không có dữ liệu phù hợp</strong>
+                    </div>
                     </td>
                   </tr>
                 ) : null}
@@ -470,10 +469,9 @@ export function AdminCrudPage({
                 {!loading && filteredRows.length === 0 ? (
                   <tr>
                     <td colSpan={tableColumnCount}>
-                      <div className="table-state empty-state">
-                        <strong>Không có dữ liệu phù hợp</strong>
-                        <span>Thử đổi từ khóa tìm kiếm hoặc tạo mới {config.entityLabel}.</span>
-                      </div>
+                    <div className="table-state empty-state">
+                      <strong>Không có dữ liệu phù hợp</strong>
+                    </div>
                     </td>
                   </tr>
                 ) : null}
@@ -894,7 +892,7 @@ function FieldControl({
         {field.label}
         <textarea
           onChange={(event) => onChange(event.target.value)}
-          placeholder="Mỗi dòng: Tên phụ kiện | S/N"
+          placeholder="Tên phụ kiện | S/N"
           value={formatMachineAccessoriesText(value)}
         />
       </label>
@@ -1016,7 +1014,6 @@ function InitialBusinessLinesEditor({ value, onChange }: { value: string; onChan
           </div>
         ))}
       </div>
-      <p className="field-hint">Dùng cho model.</p>
     </div>
   );
 }
@@ -2053,7 +2050,7 @@ function parseMachineAccessoriesForm(value: string, existingAccessories: unknown
 }
 
 function textareaPlaceholder(field: CrudField) {
-  if (field.type === 'tags') return 'Mỗi dòng là một mục';
+  if (field.type === 'tags') return '';
   return undefined;
 }
 

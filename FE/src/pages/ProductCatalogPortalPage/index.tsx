@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, BarChart3, Boxes, ImageOff, Layers3, Loader2, PackagePlus, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Boxes, ImageOff, Loader2, PackagePlus, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
@@ -8,6 +8,9 @@ import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
 import { queryKeys } from '../../lib/queryKeys';
 
 type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING' | 'PHYSIOTHERAPY' | 'ICU';
@@ -100,6 +103,8 @@ export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
   const role = getRoleName(user);
   const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
   const canAddProduct = role === 'admin' || role === 'engineer';
+  const [industryQuery, setIndustryQuery] = useState('');
+  const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'empty'>('all');
   const industries = catalogQuery.data?.industries ?? [];
   const models = catalogQuery.data?.models ?? [];
   const stockByModel = catalogQuery.data?.stockByModel ?? {};
@@ -118,6 +123,20 @@ export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
 
   const stockByIndustry = useMemo(() => buildStockByIndustry(models, stockByModel), [models, stockByModel]);
   const industryCards = useMemo(() => buildIndustryCards(visibleIndustries, visibleModels, stockByIndustry), [stockByIndustry, visibleIndustries, visibleModels]);
+  const businessLineCounts = useMemo(() => buildBusinessLineCountsByIndustry(visibleModels), [visibleModels]);
+  const filteredIndustryCards = useMemo(
+    () =>
+      industryCards.filter((item) => {
+        const keyword = industryQuery.trim().toLowerCase();
+        const matchesKeyword = !keyword || `${item.name} ${item.expertise}`.toLowerCase().includes(keyword);
+        const matchesStock =
+          stockFilter === 'all' ||
+          (stockFilter === 'in-stock' && item.stock.inStock > 0) ||
+          (stockFilter === 'empty' && item.stock.inStock === 0);
+        return matchesKeyword && matchesStock;
+      }),
+    [industryCards, industryQuery, stockFilter],
+  );
   const totals = useMemo(() => {
     const productIds = new Set(visibleModels.map((model) => model.businessLine?.id).filter(Boolean));
     const machineTotals = industryCards.reduce(
@@ -145,11 +164,15 @@ export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
       {loading ? <CatalogLoading label="Đang tải ngành hàng" /> : null}
 
       {!loading ? (
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {industryCards.map((item) => (
-            <IndustryPortalCard item={item} key={item.id} />
-          ))}
-        </section>
+        <CatalogIndustryTable
+          businessLineCounts={businessLineCounts}
+          industries={filteredIndustryCards}
+          query={industryQuery}
+          stockFilter={stockFilter}
+          total={industryCards.length}
+          onQueryChange={setIndustryQuery}
+          onStockFilterChange={setStockFilter}
+        />
       ) : null}
 
       {!loading && industryCards.length === 0 ? <CatalogEmpty label="Chưa có ngành hàng phù hợp với tài khoản này." /> : null}
@@ -409,20 +432,36 @@ function CatalogPortalHero({
   onRefresh: () => void;
   totals: { businessLines: number; industries: number; inStock: number; machines: number; models: number };
 }) {
+  const metrics = [
+    { label: 'Máy', value: totals.machines },
+    { label: 'Còn kho', value: totals.inStock },
+    { label: 'Model', value: totals.models },
+    { label: 'Ngành', value: totals.industries },
+  ];
+
   return (
-    <section className="relative overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white px-5 py-5 shadow-[0_14px_36px_rgba(24,24,27,0.06)] md:px-6">
-      <div className="relative grid gap-5 min-[960px]:grid-cols-[minmax(0,1fr)_auto] min-[960px]:items-end">
-        <div>
-          <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-[#eefaf3] px-3 text-xs font-semibold text-[#177245]">
-            Hồ sơ thiết bị
-          </span>
-          <h1 className="mt-3 text-[clamp(30px,3.4vw,48px)] font-semibold leading-[1.08] text-[#202124]">Danh mục thiết bị</h1>
-          <p className="mt-3 max-w-2xl text-[15px] font-medium leading-7 text-[#667085]">Ngành hàng, model và tồn kho.</p>
+    <section className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_16px_36px_rgba(24,24,27,0.06)]">
+      <div className="grid gap-4 border-b border-[#eeeeee] bg-[#fbfbfc] p-4 min-[1080px]:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)_auto] min-[1080px]:items-center">
+        <div className="min-w-0">
+          <span className="text-xs font-black text-[#667085]">Hồ sơ thiết bị</span>
+          <h1 className="mt-1 truncate text-2xl font-black tracking-[-0.03em] text-[#18181b]">
+            Danh mục thiết bị
+          </h1>
         </div>
-        <div className="flex flex-wrap gap-2 min-[960px]:justify-end">
-          <Link className="secondary-button bg-white/86" to="/technical-machines">
+
+        <div className="grid gap-2 sm:grid-cols-4">
+          {metrics.map((item) => (
+            <div className="rounded-[16px] border border-[#e8ecef] bg-white px-3 py-2.5" key={item.label}>
+              <span className="block text-xs font-bold text-[#667085]">{item.label}</span>
+              <strong className="mt-1 block text-2xl leading-none tracking-[-0.04em] text-[#18181b]">{item.value}</strong>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-2 min-[1080px]:justify-end">
+          <Link className="secondary-button bg-white" to="/technical-machines">
             <Boxes size={17} />
-            Danh sách máy quản lý
+            Máy quản lý
           </Link>
           {canAddProduct ? (
             <Link className="primary-button" to="/business-lines/add-product">
@@ -430,55 +469,148 @@ function CatalogPortalHero({
               Thêm máy
             </Link>
           ) : null}
-          <button className="secondary-button bg-white/86" disabled={loading} onClick={onRefresh} type="button">
+          <button className="secondary-button bg-white" disabled={loading} onClick={onRefresh} type="button">
             {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
             Làm mới
           </button>
         </div>
       </div>
+    </section>
+  );
+}
 
-      <div className="relative mt-5 grid gap-3 sm:grid-cols-3">
-        <Link to="/technical-machines" className="block cursor-pointer rounded-[20px] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(24,24,27,0.07)]">
-          <MetricCard icon={<Boxes size={18} />} label="Tổng máy" subLabel={`${totals.inStock} còn kho`} value={totals.machines} />
-        </Link>
-        <MetricCard icon={<Layers3 size={18} />} label="Model" subLabel={`${totals.businessLines} nhóm sản phẩm`} value={totals.models} />
-        <MetricCard icon={<BarChart3 size={18} />} label="Ngành hàng" subLabel="nhóm chính" value={totals.industries} />
+function CatalogIndustryTable({
+  businessLineCounts,
+  industries,
+  onQueryChange,
+  onStockFilterChange,
+  query,
+  stockFilter,
+  total,
+}: {
+  businessLineCounts: Record<string, number>;
+  industries: Array<{ id: string; name: string; expertise: string; modelCount: number; stock: ModelStock }>;
+  onQueryChange: (value: string) => void;
+  onStockFilterChange: (value: 'all' | 'in-stock' | 'empty') => void;
+  query: string;
+  stockFilter: 'all' | 'in-stock' | 'empty';
+  total: number;
+}) {
+  const filters: Array<{ label: string; value: 'all' | 'in-stock' | 'empty' }> = [
+    { label: 'Tất cả', value: 'all' },
+    { label: 'Còn kho', value: 'in-stock' },
+    { label: 'Hết kho', value: 'empty' },
+  ];
+  const maxModels = Math.max(1, ...industries.map((item) => item.modelCount));
+
+  return (
+    <section className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_16px_36px_rgba(24,24,27,0.06)]">
+      <div className="grid gap-3 border-b border-[#eeeeee] bg-[#fbfbfc] p-3 min-[980px]:grid-cols-[minmax(300px,1fr)_auto] min-[980px]:items-center">
+        <div className="grid gap-3 min-[720px]:grid-cols-[minmax(240px,0.8fr)_minmax(0,1.2fr)] min-[720px]:items-center">
+          <div>
+            <span className="text-xs font-black text-[#667085]">Ngành hàng</span>
+            <strong className="mt-1 block text-xl tracking-[-0.02em] text-[#18181b]">{industries.length}/{total}</strong>
+          </div>
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#667085]" size={16} />
+            <Input
+              className="h-11 rounded-[14px] border-[#dfe3e8] bg-white pl-9 font-semibold"
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Tìm ngành hàng"
+              value={query}
+            />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
+          {filters.map((item) => {
+            const active = stockFilter === item.value;
+            return (
+              <Button
+                className={active ? 'shadow-[0_8px_18px_rgba(24,24,27,0.14)]' : 'bg-white'}
+                key={item.value}
+                onClick={() => onStockFilterChange(item.value)}
+                size="sm"
+                type="button"
+                variant={active ? 'default' : 'outline'}
+              >
+                {item.label}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid divide-y divide-[#eeeeee]">
+        {industries.map((item, index) => {
+          const stockPercent = item.stock.total > 0 ? Math.round((item.stock.inStock / item.stock.total) * 100) : 0;
+          const modelWidth = Math.max(8, Math.round((item.modelCount / maxModels) * 100));
+
+          return (
+          <Link
+            className="group grid gap-4 bg-white p-4 text-left transition hover:bg-[#f8fafc] min-[960px]:grid-cols-[48px_minmax(260px,1fr)_minmax(220px,0.78fr)_minmax(190px,0.64fr)_auto] min-[960px]:items-center"
+            key={item.id}
+            to={`/product-catalog/industries/${item.id}`}
+          >
+            <span className="grid h-12 w-12 place-items-center rounded-[16px] bg-[#eef5f1] text-sm font-black text-[#177245]">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <span className="min-w-0">
+              <strong className="block truncate text-lg font-black tracking-[-0.02em] text-[#18181b]">{item.name}</strong>
+              <span className="mt-2 flex flex-wrap gap-2">
+                <Badge variant="outline">{item.expertise}</Badge>
+                <Badge variant="secondary">{businessLineCounts[item.id] ?? 0} nhóm</Badge>
+              </span>
+            </span>
+            <span className="grid gap-2">
+              <span className="flex items-center justify-between gap-3 text-sm font-bold text-[#3f3f46]">
+                <span>{item.modelCount} model</span>
+                <span className="text-xs text-[#667085]">{item.stock.total} máy</span>
+              </span>
+              <span className="h-2 overflow-hidden rounded-full bg-[#e8ecef]">
+                <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${modelWidth}%` }} />
+              </span>
+            </span>
+            <span className="grid gap-2">
+              <span className="flex items-center justify-between gap-3 text-sm font-bold text-[#3f3f46]">
+                <span>{item.stock.inStock} kho</span>
+                <span className={item.stock.inStock > 0 ? 'text-xs text-[#177245]' : 'text-xs text-[#9b5a17]'}>{stockPercent}%</span>
+              </span>
+              <span className="h-2 overflow-hidden rounded-full bg-[#e8ecef]">
+                <span className={item.stock.inStock > 0 ? 'block h-full rounded-full bg-[#177245]' : 'block h-full rounded-full bg-[#9b5a17]'} style={{ width: `${Math.max(item.stock.inStock > 0 ? 8 : 0, stockPercent)}%` }} />
+              </span>
+            </span>
+            <Button asChild className="justify-self-start min-[960px]:justify-self-end" size="sm" variant="ghost">
+              <span>
+                Mở model
+                <ArrowRight className="transition group-hover:translate-x-0.5" size={15} />
+              </span>
+            </Button>
+          </Link>
+          );
+        })}
+        {industries.length === 0 ? (
+          <div className="m-4 rounded-[18px] border border-dashed border-[#d8dee8] bg-[#f8fafc] p-8 text-center text-sm font-semibold text-[#667085]">
+            Không có ngành hàng phù hợp.
+          </div>
+        ) : null}
       </div>
     </section>
   );
 }
 
-function IndustryPortalCard({ item }: { item: { id: string; name: string; expertise: string; modelCount: number; stock: ModelStock } }) {
-  const ratio = item.stock.total ? Math.round((item.stock.inStock / item.stock.total) * 100) : 0;
+function buildBusinessLineCountsByIndustry(models: MachineModel[]) {
+  const seen = new Set<string>();
+  return models.reduce<Record<string, number>>((counts, model) => {
+    const industryId = model.businessLine?.productIndustry?.id;
+    const businessLineId = model.businessLine?.id;
+    if (!industryId || !businessLineId) return counts;
 
-  return (
-    <Link
-      className="group relative grid min-h-[168px] content-between overflow-hidden rounded-[18px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_28px_rgba(24,24,27,0.05)] transition hover:-translate-y-0.5 hover:border-[#3e8375]/35 hover:shadow-[0_18px_38px_rgba(24,24,27,0.08)]"
-      to={`/product-catalog/industries/${item.id}`}
-    >
-      <div className="relative grid grid-cols-[44px_minmax(0,1fr)] gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef6f4] text-[#2f6f63]">
-          <Boxes size={20} />
-        </span>
-        <span className="min-w-0">
-          <strong className="block truncate text-lg font-semibold text-[#202124]">{item.name}</strong>
-          <span className="mt-1 block text-sm font-medium text-[#667085]">{item.expertise}</span>
-        </span>
-      </div>
-      <div className="relative grid gap-3">
-        <div className="flex flex-wrap gap-2 text-xs font-semibold">
-          <span className="rounded-full bg-[#f4f4f5] px-2.5 py-1 text-[#3f3f46]">{item.modelCount} model</span>
-          <span className="rounded-full bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{item.stock.inStock}/{item.stock.total} còn kho</span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-[#e4e7ec]">
-          <span className="block h-full rounded-full bg-[#3e8375]" style={{ width: `${Math.max(ratio, item.stock.total ? 8 : 0)}%` }} />
-        </div>
-        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#2f6f63]">
-          Mở model <ArrowRight className="transition group-hover:translate-x-1" size={16} />
-        </span>
-      </div>
-    </Link>
-  );
+    const key = `${industryId}:${businessLineId}`;
+    if (seen.has(key)) return counts;
+    seen.add(key);
+    counts[industryId] = (counts[industryId] ?? 0) + 1;
+    return counts;
+  }, {});
 }
 
 function CatalogModelTable({
@@ -760,19 +892,6 @@ function ModelFormField({ children, label }: { children: ReactNode; label: strin
       {label}
       {children}
     </label>
-  );
-}
-
-function MetricCard({ icon, label, subLabel, value }: { icon: ReactNode; label: string; subLabel: string; value: number }) {
-  return (
-    <div className="grid gap-2 rounded-[20px] bg-white/88 p-3 text-left shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06),0_8px_20px_rgba(24,24,27,0.04)]">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-[#667085]">{label}</span>
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#f6f8f7] text-[#2f6f63]">{icon}</span>
-      </div>
-      <strong className="text-2xl font-semibold leading-none text-[#202124]">{value}</strong>
-      <span className="text-xs font-medium text-[#7a8699]">{subLabel}</span>
-    </div>
   );
 }
 

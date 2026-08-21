@@ -220,6 +220,38 @@ export function demoLoanAccessWhere(
   return { id: '__no_access__' };
 }
 
+export function deviceServiceTicketAccessWhere(
+  user?: RequestUser,
+): Prisma.DeviceServiceTicketWhereInput {
+  if (!user) {
+    return {};
+  }
+
+  if (isAdmin(user) || isManager(user)) {
+    return {
+      OR: [
+        { engineer: { regionId: user.regionId } },
+        { createdBy: { regionId: user.regionId } },
+        { customer: { regionId: user.regionId } },
+        { machine: { customer: { regionId: user.regionId } } },
+      ],
+    };
+  }
+
+  if (isEngineer(user)) {
+    return {
+      OR: [
+        { engineerId: user.id },
+        { createdById: user.id },
+        { customer: { primaryEngineerId: user.id } },
+        { machine: { customer: { primaryEngineerId: user.id } } },
+      ],
+    };
+  }
+
+  return { id: '__no_access__' };
+}
+
 export function inventoryMovementAccessWhere(
   user?: RequestUser,
 ): Prisma.MachineInventoryMovementWhereInput {

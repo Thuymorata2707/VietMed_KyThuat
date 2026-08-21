@@ -1,11 +1,20 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import { RequestUser } from '../common/request-user.type';
 import { AppConfigService } from '../config/app-config.service';
 
 type JwtPayload = RequestUser & {
+  aud: string;
   iat: number;
+  iss: string;
   exp: number;
+  jti: string;
+  sub: string;
+};
+
+type JwtHeader = {
+  alg: string;
+  typ: string;
 };
 
 @Injectable()
@@ -16,8 +25,12 @@ export class JwtService {
     const now = Math.floor(Date.now() / 1000);
     const payload: JwtPayload = {
       ...user,
+      aud: this.config.jwtAudience,
       iat: now,
+      iss: this.config.jwtIssuer,
       exp: now + this.config.jwtExpiresInSeconds,
+      jti: randomUUID(),
+      sub: user.id,
     };
 
     const encodedHeader = this.base64UrlEncode(
@@ -35,6 +48,18 @@ export class JwtService {
     const [encodedHeader, encodedPayload, signature] = token.split('.');
 
     if (!encodedHeader || !encodedPayload || !signature) {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    let header: JwtHeader;
+
+    try {
+      header = JSON.parse(this.base64UrlDecode(encodedHeader)) as JwtHeader;
+    } catch {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    if (header.alg !== 'HS256' || header.typ !== 'JWT') {
       throw new UnauthorizedException('Invalid token');
     }
 
@@ -56,6 +81,15 @@ export class JwtService {
 
     if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
       throw new UnauthorizedException('Token expired');
+    }
+
+    if (
+      payload.iss !== this.config.jwtIssuer ||
+      payload.aud !== this.config.jwtAudience ||
+      payload.sub !== payload.id ||
+      !payload.jti
+    ) {
+      throw new UnauthorizedException('Invalid token');
     }
 
     return payload;

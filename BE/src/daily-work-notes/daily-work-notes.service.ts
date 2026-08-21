@@ -58,6 +58,8 @@ export class DailyWorkNotesService {
     await this.ensureUserExists(targetUserId, user);
     const type = dto.type || DailyWorkType.WORK;
     const status = this.resolveCreateStatus(dto.status, type, user);
+    const workDate = this.parseDate(dto.workDate, 'workDate');
+    await this.ensureNoLeaveScheduleConflict(targetUserId, workDate, type);
     const reviewedByAdmin =
       isAdmin(user) && status === DailyWorkStatus.APPROVED;
 
@@ -66,7 +68,7 @@ export class DailyWorkNotesService {
         userId: targetUserId,
         title: this.cleanRequired(dto.title, 'title'),
         note: this.cleanOptional(dto.note),
-        workDate: this.parseDate(dto.workDate, 'workDate'),
+        workDate,
         startTime: this.cleanOptional(dto.startTime),
         endTime: this.cleanOptional(dto.endTime),
         color: this.cleanOptional(dto.color),
@@ -99,6 +101,18 @@ export class DailyWorkNotesService {
     const current = await this.findEditableNote(id, user);
     const type = dto.type || current.type;
     const statusPatch = this.resolveUpdateStatus(dto, current, type, user);
+    const workDate =
+      dto.workDate === undefined
+        ? current.workDate
+        : this.parseDate(dto.workDate, 'workDate');
+    if (!this.isInactiveStatus(dto.status)) {
+      await this.ensureNoLeaveScheduleConflict(
+        current.userId,
+        workDate,
+        type,
+        current.id,
+      );
+    }
 
     return this.prisma.dailyWorkNote.update({
       where: { id: current.id },
@@ -111,7 +125,7 @@ export class DailyWorkNotesService {
         workDate:
           dto.workDate === undefined
             ? undefined
-            : this.parseDate(dto.workDate, 'workDate'),
+            : workDate,
         startTime:
           dto.startTime === undefined
             ? undefined
@@ -288,7 +302,65 @@ export class DailyWorkNotesService {
   }
 
   private needsApproval(type: DailyWorkType) {
-    return type === DailyWorkType.LEAVE || type === DailyWorkType.BUSINESS_TRIP;
+    return (
+      type === DailyWorkType.LEAVE ||
+      type === DailyWorkType.UNPAID_LEAVE ||
+      type === DailyWorkType.BUSINESS_TRIP
+    );
+  }
+
+  private async ensureNoLeaveScheduleConflict(
+    userId: string,
+    workDate: Date,
+    nextType: DailyWorkType,
+    excludeId?: string,
+  ) {
+    const activeNotes = await this.prisma.dailyWorkNote.findMany({
+      where: {
+        id: excludeId ? { not: excludeId } : undefined,
+        userId,
+        workDate: {
+          gte: this.startOfDay(workDate),
+          lt: this.startOfNextDay(workDate),
+        },
+        status: {
+          notIn: [DailyWorkStatus.REJECTED, DailyWorkStatus.CANCELLED],
+        },
+      },
+      select: {
+        id: true,
+        type: true,
+      },
+    });
+
+    if (!activeNotes.length) return;
+
+    const hasLeave = activeNotes.some((note) => this.isLeaveType(note.type));
+
+    if (this.isLeaveType(nextType) || hasLeave) {
+      throw new BadRequestException(
+        'Ngày đã đăng ký nghỉ thì không thêm lịch khác.',
+      );
+    }
+  }
+
+  private isLeaveType(type: DailyWorkType) {
+    return type === DailyWorkType.LEAVE || type === DailyWorkType.UNPAID_LEAVE;
+  }
+
+  private isInactiveStatus(status?: DailyWorkStatus) {
+    return (
+      status === DailyWorkStatus.REJECTED ||
+      status === DailyWorkStatus.CANCELLED
+    );
+  }
+
+  private startOfDay(value: Date) {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+
+  private startOfNextDay(value: Date) {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate() + 1);
   }
 
   private hasReviewableChange(dto: UpdateDailyWorkNoteDto) {

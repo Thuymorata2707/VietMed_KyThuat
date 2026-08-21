@@ -3,6 +3,7 @@ export type MachineAccessoryFormItem = {
   componentAccessoryId?: string;
   code?: string;
   name: string;
+  quantity?: number;
   serialNumber?: string;
   description?: string;
 };
@@ -35,6 +36,7 @@ export function parseMachineAccessoriesInput(value: string, existingAccessories:
         componentAccessoryId: item.componentAccessoryId || undefined,
         code: code || undefined,
         name: name || '',
+        quantity: normalizeAccessoryQuantity(item.quantity),
         serialNumber: item.serialNumber?.trim() || undefined,
         description: item.description?.trim() || undefined,
       };
@@ -69,12 +71,14 @@ function normalizeAccessoryItem(item: unknown): MachineAccessoryFormItem | null 
   const name = String(accessory.name ?? componentAccessory?.name ?? code).trim();
   const serialNumber = String(accessory.serialNumber ?? '').trim();
   const description = String(accessory.description ?? '').trim();
+  const quantity = normalizeAccessoryQuantity(accessory.quantity);
 
   return {
     id: typeof accessory.id === 'string' ? accessory.id : undefined,
     componentAccessoryId: typeof accessory.componentAccessoryId === 'string' ? accessory.componentAccessoryId : undefined,
     code: code || name,
     name: name || code,
+    quantity,
     serialNumber,
     description,
   };
@@ -100,7 +104,7 @@ function parseLegacyAccessoryLines(value: string, existingAccessories: unknown[]
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line, index) => {
-      const [name = '', serialNumber = '', code = '', description = ''] = line.split('|').map((part) => part.trim());
+    const [name = '', serialNumber = '', code = '', description = '', quantityText = ''] = line.split('|').map((part) => part.trim());
       const existing = existingAccessories[index] && typeof existingAccessories[index] === 'object'
         ? (existingAccessories[index] as AccessoryLike)
         : null;
@@ -112,8 +116,14 @@ function parseLegacyAccessoryLines(value: string, existingAccessories: unknown[]
         componentAccessoryId: existingComponentId,
         name,
         code: code || name,
+        quantity: normalizeAccessoryQuantity(quantityText),
         serialNumber,
         description,
       };
     });
+}
+
+function normalizeAccessoryQuantity(value: unknown) {
+  const quantity = Number(value);
+  return Number.isFinite(quantity) && quantity > 0 ? Math.max(1, Math.floor(quantity)) : undefined;
 }

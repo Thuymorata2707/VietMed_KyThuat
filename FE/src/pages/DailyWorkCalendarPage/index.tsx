@@ -1,6 +1,6 @@
-import { BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, Loader2, Plus, Trash2, Umbrella, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Plus, Trash2, Umbrella } from 'lucide-react';
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
 import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
@@ -28,7 +28,7 @@ type DailyWorkNote = {
   user?: ApiUser;
 };
 
-type DailyWorkType = 'WORK' | 'BUSINESS_TRIP' | 'LEAVE' | 'REPAIR' | 'INSTALLATION' | 'MAINTENANCE' | 'OTHER';
+type DailyWorkType = 'WORK' | 'BUSINESS_TRIP' | 'LEAVE' | 'UNPAID_LEAVE' | 'REPAIR' | 'INSTALLATION' | 'MAINTENANCE' | 'OTHER';
 type DailyWorkStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 type NoteForm = {
@@ -60,23 +60,25 @@ const colorOptions = [
 ];
 
 const scheduleTypeOptions = [
-  { label: 'Công tác', type: 'BUSINESS_TRIP', title: 'Công tác', color: '#18181b', note: 'Đăng ký lịch công tác.' },
-  { label: 'Nghỉ phép', type: 'LEAVE', title: 'Nghỉ phép', color: '#9b5a17', note: 'Đăng ký nghỉ phép.' },
-  { label: 'Sửa chữa', type: 'REPAIR', title: 'Sửa chữa', color: '#18181b', note: 'Lịch sửa chữa tại khách hàng.' },
-  { label: 'Lắp đặt', type: 'INSTALLATION', title: 'Lắp đặt', color: '#177245', note: 'Lịch lắp đặt/bàn giao thiết bị.' },
-  { label: 'Bảo trì', type: 'MAINTENANCE', title: 'Bảo trì/Bảo dưỡng', color: '#9b5a17', note: 'Lịch bảo trì hoặc bảo dưỡng định kỳ.' },
+  { label: 'Văn phòng', type: 'WORK', title: 'Làm việc tại văn phòng', color: '#2563eb' },
+  { label: 'Công tác', type: 'BUSINESS_TRIP', title: 'Công tác', color: '#18181b' },
+  { label: 'Nghỉ phép', type: 'LEAVE', title: 'Nghỉ phép', color: '#9b5a17' },
+  { label: 'Nghỉ không phép', type: 'UNPAID_LEAVE', title: 'Nghỉ không phép', color: '#b5121b' },
+  { label: 'Sửa chữa', type: 'REPAIR', title: 'Sửa chữa', color: '#18181b' },
+  { label: 'Lắp đặt', type: 'INSTALLATION', title: 'Lắp đặt', color: '#177245' },
+  { label: 'Bảo trì', type: 'MAINTENANCE', title: 'Bảo trì/Bảo dưỡng', color: '#9b5a17' },
 ] satisfies Array<{
   label: string;
   type: DailyWorkType;
   title: string;
   color: string;
-  note: string;
 }>;
 
 const workTypeLabels: Record<DailyWorkType, string> = {
-  WORK: 'Công việc',
+  WORK: 'Làm việc tại văn phòng',
   BUSINESS_TRIP: 'Công tác',
   LEAVE: 'Nghỉ phép',
+  UNPAID_LEAVE: 'Nghỉ không phép',
   REPAIR: 'Sửa chữa',
   INSTALLATION: 'Lắp đặt',
   MAINTENANCE: 'Bảo trì',
@@ -91,16 +93,6 @@ const statusMeta: Record<DailyWorkStatus, { label: string; className: string }> 
   CANCELLED: { label: 'Đã hủy', className: 'border-[#e5e5e5] bg-[#fafafa] text-[#666666]' },
 };
 
-const workTypeOptions: Array<{ value: DailyWorkType; label: string }> = [
-  { value: 'WORK', label: 'Công việc chung' },
-  { value: 'BUSINESS_TRIP', label: 'Công tác' },
-  { value: 'LEAVE', label: 'Nghỉ phép' },
-  { value: 'REPAIR', label: 'Sửa chữa' },
-  { value: 'INSTALLATION', label: 'Lắp đặt' },
-  { value: 'MAINTENANCE', label: 'Bảo trì/Bảo dưỡng' },
-  { value: 'OTHER', label: 'Khác' },
-];
-
 const weekdayLabels = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPageProps) {
@@ -110,7 +102,6 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
   const [selectedDayDate, setSelectedDayDate] = useState('');
   const [editingNote, setEditingNote] = useState<DailyWorkNote | null>(null);
   const [form, setForm] = useState<NoteForm>(() => emptyForm(toDateInput(new Date())));
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const isAdmin = currentRole === 'admin';
@@ -178,7 +169,8 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     },
     onSuccess: async (_result, variables) => {
       setSuccess(variables.noteId ? 'Đã cập nhật ghi chú công việc.' : isAdmin ? 'Đã thêm việc cho kỹ sư.' : 'Đã thêm ghi chú công việc.');
-      setIsModalOpen(false);
+      setEditingNote(null);
+      setForm(emptyForm(variables.payload.workDate));
       setSelectedDayDate('');
       await invalidateDailyWorkData(queryClient);
     },
@@ -188,7 +180,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     mutationFn: (noteId: string) => apiFetch(`/daily-work-notes/${noteId}`, { method: 'DELETE' }),
     onSuccess: async () => {
       setSuccess('Đã xóa ghi chú công việc.');
-      setIsModalOpen(false);
+      setEditingNote(null);
       await invalidateDailyWorkData(queryClient);
     },
   });
@@ -205,15 +197,6 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     },
   });
 
-  const saving = saveNoteMutation.isPending || deleteNoteMutation.isPending || reviewNoteMutation.isPending;
-  const mutationError = saveNoteMutation.error ?? deleteNoteMutation.error ?? reviewNoteMutation.error;
-  const error =
-    formError ||
-    (engineersQuery.error instanceof Error ? engineersQuery.error.message : '') ||
-    (notesQuery.error instanceof Error ? notesQuery.error.message : '') ||
-    (yearNotesQuery.error instanceof Error ? yearNotesQuery.error.message : '') ||
-    (mutationError instanceof Error ? mutationError.message : '');
-
   const calendarDays = useMemo(() => buildCalendarDays(viewDate), [viewDate]);
   const notesByDate = useMemo(() => {
     return notes.reduce<Record<string, DailyWorkNote[]>>((map, note) => {
@@ -223,21 +206,72 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     }, {});
   }, [notes]);
 
+  const bulkOfficeMutation = useMutation({
+    mutationFn: async () => {
+      const monthWorkDays = calendarDays
+        .filter((day) => day.inMonth && day.date.getDay() !== 0)
+        .map((day) => toDateInput(day.date))
+        .filter((dateKey) => !(notesByDate[dateKey] || []).some(isActiveSchedule));
+
+      await Promise.all(
+        monthWorkDays.map((workDate) =>
+          apiFetch('/daily-work-notes', {
+            method: 'POST',
+            body: JSON.stringify({
+              color: '#2563eb',
+              endTime: null,
+              note: null,
+              startTime: null,
+              title: 'Làm việc tại văn phòng',
+              type: 'WORK',
+              userId: isAdmin ? selectedEngineerId : undefined,
+              workDate,
+            }),
+          }),
+        ),
+      );
+
+      return monthWorkDays.length;
+    },
+    onSuccess: async (createdCount) => {
+      setSuccess(createdCount ? `Đã tạo ${createdCount} ngày làm việc văn phòng.` : 'Tháng này đã có lịch.');
+      await invalidateDailyWorkData(queryClient);
+    },
+  });
+
+  const saving = saveNoteMutation.isPending || deleteNoteMutation.isPending || reviewNoteMutation.isPending || bulkOfficeMutation.isPending;
+  const mutationError = saveNoteMutation.error ?? deleteNoteMutation.error ?? reviewNoteMutation.error ?? bulkOfficeMutation.error;
+  const error =
+    formError ||
+    (engineersQuery.error instanceof Error ? engineersQuery.error.message : '') ||
+    (notesQuery.error instanceof Error ? notesQuery.error.message : '') ||
+    (yearNotesQuery.error instanceof Error ? yearNotesQuery.error.message : '') ||
+    (mutationError instanceof Error ? mutationError.message : '');
+
+  useEffect(() => {
+    setSelectedDayDate((current) => current || form.workDate);
+  }, [form.workDate]);
+
   function openCreate(date: Date) {
     if (!canCreate) return;
+    const dateKey = toDateInput(date);
     setEditingNote(null);
-    setForm(emptyForm(toDateInput(date)));
-    setIsModalOpen(true);
-    setSelectedDayDate('');
+    setForm(emptyForm(dateKey));
+    setSelectedDayDate(dateKey);
     setFormError('');
     setSuccess('');
   }
 
   function applySchedulePreset(preset: (typeof scheduleTypeOptions)[number]) {
+    const dayNotes = notesByDate[form.workDate] || [];
+    if (!isLeaveType(preset.type) && hasActiveLeave(dayNotes, editingNote?.id)) {
+      setFormError('Ngày đã đăng ký nghỉ, không thêm lịch khác.');
+      return;
+    }
+    setFormError('');
     setForm((current) => ({
       ...current,
-      title: current.title || preset.title,
-      note: current.note || preset.note,
+      title: shouldReplacePresetTitle(current.title) ? preset.title : current.title,
       color: preset.color,
       type: preset.type,
     }));
@@ -258,21 +292,24 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
       color: note.color || colorOptions[0].value,
       type: note.type || 'WORK',
     });
-    setIsModalOpen(true);
-    setSelectedDayDate('');
+    setSelectedDayDate(toDateInput(note.workDate));
     setFormError('');
     setSuccess('');
   }
 
   function openDay(date: Date) {
-    if (isAdmin) {
-      setSelectedDayDate(toDateInput(date));
-      setFormError('');
-      setSuccess('');
-      return;
-    }
-
     openCreate(date);
+  }
+
+  async function createOfficeMonth() {
+    setFormError('');
+    setSuccess('');
+
+    try {
+      await bulkOfficeMutation.mutateAsync();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Không tạo được lịch văn phòng tháng.');
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -281,8 +318,18 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     setSuccess('');
 
     try {
+      const dayNotes = notesByDate[form.workDate] || [];
+      const hasLeaveConflict = isLeaveType(form.type)
+        ? hasActiveWork(dayNotes, editingNote?.id)
+        : hasActiveLeave(dayNotes, editingNote?.id);
+
+      if (hasLeaveConflict) {
+        setFormError('Ngày đã đăng ký nghỉ thì không thêm lịch khác.');
+        return;
+      }
+
       const payload: DailyWorkPayload = {
-        title: form.title.trim(),
+        title: form.title.trim() || workTypeLabels[form.type],
         note: form.note.trim() || null,
         workDate: form.workDate,
         startTime: form.startTime || null,
@@ -298,12 +345,12 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     }
   }
 
-  async function removeNote() {
-    if (!editingNote) return;
+  async function removeNote(noteToDelete = editingNote) {
+    if (!noteToDelete) return;
     setFormError('');
 
     try {
-      await deleteNoteMutation.mutateAsync(editingNote.id);
+      await deleteNoteMutation.mutateAsync(noteToDelete.id);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Không xóa được ghi chú.');
     }
@@ -321,326 +368,405 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
   }
 
   const selectedEngineer = engineers.find((engineer) => engineer.id === selectedEngineerId);
-  const selectedDayNotes = selectedDayDate ? notesByDate[selectedDayDate] || [] : [];
   const leaveSummary = useMemo(() => buildLeaveSummary(viewDate, notes, yearNotes), [notes, viewDate, yearNotes]);
 
   return (
     <PageFrame>
-      <section className="relative flex min-w-0 items-end justify-between gap-[18px] overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#fafafa] p-6 text-[#1f1f1f] shadow-[0_12px_30px_rgba(24,24,27,0.05)] max-[1180px]:grid max-[1180px]:items-stretch">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(14,165,233,0.10),transparent_30%),radial-gradient(circle_at_86%_8%,rgba(191,219,254,0.55),transparent_28%),linear-gradient(135deg,#fafafa,#ffffff_55%,#fafafa)]" />
-        <div className="relative z-10 min-w-0">
-          <span className="relative mb-2 inline-flex items-center gap-2 rounded-xl border border-[#e4e4e7] bg-white/75 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#18181b]"><CalendarDays size={15} /> Lịch kỹ sư</span>
-          <h1 className="relative mb-2.5 text-[clamp(30px,4vw,46px)] font-extrabold leading-none">{isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Lịch làm việc của tôi'}</h1>
-          <p className="relative max-w-3xl text-sm font-semibold leading-6 text-[#666666]">{isAdmin ? 'Lịch nhân sự, nghỉ phép và công tháng.' : 'Lịch của tôi, nghỉ phép và công tháng.'}</p>
-        </div>
-        {isAdmin ? (
-          <label className="relative z-10 grid min-w-0 gap-2 text-sm font-bold text-[#333333] min-[1180px]:min-w-[min(360px,100%)]">
-            Chọn nhân sự
-            <select
-              className="min-h-12 rounded-2xl border border-[#ded8d8] bg-white/95 px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]"
-              onChange={(event) => {
-                setSelectedEngineerId(event.target.value);
-                setSelectedDayDate('');
-              }}
-              value={selectedEngineerId}
-            >
-              {engineers.map((engineer) => (
-                <option key={engineer.id} value={engineer.id}>
-                  {engineer.fullName || engineer.email}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-      </section>
-
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          label="Phép tháng"
-          value={`${formatWorkCount(leaveSummary.monthlyLeaveUsed)} / 1`}
-          note={`Còn ${formatWorkCount(leaveSummary.monthlyLeaveRemaining)} ngày`}
-        />
-        <StatCard
-          label="Phép năm"
-          value={`${formatWorkCount(leaveSummary.yearlyLeaveUsed)} / 12`}
-          note={`Còn ${formatWorkCount(leaveSummary.yearlyLeaveRemaining)} ngày`}
-        />
-        <StatCard
-          label="Phép được hưởng"
-          value={formatWorkCount(leaveSummary.accruedLeave)}
-          note={`Tính đến ${monthLabel(viewDate)}`}
-        />
-        <StatCard
-          label="Công chuẩn tháng"
-          value={formatWorkCount(leaveSummary.standardWork)}
-          note="T2-T7 tính 1 công, CN nghỉ"
-        />
-        <StatCard
-          label="Công làm việc tháng"
-          value={formatWorkCount(leaveSummary.actualWork)}
-          note={`Trừ ${formatWorkCount(leaveSummary.monthlyLeaveUsed)} ngày phép`}
-        />
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-5">
-        {scheduleTypeOptions.map((option) => (
-          <button
-            className="grid min-h-[76px] gap-2 rounded-[14px] border border-[#e5e5e5] bg-white p-3 text-left shadow-[0_1px_2px_rgba(24,24,27,0.04)] transition hover:-translate-y-px hover:border-[#b8cbe1]"
-            key={option.label}
-            onClick={() => {
-              openCreate(new Date());
-              setTimeout(() => applySchedulePreset(option), 0);
-            }}
-            type="button"
-          >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ backgroundColor: option.color }}>
-              <BriefcaseBusiness size={16} />
-            </span>
-            <strong className="text-sm text-[#1f1f1f]">{option.label}</strong>
-          </button>
-        ))}
-      </section>
-
-      <section className="min-w-0 overflow-hidden rounded-[14px] border border-[#e5e5e5] bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)] max-[1180px]:overflow-x-auto">
-        <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[#eeeeee] p-4 max-[1180px]:grid max-[1180px]:items-stretch">
+      <section className="grid gap-3 rounded-[18px] border border-[#e5e5e5] bg-white p-4 shadow-[0_8px_22px_rgba(24,24,27,0.05)]">
+        <div className="grid gap-3 min-[1180px]:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.25fr)_auto] min-[1180px]:items-center">
           <div className="min-w-0">
-            <strong className="block text-xl capitalize text-[#1f1f1f]">{monthLabel(viewDate)}</strong>
-            <span className="mt-1 block text-[#666666]">{loading ? 'Đang tải lịch...' : `${notes.length} ghi chú trong tháng`}</span>
+            <span className="inline-flex items-center gap-2 text-xs font-extrabold text-[#64748b]">
+              <CalendarDays size={15} />
+              Lịch kỹ sư
+            </span>
+            <h2 className="mt-1 truncate text-2xl font-extrabold leading-tight text-[#18181b]">
+              {isAdmin ? selectedEngineer?.fullName || 'Theo dõi kỹ sư' : 'Lịch làm việc của tôi'}
+            </h2>
           </div>
-          <div className="flex min-w-0 flex-wrap gap-2">
-            <button className="secondary-button" onClick={() => setViewDate(addMonths(viewDate, -1))} type="button">
-              <ChevronLeft size={17} />
-              Tháng trước
-            </button>
-            <button className="secondary-button" onClick={() => setViewDate(startOfMonth(new Date()))} type="button">
-              Hôm nay
-            </button>
-            <button className="secondary-button" onClick={() => setViewDate(addMonths(viewDate, 1))} type="button">
-              Tháng sau
-              <ChevronRight size={17} />
-            </button>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-7 max-[1180px]:min-w-[760px]">
-          {weekdayLabels.map((label) => (
-            <span className="border-b border-[#eeeeee] bg-[#fafafa] p-[11px] text-center text-xs font-medium text-[#666666]" key={label}>{label}</span>
-          ))}
-        </div>
+          <LeaveCompactSummary leaveSummary={leaveSummary} />
 
-        <div className="grid grid-cols-7 max-[1180px]:min-w-[760px]">
-          {calendarDays.map((day) => {
-            const key = toDateInput(day.date);
-            const dayNotes = notesByDate[key] || [];
-            return (
-              <button
-                className={[
-                  'group relative grid min-h-[132px] gap-2 border-0 border-b border-r border-[#eeeeee] bg-white p-2.5 text-left text-[#1f1f1f] hover:bg-[#fffdfb] max-[900px]:min-h-[116px]',
-                  day.date.getDay() === 6 ? 'border-r-0' : '',
-                  day.inMonth ? '' : 'bg-[#ffffff] text-[#9aa6b5]',
-                  isSameDate(day.date, new Date()) ? 'shadow-[inset_0_0_0_2px_#18181b]' : '',
-                ].filter(Boolean).join(' ')}
-                key={key}
-                onClick={() => openDay(day.date)}
-                type="button"
+          {isAdmin ? (
+            <label className="grid min-w-0 gap-1.5 text-sm font-bold text-[#333333] min-[1180px]:min-w-[300px]">
+              Chọn nhân sự
+              <select
+                className="min-h-11 rounded-[14px] border border-[#ded8d8] bg-[#fafafa] px-3 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]"
+                onChange={(event) => {
+                  setSelectedEngineerId(event.target.value);
+                  setSelectedDayDate('');
+                }}
+                value={selectedEngineerId}
               >
-                <span className="font-bold">{day.date.getDate()}</span>
-                <div className="grid content-start gap-1">
-                  {dayNotes.slice(0, 3).map((note) => (
-                    <span
-                      className="grid gap-0.5 overflow-hidden rounded-md border-l-[3px] bg-white px-[7px] py-[5px] text-xs leading-snug text-[#1f1f1f] shadow-[0_1px_3px_rgba(24,24,27,0.08)]"
-                      key={note.id}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        openEdit(note);
-                      }}
-                      style={{ borderColor: note.color || colorOptions[0].value }}
-                    >
-                      <span className="overflow-hidden text-ellipsis whitespace-nowrap">{note.startTime ? `${note.startTime} ` : ''}{note.title}</span>
-                      <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-[#666666]">
-                        {workTypeLabels[note.type || 'WORK']} · {statusMeta[note.status || 'APPROVED'].label}
-                      </span>
-                    </span>
-                  ))}
-                  {dayNotes.length > 3 ? <small className="text-[#666666]">+{dayNotes.length - 3} việc khác</small> : null}
-                </div>
-                {canCreate ? <Plus className="absolute right-2.5 top-2.5 text-[#18181b] opacity-0 group-hover:opacity-100" size={15} /> : null}
-              </button>
-            );
-          })}
+                {engineers.map((engineer) => (
+                  <option key={engineer.id} value={engineer.id}>
+                    {engineer.fullName || engineer.email}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </div>
+
       </section>
 
-      {selectedDayDate ? (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/30 p-5 backdrop-blur-[3px]" onClick={() => setSelectedDayDate('')} role="presentation">
-          <section aria-modal="true" className="grid w-full max-w-[720px] gap-4 rounded-[14px] border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(24,24,27,0.2)]" onClick={(event) => event.stopPropagation()} role="dialog">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="block text-xs font-medium text-[#18181b]">Công việc trong ngày</span>
-                <h2 className="mt-1 text-[#1f1f1f]">{formatDateTitle(selectedDayDate)}</h2>
-                <p className="mt-1 text-sm text-[#666666]">{selectedEngineer?.fullName || selectedEngineer?.email || 'Nhân sự'}</p>
-              </div>
-              <button className="icon-button" onClick={() => setSelectedDayDate('')} type="button">
-                <X size={16} />
+      <div className="grid gap-4 min-[1180px]:grid-cols-[minmax(0,1fr)_410px] min-[1180px]:items-start">
+        <section className="min-w-0 overflow-hidden rounded-[18px] border border-[#e5e5e5] bg-white shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
+          <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[#eeeeee] p-4 max-[1180px]:grid max-[1180px]:items-stretch">
+            <div className="min-w-0">
+              <strong className="block text-xl capitalize text-[#1f1f1f]">{monthLabel(viewDate)}</strong>
+            </div>
+            <div className="flex min-w-0 flex-wrap gap-2">
+              <button className="secondary-button compact" disabled={saving || !canCreate} onClick={() => void createOfficeMonth()} type="button">
+                {bulkOfficeMutation.isPending ? <Loader2 className="spin-icon" size={16} /> : <Plus size={16} />}
+                Tạo văn phòng tháng
+              </button>
+              <button className="secondary-button" onClick={() => setViewDate(addMonths(viewDate, -1))} type="button">
+                <ChevronLeft size={17} />
+                Tháng trước
+              </button>
+              <button className="secondary-button" onClick={() => setViewDate(startOfMonth(new Date()))} type="button">
+                Hôm nay
+              </button>
+              <button className="secondary-button" onClick={() => setViewDate(addMonths(viewDate, 1))} type="button">
+                Tháng sau
+                <ChevronRight size={17} />
               </button>
             </div>
+          </div>
 
-            <div className="grid gap-2">
-              {selectedDayNotes.map((note) => (
-                <article className="rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3" key={note.id}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <strong className="text-[#1f1f1f]">{note.title}</strong>
-                      <span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-xs font-medium text-[#666666]">
-                        {workTypeLabels[note.type || 'WORK']}
-                      </span>
-                      <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusMeta[note.status || 'APPROVED'].className}`}>
-                        {statusMeta[note.status || 'APPROVED'].label}
-                      </span>
-                    </div>
-                    <span className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-xs font-medium text-[#666666]">
-                      {[note.startTime, note.endTime].filter(Boolean).join(' - ') || 'Cả ngày'}
-                    </span>
-                  </div>
-                  {note.note ? <p className="mt-2 text-sm leading-relaxed text-[#333333]">{note.note}</p> : null}
-                  {note.rejectReason ? <p className="mt-2 rounded-lg border border-[#fecdd3] bg-[#fff1f3] px-3 py-2 text-sm text-[#b5121b]">Lý do: {note.rejectReason}</p> : null}
-                  {isAdmin && note.status === 'PENDING' ? (
-                    <div className="mt-3 flex flex-wrap justify-end gap-2">
-                      <button className="secondary-button" disabled={saving} onClick={() => reviewNote(note, 'REJECTED')} type="button">
-                        Từ chối
-                      </button>
-                      <button className="primary-button" disabled={saving} onClick={() => reviewNote(note, 'APPROVED')} type="button">
-                        Duyệt lịch
-                      </button>
-                    </div>
-                  ) : null}
-                </article>
-              ))}
+          <MonthWorkBoard
+            calendarDays={calendarDays}
+            notesByDate={notesByDate}
+            onEdit={openEdit}
+            onSelectDay={openDay}
+            selectedDate={selectedDayDate || form.workDate}
+          />
+        </section>
 
-              {selectedDayNotes.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-[#d6d6d6] bg-[#fafafa] p-6 text-center text-sm text-[#666666]">
-                  Ngày này chưa có công việc nào.
-                </div>
-              ) : null}
-            </div>
+        <DailyWorkSidePanel
+          canCreate={canCreate}
+          canEditExisting={canEditExisting}
+          editingNote={editingNote}
+          form={form}
+          notes={notesByDate[selectedDayDate || form.workDate] || []}
+          onCancelEdit={() => {
+            setEditingNote(null);
+            setForm(emptyForm(form.workDate));
+            setFormError('');
+          }}
+          onChange={setForm}
+          onDelete={() => void removeNote()}
+          onDeleteNote={(note) => void removeNote(note)}
+          onEdit={openEdit}
+          onPreset={applySchedulePreset}
+          onReview={reviewNote}
+          onSelectDate={(dateKey) => {
+            setSelectedDayDate(dateKey);
+            setEditingNote(null);
+          }}
+          onSubmit={handleSubmit}
+          saving={saving}
+          selectedDate={selectedDayDate || form.workDate}
+          showReviewActions={isAdmin}
+        />
+      </div>
 
-            <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
-              <button className="secondary-button" onClick={() => setSelectedDayDate('')} type="button">Close</button>
-              <button className="primary-button" disabled={!selectedEngineerId} onClick={() => openCreate(dateFromInput(selectedDayDate))} type="button">
-                <Plus size={16} />
-                Add task
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {isModalOpen ? (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/30 p-5 backdrop-blur-[3px]" role="presentation">
-          <section aria-modal="true" className="grid w-full max-w-[720px] gap-[18px] rounded-[14px] border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_70px_rgba(24,24,27,0.2)]" role="dialog">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="block text-xs font-medium text-[#18181b]">{editingNote ? 'Edit note' : isAdmin ? 'Add task' : 'Add note'}</span>
-                <h2 className="mt-1 text-[#1f1f1f]">{formatDateTitle(form.workDate)}</h2>
-                {isAdmin ? <p className="mt-1 text-sm text-[#666666]">{selectedEngineer?.fullName || selectedEngineer?.email}</p> : null}
-              </div>
-              <button className="icon-button" onClick={() => setIsModalOpen(false)} type="button">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-2">
-              {scheduleTypeOptions.map((option) => (
-                <button
-                  className="inline-flex min-h-8 items-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-2.5 text-xs font-semibold text-[#333333] hover:border-[#b8cbe1]"
-                  key={option.label}
-                  onClick={() => applySchedulePreset(option)}
-                  type="button"
-                >
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: option.color }} />
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            <form className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1 [&_input]:min-h-[42px] [&_input]:rounded-lg [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:px-3 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#18181b] [&_input:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_label]:grid [&_label]:gap-2 [&_label]:font-medium [&_label]:text-[#333333] [&_select]:min-h-[42px] [&_select]:rounded-lg [&_select]:border [&_select]:border-[#d6d6d6] [&_select]:px-3 [&_select]:text-[#1f1f1f] [&_select]:outline-none [&_select:focus]:border-[#18181b] [&_select:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_textarea]:min-h-[110px] [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#d6d6d6] [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#1f1f1f] [&_textarea]:outline-none [&_textarea:focus]:border-[#18181b] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onSubmit={handleSubmit}>
-              <label>
-                Loại lịch
-                <select onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as DailyWorkType }))} value={form.type}>
-                  {workTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Tiêu đề công việc
-                <input onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required value={form.title} />
-              </label>
-              <DateInput label="Ngày" onChange={(value) => setForm((current) => ({ ...current, workDate: value }))} required value={form.workDate} />
-              <label>
-                Bắt đầu
-                <input onChange={(event) => setForm((current) => ({ ...current, startTime: event.target.value }))} type="time" value={form.startTime} />
-              </label>
-              <label>
-                Kết thúc
-                <input onChange={(event) => setForm((current) => ({ ...current, endTime: event.target.value }))} type="time" value={form.endTime} />
-              </label>
-              <label>
-                Màu
-                <select onChange={(event) => setForm((current) => ({ ...current, color: event.target.value }))} value={form.color}>
-                  {colorOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="col-span-full max-sm:col-auto">
-                Ghi chú
-                <textarea onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))} value={form.note} />
-              </label>
-              <div className="col-span-full flex justify-end gap-2.5 border-t border-[#eeeeee] pt-3.5">
-                {editingNote && canEditExisting ? (
-                  <button className="danger-button" disabled={saving} onClick={removeNote} type="button">
-                    <Trash2 size={16} />
-                    Delete
-                  </button>
-                ) : null}
-                <button className="secondary-button" onClick={() => setIsModalOpen(false)} type="button">Cancel</button>
-                <button className="primary-button" disabled={saving} type="submit">
-                  {saving ? <Loader2 className="spin-icon" size={16} /> : null}
-                  {saving ? 'Saving' : 'Save'}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      ) : null}
     </PageFrame>
   );
 }
 
 function emptyForm(workDate: string): NoteForm {
   return {
-    title: '',
+    title: 'Làm việc tại văn phòng',
     note: '',
     workDate,
     startTime: '',
     endTime: '',
-    color: colorOptions[0].value,
+    color: '#2563eb',
     type: 'WORK',
   };
 }
 
-function StatCard({ label, note, value }: { label: string; note: string; value: string }) {
+function shouldReplacePresetTitle(title: string) {
+  const normalized = title.trim();
+  if (!normalized) return true;
+  return scheduleTypeOptions.some((option) => option.title === normalized) || Object.values(workTypeLabels).includes(normalized);
+}
+
+function MonthWorkBoard({
+  calendarDays,
+  notesByDate,
+  onEdit,
+  onSelectDay,
+  selectedDate,
+}: {
+  calendarDays: Array<{ date: Date; inMonth: boolean }>;
+  notesByDate: Record<string, DailyWorkNote[]>;
+  onEdit: (note: DailyWorkNote) => void;
+  onSelectDay: (date: Date) => void;
+  selectedDate: string;
+}) {
   return (
-    <article className="grid min-h-[104px] gap-2 rounded-[14px] border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-      <span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.08em] text-[#64748b]">
-        <Umbrella size={15} />
-        {label}
-      </span>
-      <strong className="text-2xl font-extrabold leading-none text-[#18181b]">{value}</strong>
-      <span className="text-xs font-semibold leading-5 text-[#666666]">{note}</span>
-    </article>
+    <div className="overflow-x-auto">
+      <div className="min-w-[760px]">
+        <div className="grid grid-cols-7">
+          {weekdayLabels.map((label) => (
+            <span className="border-b border-[#eeeeee] bg-[#fafafa] p-[11px] text-center text-xs font-bold text-[#667085]" key={label}>{label}</span>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7">
+          {calendarDays.map((day) => {
+            const dateKey = toDateInput(day.date);
+            const dayNotes = notesByDate[dateKey] || [];
+            const activeNotes = dayNotes.filter(isActiveSchedule);
+            const primaryNote = activeNotes[0];
+            const selected = selectedDate === dateKey;
+            const today = isSameDate(day.date, new Date());
+
+            return (
+              <button
+                className={[
+                  'grid min-h-[92px] content-start gap-2 border-0 border-b border-r border-[#eeeeee] bg-white p-2.5 text-left transition hover:bg-[#fafafa]',
+                  day.date.getDay() === 6 ? 'border-r-0' : '',
+                  day.inMonth ? '' : 'bg-[#fbfbfb] text-[#a1a8b3]',
+                  selected ? 'shadow-[inset_0_0_0_2px_#18181b]' : '',
+                ].filter(Boolean).join(' ')}
+                key={dateKey}
+                onClick={() => onSelectDay(day.date)}
+                type="button"
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <strong className={today ? 'grid h-7 w-7 place-items-center rounded-full bg-[#18181b] text-sm text-white' : 'text-sm text-[#18181b]'}>
+                    {day.date.getDate()}
+                  </strong>
+                  {activeNotes.length ? <em className="not-italic rounded-full bg-[#f4f4f5] px-2 py-0.5 text-[11px] font-bold text-[#667085]">{activeNotes.length}</em> : null}
+                </span>
+
+                {primaryNote ? (
+                  <span className="grid gap-1">
+                    <span className="flex items-center gap-1.5">
+                      {activeNotes.slice(0, 4).map((note) => (
+                        <span className="h-2 w-2 rounded-full" key={note.id} style={{ backgroundColor: note.color || colorOptions[0].value }} />
+                      ))}
+                    </span>
+                    <span
+                      className="truncate text-xs font-bold text-[#333333]"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onEdit(primaryNote);
+                      }}
+                    >
+                      {workTypeLabels[primaryNote.type || 'WORK']}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold text-[#a1a8b3]">{day.date.getDay() === 0 ? 'CN' : ''}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DailyWorkSidePanel({
+  canCreate,
+  canEditExisting,
+  editingNote,
+  form,
+  notes,
+  onCancelEdit,
+  onChange,
+  onDelete,
+  onDeleteNote,
+  onEdit,
+  onPreset,
+  onReview,
+  onSelectDate,
+  onSubmit,
+  saving,
+  selectedDate,
+  showReviewActions,
+}: {
+  canCreate: boolean;
+  canEditExisting: boolean;
+  editingNote: DailyWorkNote | null;
+  form: NoteForm;
+  notes: DailyWorkNote[];
+  onCancelEdit: () => void;
+  onChange: Dispatch<SetStateAction<NoteForm>>;
+  onDelete: () => void;
+  onDeleteNote: (note: DailyWorkNote) => void;
+  onEdit: (note: DailyWorkNote) => void;
+  onPreset: (preset: (typeof scheduleTypeOptions)[number]) => void;
+  onReview: (note: DailyWorkNote, status: Extract<DailyWorkStatus, 'APPROVED' | 'REJECTED'>) => void;
+  onSelectDate: (dateKey: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  saving: boolean;
+  selectedDate: string;
+  showReviewActions: boolean;
+}) {
+  const isEditing = Boolean(editingNote);
+
+  return (
+    <aside className="order-first grid gap-3 rounded-[18px] border border-[#e5e5e5] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)] min-[1180px]:sticky min-[1180px]:top-4 min-[1180px]:order-last">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className="text-xs font-extrabold text-[#64748b]">Ngày đang chọn</span>
+          <h2 className="mt-1 text-xl font-extrabold text-[#18181b]">{formatDateTitle(selectedDate)}</h2>
+        </div>
+        {isEditing ? (
+          <button className="secondary-button compact" onClick={onCancelEdit} type="button">
+            Hủy sửa
+          </button>
+        ) : null}
+      </div>
+
+      <div className="grid gap-2 rounded-[14px] bg-[#fafafa] p-2">
+        {notes.length ? notes.map((note) => (
+          <article className="grid gap-2 rounded-[12px] bg-white p-3 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)]" key={note.id}>
+            <div className="grid gap-2">
+              <div className="flex items-start justify-between gap-2">
+                <button className="grid min-w-0 flex-1 gap-1 text-left" onClick={() => onEdit(note)} type="button">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: note.color || colorOptions[0].value }} />
+                    <strong className="truncate text-sm text-[#18181b]">{note.title}</strong>
+                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusMeta[note.status || 'APPROVED'].className}`}>
+                      {statusMeta[note.status || 'APPROVED'].label}
+                    </span>
+                  </span>
+                  <span className="text-xs font-semibold text-[#667085]">
+                    {workTypeLabels[note.type || 'WORK']} · {[note.startTime, note.endTime].filter(Boolean).join(' - ') || 'Cả ngày'}
+                  </span>
+                </button>
+                {canEditExisting ? (
+                  <div className="flex shrink-0 gap-1">
+                    <button className="secondary-button compact !min-h-8 !px-2.5 text-xs" disabled={saving} onClick={() => onEdit(note)} type="button">
+                      Sửa
+                    </button>
+                    <button className="danger-button compact !min-h-8 !px-2.5 text-xs" disabled={saving} onClick={() => onDeleteNote(note)} type="button">
+                      Xóa
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            {showReviewActions && note.status === 'PENDING' ? (
+              <div className="flex justify-end gap-2">
+                <button className="secondary-button compact" disabled={saving} onClick={() => onReview(note, 'REJECTED')} type="button">Từ chối</button>
+                <button className="primary-button compact" disabled={saving} onClick={() => onReview(note, 'APPROVED')} type="button">Duyệt</button>
+              </div>
+            ) : null}
+          </article>
+        )) : (
+          <div className="rounded-[12px] border border-dashed border-[#d6d6d6] bg-white p-4 text-center text-sm font-semibold text-[#667085]">
+            Chưa có lịch.
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {scheduleTypeOptions.map((option) => (
+          <button
+            className={[
+              'inline-flex min-h-10 items-center gap-2 rounded-[12px] border px-3 text-sm font-semibold transition',
+              form.type === option.type ? 'border-[#18181b] bg-[#18181b] text-white' : 'border-[#e5e5e5] bg-[#fafafa] text-[#333333] hover:border-[#b8cbe1] hover:bg-white',
+            ].join(' ')}
+            key={option.label}
+            onClick={() => onPreset(option)}
+            type="button"
+          >
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: option.color }} />
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <form className="grid gap-3 [&_input]:min-h-[42px] [&_input]:rounded-lg [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:px-3 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#18181b] [&_input:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_label]:grid [&_label]:gap-2 [&_label]:text-sm [&_label]:font-bold [&_label]:text-[#333333] [&_select]:min-h-[42px] [&_select]:rounded-lg [&_select]:border [&_select]:border-[#d6d6d6] [&_select]:px-3 [&_select]:text-[#1f1f1f] [&_select]:outline-none [&_select:focus]:border-[#18181b] [&_select:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_textarea]:min-h-[92px] [&_textarea]:resize-y [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-[#d6d6d6] [&_textarea]:px-3 [&_textarea]:py-2.5 [&_textarea]:text-[#1f1f1f] [&_textarea]:outline-none [&_textarea:focus]:border-[#18181b] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]" onSubmit={onSubmit}>
+        <DateInput
+          label="Ngày"
+          onChange={(value) => {
+            onChange((current) => ({ ...current, workDate: value }));
+            if (value) onSelectDate(value);
+          }}
+          required
+          value={form.workDate}
+        />
+
+        <label>
+          Nội dung
+          <input onChange={(event) => onChange((current) => ({ ...current, title: event.target.value }))} placeholder={workTypeLabels[form.type]} value={form.title} />
+        </label>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label>
+            Bắt đầu
+            <input onChange={(event) => onChange((current) => ({ ...current, startTime: event.target.value }))} type="time" value={form.startTime} />
+          </label>
+          <label>
+            Kết thúc
+            <input onChange={(event) => onChange((current) => ({ ...current, endTime: event.target.value }))} type="time" value={form.endTime} />
+          </label>
+        </div>
+
+        <label>
+          Ghi chú
+          <textarea onChange={(event) => onChange((current) => ({ ...current, note: event.target.value }))} value={form.note} />
+        </label>
+
+        <div className="grid gap-2 border-t border-[#eeeeee] pt-3">
+          <button className="primary-button justify-center" disabled={!canCreate || saving} type="submit">
+            {saving ? <Loader2 className="spin-icon" size={16} /> : <Plus size={16} />}
+            {saving ? 'Đang lưu' : isEditing ? 'Cập nhật' : 'Lưu lịch'}
+          </button>
+          {isEditing && canEditExisting ? (
+            <button className="danger-button justify-center" disabled={saving} onClick={onDelete} type="button">
+              <Trash2 size={16} />
+              Xóa lịch
+            </button>
+          ) : null}
+        </div>
+      </form>
+    </aside>
+  );
+}
+
+function LeaveCompactSummary({ leaveSummary }: { leaveSummary: ReturnType<typeof buildLeaveSummary> }) {
+  const items = [
+    {
+      label: 'Phép tháng',
+      value: `${formatWorkCount(leaveSummary.monthlyLeaveUsed)}/1`,
+    },
+    {
+      label: 'Phép năm',
+      value: `${formatWorkCount(leaveSummary.yearlyLeaveUsed)}/12`,
+    },
+    {
+      label: 'Công tháng',
+      value: formatWorkCount(leaveSummary.actualWork),
+    },
+  ];
+
+  return (
+    <div className="grid gap-2 rounded-[14px] bg-[#fafafa] p-2 sm:grid-cols-3">
+      {items.map((item) => (
+        <div className="grid min-w-0 gap-1 rounded-[12px] bg-white px-3 py-2 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)]" key={item.label}>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-[#64748b]">
+            <Umbrella size={13} />
+            {item.label}
+          </span>
+          <span className="flex items-end justify-between gap-2">
+            <strong className="text-xl leading-none text-[#18181b]">{item.value}</strong>
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -648,18 +774,21 @@ function buildLeaveSummary(viewDate: Date, monthNotes: DailyWorkNote[], yearNote
   const standardWork = countStandardWork(startOfMonth(viewDate), endOfMonth(viewDate));
   const approvedMonthlyLeaveNotes = monthNotes.filter(isCountableLeave);
   const approvedYearlyLeaveNotes = yearNotes.filter(isCountableLeave);
+  const approvedMonthlyUnpaidLeaveNotes = monthNotes.filter(isCountableUnpaidLeave);
   const monthlyLeaveUsed = sumLeaveDays(approvedMonthlyLeaveNotes);
   const yearlyLeaveUsed = sumLeaveDays(approvedYearlyLeaveNotes);
+  const monthlyUnpaidLeaveUsed = sumLeaveDays(approvedMonthlyUnpaidLeaveNotes);
   const accruedLeave = Math.min(viewDate.getMonth() + 1, 12);
   const yearlyLeaveRemaining = Math.max(12 - yearlyLeaveUsed, 0);
   const monthlyLeaveRemaining = Math.max(1 - monthlyLeaveUsed, 0);
-  const actualWork = Math.max(standardWork - monthlyLeaveUsed, 0);
+  const actualWork = Math.max(standardWork - monthlyLeaveUsed - monthlyUnpaidLeaveUsed, 0);
 
   return {
     accruedLeave,
     actualWork,
     monthlyLeaveRemaining,
     monthlyLeaveUsed,
+    monthlyUnpaidLeaveUsed,
     standardWork,
     yearlyLeaveRemaining,
     yearlyLeaveUsed,
@@ -668,6 +797,10 @@ function buildLeaveSummary(viewDate: Date, monthNotes: DailyWorkNote[], yearNote
 
 function isCountableLeave(note: DailyWorkNote) {
   return note.type === 'LEAVE' && note.status !== 'REJECTED' && note.status !== 'CANCELLED';
+}
+
+function isCountableUnpaidLeave(note: DailyWorkNote) {
+  return note.type === 'UNPAID_LEAVE' && note.status !== 'REJECTED' && note.status !== 'CANCELLED';
 }
 
 function sumLeaveDays(notes: DailyWorkNote[]) {
@@ -722,6 +855,22 @@ function overlapMinutes(start: number, end: number, rangeStart: number, rangeEnd
 
 function formatWorkCount(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function isLeaveType(type: DailyWorkType) {
+  return type === 'LEAVE' || type === 'UNPAID_LEAVE';
+}
+
+function isActiveSchedule(note: DailyWorkNote) {
+  return note.status !== 'REJECTED' && note.status !== 'CANCELLED';
+}
+
+function hasActiveLeave(notes: DailyWorkNote[], excludeId?: string) {
+  return notes.some((note) => note.id !== excludeId && isActiveSchedule(note) && isLeaveType(note.type || 'WORK'));
+}
+
+function hasActiveWork(notes: DailyWorkNote[], excludeId?: string) {
+  return notes.some((note) => note.id !== excludeId && isActiveSchedule(note));
 }
 
 function buildCalendarDays(date: Date) {

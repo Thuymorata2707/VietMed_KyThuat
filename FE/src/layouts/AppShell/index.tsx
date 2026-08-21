@@ -6,7 +6,7 @@ import { ApiUser, apiFetch, clearToken, getApiBaseUrl } from '../../api';
 import { getRoleName, roleLabel } from '../../auth/roles';
 import { Brand } from '../../components/Brand';
 import { RequireRole } from '../../components/RequireRole';
-import { navGroupsForRole, navItemsForRole } from '../../config/navigation';
+import { navGroupsForRole, navItemsForRole, type NavItem } from '../../config/navigation';
 import { resources } from '../../config/resources';
 import { adminCrudConfigs } from '../../config/adminCrud';
 import { queryClient } from '../../lib/queryClient';
@@ -113,9 +113,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   const role = getRoleName(user);
   const visibleNavItems = navItemsForRole(role);
   const visibleNavGroups = navGroupsForRole(role).filter((group) => group.items.length > 0);
-  const activeNavItem = visibleNavItems.find((item) =>
-    item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path),
-  );
+  const activeNavItem = visibleNavItems.find((item) => navItemMatchesPath(item, location.pathname));
   const pageTitle = location.pathname.startsWith('/account-settings')
     ? 'Thiết lập tài khoản'
     : location.pathname.startsWith('/technical-machines')
@@ -132,6 +130,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Model & phụ kiện'
     : location.pathname.startsWith('/daily-work') || location.pathname.startsWith('/daily-reports') || location.pathname.startsWith('/weekly-reports')
       ? 'Lịch & báo cáo'
+    : location.pathname.startsWith('/users') || location.pathname.startsWith('/roles') || location.pathname.startsWith('/audit-logs')
+      ? 'Nhân sự'
     : location.pathname.startsWith('/reports')
       ? 'Báo cáo'
     : location.pathname.startsWith('/my-customers')
@@ -213,8 +213,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   }
 
   return (
-    <div className={`app-shell grid min-h-screen w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[82px_minmax(0,1fr)]' : 'grid-cols-[280px_minmax(0,1fr)]'}`}>
-      <aside className={`app-sidebar flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#e4e4e7] px-4 py-5 shadow-[1px_0_0_rgba(24,24,27,0.03)] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-5 px-3.5 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-5 max-[980px]:gap-4'}`}>
+    <div className={`app-shell grid min-h-screen w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[76px_minmax(0,1fr)]' : 'grid-cols-[252px_minmax(0,1fr)]'}`}>
+      <aside className={`app-sidebar flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#e4e4e7] px-3.5 py-5 shadow-[1px_0_0_rgba(24,24,27,0.03)] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-5 px-3 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-5 max-[980px]:gap-4'}`}>
         <div className={`min-w-0 items-center gap-2.5 ${isSidebarCollapsed ? 'grid justify-items-center' : 'grid grid-cols-[34px_minmax(0,1fr)_34px]'} max-[980px]:flex max-[980px]:justify-between`}>
           {!isSidebarCollapsed ? <span aria-hidden="true" className="block h-[34px] w-[34px] max-[980px]:hidden" /> : null}
           <Brand compact={isSidebarCollapsed} logoOnly />
@@ -231,11 +231,11 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
 
         <nav className={`${isSidebarCollapsed ? 'grid w-full justify-items-center gap-2' : 'grid gap-3'} max-[980px]:flex max-[980px]:justify-start max-[980px]:gap-2.5 max-[980px]:overflow-x-auto`}>
           {visibleNavGroups.map((group) => {
-            const groupIsActive = group.items.some((item) => item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path));
+            const groupIsActive = group.items.some((item) => navItemMatchesPath(item, location.pathname));
             const itemList = (
               <div className={`${isSidebarCollapsed ? 'contents' : 'grid gap-1'} max-[980px]:flex max-[980px]:gap-2`}>
                 {group.items.map((item) => {
-                  const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+                  const isActive = navItemMatchesPath(item, location.pathname);
                   return (
                     <Link
                       className={`relative flex min-h-[42px] items-center rounded-lg text-[14px] font-medium text-[#71717a] transition hover:bg-[#f4f4f5] hover:text-[#18181b] max-[980px]:shrink-0 max-[980px]:gap-2.5 max-[980px]:px-3 ${
@@ -296,12 +296,12 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       </aside>
 
       <main ref={mainRef} id="main-content" className="min-w-0 overflow-x-hidden overscroll-contain bg-transparent [&>*]:min-w-0 min-[981px]:h-screen min-[981px]:overflow-y-auto">
-        <header className="app-header sticky top-0 z-[2] flex min-h-[66px] items-center justify-between border-b border-[#e4e4e7] px-6 backdrop-blur-md backdrop-saturate-150 [transform:translateZ(0)] [will-change:transform] max-sm:flex-col max-sm:items-start max-sm:gap-3 max-sm:p-4">
+        <header className="app-header sticky top-0 z-[2] flex min-h-[66px] items-center justify-between gap-4 border-b border-[#e4e4e7] px-6 backdrop-blur-md backdrop-saturate-150 [transform:translateZ(0)] [will-change:transform] max-[1366px]:px-4 max-[1180px]:flex-wrap max-sm:items-start max-sm:gap-3 max-sm:p-4">
           <div className="min-w-0">
             <span className="block text-[12px] font-medium text-[#666666]">VietMed Kỹ Thuật</span>
             <strong className="block text-[18px] leading-tight text-[#1f1f1f]">{pageTitle}</strong>
           </div>
-          <div className="flex items-center gap-2.5 max-sm:w-full max-sm:flex-wrap">
+          <div className="flex min-w-0 items-center justify-end gap-2.5 max-[1180px]:w-full max-[1180px]:flex-wrap max-[1180px]:justify-start max-sm:w-full">
             {role === 'admin' || role === 'engineer' ? (
               <Link
                 className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg bg-[#18212f] px-3.5 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(24,24,27,0.14)] transition hover:-translate-y-px hover:bg-[#18181b]"
@@ -962,4 +962,9 @@ function formatNotificationDate(value: string) {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(date);
+}
+
+function navItemMatchesPath(item: NavItem, pathname: string) {
+  const paths = item.matchPaths?.length ? item.matchPaths : [item.path];
+  return paths.some((path) => (path === '/' ? pathname === '/' : pathname.startsWith(path)));
 }

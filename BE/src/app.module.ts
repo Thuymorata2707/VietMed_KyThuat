@@ -15,6 +15,7 @@ import { DailyWorkNotesModule } from './daily-work-notes/daily-work-notes.module
 import { DailyReportsModule } from './daily-reports/daily-reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DemoLoansModule } from './demo-loans/demo-loans.module';
+import { DeviceServiceTicketsModule } from './device-service-tickets/device-service-tickets.module';
 import { EngineerProfilesModule } from './engineer-profiles/engineer-profiles.module';
 import { InventoryMovementsModule } from './inventory-movements/inventory-movements.module';
 import { InstallationsModule } from './installations/installations.module';
@@ -57,6 +58,7 @@ import { WorkOperationsModule } from './work-operations/work-operations.module';
     MachinesModule,
     DashboardModule,
     DemoLoansModule,
+    DeviceServiceTicketsModule,
     RepairsModule,
     EngineerProfilesModule,
     MaintenanceModule,

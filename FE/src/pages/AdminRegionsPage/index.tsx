@@ -256,7 +256,6 @@ export function AdminRegionsPage() {
         {!loading && filteredRegions.length === 0 ? (
           <div className="table-state empty-state">
             <strong>Không có khu vực phù hợp</strong>
-            <span>Thử đổi từ khóa tìm kiếm hoặc tạo khu vực mới.</span>
           </div>
         ) : null}
         <TablePager

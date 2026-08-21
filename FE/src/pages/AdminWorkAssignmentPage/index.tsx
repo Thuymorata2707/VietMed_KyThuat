@@ -558,7 +558,6 @@ export function AdminWorkAssignmentPage() {
               <div className="grid min-h-52 place-items-center gap-2 p-8 text-center text-[#666666]">
                 <UserCheck size={22} />
                 <strong className="text-[#1f1f1f]">Không có công việc phù hợp</strong>
-                <span className="text-sm">Thử đổi bộ lọc hoặc làm mới dữ liệu.</span>
               </div>
             ) : null}
 
@@ -567,7 +566,6 @@ export function AdminWorkAssignmentPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2 bg-[#fafafa] px-4 py-3">
                   <div>
                     <h3 className="text-sm font-semibold text-[#1f1f1f]">{group.title}</h3>
-                    <p className="mt-0.5 text-[11px] leading-4 text-[#9aa2ad]">{group.description}</p>
                   </div>
                   <span className="rounded-lg border border-[#e4e4e7] bg-white px-2.5 py-1 text-xs font-semibold text-[#18181b]">{group.items.length} việc</span>
                 </div>

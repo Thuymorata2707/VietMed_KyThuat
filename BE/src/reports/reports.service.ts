@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import {
   customerAccessWhere,
   demoLoanAccessWhere,
+  deviceServiceTicketAccessWhere,
   installationAccessWhere,
   maintenanceAccessWhere,
   repairAccessWhere,
@@ -148,6 +149,7 @@ export class ReportsService {
     const [
       installations,
       repairs,
+      deviceServiceTickets,
       maintenances,
       demos,
       supportCases,
@@ -174,6 +176,17 @@ export class ReportsService {
         },
         orderBy: { reportedAt: 'desc' },
         select: this.repairWorkSelect(),
+      }),
+      this.prisma.deviceServiceTicket.findMany({
+        where: {
+          AND: [
+            deviceServiceTicketAccessWhere(user),
+            { receivedAt: { gte: period.start, lt: period.end } },
+            engineerId ? { engineerId } : {},
+          ],
+        },
+        orderBy: { receivedAt: 'desc' },
+        select: this.deviceServiceTicketWorkSelect(),
       }),
       this.prisma.maintenance.findMany({
         where: {
@@ -214,6 +227,9 @@ export class ReportsService {
     const allRows = [
       ...installations.map((item) => this.installationToWorkRow(item)),
       ...repairs.map((item) => this.repairToWorkRow(item)),
+      ...deviceServiceTickets.map((item) =>
+        this.deviceServiceTicketToWorkRow(item),
+      ),
       ...maintenances.map((item) => this.maintenanceToWorkRow(item)),
       ...demos.map((item) => this.demoLoanToWorkRow(item)),
       ...supportCases.map((item) => this.applicationSupportToWorkRow(item)),
@@ -1065,6 +1081,51 @@ export class ReportsService {
     } satisfies Prisma.RepairSelect;
   }
 
+  private deviceServiceTicketWorkSelect() {
+    return {
+      id: true,
+      receiveCode: true,
+      returnCode: true,
+      status: true,
+      receivedAt: true,
+      returnedAt: true,
+      engineerId: true,
+      engineer: { select: { id: true, email: true, fullName: true } },
+      customerId: true,
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          shortName: true,
+          province: true,
+          region: { select: { name: true } },
+        },
+      },
+      machineId: true,
+      machine: {
+        select: {
+          id: true,
+          machineCode: true,
+          serialNumber: true,
+          modelName: true,
+          machineModelId: true,
+          machineModel: {
+            select: { id: true, name: true, displayName: true, code: true },
+          },
+          customer: {
+            select: { id: true, name: true, shortName: true, province: true },
+          },
+        },
+      },
+      deviceName: true,
+      modelName: true,
+      serialNumber: true,
+      repairMethod: true,
+      resultNote: true,
+      preliminaryCause: true,
+    } satisfies Prisma.DeviceServiceTicketSelect;
+  }
+
   private maintenanceWorkSelect() {
     return {
       id: true,
@@ -1256,6 +1317,50 @@ export class ReportsService {
       machineCode: item.machine?.machineCode || '-',
       serialNumber: item.machine?.serialNumber || item.serialNumber || '-',
       note: item.repairMethod || item.resultNote || item.description,
+    };
+  }
+
+  private deviceServiceTicketToWorkRow(
+    item: Prisma.DeviceServiceTicketGetPayload<{
+      select: ReturnType<ReportsService['deviceServiceTicketWorkSelect']>;
+    }>,
+  ): WorkReportRow {
+    return {
+      id: item.id,
+      code: item.returnCode || item.receiveCode,
+      kind: 'repair',
+      title:
+        item.status === 'RETURNED'
+          ? 'Trả thiết bị sau sửa'
+          : 'Nhận thiết bị sửa chữa',
+      status: item.status,
+      date: item.receivedAt,
+      completedAt: item.returnedAt,
+      engineerId: item.engineerId,
+      engineer: this.personName(item.engineer?.fullName, item.engineer?.email),
+      customerId: item.customerId || item.machine?.customer?.id || null,
+      customer:
+        item.customer?.shortName ||
+        item.customer?.name ||
+        item.machine?.customer?.shortName ||
+        item.machine?.customer?.name ||
+        'Chưa có khách hàng',
+      province:
+        item.customer?.province ||
+        item.machine?.customer?.province ||
+        'Chưa có tỉnh',
+      machineId: item.machineId,
+      machineModelId: item.machine?.machineModelId || null,
+      model:
+        item.machine?.machineModel?.displayName ||
+        item.machine?.machineModel?.name ||
+        item.machine?.modelName ||
+        item.modelName ||
+        item.deviceName ||
+        'Chưa có model',
+      machineCode: item.machine?.machineCode || '-',
+      serialNumber: item.machine?.serialNumber || item.serialNumber || '-',
+      note: item.resultNote || item.repairMethod || item.preliminaryCause,
     };
   }
 

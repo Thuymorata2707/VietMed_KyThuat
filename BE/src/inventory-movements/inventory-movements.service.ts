@@ -183,6 +183,12 @@ export class InventoryMovementsService {
         'machineId, type and toStatus are required',
       );
     }
+
+    if (dto.type === InventoryMovementType.SELL) {
+      throw new BadRequestException(
+        'Bán máy cho khách phải tạo phiếu lắp đặt.',
+      );
+    }
   }
 
   private async ensureMachineCanMove(

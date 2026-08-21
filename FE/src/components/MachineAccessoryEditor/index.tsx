@@ -1,4 +1,5 @@
 import { Plus, ScanLine, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { endoscopyAccessoriesWithModel, endoscopyAccessoryOptions } from '../../config/endoscopyAccessories';
 import { ultrasoundProbeOptions } from '../../config/ultrasoundProbes';
 import { MachineAccessoryFormItem, makeProbeAccessory, parseMachineAccessoriesInput } from '../../utils/machineAccessories';
@@ -14,7 +15,13 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
   const items = parseMachineAccessoriesInput(value, [], { keepBlank: true });
   const isEndoscopy = mode === 'endoscopy';
   const isProbe = mode === 'probe';
-  const fieldClass = 'h-11 w-full min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
+  const [accessorySearch, setAccessorySearch] = useState('');
+  const visibleEndoscopyOptions = useMemo(() => {
+    const keyword = accessorySearch.trim().toLowerCase();
+    if (!keyword) return endoscopyAccessoryOptions;
+    return endoscopyAccessoryOptions.filter((option) => option.label.toLowerCase().includes(keyword));
+  }, [accessorySearch]);
+  const fieldClass = 'h-11 w-full min-w-0 rounded-xl border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]';
   const labelClass = 'grid w-full min-w-0 gap-2 text-sm font-medium text-[#333333]';
 
   function setItems(nextItems: MachineAccessoryFormItem[]) {
@@ -46,11 +53,25 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
       setItems(items.filter((item) => (item.name || item.code) !== name));
       return;
     }
-    setItems([...items.filter((item) => item.name), { code: name, name, serialNumber: '', description: '' }]);
+    setItems([...items.filter((item) => item.name), { code: name, name, quantity: isCoreEndoscopyAccessory(name) ? undefined : 1, serialNumber: '', description: '' }]);
+  }
+
+  function setAllEndoscopyAccessories(checked: boolean) {
+    const optionNames = new Set<string>(endoscopyAccessoryOptions.map((option) => option.value));
+    if (!checked) {
+      setItems(items.filter((item) => !optionNames.has(item.name || item.code || '')));
+      return;
+    }
+
+    const existingNames = new Set(items.map((item) => item.name || item.code).filter(Boolean));
+    const missingItems = endoscopyAccessoryOptions
+      .filter((option) => !existingNames.has(option.value))
+      .map((option) => ({ code: option.value, name: option.value, quantity: isCoreEndoscopyAccessory(option.value) ? undefined : 1, serialNumber: '', description: '' }));
+    setItems([...items.filter((item) => item.name), ...missingItems]);
   }
 
   return (
-    <div className={`${compact ? 'machine-accessory-editor compact' : 'machine-accessory-editor'} grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fafafa] p-4`}>
+    <div className={`${compact ? 'machine-accessory-editor compact' : 'machine-accessory-editor'} grid gap-3 rounded-2xl border border-[#dbe5ef] bg-[#fafafa] p-4`}>
       <div className="machine-accessory-header flex flex-wrap items-center justify-between gap-3">
         <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#333333]">
           <ScanLine size={17} className="text-[#18181b]" />
@@ -58,15 +79,31 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
         </span>
         <button className="secondary-button compact" onClick={addItem} type="button">
           <Plus size={16} />
-          {isProbe ? 'Add probe' : 'Add accessory'}
+          Thêm
         </button>
       </div>
 
       {isEndoscopy ? (
         <div className="grid gap-2 rounded-lg border border-[#eeeeee] bg-white p-3">
-          <span className="text-xs font-semibold text-[#666666]">Checklist nội soi tiêu hóa</span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-[#666666]">Checklist nội soi</span>
+            <div className="flex flex-wrap gap-2">
+              <button className="secondary-button compact" onClick={() => setAllEndoscopyAccessories(true)} type="button">
+                Chọn tất cả
+              </button>
+              <button className="secondary-button compact" onClick={() => setAllEndoscopyAccessories(false)} type="button">
+                Bỏ chọn
+              </button>
+            </div>
+          </div>
+          <input
+            className="h-10 rounded-xl border border-[#d6d6d6] bg-[#fafafa] px-3 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_3px_rgba(24,24,27,0.10)]"
+            onChange={(event) => setAccessorySearch(event.target.value)}
+            placeholder="Tìm phụ kiện"
+            value={accessorySearch}
+          />
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {endoscopyAccessoryOptions.map((option) => {
+            {visibleEndoscopyOptions.map((option) => {
               const checked = items.some((item) => (item.name || item.code) === option.value);
               return (
                 <label className="flex min-h-9 items-center gap-2 rounded-lg border border-[#eeeeee] bg-[#fafafa] px-3 py-2 text-sm font-medium text-[#333333]" key={option.value}>
@@ -83,12 +120,17 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
         {items.map((item, index) => {
           const accessoryName = item.name || item.code || '';
           const hasModelField = isEndoscopy && endoscopyAccessoriesWithModel.has(accessoryName);
+          const hasQuantityField = !isProbe && !isCoreEndoscopyAccessory(accessoryName);
           const fieldsClass = hasModelField
-            ? 'grid w-full min-w-0 gap-3 md:grid-cols-3'
-            : 'grid w-full min-w-0 gap-3 md:grid-cols-2';
+            ? hasQuantityField
+              ? 'grid w-full min-w-0 gap-3 md:grid-cols-4'
+              : 'grid w-full min-w-0 gap-3 md:grid-cols-3'
+            : hasQuantityField
+              ? 'grid w-full min-w-0 gap-3 md:grid-cols-3'
+              : 'grid w-full min-w-0 gap-3 md:grid-cols-2';
 
           return (
-            <div className="machine-accessory-row grid w-full min-w-0 gap-3 rounded-lg border border-[#eeeeee] bg-white p-3" key={`${item.id ?? 'new'}-${index}`}>
+            <div className="machine-accessory-row grid w-full min-w-0 gap-3 rounded-2xl border border-[#eeeeee] bg-white p-3" key={`${item.id ?? 'new'}-${index}`}>
               <div className={fieldsClass}>
                 <label className={labelClass}>
                   {isEndoscopy ? 'Tên phụ kiện' : isProbe ? 'Ký hiệu đầu dò' : 'Tên phụ kiện'}
@@ -112,11 +154,26 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
                   </label>
                 ) : null}
                 <label className={labelClass}>
-                  {isProbe ? 'S/N đầu dò (nếu có)' : 'Serial phụ kiện (nếu có)'}
+                  Serial
                   <input className={fieldClass} onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
                 </label>
+                {hasQuantityField ? (
+                  <label className={labelClass}>
+                    Số lượng
+                    <input className={fieldClass} min={1} onChange={(event) => updateItem(index, { quantity: Number(event.target.value) || 1 })} type="number" value={item.quantity ?? 1} />
+                  </label>
+                ) : null}
               </div>
-              <button className="icon-button danger justify-self-start" onClick={() => removeItem(index)} title={isEndoscopy ? 'Delete accessory' : 'Delete probe'} type="button">
+              {!isProbe ? (
+                <details className="rounded-xl border border-[#eef0f3] bg-[#fafafa] px-3 py-2 text-sm text-[#475569] md:col-span-2">
+                  <summary className="cursor-pointer font-semibold text-[#334155]">Thông tin thêm</summary>
+                  <label className={`${labelClass} mt-3`}>
+                    Ghi chú
+                    <input className={fieldClass} onChange={(event) => updateItem(index, { description: event.target.value })} value={item.description || ''} />
+                  </label>
+                </details>
+              ) : null}
+              <button className="icon-button danger justify-self-start" onClick={() => removeItem(index)} title="Xóa phụ kiện" type="button">
                 <Trash2 size={16} />
               </button>
             </div>
@@ -125,14 +182,14 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
       </div>
 
       {!items.length ? (
-        <div className="machine-accessory-empty rounded-lg border border-dashed border-[#d6d6d6] bg-white px-4 py-5 text-sm leading-6 text-[#666666]">
-          {isEndoscopy
-            ? 'Tích các phụ kiện có trong checklist hoặc bấm thêm phụ kiện khác nếu checklist chưa có.'
-            : isProbe
-              ? 'Mỗi máy siêu âm thường có khoảng 6 đầu dò. Bấm thêm đầu dò để nhập ký hiệu và S/N thực tế.'
-              : 'Bấm thêm phụ kiện để nhập tên và serial nếu có. Không có serial thì để trống.'}
+        <div className="machine-accessory-empty rounded-xl border border-dashed border-[#d6d6d6] bg-white px-4 py-4 text-sm leading-6 text-[#666666]">
+          Chưa có phụ kiện.
         </div>
       ) : null}
     </div>
   );
+}
+
+function isCoreEndoscopyAccessory(name: string) {
+  return name === 'Bộ xử lý' || name === 'Nguồn sáng' || name === 'Màn hình';
 }

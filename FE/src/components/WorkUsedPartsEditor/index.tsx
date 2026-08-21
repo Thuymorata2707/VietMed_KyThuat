@@ -39,7 +39,6 @@ export function WorkUsedPartsEditor({
   accessories,
   items,
   loading = false,
-  modelLabel,
   modelSelected,
   onChange,
 }: WorkUsedPartsEditorProps) {
@@ -85,11 +84,7 @@ export function WorkUsedPartsEditor({
         <div>
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-[#18181b]">Phụ kiện thay thế</span>
           <h2 className="mt-1 text-lg font-bold leading-tight text-[#1f1f1f]">Phụ kiện phát sinh theo model máy</h2>
-          <p className="mt-1 text-xs font-medium leading-5 text-[#8a8f99]">
-            {modelSelected
-              ? `${modelLabel ? `Đang khóa theo ${modelLabel}. ` : ''}${accessories.length} phụ kiện có thể chọn`
-              : 'Chọn máy để tải phụ kiện phù hợp.'}
-          </p>
+          {modelSelected ? <span className="mt-1 block text-xs font-medium leading-5 text-[#8a8f99]">{accessories.length} phụ kiện</span> : null}
         </div>
         <button className="secondary-button compact" onClick={addItem} type="button">
           <Plus size={15} />

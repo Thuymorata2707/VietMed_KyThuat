@@ -248,7 +248,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
                   Chuyên môn
                   <textarea
                     onChange={(event) => updateField('specialties', event.target.value)}
-                    placeholder="Mỗi dòng là một chuyên môn, ví dụ: Siêu âm, X-quang, Huyết học"
+                    placeholder="Chuyên môn"
                     value={form.specialties}
                   />
                 </label>

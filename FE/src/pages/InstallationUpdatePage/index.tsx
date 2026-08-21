@@ -528,7 +528,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                       <textarea
                         className={`${textareaClass} min-h-28`}
                         onChange={(event) => setMachineAccessoriesText(event.target.value)}
-                        placeholder="Mỗi dòng: Phụ kiện | S/N"
+                        placeholder="Phụ kiện | S/N"
                         value={machineAccessoriesText}
                       />
                     </label>

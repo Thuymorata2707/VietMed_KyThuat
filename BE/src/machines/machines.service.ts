@@ -1025,6 +1025,7 @@ export class MachinesService {
         componentAccessoryId: componentAccessory?.id ?? null,
         code: accessory.code?.trim() || componentAccessory?.code || null,
         name,
+        quantity: Math.max(1, Number(accessory.quantity ?? componentAccessory?.quantity ?? 1) || 1),
         serialNumber,
         description: accessory.description?.trim() || null,
         note: accessory.note?.trim() || null,
@@ -1135,6 +1136,10 @@ export class MachinesService {
               ? componentAccessory?.code
               : accessory.code?.trim() || null,
           name: nextName,
+          quantity:
+            accessory.quantity === undefined
+              ? undefined
+              : Math.max(1, Number(accessory.quantity ?? 1) || 1),
           serialNumber: nextSerialNumber,
           description:
             accessory.description === undefined
@@ -1161,6 +1166,7 @@ export class MachinesService {
         componentAccessoryId: true,
         code: true,
         name: true,
+        quantity: true,
         serialNumber: true,
         description: true,
         note: true,

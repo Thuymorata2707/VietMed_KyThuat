@@ -36,6 +36,12 @@ enum DemoLoanStatus {
   CANCELLED
 }
 
+enum DeviceServiceTicketStatus {
+  RECEIVED
+  RETURNED
+  CANCELLED
+}
+
 enum OperationalDataStatus {
   PENDING_REVIEW
   VERIFIED
@@ -191,6 +197,7 @@ enum DailyWorkType {
   WORK
   BUSINESS_TRIP
   LEAVE
+  UNPAID_LEAVE
   REPAIR
   INSTALLATION
   MAINTENANCE
@@ -322,37 +329,39 @@ model User {
   regionId String
   region   Region @relation(fields: [regionId], references: [id])
 
-  assignedRepairs           Repair[]                   @relation("RepairEngineer")
-  createdRepairs            Repair[]                   @relation("RepairCreatedBy")
-  reviewedRepairs           Repair[]                   @relation("RepairReviewer")
-  maintenances              Maintenance[]
-  reviewedMaintenances      Maintenance[]              @relation("MaintenanceReviewer")
-  installedMachines         Machine[]                  @relation("MachineInstalledBy")
-  machineInstallations      MachineInstallation[]      @relation("MachineInstallationEngineer")
-  reviewedInstallations     MachineInstallation[]      @relation("InstallationReviewer")
-  demoLoans                 DemoLoan[]                 @relation("DemoLoanEngineer")
-  issuedWarrantyCards       WarrantyCard[]             @relation("WarrantyCardIssuedBy")
-  responsibleMachines       Machine[]                  @relation("MachinePrimaryEngineer")
-  inventoryMovements        MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
-  receivedNotifications     Notification[]             @relation("NotificationRecipient")
-  sentNotifications         Notification[]             @relation("NotificationSender")
-  managedBusinessLines      BusinessLine[]             @relation("BusinessLineManager")
-  auditLogs                 AuditLog[]                 @relation("AuditLogActor")
-  uploadedAttachments       Attachment[]               @relation("AttachmentUploadedBy")
-  engineerProfile           EngineerProfile?
-  dailyWorkNotes            DailyWorkNote[]            @relation("DailyWorkNoteUser")
-  reviewedDailyWorkNotes    DailyWorkNote[]            @relation("DailyWorkNoteReviewer")
-  dailyReports              DailyReport[]              @relation("DailyReportUser")
-  reviewedDailyReports      DailyReport[]              @relation("DailyReportReviewer")
-  weeklyReports             WeeklyReport[]             @relation("WeeklyReportUser")
-  reviewedWeeklyReports     WeeklyReport[]             @relation("WeeklyReportReviewer")
-  primaryCustomers          Customer[]                 @relation("CustomerPrimaryEngineer")
-  createdKnowledgeArticles  KnowledgeArticle[]         @relation("KnowledgeArticleCreatedBy")
-  updatedKnowledgeArticles  KnowledgeArticle[]         @relation("KnowledgeArticleUpdatedBy")
-  createdWorkLogs           WorkLog[]                  @relation("WorkLogCreatedBy")
-  createdUsedParts          UsedPart[]                 @relation("UsedPartCreatedBy")
-  updatedTaskChecklistItems TaskChecklistItem[]        @relation("TaskChecklistUpdatedBy")
-  applicationSupportCases   ApplicationSupportCase[]   @relation("ApplicationSupportEngineer")
+  assignedRepairs             Repair[]                   @relation("RepairEngineer")
+  createdRepairs              Repair[]                   @relation("RepairCreatedBy")
+  reviewedRepairs             Repair[]                   @relation("RepairReviewer")
+  maintenances                Maintenance[]
+  reviewedMaintenances        Maintenance[]              @relation("MaintenanceReviewer")
+  installedMachines           Machine[]                  @relation("MachineInstalledBy")
+  machineInstallations        MachineInstallation[]      @relation("MachineInstallationEngineer")
+  reviewedInstallations       MachineInstallation[]      @relation("InstallationReviewer")
+  demoLoans                   DemoLoan[]                 @relation("DemoLoanEngineer")
+  issuedWarrantyCards         WarrantyCard[]             @relation("WarrantyCardIssuedBy")
+  responsibleMachines         Machine[]                  @relation("MachinePrimaryEngineer")
+  inventoryMovements          MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
+  receivedNotifications       Notification[]             @relation("NotificationRecipient")
+  sentNotifications           Notification[]             @relation("NotificationSender")
+  managedBusinessLines        BusinessLine[]             @relation("BusinessLineManager")
+  auditLogs                   AuditLog[]                 @relation("AuditLogActor")
+  uploadedAttachments         Attachment[]               @relation("AttachmentUploadedBy")
+  engineerProfile             EngineerProfile?
+  dailyWorkNotes              DailyWorkNote[]            @relation("DailyWorkNoteUser")
+  reviewedDailyWorkNotes      DailyWorkNote[]            @relation("DailyWorkNoteReviewer")
+  dailyReports                DailyReport[]              @relation("DailyReportUser")
+  reviewedDailyReports        DailyReport[]              @relation("DailyReportReviewer")
+  weeklyReports               WeeklyReport[]             @relation("WeeklyReportUser")
+  reviewedWeeklyReports       WeeklyReport[]             @relation("WeeklyReportReviewer")
+  primaryCustomers            Customer[]                 @relation("CustomerPrimaryEngineer")
+  createdKnowledgeArticles    KnowledgeArticle[]         @relation("KnowledgeArticleCreatedBy")
+  updatedKnowledgeArticles    KnowledgeArticle[]         @relation("KnowledgeArticleUpdatedBy")
+  createdWorkLogs             WorkLog[]                  @relation("WorkLogCreatedBy")
+  createdUsedParts            UsedPart[]                 @relation("UsedPartCreatedBy")
+  updatedTaskChecklistItems   TaskChecklistItem[]        @relation("TaskChecklistUpdatedBy")
+  applicationSupportCases     ApplicationSupportCase[]   @relation("ApplicationSupportEngineer")
+  deviceServiceTickets        DeviceServiceTicket[]
+  createdDeviceServiceTickets DeviceServiceTicket[]      @relation("DeviceServiceTicketCreatedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -616,6 +625,7 @@ model Customer {
   warrantyCards           WarrantyCard[]
   repairs                 Repair[]
   maintenances            Maintenance[]
+  deviceServiceTickets    DeviceServiceTicket[]
   applicationSupportCases ApplicationSupportCase[]
 
   createdAt DateTime @default(now())
@@ -785,6 +795,7 @@ model Machine {
 
   repairs                 Repair[]
   maintenances            Maintenance[]
+  deviceServiceTickets    DeviceServiceTicket[]
   inventoryMovements      MachineInventoryMovement[]
   installations           MachineInstallation[]
   demoLoans               DemoLoan[]
@@ -840,6 +851,60 @@ model DemoLoan {
   @@index([returnedAt])
 }
 
+model DeviceServiceTicket {
+  id String @id @default(cuid())
+
+  receiveCode String                    @unique
+  returnCode  String?                   @unique
+  status      DeviceServiceTicketStatus @default(RECEIVED)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  engineerId String?
+  engineer   User?   @relation(fields: [engineerId], references: [id], onDelete: SetNull)
+
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
+
+  receivedAt DateTime  @default(now())
+  returnedAt DateTime?
+
+  usingDepartment        String?
+  representative         String?
+  representativePosition String?
+  contactPhone           String?
+  address                String?
+  deviceName             String?
+  modelName              String?
+  serialNumber           String?
+  warrantyStatus         String?
+  warrantyTerm           String?
+  receivedCondition      String? @db.Text
+  receivedAccessories    String? @db.Text
+  preliminaryCause       String? @db.Text
+  repairMethod           String? @db.Text
+  repairCostItems        String? @db.Text
+  resultNote             String? @db.Text
+  returnCondition        String? @db.Text
+  totalRepairCost        String?
+  repairCostInWords      String?
+  note                   String? @db.Text
+
+  createdById String?
+  createdBy   User?   @relation("DeviceServiceTicketCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([customerId])
+  @@index([engineerId])
+  @@index([machineId])
+  @@index([receivedAt])
+  @@index([returnedAt])
+}
+
 model MachineAccessory {
   id String @id @default(cuid())
 
@@ -851,6 +916,7 @@ model MachineAccessory {
 
   code         String?
   name         String
+  quantity     Int     @default(1)
   serialNumber String? @unique
   description  String?
   note         String?

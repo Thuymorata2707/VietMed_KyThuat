@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Loader2, PackageSearch, RefreshCw, Wrench } from 'lucide-react';
+import { AlertTriangle, Boxes, CheckCircle2, ClipboardCheck, Database, Layers3, Loader2, PackageSearch, RefreshCw, Route, Users, Wrench } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -81,10 +81,21 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
   const assignedRepairs = count(summary?.repairStatusCounts, 'ASSIGNED');
   const inProgressRepairs = count(summary?.repairStatusCounts, 'IN_PROGRESS');
   const waitingPartsRepairs = count(summary?.repairStatusCounts, 'WAITING_PARTS');
+  const completedRepairs = count(summary?.repairStatusCounts, 'COMPLETED');
   const overdueMaintenances = count(summary?.maintenanceStatusCounts, 'OVERDUE');
   const scheduledMaintenances = count(summary?.maintenanceStatusCounts, 'SCHEDULED');
   const assignedMaintenances = count(summary?.maintenanceStatusCounts, 'ASSIGNED');
   const inProgressMaintenances = count(summary?.maintenanceStatusCounts, 'IN_PROGRESS');
+  const completedMaintenances = count(summary?.maintenanceStatusCounts, 'COMPLETED');
+  const inStockMachines = count(summary?.machineInventoryStatusCounts, 'IN_STOCK');
+  const installedMachines = count(summary?.machineInventoryStatusCounts, 'INSTALLED');
+  const reservedMachines = count(summary?.machineInventoryStatusCounts, 'RESERVED');
+  const soldMachines = count(summary?.machineInventoryStatusCounts, 'SOLD');
+  const accessorySplitMachines = count(summary?.machineInventoryStatusCounts, 'ACCESSORY_SPLIT');
+  const activeCustomers = count(summary?.customerStatusCounts, 'ACTIVE');
+  const potentialCustomers = count(summary?.customerStatusCounts, 'POTENTIAL');
+  const inactiveCustomers = count(summary?.customerStatusCounts, 'INACTIVE');
+  const blacklistedCustomers = count(summary?.customerStatusCounts, 'BLACKLISTED');
   const openTicketsWithoutMachine = summary?.openTicketsWithoutMachine ?? 0;
   const returnedMachines = summary?.returnedMachines ?? 0;
   const returnedRepairingMachines = summary?.returnedRepairingMachines ?? 0;
@@ -103,6 +114,14 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     { label: 'Đợi linh kiện', value: waitingPartsRepairs, tone: waitingPartsRepairs > 0 ? ('warn' as const) : ('good' as const) },
     { label: 'Bảo trì sắp tới', value: summary?.upcomingMaintenances ?? scheduledMaintenances, tone: 'good' as const },
     { label: 'Quá hạn', value: overdueMaintenances, tone: overdueMaintenances > 0 ? ('danger' as const) : ('good' as const) },
+  ];
+
+  const serviceFlow = [
+    { label: 'Chờ nhận', value: pendingRepairs + scheduledMaintenances, tone: pendingRepairs + scheduledMaintenances > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Đã giao việc', value: assignedRepairs + assignedMaintenances, tone: 'neutral' as const },
+    { label: 'Đang xử lý', value: inProgressRepairs + inProgressMaintenances, tone: 'neutral' as const },
+    { label: 'Đợi vật tư', value: waitingPartsRepairs + returnedRepairingMachines, tone: waitingPartsRepairs + returnedRepairingMachines > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Hoàn tất', value: completedRepairs + completedMaintenances, tone: 'good' as const },
   ];
 
   const machineQueues = [
@@ -228,6 +247,70 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
       percent: missingDataCount > 0 ? Math.min(100, Math.max(16, missingDataCount * 12)) : 0,
     },
   ];
+  const departmentMetrics = [
+    {
+      label: 'Khách hàng',
+      value: summary?.totalCustomers ?? 0,
+      icon: <Users size={18} />,
+      tone: 'neutral' as const,
+      to: canOpenReports ? '/customers' : '/my-customers',
+    },
+    {
+      label: 'Máy quản lý',
+      value: totalMachines,
+      icon: <Boxes size={18} />,
+      tone: availabilityRate >= 80 ? ('good' as const) : ('warn' as const),
+      to: '/technical-machines',
+    },
+    {
+      label: 'Nhân sự',
+      value: summary?.totalUsers ?? 0,
+      icon: <Users size={18} />,
+      tone: 'neutral' as const,
+      to: isAdmin ? '/users' : '/daily-work',
+    },
+    {
+      label: 'Ngành hàng',
+      value: summary?.totalBusinessLines ?? 0,
+      icon: <Layers3 size={18} />,
+      tone: 'neutral' as const,
+      to: '/product-catalog',
+    },
+    {
+      label: 'Máy đã xác nhận',
+      value: summary?.verifiedMachines ?? 0,
+      icon: <CheckCircle2 size={18} />,
+      tone: 'good' as const,
+      to: '/technical-machines',
+    },
+    {
+      label: 'Chờ bổ sung',
+      value: (summary?.unverifiedMachines ?? 0) + (summary?.pendingReviewMachines ?? 0),
+      icon: <Database size={18} />,
+      tone: (summary?.unverifiedMachines ?? 0) + (summary?.pendingReviewMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const),
+      to: '/technical-machines',
+    },
+  ];
+  const inventoryRows = [
+    { label: 'Trong kho', value: inStockMachines, tone: 'good' as const },
+    { label: 'Đã giao', value: installedMachines || installedMachineTotal, tone: 'neutral' as const },
+    { label: 'Đã giữ', value: reservedMachines, tone: 'warn' as const },
+    { label: 'Đã bán', value: soldMachines, tone: 'good' as const },
+    { label: 'Tách phụ kiện', value: accessorySplitMachines, tone: 'neutral' as const },
+    { label: 'Trả về', value: returnedMachines, tone: returnedMachines > 0 ? ('warn' as const) : ('good' as const) },
+  ];
+  const customerRows = [
+    { label: 'Đang chăm sóc', value: activeCustomers, tone: 'good' as const },
+    { label: 'Tiềm năng', value: potentialCustomers, tone: 'neutral' as const },
+    { label: 'Tạm ngưng', value: inactiveCustomers, tone: inactiveCustomers > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Hạn chế', value: blacklistedCustomers, tone: blacklistedCustomers > 0 ? ('danger' as const) : ('good' as const) },
+  ];
+  const dataRows = [
+    { label: 'Máy thiếu xác nhận', value: summary?.unverifiedMachines ?? 0, tone: (summary?.unverifiedMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Máy chờ duyệt', value: summary?.pendingReviewMachines ?? 0, tone: (summary?.pendingReviewMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Phiếu chưa gắn máy', value: openTicketsWithoutMachine, tone: openTicketsWithoutMachine > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Máy kỹ sư tạo', value: summary?.engineerCreatedMachines ?? 0, tone: 'neutral' as const },
+  ];
 
   return (
     <PageFrame>
@@ -322,6 +405,42 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
       </section>
 
       {error ? <Notice message={error} /> : null}
+
+      <section className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-white p-5 shadow-[0_14px_34px_rgba(24,24,27,0.06)]">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
+          <div>
+            <span className="text-[12px] font-semibold text-[#18181b]">Phòng điều hành kỹ thuật</span>
+            <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-[#1f1f1f]">Luồng việc, máy, khách hàng và dữ liệu nền</h2>
+          </div>
+          <Link
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[16px] border border-[#e4e4e7] bg-[#fafafa] px-3 text-sm font-bold text-[#333333] transition hover:border-[#18181b]/35 hover:bg-white"
+            to="/service-tickets"
+          >
+            Mở trung tâm phiếu
+            <Route size={16} />
+          </Link>
+        </div>
+
+        <ServiceFlowMap items={serviceFlow} loading={loading} />
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+          {departmentMetrics.map((item) => (
+            <DepartmentMetric key={item.label} loading={loading} {...item} />
+          ))}
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.92fr)]">
+          <BoardPanel eyebrow="Kho & máy" title="Phân bổ thiết bị">
+            <DistributionBars items={inventoryRows} loading={loading} />
+          </BoardPanel>
+          <BoardPanel eyebrow="Khách hàng" title="Trạng thái chăm sóc">
+            <DistributionBars items={customerRows} loading={loading} />
+          </BoardPanel>
+          <BoardPanel eyebrow="Dữ liệu" title="Cần làm sạch">
+            <DistributionBars items={dataRows} loading={loading} />
+          </BoardPanel>
+        </div>
+      </section>
 
       <section className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-[linear-gradient(145deg,#ffffff_0%,#fafafa_100%)] p-4 shadow-[0_18px_46px_rgba(24,24,27,0.07)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f4e2e4] pb-4">
@@ -542,6 +661,109 @@ function BoardPanel({ eyebrow, title, children }: { eyebrow: string; title: stri
       </div>
       {children}
     </section>
+  );
+}
+
+function ServiceFlowMap({
+  items,
+  loading,
+}: {
+  items: Array<{ label: string; value: number; tone: Tone }>;
+  loading: boolean;
+}) {
+  const total = Math.max(1, items.reduce((sum, item) => sum + item.value, 0));
+
+  return (
+    <div className="rounded-[24px] border border-[#e4e4e7] bg-[#fafafa] p-4">
+      <div className="grid grid-cols-[repeat(5,minmax(128px,1fr))] gap-3 overflow-x-auto pb-1">
+        {items.map((item, index) => {
+          const style = toneClass(item.tone);
+          const width = loading ? 0 : Math.max(10, Math.round((item.value / total) * 100));
+
+          return (
+            <div className="relative min-w-[128px]" key={item.label}>
+              {index < items.length - 1 ? (
+                <span className="absolute left-[calc(100%-8px)] top-9 hidden h-px w-6 bg-[#d4d4d8] md:block" />
+              ) : null}
+              <div className={`grid min-h-[118px] content-between rounded-[22px] border p-3 ${style.panel}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="grid h-9 w-9 place-items-center rounded-2xl bg-white/84 shadow-[0_1px_2px_rgba(24,24,27,0.05)]">
+                    <Route className={style.icon} size={17} />
+                  </span>
+                  <strong className={`text-3xl leading-none ${style.text}`}>{loading ? '-' : item.value}</strong>
+                </div>
+                <div>
+                  <span className="block text-sm font-black text-[#27272a]">{item.label}</span>
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/80">
+                    <span className={`block h-full rounded-full ${style.bar}`} style={{ width: `${width}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DepartmentMetric({
+  icon,
+  label,
+  value,
+  to,
+  tone,
+  loading,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number | string;
+  to: string;
+  tone: Tone;
+  loading: boolean;
+}) {
+  const style = toneClass(tone);
+
+  return (
+    <Link
+      className="grid min-h-[118px] content-between rounded-[22px] border border-[#e4e4e7] bg-[#ffffff] p-3.5 shadow-[0_8px_20px_rgba(24,24,27,0.05)] transition hover:-translate-y-px hover:border-[#18181b]/35 hover:shadow-[0_14px_30px_rgba(24,24,27,0.08)]"
+      to={to}
+    >
+      <span className={`grid h-10 w-10 place-items-center rounded-2xl ${style.panel}`}>{icon}</span>
+      <span>
+        <strong className="block text-3xl leading-none text-[#18181b]">{loading ? '-' : value}</strong>
+        <span className="mt-2 block text-sm font-bold text-[#52525b]">{label}</span>
+      </span>
+    </Link>
+  );
+}
+
+function DistributionBars({
+  items,
+  loading,
+}: {
+  items: Array<{ label: string; value: number; tone: Tone }>;
+  loading: boolean;
+}) {
+  const maxValue = Math.max(1, ...items.map((item) => item.value));
+
+  return (
+    <div className="grid gap-2.5">
+      {items.map((item) => {
+        const style = toneClass(item.tone);
+        const width = loading ? 0 : Math.max(item.value > 0 ? 8 : 0, Math.round((item.value / maxValue) * 100));
+
+        return (
+          <div className="grid grid-cols-[112px_minmax(0,1fr)_42px] items-center gap-3 text-sm max-sm:grid-cols-[1fr_42px]" key={item.label}>
+            <span className="font-semibold text-[#3f3f46] max-sm:col-span-1">{item.label}</span>
+            <div className="h-7 overflow-hidden rounded-full bg-[#f0f0f1] max-sm:order-3 max-sm:col-span-2">
+              <span className={`block h-full rounded-full ${style.bar}`} style={{ width: `${width}%` }} />
+            </div>
+            <strong className={`text-right ${style.text}`}>{loading ? '-' : item.value}</strong>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

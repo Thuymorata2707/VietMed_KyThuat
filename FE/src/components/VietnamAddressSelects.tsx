@@ -33,18 +33,20 @@ export function VietnamAddressSelects({
   fieldClassName,
   labelClassName,
   onChange,
+  showProvince = true,
   showStreet = true,
   value,
 }: {
   fieldClassName?: string;
   labelClassName?: string;
   onChange: (patch: AddressValue) => void;
+  showProvince?: boolean;
   showStreet?: boolean;
   value: AddressValue;
 }) {
   const { data, loading } = useVietnamAdministrativeUnits();
   const provinces = data.length ? data : fallbackProvinces;
-  const selectedProvince = provinces.find((province) => province.name === value.province) ?? null;
+  const selectedProvince = findProvinceByName(provinces, value.province);
   const districts = selectedProvince?.districts ?? [];
   const selectedDistrict = districts.find((district) => district.name === value.district) ?? null;
   const wards = selectedDistrict?.wards ?? [];
@@ -53,17 +55,19 @@ export function VietnamAddressSelects({
 
   return (
     <>
-      <label className={labelClass}>
-        Tỉnh/Thành
-        <select className={fieldClass} onChange={(event) => onChange({ district: '', province: event.target.value, ward: '' })} value={value.province ?? ''}>
-          <option value="">{loading ? 'Đang tải tỉnh/thành...' : 'Chọn tỉnh/thành'}</option>
-          {provinces.map((province) => (
-            <option key={String(province.code ?? province.name)} value={province.name}>
-              {province.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {showProvince ? (
+        <label className={labelClass}>
+          Tỉnh/Thành
+          <select className={fieldClass} onChange={(event) => onChange({ district: '', province: event.target.value, ward: '' })} value={selectedProvince?.name ?? value.province ?? ''}>
+            <option value="">{loading ? 'Đang tải tỉnh/thành...' : 'Chọn tỉnh/thành'}</option>
+            {provinces.map((province) => (
+              <option key={String(province.code ?? province.name)} value={province.name}>
+                {province.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
       <label className={labelClass}>
         Quận/Huyện
@@ -127,14 +131,13 @@ export function buildGoogleMapsDirectionsUrl(address: string) {
 }
 
 function useVietnamAdministrativeUnits() {
-  const [data, setData] = useState<VietnamProvince[]>(cachedAdministrativeUnits ?? []);
-  const [loading, setLoading] = useState(!cachedAdministrativeUnits);
+  const [data, setData] = useState<VietnamProvince[]>(cachedAdministrativeUnits ?? fallbackProvinces);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (cachedAdministrativeUnits) return;
 
     const controller = new AbortController();
-    setLoading(true);
 
     fetch(administrativeApiUrl, { signal: controller.signal })
       .then((response) => {
@@ -142,13 +145,13 @@ function useVietnamAdministrativeUnits() {
         return response.json() as Promise<VietnamProvince[]>;
       })
       .then((nextData) => {
+        if (!Array.isArray(nextData) || !nextData.length) return;
         cachedAdministrativeUnits = nextData;
         setData(nextData);
       })
       .catch(() => {
-        setData(fallbackProvinces);
-      })
-      .finally(() => setLoading(false));
+        setData((current) => (current.length ? current : fallbackProvinces));
+      });
 
     return () => controller.abort();
   }, []);
@@ -161,3 +164,20 @@ const fallbackProvinces: VietnamProvince[] = vietnamProvinceOptions.map((provinc
   name: province.name,
   districts: [],
 }));
+
+function findProvinceByName(provinces: VietnamProvince[], value?: string) {
+  const normalizedValue = normalizeProvinceName(value);
+  if (!normalizedValue) return null;
+
+  return provinces.find((province) => normalizeProvinceName(province.name) === normalizedValue) ?? null;
+}
+
+function normalizeProvinceName(value?: string) {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^(tinh|thanh pho)\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}

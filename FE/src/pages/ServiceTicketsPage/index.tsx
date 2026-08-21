@@ -16,7 +16,7 @@ import { hasDeleteRequestNote } from '../../utils/workDeleteRequests';
 
 type ServiceTicketKind = 'repairs' | 'maintenance';
 type BoardKind = ServiceTicketKind | 'installations';
-type TicketScope = BoardKind | 'demo';
+type TicketScope = BoardKind | 'demo' | 'device-service';
 type QueueKey = 'action' | 'active' | 'review' | 'closed' | 'all';
 type GroupByKey = 'date' | 'engineer' | 'industry' | 'customer';
 type WorkKind = 'installation' | 'repair' | 'maintenance' | 'demo' | 'applicationSupport';
@@ -54,6 +54,7 @@ type MachineSummary = {
     } | null;
   } | null;
   customer?: {
+    id?: string | null;
     name?: string | null;
     hospitalName?: string | null;
     province?: string | null;
@@ -70,6 +71,7 @@ type CustomerOption = {
   contactPerson?: string | null;
   contactPosition?: string | null;
   contactPhone?: string | null;
+  phone?: string | null;
 };
 
 type DemoLoanRow = {
@@ -102,6 +104,71 @@ type DemoReturnDraft = {
   loan: DemoLoanRow;
   note: string;
   occurredAt: string;
+};
+
+type DeviceServiceStatus = 'RECEIVED' | 'RETURNED' | 'CANCELLED';
+
+type DeviceServiceRow = {
+  id: string;
+  receiveCode: string;
+  returnCode?: string | null;
+  status: DeviceServiceStatus;
+  receivedAt: string;
+  returnedAt?: string | null;
+  usingDepartment?: string | null;
+  representative?: string | null;
+  representativePosition?: string | null;
+  contactPhone?: string | null;
+  address?: string | null;
+  deviceName?: string | null;
+  modelName?: string | null;
+  serialNumber?: string | null;
+  warrantyStatus?: string | null;
+  warrantyTerm?: string | null;
+  receivedCondition?: string | null;
+  receivedAccessories?: string | null;
+  preliminaryCause?: string | null;
+  repairMethod?: string | null;
+  repairCostItems?: string | null;
+  resultNote?: string | null;
+  returnCondition?: string | null;
+  totalRepairCost?: string | null;
+  repairCostInWords?: string | null;
+  note?: string | null;
+  engineer?: EngineerOption | null;
+  customer?: CustomerOption | null;
+  machine?: MachineSummary | null;
+};
+
+type DeviceReceiveForm = {
+  address: string;
+  contactPhone: string;
+  customerId: string;
+  deviceName: string;
+  engineerId: string;
+  machineId: string;
+  modelName: string;
+  preliminaryCause: string;
+  receivedAccessories: string;
+  receivedAt: string;
+  receivedCondition: string;
+  representative: string;
+  representativePosition: string;
+  serialNumber: string;
+  usingDepartment: string;
+  warrantyStatus: string;
+  warrantyTerm: string;
+};
+
+type DeviceReturnForm = {
+  repairCostInWords: string;
+  repairCostItems: string;
+  repairMethod: string;
+  resultNote: string;
+  returnCondition: string;
+  returnedAt: string;
+  ticket: DeviceServiceRow;
+  totalRepairCost: string;
 };
 
 type ServiceRow = {
@@ -234,7 +301,6 @@ type TicketPortalCard = {
   actionLabel: string;
   actionHref?: string;
   countKey: TicketScope;
-  description: string;
   disabled?: boolean;
   icon: ReactNode;
   label: string;
@@ -246,56 +312,41 @@ const serviceTicketOptions: TicketPortalCard[] = [
   {
     actionLabel: 'Xem sửa chữa',
     countKey: 'repairs',
-    description: 'Lỗi máy & linh kiện.',
     icon: <Wrench size={23} />,
     label: 'Sửa chữa',
-    meta: 'Lỗi máy, bảo hành',
+    meta: 'Sửa chữa',
     value: 'repairs',
   },
   {
-    actionLabel: 'Tạo phiếu nhận',
-    actionHref: '/service-tickets/create?kind=repair&template=receive-device&returnTo=/service-tickets',
-    countKey: 'repairs',
-    description: 'Tiếp nhận máy, phụ kiện.',
+    actionLabel: 'Mở nhận/trả',
+    countKey: 'device-service',
     icon: <Archive size={23} />,
-    label: 'Nhận thiết bị',
-    meta: 'PNTB',
-    value: 'repairs',
-  },
-  {
-    actionLabel: 'Mở phiếu trả',
-    countKey: 'repairs',
-    description: 'Kết quả & chi phí.',
-    icon: <Download size={23} />,
-    label: 'Trả thiết bị',
-    meta: 'PTTB',
-    value: 'repairs',
+    label: 'Nhận / trả thiết bị',
+    meta: 'PNTB, PTTB',
+    value: 'device-service',
   },
   {
     actionLabel: 'Xem bảo trì',
     countKey: 'maintenance',
-    description: 'Lịch & nghiệm thu.',
     icon: <ClipboardCheck size={23} />,
     label: 'Bảo trì',
-    meta: 'Lịch định kỳ',
+    meta: 'Bảo trì',
     value: 'maintenance',
   },
   {
     actionLabel: 'Xem lắp đặt',
     countKey: 'installations',
-    description: 'Bàn giao & bảo hành.',
     icon: <Stethoscope size={23} />,
     label: 'Lắp đặt',
-    meta: 'Bàn giao, bảo hành',
+    meta: 'Lắp đặt',
     value: 'installations',
   },
   {
     actionLabel: 'Xem demo',
     countKey: 'demo',
-    description: 'Bàn giao & thu hồi.',
     icon: <Archive size={23} />,
     label: 'Demo / dùng thử',
-    meta: 'Bàn giao máy demo',
+    meta: 'Demo',
     value: 'demo',
   },
 ];
@@ -323,7 +374,7 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
   const [reportTo, setReportTo] = useState(defaultRange.to);
   const overviewQuery = useTicketPortalOverview();
   const reportQuery = useTechnicalWorkRegister(reportFrom, reportTo, role !== 'engineer');
-  const overviewCounts = overviewQuery.data ?? { demo: 0, installations: 0, maintenance: 0, repairs: 0 };
+  const overviewCounts = overviewQuery.data ?? { demo: 0, installations: 0, maintenance: 0, repairs: 0, 'device-service': 0 };
   const loading = overviewQuery.isLoading || overviewQuery.isFetching;
   const error =
     (overviewQuery.error instanceof Error ? overviewQuery.error.message : '') ||
@@ -335,11 +386,7 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
         <TicketPortalHero loading={loading} onRefresh={() => void overviewQuery.refetch()} />
         {error ? <Notice message={error} /> : null}
         <TicketPortalSummary counts={overviewCounts} loading={loading} />
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {serviceTicketOptions.map((item) => (
-            <TicketPortalCardButton count={overviewCounts[item.countKey]} item={item} key={item.label} onSelect={setSelectedKind} />
-          ))}
-        </section>
+        <TicketPortalFlowBoard counts={overviewCounts} onSelect={setSelectedKind} />
         {role !== 'engineer' ? (
           <TechnicalWorkRegister
             from={reportFrom}
@@ -363,9 +410,16 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
     );
   }
 
+  if (selectedKind === 'device-service') {
+    return (
+      <PageFrame>
+        <DeviceServiceBoard onBack={() => setSelectedKind('')} user={user} />
+      </PageFrame>
+    );
+  }
+
   return (
     <OperationsBoard
-      description={ticketScopeDescription(selectedKind)}
       kind={selectedKind}
       onBack={() => setSelectedKind('')}
       reportHref={`/technical-statistics?workType=${selectedKind === 'maintenance' ? 'maintenance' : selectedKind === 'installations' ? 'installation' : 'repair'}&returnTo=/service-tickets`}
@@ -378,7 +432,6 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
 export function InstallationsPage({ user }: { user: ApiUser }) {
   return (
     <OperationsBoard
-      description="Lắp đặt & bảo hành."
       kind="installations"
       reportHref="/technical-statistics?workType=installation&returnTo=/installations"
       title="Kế hoạch lắp đặt"
@@ -391,11 +444,12 @@ function useTicketPortalOverview() {
   return useQuery({
     queryKey: queryKeys.serviceTickets.board('portal', 'overview'),
     queryFn: async () => {
-      const [repairsResult, maintenanceResult, installationsResult, demoResult] = await Promise.all([
+      const [repairsResult, maintenanceResult, installationsResult, demoResult, deviceServiceResult] = await Promise.all([
         apiFetch<Paginated<ServiceRow> | ServiceRow[]>('/repairs?limit=100'),
         apiFetch<Paginated<ServiceRow> | ServiceRow[]>('/maintenance?limit=100'),
         apiFetch<Paginated<InstallationRow> | InstallationRow[]>('/installations?limit=100'),
         apiFetch<Paginated<DemoLoanRow> | DemoLoanRow[]>('/demo-loans?limit=100'),
+        apiFetch<Paginated<DeviceServiceRow> | DeviceServiceRow[]>('/device-service-tickets?limit=100'),
       ]);
 
       return {
@@ -403,6 +457,7 @@ function useTicketPortalOverview() {
         maintenance: listCount(maintenanceResult),
         demo: listCount(demoResult),
         repairs: listCount(repairsResult),
+        'device-service': listCount(deviceServiceResult),
       } satisfies Record<TicketScope, number>;
     },
   });
@@ -427,9 +482,6 @@ function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh:
           <h1 className="mt-3 max-w-[760px] text-[clamp(30px,3.4vw,48px)] font-semibold leading-[1.08] text-[#202124]">
             Trung tâm phiếu kỹ thuật
           </h1>
-          <p className="mt-3 max-w-2xl text-[15px] font-medium leading-7 text-[#667085]">
-            Theo dõi sửa chữa, bảo trì, lắp đặt và máy demo trên cùng một màn.
-          </p>
         </div>
         <button className="secondary-button bg-white/90 shadow-[0_8px_20px_rgba(24,24,27,0.06)]" disabled={loading} onClick={onRefresh} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
@@ -441,14 +493,86 @@ function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh:
 }
 
 function TicketPortalSummary({ counts, loading }: { counts: Record<TicketScope, number>; loading: boolean }) {
-  const total = counts.repairs + counts.maintenance + counts.installations + counts.demo;
+  const total = counts.repairs + counts.maintenance + counts.installations + counts.demo + counts['device-service'];
   return (
     <section className="grid gap-3 rounded-[20px] border border-[#e4e4e7] bg-[#fafafa] p-3 sm:grid-cols-4">
       <PortalMetric label="Tổng phiếu" loading={loading} value={total} />
-      <PortalMetric label="Sửa chữa" loading={loading} value={counts.repairs} />
+      <PortalMetric label="Sửa chữa" loading={loading} value={counts.repairs + counts['device-service']} />
       <PortalMetric label="Bảo trì" loading={loading} value={counts.maintenance} />
       <PortalMetric label="Lắp đặt/demo" loading={loading} value={counts.installations + counts.demo} />
     </section>
+  );
+}
+
+function TicketPortalFlowBoard({ counts, onSelect }: { counts: Record<TicketScope, number>; onSelect: (value: TicketScope) => void }) {
+  const primaryItems = serviceTicketOptions.filter((item) => item.value === 'repairs' || item.value === 'device-service');
+  const planningItems = serviceTicketOptions.filter((item) => item.value === 'maintenance' || item.value === 'installations' || item.value === 'demo');
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+      <div className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span className="text-xs font-bold text-[#667085]">Xử lý</span>
+            <h2 className="mt-1 text-lg font-semibold text-[#202124]">Nhận máy, sửa chữa, trả thiết bị</h2>
+          </div>
+        </div>
+        <div className="grid gap-2">
+          {primaryItems.map((item) => (
+            <TicketPortalListButton count={counts[item.countKey]} item={item} key={item.value} onSelect={onSelect} />
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-[#fafafa] p-4 shadow-[0_14px_34px_rgba(24,24,27,0.04)]">
+        <div>
+          <span className="text-xs font-bold text-[#667085]">Kế hoạch</span>
+          <h2 className="mt-1 text-lg font-semibold text-[#202124]">Bảo trì, lắp đặt, demo</h2>
+        </div>
+        <div className="grid gap-2">
+          {planningItems.map((item) => (
+            <TicketPortalListButton compact count={counts[item.countKey]} item={item} key={item.value} onSelect={onSelect} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TicketPortalListButton({
+  compact,
+  count,
+  item,
+  onSelect,
+}: {
+  compact?: boolean;
+  count: number;
+  item: TicketPortalCard;
+  onSelect: (value: TicketScope) => void;
+}) {
+  const className = [
+    'group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[#e4e4e7] bg-white text-left transition hover:-translate-y-0.5 hover:border-[#3e8375]/35 hover:shadow-[0_14px_30px_rgba(24,24,27,0.08)]',
+    compact ? 'p-3' : 'p-4',
+  ].join(' ');
+
+  return (
+    <button className={className} onClick={() => onSelect(item.value)} type="button">
+      <span className={`${ticketPortalIconClass(item.value)} flex h-11 w-11 items-center justify-center rounded-2xl`}>
+        {item.icon}
+      </span>
+      <span className="grid min-w-0 gap-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <strong className="text-base font-semibold text-[#202124]">{item.label}</strong>
+          <span className="rounded-lg bg-[#f4f4f5] px-2 py-0.5 text-xs font-bold text-[#667085]">{item.meta}</span>
+        </span>
+      </span>
+      <span className="grid justify-items-end gap-1">
+        <strong className="text-2xl leading-none text-[#202124]">{count}</strong>
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-[#3e8375]">
+          Mở <ArrowRight className="transition group-hover:translate-x-0.5" size={14} />
+        </span>
+      </span>
+    </button>
   );
 }
 
@@ -478,7 +602,6 @@ function TicketPortalCardButton({ count, item, onSelect }: { count: number; item
       <span className="grid min-w-0 gap-1.5">
         <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7a8699]">{item.meta}</span>
         <strong className="text-[20px] font-semibold leading-tight text-[#202124]">{item.label}</strong>
-        <span className="text-sm font-medium leading-6 text-[#667085]">{item.description}</span>
       </span>
       <span className="inline-flex items-center justify-between gap-2 border-t border-[#eef0f3] pt-3 text-sm font-semibold text-[#3e8375]">
         <span>{item.actionLabel}</span>
@@ -780,7 +903,6 @@ function DemoLoansBoard({ onBack, user }: { onBack: () => void; user: ApiUser })
           <PageTitle
             eyebrow="Máy demo"
             title="Bàn giao và thu hồi máy dùng thử"
-            description="Bàn giao & thu hồi."
           />
         </div>
         <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
@@ -1043,15 +1165,250 @@ function demoCustomerLabel(customer: CustomerOption) {
   return [customer.hospitalName || customer.name, customer.province].filter(Boolean).join(' - ');
 }
 
+function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUser }) {
+  const queryClient = useQueryClient();
+  const role = getRoleName(user);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [returnForm, setReturnForm] = useState<DeviceReturnForm | null>(null);
+  const [receiveForm, setReceiveForm] = useState<DeviceReceiveForm>(() => emptyDeviceReceiveForm(user));
+
+  const ticketsQuery = useQuery({
+    queryKey: queryKeys.serviceTickets.board('device-service', `${search}:${status}`),
+    queryFn: async () => {
+      const params = new URLSearchParams({ limit: '100' });
+      if (search.trim()) params.set('search', search.trim());
+      if (status) params.set('status', status);
+      const result = await apiFetch<Paginated<DeviceServiceRow> | DeviceServiceRow[]>(`/device-service-tickets?${params.toString()}`);
+      return Array.isArray(result) ? result : result.data ?? [];
+    },
+  });
+
+  const optionsQuery = useQuery({
+    queryKey: queryKeys.serviceTickets.createOptions,
+    queryFn: async () => {
+      const [customersResult, machinesResult, engineersResult] = await Promise.all([
+        apiFetch<Paginated<CustomerOption>>('/customers?limit=100'),
+        apiFetch<Paginated<MachineSummary>>('/machines?limit=100'),
+        apiFetch<Paginated<EngineerOption>>('/users?limit=100&status=ACTIVE'),
+      ]);
+      return {
+        customers: customersResult.data,
+        machines: machinesResult.data,
+        engineers: engineersResult.data.filter(isTechnicalUser),
+      };
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      apiFetch<DeviceServiceRow>('/device-service-tickets', {
+        method: 'POST',
+        body: JSON.stringify(compactPayload(receiveForm)),
+      }),
+    onSuccess: async () => {
+      setReceiveOpen(false);
+      setReceiveForm(emptyDeviceReceiveForm(user));
+      await queryClient.invalidateQueries({ queryKey: ['service-tickets'] });
+    },
+  });
+
+  const returnMutation = useMutation({
+    mutationFn: (form: DeviceReturnForm) =>
+      apiFetch<DeviceServiceRow>(`/device-service-tickets/${form.ticket.id}/return`, {
+        method: 'POST',
+        body: JSON.stringify(compactPayload({
+          returnedAt: form.returnedAt,
+          repairMethod: form.repairMethod,
+          repairCostItems: form.repairCostItems,
+          resultNote: form.resultNote,
+          returnCondition: form.returnCondition,
+          totalRepairCost: form.totalRepairCost,
+          repairCostInWords: form.repairCostInWords,
+        })),
+      }),
+    onSuccess: async () => {
+      setReturnForm(null);
+      await queryClient.invalidateQueries({ queryKey: ['service-tickets'] });
+    },
+  });
+
+  const tickets = ticketsQuery.data ?? [];
+  const activeCount = tickets.filter((ticket) => ticket.status === 'RECEIVED').length;
+  const returnedCount = tickets.filter((ticket) => ticket.status === 'RETURNED').length;
+  const customers = optionsQuery.data?.customers ?? [];
+  const machines = optionsQuery.data?.machines ?? [];
+  const engineers = optionsQuery.data?.engineers ?? [];
+
+  function applyCustomer(customerId: string) {
+    const customer = customers.find((item) => item.id === customerId);
+    setReceiveForm((current) => ({
+      ...current,
+      customerId,
+      usingDepartment: customer?.name || current.usingDepartment,
+      representative: customer?.contactPerson || current.representative,
+      representativePosition: customer?.contactPosition || current.representativePosition,
+      contactPhone: customer?.contactPhone || customer?.phone || current.contactPhone,
+      address: customer?.fullAddress || customer?.address || current.address,
+    }));
+  }
+
+  function applyMachine(machineId: string) {
+    const machine = machines.find((item) => item.id === machineId);
+    setReceiveForm((current) => ({
+      ...current,
+      machineId,
+      customerId: machine?.customer?.id || current.customerId,
+      deviceName: machine?.name || machine?.modelName || current.deviceName,
+      modelName: machine?.modelName || current.modelName,
+      serialNumber: machine?.serialNumber || current.serialNumber,
+    }));
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-4 min-[980px]:grid-cols-[minmax(0,1fr)_auto] min-[980px]:items-end">
+        <div className="grid gap-3">
+          <button className="secondary-button mt-5 w-fit" onClick={onBack} type="button">
+            <ArrowLeft size={16} />
+            Quay lại loại phiếu
+          </button>
+          <PageTitle eyebrow="Phiếu kỹ thuật" title="Nhận / trả thiết bị" />
+        </div>
+        <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
+          <button className="primary-button" onClick={() => setReceiveOpen((value) => !value)} type="button">
+            <Plus size={16} />
+            Tạo phiếu nhận
+          </button>
+          <button className="secondary-button" disabled={ticketsQuery.isFetching} onClick={() => void ticketsQuery.refetch()} type="button">
+            {ticketsQuery.isFetching ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
+            Làm mới
+          </button>
+        </div>
+      </div>
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <DemoMetric label="Đang ở phòng kỹ thuật" tone="warn" value={activeCount} />
+        <DemoMetric label="Đã trả thiết bị" tone="good" value={returnedCount} />
+        <DemoMetric label="Tổng phiếu" tone="good" value={tickets.length} />
+      </section>
+
+      {createMutation.error instanceof Error ? <Notice message={createMutation.error.message} /> : null}
+      {returnMutation.error instanceof Error ? <Notice message={returnMutation.error.message} /> : null}
+
+      {receiveOpen ? (
+        <section className="grid gap-4 rounded-[24px] border border-[#dbe6f3] bg-[#fbfdff] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
+          <h2 className="text-xl font-semibold text-[#202124]">Phiếu nhận thiết bị</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            <DateInput label="Ngày nhận" onChange={(value) => setReceiveForm((current) => ({ ...current, receivedAt: value }))} value={receiveForm.receivedAt} />
+            <label className={deviceLabelClass}>
+              Kỹ sư phụ trách
+              <select className={deviceFieldClass} disabled={role === 'engineer'} onChange={(event) => setReceiveForm((current) => ({ ...current, engineerId: event.target.value }))} value={receiveForm.engineerId}>
+                <option value="">Chưa phân công</option>
+                {engineers.map((engineer) => (
+                  <option key={engineer.id} value={engineer.id}>{technicalUserName(engineer)}</option>
+                ))}
+              </select>
+            </label>
+            <label className={deviceLabelClass}>
+              Khách hàng
+              <select className={deviceFieldClass} onChange={(event) => applyCustomer(event.target.value)} value={receiveForm.customerId}>
+                <option value="">Chọn khách hàng</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>{demoCustomerLabel(customer)}</option>
+                ))}
+              </select>
+            </label>
+            <label className={deviceLabelClass}>
+              Thiết bị có sẵn
+              <select className={deviceFieldClass} onChange={(event) => applyMachine(event.target.value)} value={receiveForm.machineId}>
+                <option value="">Không chọn, nhập tay</option>
+                {machines.filter((machine) => machine.id).map((machine) => (
+                  <option key={machine.id || machine.serialNumber || machine.machineCode} value={machine.id || ''}>{demoMachineLabel(machine)}</option>
+                ))}
+              </select>
+            </label>
+            <DeviceInput label="Đơn vị sử dụng" onChange={(value) => setReceiveForm((current) => ({ ...current, usingDepartment: value }))} value={receiveForm.usingDepartment} />
+            <DeviceInput label="Người đại diện" onChange={(value) => setReceiveForm((current) => ({ ...current, representative: value }))} value={receiveForm.representative} />
+            <DeviceInput label="Chức vụ" onChange={(value) => setReceiveForm((current) => ({ ...current, representativePosition: value }))} value={receiveForm.representativePosition} />
+            <DeviceInput label="Số điện thoại" onChange={(value) => setReceiveForm((current) => ({ ...current, contactPhone: value }))} value={receiveForm.contactPhone} />
+            <DeviceInput label="Địa chỉ" onChange={(value) => setReceiveForm((current) => ({ ...current, address: value }))} value={receiveForm.address} wide />
+            <DeviceInput label="Tên thiết bị" onChange={(value) => setReceiveForm((current) => ({ ...current, deviceName: value }))} value={receiveForm.deviceName} />
+            <DeviceInput label="Model" onChange={(value) => setReceiveForm((current) => ({ ...current, modelName: value }))} value={receiveForm.modelName} />
+            <DeviceInput label="S/N" onChange={(value) => setReceiveForm((current) => ({ ...current, serialNumber: value }))} value={receiveForm.serialNumber} />
+            <label className={deviceLabelClass}>
+              Tình trạng bảo hành
+              <select className={deviceFieldClass} onChange={(event) => setReceiveForm((current) => ({ ...current, warrantyStatus: event.target.value }))} value={receiveForm.warrantyStatus}>
+                <option value="IN_WARRANTY">Còn bảo hành</option>
+                <option value="OUT_OF_WARRANTY">Hết bảo hành</option>
+                <option value="UNKNOWN">Chưa rõ</option>
+              </select>
+            </label>
+            <DeviceInput label="Thời hạn bảo hành" onChange={(value) => setReceiveForm((current) => ({ ...current, warrantyTerm: value }))} value={receiveForm.warrantyTerm} />
+            <DeviceTextarea label="Tình trạng thiết bị lúc nhận" onChange={(value) => setReceiveForm((current) => ({ ...current, receivedCondition: value }))} value={receiveForm.receivedCondition} />
+            <DeviceTextarea label="Phụ kiện nhận kèm" onChange={(value) => setReceiveForm((current) => ({ ...current, receivedAccessories: value }))} value={receiveForm.receivedAccessories} />
+            <DeviceTextarea label="Sơ bộ xác định nguyên nhân" onChange={(value) => setReceiveForm((current) => ({ ...current, preliminaryCause: value }))} value={receiveForm.preliminaryCause} />
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button className="secondary-button" onClick={() => setReceiveOpen(false)} type="button">Hủy</button>
+            <button className="primary-button" disabled={createMutation.isPending} onClick={() => createMutation.mutate()} type="button">
+              {createMutation.isPending ? <Loader2 className="spin-icon" size={16} /> : null}
+              Lưu phiếu nhận
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="grid gap-3 rounded-[24px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]">
+        <div className="grid gap-3 min-[860px]:grid-cols-[minmax(0,1fr)_180px]">
+          <label className="operation-filter-field">
+            <span>Tìm nhanh</span>
+            <input onChange={(event) => setSearch(event.target.value)} placeholder="Mã phiếu, khách hàng, serial..." value={search} />
+          </label>
+          <label className="operation-filter-field">
+            <span>Trạng thái</span>
+            <select onChange={(event) => setStatus(event.target.value)} value={status}>
+              <option value="">Tất cả</option>
+              <option value="RECEIVED">Đang ở kỹ thuật</option>
+              <option value="RETURNED">Đã trả</option>
+            </select>
+          </label>
+        </div>
+        {ticketsQuery.isLoading ? <div className="py-12 text-center text-sm font-semibold text-[#667085]">Đang tải phiếu</div> : null}
+        {!ticketsQuery.isLoading && !tickets.length ? <div className="py-12 text-center text-sm font-semibold text-[#667085]">Chưa có phiếu nhận/trả thiết bị.</div> : null}
+        <div className="grid gap-2">
+          {tickets.map((ticket) => (
+            <DeviceServiceCard
+              key={ticket.id}
+              loading={returnMutation.isPending}
+              onReturn={() => setReturnForm(emptyDeviceReturnForm(ticket))}
+              ticket={ticket}
+            />
+          ))}
+        </div>
+      </section>
+
+      {returnForm ? (
+        <DeviceReturnModal
+          form={returnForm}
+          loading={returnMutation.isPending}
+          onChange={(patch) => setReturnForm((current) => (current ? { ...current, ...patch } : current))}
+          onClose={() => setReturnForm(null)}
+          onSubmit={() => returnMutation.mutate(returnForm)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function OperationsBoard({
-  description,
   kind,
   onBack,
   reportHref,
   title,
   user,
 }: {
-  description: string;
   kind: BoardKind;
   onBack?: () => void;
   reportHref: string;
@@ -1144,7 +1501,7 @@ function OperationsBoard({
               Chọn loại phiếu
             </button>
           ) : null}
-          <PageTitle eyebrow="Hồ sơ phiếu" title={title} description={description} />
+          <PageTitle eyebrow="Hồ sơ phiếu" title={title} />
         </div>
         <div className="operation-board-actions">
           <CreateTicketButton kind={kind} />
@@ -1262,7 +1619,7 @@ function OperationsBoard({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f4e2e4] bg-[#fafafa] px-4 py-3">
           <div>
             <h2 className="text-base font-semibold text-[#1f1f1f]">{queues.find((item) => item.key === queue)?.label}</h2>
-            <p className="mt-1 text-sm text-[#666666]">{loading ? 'Đang tải' : `${visibleItems.length} phiếu · ${groupOptions.find((item) => item.value === groupBy)?.label.toLowerCase()}`}</p>
+            <p className="mt-1 text-sm text-[#666666]">{loading ? 'Đang tải' : `${visibleItems.length} phiếu`}</p>
           </div>
         </div>
 
@@ -1277,7 +1634,6 @@ function OperationsBoard({
           <div className="grid min-h-[260px] place-items-center gap-2 p-8 text-center text-[#666666]">
             <ClipboardCheck size={26} />
             <strong className="text-[#1f1f1f]">Không có phiếu phù hợp</strong>
-            <span className="text-sm">Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</span>
           </div>
         ) : null}
 
@@ -1814,6 +2170,162 @@ function paramsForScope(baseParams: string, scope: BoardKind, engineerId: string
   return params.toString();
 }
 
+const deviceLabelClass = 'grid min-w-0 gap-2 text-sm font-semibold text-[#334155]';
+const deviceFieldClass = 'min-h-12 rounded-2xl border border-[#cbd5e1] bg-white px-3 text-sm font-semibold text-[#172033] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.10)]';
+const deviceTextareaClass = 'min-h-[112px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-semibold leading-6 text-[#172033] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.10)]';
+
+function DeviceInput({ label, onChange, value, wide }: { label: string; onChange: (value: string) => void; value: string; wide?: boolean }) {
+  return (
+    <label className={`${deviceLabelClass} ${wide ? 'md:col-span-2' : ''}`}>
+      {label}
+      <input className={deviceFieldClass} onChange={(event) => onChange(event.target.value)} value={value} />
+    </label>
+  );
+}
+
+function DeviceTextarea({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
+  return (
+    <label className={`${deviceLabelClass} md:col-span-2`}>
+      {label}
+      <textarea className={deviceTextareaClass} onChange={(event) => onChange(event.target.value)} value={value} />
+    </label>
+  );
+}
+
+function DeviceServiceCard({ loading, onReturn, ticket }: { loading: boolean; onReturn: () => void; ticket: DeviceServiceRow }) {
+  return (
+    <article className="grid gap-3 rounded-[20px] bg-[#fafafa] p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)] min-[980px]:grid-cols-[minmax(0,1fr)_220px_180px] min-[980px]:items-center">
+      <div className="grid min-w-0 gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone={ticket.status === 'RETURNED' ? 'good' : 'warn'}>{deviceStatusLabel(ticket.status)}</Badge>
+          <span className="text-xs font-semibold text-[#667085]">{ticket.receiveCode}</span>
+          {ticket.returnCode ? <span className="text-xs font-semibold text-[#667085]">{ticket.returnCode}</span> : null}
+        </div>
+        <h3 className="truncate text-lg font-semibold text-[#202124]">{[ticket.deviceName || ticket.machine?.name || ticket.machine?.modelName, ticket.modelName, ticket.serialNumber ? `S/N ${ticket.serialNumber}` : ''].filter(Boolean).join(' - ') || 'Thiết bị sửa chữa'}</h3>
+        <div className="flex flex-wrap gap-2 text-sm font-medium text-[#667085]">
+          <span>{ticket.customer ? demoCustomerLabel(ticket.customer) : ticket.usingDepartment || 'Chưa có khách hàng'}</span>
+          <span>{ticket.address || ''}</span>
+        </div>
+        {ticket.preliminaryCause ? <p className="line-clamp-2 text-sm leading-6 text-[#667085]">{ticket.preliminaryCause}</p> : null}
+      </div>
+      <div className="grid gap-2 text-sm text-[#667085]">
+        <span>Ngày nhận: <strong className="text-[#202124]">{formatDate(ticket.receivedAt)}</strong></span>
+        <span>Ngày trả: <strong className="text-[#202124]">{ticket.returnedAt ? formatDate(ticket.returnedAt) : 'Chưa trả'}</strong></span>
+        <span>Kỹ sư: <strong className="text-[#202124]">{ticket.engineer ? technicalUserName(ticket.engineer) : 'Chưa phân'}</strong></span>
+      </div>
+      <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
+        {ticket.status === 'RECEIVED' ? (
+          <button className="primary-button rounded-2xl" disabled={loading} onClick={onReturn} type="button">
+            {loading ? <Loader2 className="spin-icon" size={15} /> : null}
+            Trả thiết bị
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function DeviceReturnModal({
+  form,
+  loading,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  form: DeviceReturnForm;
+  loading: boolean;
+  onChange: (patch: Partial<DeviceReturnForm>) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
+      <form
+        className="grid max-h-[92vh] w-full max-w-[760px] gap-4 overflow-y-auto rounded-[28px] bg-white p-5 shadow-[0_30px_90px_rgba(24,24,27,0.28)]"
+        onClick={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <span className="text-sm font-semibold text-[#3e8375]">Phiếu trả thiết bị</span>
+            <h2 className="mt-1 text-2xl font-semibold text-[#202124]">{form.ticket.receiveCode}</h2>
+            <p className="mt-1 text-sm font-medium text-[#667085]">{form.ticket.deviceName || form.ticket.modelName || 'Thiết bị sửa chữa'}</p>
+          </div>
+          <button className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#e4e4e7] bg-white text-[#667085] hover:bg-[#f4f4f5]" onClick={onClose} type="button" aria-label="Đóng">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <DateInput label="Ngày trả" onChange={(value) => onChange({ returnedAt: value })} required value={form.returnedAt} />
+          <DeviceInput label="Tổng chi phí sửa chữa" onChange={(value) => onChange({ totalRepairCost: value })} value={form.totalRepairCost} />
+          <DeviceInput label="Bằng chữ" onChange={(value) => onChange({ repairCostInWords: value })} value={form.repairCostInWords} wide />
+          <DeviceTextarea label="Phương pháp sửa chữa" onChange={(value) => onChange({ repairMethod: value })} value={form.repairMethod} />
+          <DeviceTextarea label="Hư hỏng / biện pháp / chi phí" onChange={(value) => onChange({ repairCostItems: value })} value={form.repairCostItems} />
+          <DeviceTextarea label="Kết quả" onChange={(value) => onChange({ resultNote: value })} value={form.resultNote} />
+          <DeviceTextarea label="Tình trạng khi trả" onChange={(value) => onChange({ returnCondition: value })} value={form.returnCondition} />
+        </div>
+        <div className="flex flex-wrap justify-end gap-2">
+          <button className="secondary-button" onClick={onClose} type="button">Hủy</button>
+          <button className="primary-button" disabled={loading} type="submit">
+            {loading ? <Loader2 className="spin-icon" size={16} /> : null}
+            Lưu phiếu trả
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function emptyDeviceReceiveForm(user: ApiUser): DeviceReceiveForm {
+  return {
+    address: '',
+    contactPhone: '',
+    customerId: '',
+    deviceName: '',
+    engineerId: getRoleName(user) === 'engineer' ? user.id : '',
+    machineId: '',
+    modelName: '',
+    preliminaryCause: '',
+    receivedAccessories: '',
+    receivedAt: toDateInput(new Date()),
+    receivedCondition: '',
+    representative: '',
+    representativePosition: '',
+    serialNumber: '',
+    usingDepartment: '',
+    warrantyStatus: 'IN_WARRANTY',
+    warrantyTerm: '',
+  };
+}
+
+function emptyDeviceReturnForm(ticket: DeviceServiceRow): DeviceReturnForm {
+  return {
+    repairCostInWords: ticket.repairCostInWords || '',
+    repairCostItems: ticket.repairCostItems || '',
+    repairMethod: ticket.repairMethod || '',
+    resultNote: ticket.resultNote || '',
+    returnCondition: ticket.returnCondition || '',
+    returnedAt: toDateInput(new Date()),
+    ticket,
+    totalRepairCost: ticket.totalRepairCost || '',
+  };
+}
+
+function compactPayload<T extends Record<string, unknown>>(payload: T) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+  );
+}
+
+function deviceStatusLabel(status: DeviceServiceStatus) {
+  if (status === 'RECEIVED') return 'Đang ở kỹ thuật';
+  if (status === 'RETURNED') return 'Đã trả';
+  return 'Đã hủy';
+}
+
 function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -1888,10 +2400,4 @@ function ticketScopeLabel(kind: BoardKind) {
   if (kind === 'maintenance') return 'Bảo trì';
   if (kind === 'installations') return 'Lắp đặt';
   return 'Sửa chữa';
-}
-
-function ticketScopeDescription(kind: BoardKind) {
-  if (kind === 'maintenance') return 'Lịch hẹn & nghiệm thu.';
-  if (kind === 'installations') return 'Bàn giao & bảo hành.';
-  return 'Lỗi máy & linh kiện.';
 }

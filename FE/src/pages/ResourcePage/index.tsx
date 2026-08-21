@@ -145,7 +145,6 @@ export function ResourcePage({
                   <div className="grid min-h-[180px] place-items-center content-center justify-center gap-2.5 text-center text-[#666666] [&_svg]:h-[42px] [&_svg]:w-[42px] [&_svg]:rounded-lg [&_svg]:border [&_svg]:border-[#e4e4e7] [&_svg]:bg-[#f4f4f5] [&_svg]:p-2.5 [&_svg]:text-[#18181b]">
                     {config.icon}
                     <strong className="text-[15px] text-[#1f1f1f]">Chưa có dữ liệu phù hợp</strong>
-                    <span className="text-[13px]">Thử đổi từ khóa tìm kiếm hoặc kiểm tra bộ lọc hiện tại.</span>
                   </div>
                 </td>
               </tr>

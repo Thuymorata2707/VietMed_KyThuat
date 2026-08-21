@@ -58,6 +58,7 @@ type DashboardMachine = {
     id: string;
     code?: string | null;
     name: string;
+    quantity?: number | null;
     serialNumber?: string | null;
     description?: string | null;
     note?: string | null;
@@ -205,6 +206,7 @@ type EditMachineAccessoryForm = {
   componentAccessoryId?: string | null;
   code: string;
   name: string;
+  quantity: number;
   serialNumber: string;
   description: string;
   note: string;
@@ -567,7 +569,29 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       if (exists) return current;
       return {
         ...current,
-        accessories: [...current.accessories, { ...emptyEditAccessoryForm(), code: name, name }],
+        accessories: [...current.accessories, { ...emptyEditAccessoryForm(), code: name, name, quantity: isCoreEndoscopyAccessoryName(name) ? 1 : 1 }],
+      };
+    });
+  }
+
+  function setAllEndoscopyAccessories(checked: boolean) {
+    setEditForm((current) => {
+      const optionNames = new Set<string>(endoscopyAccessoryOptions.map((option) => option.value));
+      if (!checked) {
+        return {
+          ...current,
+          accessories: current.accessories.filter((accessory) => !optionNames.has(accessory.name || accessory.code)),
+        };
+      }
+
+      const existingNames = new Set(current.accessories.map((accessory) => accessory.name || accessory.code).filter(Boolean));
+      const missingAccessories = endoscopyAccessoryOptions
+        .filter((option) => !existingNames.has(option.value))
+        .map((option) => ({ ...emptyEditAccessoryForm(), code: option.value, name: option.value, quantity: isCoreEndoscopyAccessoryName(option.value) ? 1 : 1 }));
+
+      return {
+        ...current,
+        accessories: [...current.accessories, ...missingAccessories],
       };
     });
   }
@@ -608,9 +632,25 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
     try {
       const accessories = editForm.accessories.filter(hasAccessoryContent);
+      const selectedModel = machineModels.find((model) => model.id === editForm.machineModelId);
+      const isEndoscopy = isEndoscopyMachine(editingMachine) || editForm.productCategory === 'ENDOSCOPY' || isEndoscopyMachineModel(selectedModel);
+      const machineSerialNumber = (editForm.serialNumber.trim() || (isEndoscopy ? getEndoscopyRepresentativeSerial(accessories) : '')).trim();
 
       if (accessories.some((accessory) => !accessory.name.trim())) {
         setError('Tên phụ kiện là bắt buộc. Nếu không dùng nữa, hãy xóa phụ kiện đó.');
+        return;
+      }
+
+      if (isEndoscopy) {
+        const missingCoreSerials = missingEndoscopyCoreSerials(accessories);
+        if (missingCoreSerials.length) {
+          setError(`Máy nội soi cần serial: ${missingCoreSerials.join(', ')}.`);
+          return;
+        }
+      }
+
+      if (!isEndoscopy && !machineSerialNumber) {
+        setError('Serial máy là bắt buộc.');
         return;
       }
 
@@ -618,7 +658,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         method: 'PATCH',
         body: JSON.stringify({
           machineCode: undefined,
-          serialNumber: editForm.serialNumber.trim(),
+          serialNumber: machineSerialNumber || undefined,
           machineModelId: editForm.machineModelId || null,
           name: editForm.name.trim() || undefined,
           modelName: editForm.modelName.trim(),
@@ -638,6 +678,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             componentAccessoryId: accessory.componentAccessoryId ?? undefined,
             code: accessory.code.trim() || null,
             name: accessory.name.trim(),
+            quantity: isCoreEndoscopyAccessoryName(accessory.name || accessory.code) ? undefined : Math.max(1, Number(accessory.quantity) || 1),
             serialNumber: accessory.serialNumber.trim() || null,
             description: accessory.description.trim() || null,
             note: accessory.note.trim() || null,
@@ -737,6 +778,14 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   const isEditingUltrasound = isUltrasoundMachine(editingMachine) || editForm.productCategory === 'ULTRASOUND' || selectedEditModel?.productCategory === 'ULTRASOUND';
   const isEditingEndoscopy = isEndoscopyMachine(editingMachine) || editForm.productCategory === 'ENDOSCOPY' || isEndoscopyMachineModel(selectedEditModel);
 
+  useEffect(() => {
+    if (!isEditingEndoscopy) return;
+    setEditForm((current) => {
+      const nextAccessories = ensureEndoscopyCoreAccessories(current.accessories);
+      return nextAccessories === current.accessories ? current : { ...current, accessories: nextAccessories };
+    });
+  }, [isEditingEndoscopy, editForm.machineModelId, editingMachine?.id]);
+
   if (machineId) {
     const recordMachine = machineDetail?.id === machineId ? machineDetail : null;
 
@@ -816,7 +865,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       {success ? <div className="success-notice">{success}</div> : null}
 
       <section className="grid gap-4">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-4 min-[1280px]:grid-cols-[minmax(0,1fr)_320px]">
           <MachineIndustryBarChart
             activeId={selectedBusinessLineKey}
             items={machineIndustryChartItems}
@@ -848,7 +897,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               </button>
             </div>
           ) : null}
-          <div className="grid gap-3 min-[1120px]:grid-cols-[minmax(240px,320px)_minmax(260px,1fr)_180px_150px_auto]">
+          <div className="grid gap-3 min-[1180px]:grid-cols-[minmax(220px,300px)_minmax(240px,1fr)_160px_140px_auto]">
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Ngành hàng
               <select
@@ -936,8 +985,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1040px] border-collapse">
+          <div className="responsive-table-wrap overflow-x-auto">
+            <table className="responsive-data-table w-full min-w-[1040px] border-collapse">
               <thead>
                 <tr className="border-b border-[#eeeeee] text-left text-xs font-semibold text-[#666666]">
                   <th className="px-4 py-3">Máy</th>
@@ -1016,8 +1065,13 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 <input className={editFieldClass} disabled placeholder="Đang sinh mã..." value={editForm.machineCode || editMachinePreviewCode || 'Đang sinh mã...'} />
               </label>
               <label className={editLabelClass}>
-                Serial
-                <input className={editFieldClass} onChange={(event) => updateEditForm({ serialNumber: event.target.value })} required value={editForm.serialNumber} />
+                {isEditingEndoscopy ? 'Serial đại diện' : 'Serial'}
+                <input
+                  className={editFieldClass}
+                  onChange={(event) => updateEditForm({ serialNumber: event.target.value })}
+                  required={!isEditingEndoscopy}
+                  value={editForm.serialNumber}
+                />
               </label>
               <label className={editLabelClass}>
                 Tên thiết bị
@@ -1086,7 +1140,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 </div>
                 <button className="secondary-button" onClick={addAccessoryForm} type="button">
                   <Plus size={16} />
-                  Add accessory
+                  Thêm
                 </button>
               </div>
 
@@ -1096,6 +1150,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                 <EndoscopyAccessoryChecklist
                   selectedNames={new Set(editForm.accessories.map((accessory) => accessory.name || accessory.code).filter((name): name is string => Boolean(name)))}
                   onToggle={toggleEndoscopyAccessory}
+                  onToggleAll={setAllEndoscopyAccessories}
                 />
               ) : (
                 <TemplateAccessoryPicker
@@ -1111,11 +1166,11 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                   <div className="grid gap-3 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3" key={accessory.clientId}>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-medium text-[#333333]">Phụ kiện {index + 1}</span>
-                      <button className="icon-button" onClick={() => removeAccessoryForm(accessory.clientId)} title="Delete accessory" type="button">
+                      <button className="icon-button" onClick={() => removeAccessoryForm(accessory.clientId)} title="Xóa phụ kiện" type="button">
                         <Trash2 size={16} />
                       </button>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className={`grid gap-3 ${!isEditingUltrasound && !isCoreEndoscopyAccessoryName(accessory.name || accessory.code) ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
                       <label className={editLabelClass}>
                         {isEditingUltrasound ? 'Model đầu dò' : 'Tên phụ kiện'}
                         {isEditingUltrasound ? (
@@ -1135,33 +1190,44 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                         )}
                       </label>
                       <label className={editLabelClass}>
-                        Serial phụ kiện
+                        Serial
                         <input className={editFieldClass} onChange={(event) => updateAccessoryForm(accessory.clientId, { serialNumber: event.target.value })} value={accessory.serialNumber} />
                       </label>
-                      <label className={editLabelClass}>
-                        Mã phụ kiện
-                        <input className={editFieldClass} onChange={(event) => updateAccessoryForm(accessory.clientId, { code: event.target.value })} value={accessory.code} />
-                      </label>
-                      <label className={editLabelClass}>
-                        Mô tả
-                        <input className={editFieldClass} onChange={(event) => updateAccessoryForm(accessory.clientId, { description: event.target.value })} value={accessory.description} />
-                      </label>
-                      <label className={`${editLabelClass} md:col-span-2`}>
-                        Ghi chú
-                        <textarea className={`${editFieldClass} min-h-[74px] py-2`} onChange={(event) => updateAccessoryForm(accessory.clientId, { note: event.target.value })} value={accessory.note} />
-                      </label>
+                      {!isEditingUltrasound && !isCoreEndoscopyAccessoryName(accessory.name || accessory.code) ? (
+                        <label className={editLabelClass}>
+                          Số lượng
+                          <input className={editFieldClass} min={1} onChange={(event) => updateAccessoryForm(accessory.clientId, { quantity: Number(event.target.value) || 1 })} type="number" value={accessory.quantity} />
+                        </label>
+                      ) : null}
                     </div>
+                    <details className="rounded-2xl border border-[#eef0f3] bg-white px-3 py-2 text-sm text-[#475569]">
+                      <summary className="cursor-pointer font-semibold text-[#334155]">Thông tin thêm</summary>
+                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                        <label className={editLabelClass}>
+                          Mã phụ kiện
+                          <input className={editFieldClass} onChange={(event) => updateAccessoryForm(accessory.clientId, { code: event.target.value })} value={accessory.code} />
+                        </label>
+                        <label className={editLabelClass}>
+                          Mô tả
+                          <input className={editFieldClass} onChange={(event) => updateAccessoryForm(accessory.clientId, { description: event.target.value })} value={accessory.description} />
+                        </label>
+                        <label className={`${editLabelClass} md:col-span-2`}>
+                          Ghi chú
+                          <textarea className={`${editFieldClass} min-h-[74px] py-2`} onChange={(event) => updateAccessoryForm(accessory.clientId, { note: event.target.value })} value={accessory.note} />
+                        </label>
+                      </div>
+                    </details>
                   </div>
                 ))}
-                {editForm.accessories.length === 0 ? <EmptyState text="Máy này chưa có phụ kiện. Bấm Add accessory để khai báo." /> : null}
+                {editForm.accessories.length === 0 ? <EmptyState text="Chưa có phụ kiện." /> : null}
               </div>
             </section>
 
             <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
-              <button className="secondary-button" disabled={saving} onClick={() => setEditingMachine(null)} type="button">Cancel</button>
+              <button className="secondary-button" disabled={saving} onClick={() => setEditingMachine(null)} type="button">Hủy</button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-                {saving ? 'Saving' : 'Save'}
+                {saving ? 'Đang lưu' : 'Lưu'}
               </button>
             </div>
           </form>
@@ -2211,8 +2277,13 @@ function MachineEditForm({
           <input className={editFieldClass} disabled placeholder="Đang sinh mã..." value={editForm.machineCode || previewCode || 'Đang sinh mã...'} />
         </label>
         <label className={editLabelClass}>
-          Serial
-          <input className={editFieldClass} onChange={(event) => onUpdateForm({ serialNumber: event.target.value })} required value={editForm.serialNumber} />
+          {isEditingEndoscopy ? 'Serial đại diện' : 'Serial'}
+          <input
+            className={editFieldClass}
+            onChange={(event) => onUpdateForm({ serialNumber: event.target.value })}
+            required={!isEditingEndoscopy}
+            value={editForm.serialNumber}
+          />
         </label>
         <label className={`${editLabelClass} md:col-span-2`}>
           Model cố định
@@ -2293,7 +2364,7 @@ function MachineEditForm({
           </div>
           <button className="secondary-button" onClick={onAddAccessory} type="button">
             <Plus size={16} />
-            Add accessory
+            Thêm
           </button>
         </div>
 
@@ -2303,6 +2374,9 @@ function MachineEditForm({
           <EndoscopyAccessoryChecklist
             selectedNames={new Set(editForm.accessories.map((accessory) => accessory.name || accessory.code).filter((name): name is string => Boolean(name)))}
             onToggle={onToggleEndoscopy}
+            onToggleAll={(checked) => {
+              endoscopyAccessoryOptions.forEach((option) => onToggleEndoscopy(option.value, checked));
+            }}
           />
         ) : (
           <TemplateAccessoryPicker
@@ -2318,11 +2392,11 @@ function MachineEditForm({
             <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fafafa] p-4" key={accessory.clientId}>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-[#333333]">Phụ kiện {index + 1}</span>
-                <button className="icon-button" onClick={() => onRemoveAccessory(accessory.clientId)} title="Delete accessory" type="button">
+                <button className="icon-button" onClick={() => onRemoveAccessory(accessory.clientId)} title="Xóa phụ kiện" type="button">
                   <Trash2 size={16} />
                 </button>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className={`grid gap-3 ${!isEditingUltrasound && !isCoreEndoscopyAccessoryName(accessory.name || accessory.code) ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
                 <label className={editLabelClass}>
                   {isEditingUltrasound ? 'Model đầu dò' : 'Tên phụ kiện'}
                   {isEditingUltrasound ? (
@@ -2342,33 +2416,44 @@ function MachineEditForm({
                   )}
                 </label>
                 <label className={editLabelClass}>
-                  Serial phụ kiện
+                  Serial
                   <input className={editFieldClass} onChange={(event) => onUpdateAccessory(accessory.clientId, { serialNumber: event.target.value })} value={accessory.serialNumber} />
                 </label>
-                <label className={editLabelClass}>
-                  Mã phụ kiện
-                  <input className={editFieldClass} onChange={(event) => onUpdateAccessory(accessory.clientId, { code: event.target.value })} value={accessory.code} />
-                </label>
-                <label className={editLabelClass}>
-                  Mô tả
-                  <input className={editFieldClass} onChange={(event) => onUpdateAccessory(accessory.clientId, { description: event.target.value })} value={accessory.description} />
-                </label>
-                <label className={`${editLabelClass} md:col-span-2`}>
-                  Ghi chú
-                  <textarea className={`${editFieldClass} min-h-[74px] py-2`} onChange={(event) => onUpdateAccessory(accessory.clientId, { note: event.target.value })} value={accessory.note} />
-                </label>
+                {!isEditingUltrasound && !isCoreEndoscopyAccessoryName(accessory.name || accessory.code) ? (
+                  <label className={editLabelClass}>
+                    Số lượng
+                    <input className={editFieldClass} min={1} onChange={(event) => onUpdateAccessory(accessory.clientId, { quantity: Number(event.target.value) || 1 })} type="number" value={accessory.quantity} />
+                  </label>
+                ) : null}
               </div>
+              <details className="rounded-2xl border border-[#eef0f3] bg-white px-3 py-2 text-sm text-[#475569]">
+                <summary className="cursor-pointer font-semibold text-[#334155]">Thông tin thêm</summary>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <label className={editLabelClass}>
+                    Mã phụ kiện
+                    <input className={editFieldClass} onChange={(event) => onUpdateAccessory(accessory.clientId, { code: event.target.value })} value={accessory.code} />
+                  </label>
+                  <label className={editLabelClass}>
+                    Mô tả
+                    <input className={editFieldClass} onChange={(event) => onUpdateAccessory(accessory.clientId, { description: event.target.value })} value={accessory.description} />
+                  </label>
+                  <label className={`${editLabelClass} md:col-span-2`}>
+                    Ghi chú
+                    <textarea className={`${editFieldClass} min-h-[74px] py-2`} onChange={(event) => onUpdateAccessory(accessory.clientId, { note: event.target.value })} value={accessory.note} />
+                  </label>
+                </div>
+              </details>
             </div>
           ))}
-          {editForm.accessories.length === 0 ? <EmptyState text="Máy này chưa có phụ kiện. Bấm Add accessory để khai báo." /> : null}
+          {editForm.accessories.length === 0 ? <EmptyState text="Chưa có phụ kiện." /> : null}
         </div>
       </section>
 
       <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
-        <button className="secondary-button" disabled={saving} onClick={onCancel} type="button">Cancel</button>
+        <button className="secondary-button" disabled={saving} onClick={onCancel} type="button">Hủy</button>
         <button className="primary-button" disabled={saving} type="submit">
           {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-          {saving ? 'Saving' : 'Save'}
+          {saving ? 'Đang lưu' : 'Lưu'}
         </button>
       </div>
     </form>
@@ -2390,14 +2475,11 @@ function EmptyState({ text }: { text: string }) {
 
 function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
   return (
-    <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fafafa] p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <span className="text-sm font-semibold text-[#333333]">Add probe</span>
-          <p className="mt-1 text-xs leading-5 text-[#666666]">Chọn model, nhập S/N.</p>
-        </div>
+    <div className="rounded-2xl border border-[#dbe5ef] bg-[#fafafa] p-3">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_280px] md:items-center">
+        <span className="text-sm font-semibold text-[#333333]">Chọn nhanh đầu dò</span>
         <select
-          className={`${editFieldClass} max-w-[260px]`}
+          className={editFieldClass}
           onChange={(event) => {
             onSelect(event.target.value);
             event.currentTarget.value = '';
@@ -2410,37 +2492,47 @@ function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
           ))}
         </select>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {ultrasoundProbeOptions.slice(0, 8).map((option) => (
-          <button
-            className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-left text-sm font-medium text-[#18181b] transition hover:-translate-y-px hover:border-[#b8cbe1] hover:bg-[#f3f8ff]"
-            key={option.value}
-            onClick={() => onSelect(option.value)}
-            type="button"
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
 
 function EndoscopyAccessoryChecklist({
   onToggle,
+  onToggleAll,
   selectedNames,
 }: {
   onToggle: (name: string, checked: boolean) => void;
+  onToggleAll: (checked: boolean) => void;
   selectedNames: Set<string>;
 }) {
+  const [search, setSearch] = useState('');
+  const visibleOptions = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) return endoscopyAccessoryOptions;
+    return endoscopyAccessoryOptions.filter((option) => option.label.toLowerCase().includes(keyword));
+  }, [search]);
+
   return (
     <div className="grid gap-3 rounded-lg border border-[#dbe5ef] bg-[#fafafa] p-4">
-      <div>
-        <span className="text-sm font-semibold text-[#333333]">Checklist phụ kiện nội soi tiêu hóa</span>
-        <p className="mt-1 text-xs leading-5 text-[#666666]">Tích phụ kiện theo máy.</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-semibold text-[#333333]">Checklist nội soi</span>
+        <div className="flex flex-wrap gap-2">
+          <button className="secondary-button compact" onClick={() => onToggleAll(true)} type="button">
+            Chọn tất cả
+          </button>
+          <button className="secondary-button compact" onClick={() => onToggleAll(false)} type="button">
+            Bỏ chọn
+          </button>
+        </div>
       </div>
+      <input
+        className="h-10 rounded-xl border border-[#d6d6d6] bg-white px-3 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.10)]"
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="Tìm phụ kiện"
+        value={search}
+      />
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {endoscopyAccessoryOptions.map((option) => (
+        {visibleOptions.map((option) => (
           <label className="flex min-h-10 items-center gap-2 rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-sm font-medium text-[#333333]" key={option.value}>
             <input
               checked={selectedNames.has(option.value)}
@@ -2568,6 +2660,7 @@ function buildEditMachineForm(machine: DashboardMachine): EditMachineForm {
       serialNumber: accessory.serialNumber || '',
       description: accessory.description || '',
       note: accessory.note || '',
+      quantity: Math.max(1, Number(accessory.quantity ?? 1) || 1),
     })),
   };
 }
@@ -2606,6 +2699,7 @@ function emptyEditAccessoryForm(): EditMachineAccessoryForm {
     clientId: createAccessoryClientId(),
     code: '',
     name: '',
+    quantity: 1,
     serialNumber: '',
     description: '',
     note: '',
@@ -2623,6 +2717,35 @@ function flattenTemplateAccessories(model: MachineModelDetail) {
 
 function hasAccessoryContent(accessory: EditMachineAccessoryForm) {
   return Boolean(accessory.id || accessory.name.trim() || accessory.serialNumber.trim() || accessory.code.trim() || accessory.description.trim() || accessory.note.trim());
+}
+
+const endoscopyCoreAccessoryNames = ['Bộ xử lý', 'Nguồn sáng'];
+const endoscopyNoQuantityAccessoryNames = ['Bộ xử lý', 'Nguồn sáng', 'Màn hình'];
+
+function ensureEndoscopyCoreAccessories(accessories: EditMachineAccessoryForm[]) {
+  const existingNames = new Set(accessories.map((accessory) => accessory.name || accessory.code).filter(Boolean));
+  const missingAccessories = endoscopyCoreAccessoryNames
+    .filter((name) => !existingNames.has(name))
+    .map((name) => ({ ...emptyEditAccessoryForm(), code: name, name }));
+
+  return missingAccessories.length ? [...missingAccessories, ...accessories] : accessories;
+}
+
+function missingEndoscopyCoreSerials(accessories: EditMachineAccessoryForm[]) {
+  return endoscopyCoreAccessoryNames.filter((name) => {
+    const accessory = accessories.find((item) => item.name === name || item.code === name);
+    return !accessory?.serialNumber.trim();
+  });
+}
+
+function isCoreEndoscopyAccessoryName(name: string) {
+  return endoscopyNoQuantityAccessoryNames.includes(name);
+}
+
+function getEndoscopyRepresentativeSerial(accessories: EditMachineAccessoryForm[]) {
+  const processor = accessories.find((accessory) => accessory.name === 'Bộ xử lý' || accessory.code === 'Bộ xử lý');
+  const lightSource = accessories.find((accessory) => accessory.name === 'Nguồn sáng' || accessory.code === 'Nguồn sáng');
+  return processor?.serialNumber.trim() || lightSource?.serialNumber.trim() || '';
 }
 
 function isUltrasoundMachine(machine?: DashboardMachine | null) {

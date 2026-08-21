@@ -149,7 +149,6 @@ export function AdminRolesPage() {
                   <td colSpan={3}>
                     <div className="table-state empty-state">
                       <strong>Không có vai trò phù hợp</strong>
-                      <span>Thử đổi từ khóa tìm kiếm hoặc tạo vai trò mới.</span>
                     </div>
                   </td>
                 </tr>

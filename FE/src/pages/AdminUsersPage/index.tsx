@@ -1,7 +1,7 @@
-import { ArrowLeft, Briefcase, Edit3, History, ImageOff, Loader2, MapPin, Power, PowerOff, RefreshCw, Save, Search, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, Edit3, History, ImageOff, Loader2, Power, PowerOff, RefreshCw, Save, Search, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Dispatch, FormEvent, ReactNode, SetStateAction, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { DateInput } from '../../components/DateInput';
@@ -16,6 +16,8 @@ type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING';
 type Role = {
   id: string;
   name: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 type Region = {
@@ -53,6 +55,21 @@ type AdminUsersBootstrap = {
   roles: Role[];
   regions: Region[];
 };
+
+type AuditLog = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  actorEmail?: string | null;
+  createdAt: string;
+  actor?: {
+    fullName?: string | null;
+    email?: string | null;
+  } | null;
+};
+
+type PeopleSection = 'people' | 'roles' | 'audit';
 
 type UserFormState = {
   email: string;
@@ -107,6 +124,7 @@ const expertiseGroupOptions: Array<{ label: string; value: ExpertiseGroup }> = [
 export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
   const navigate = useNavigate();
   const { userId = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<UserFormState>(emptyForm);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -118,6 +136,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
   const [success, setSuccess] = useState('');
 
   const isFormPage = Boolean(formMode);
+  const activeSection = normalizePeopleSection(searchParams.get('tab'));
 
   const usersQuery = useQuery({
     queryKey: queryKeys.adminUsers.bootstrap,
@@ -139,6 +158,12 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
   const users = usersQuery.data?.users ?? [];
   const roles = usersQuery.data?.roles ?? [];
   const regions = usersQuery.data?.regions ?? [];
+
+  const auditLogsQuery = useQuery({
+    enabled: !isFormPage && activeSection === 'audit',
+    queryKey: ['admin-users', 'audit-logs', 'latest'],
+    queryFn: async () => unpack(await apiFetch<Paginated<AuditLog> | AuditLog[]>('/audit-logs?limit=20')),
+  });
 
   useEffect(() => {
     if (!usersQuery.data) return;
@@ -278,6 +303,28 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
     setPage(1);
   }
 
+  function switchSection(section: PeopleSection) {
+    const nextParams = new URLSearchParams(searchParams);
+    if (section === 'people') {
+      nextParams.delete('tab');
+    } else {
+      nextParams.set('tab', section);
+    }
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  async function refreshCurrentSection() {
+    setFormError('');
+    setSuccess('');
+
+    if (activeSection === 'audit') {
+      await auditLogsQuery.refetch();
+      return;
+    }
+
+    await usersQuery.refetch();
+  }
+
   function closeForm() {
     setEditingUser(null);
     setForm(buildEmptyForm(roles, regions));
@@ -357,7 +404,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
         <section className="crud-form-page">
           <div className="form-panel-heading">
             <div>
-              <span>{editingUser ? 'Edit' : 'Add'}</span>
+              <span>{editingUser ? 'Sửa' : 'Thêm'}</span>
               <h2>{editingUser ? editingUser.fullName : 'Tài khoản nhân sự'}</h2>
             </div>
           </div>
@@ -387,44 +434,60 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
 
   return (
     <PageFrame>
-      <div className="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
-        <PageTitle
-          eyebrow="Admin"
-          title="Nhân sự"
-          description="Tài khoản & hồ sơ."
-        />
-        <div className="flex flex-wrap justify-end gap-2">
-          <Link className="secondary-button" to="/audit-logs">
+      <section className="people-workspace">
+        <div className="people-workspace-header">
+          <div>
+            <span className="people-eyebrow">Dữ liệu nền</span>
+            <h1>Nhân sự</h1>
+          </div>
+          <div className="people-header-actions">
+            <button
+              className="secondary-button compact"
+              disabled={loading || auditLogsQuery.isFetching}
+              onClick={() => void refreshCurrentSection()}
+              type="button"
+            >
+              {loading || auditLogsQuery.isFetching ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
+              Làm mới
+            </button>
+            {activeSection === 'people' ? (
+              <Link className="primary-button compact" to="/users/new">
+                <UserPlus size={17} />
+                Thêm nhân sự
+              </Link>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="people-summary-strip">
+          <MiniStat label="Tổng" value={userStats.total} />
+          <MiniStat label="Hoạt động" value={userStats.active} />
+          <MiniStat label="Kỹ thuật" value={userStats.technical} />
+          <MiniStat label="Admin" value={userStats.admins} />
+          <MiniStat label="Tạm khóa" value={userStats.inactive} />
+        </div>
+
+        <div className="people-tabbar" role="tablist" aria-label="Quản lý nhân sự">
+          <button className={activeSection === 'people' ? 'is-active' : ''} onClick={() => switchSection('people')} type="button">
+            <Users size={17} />
+            Nhân sự
+          </button>
+          <button className={activeSection === 'roles' ? 'is-active' : ''} onClick={() => switchSection('roles')} type="button">
+            <ShieldCheck size={17} />
+            Vai trò
+          </button>
+          <button className={activeSection === 'audit' ? 'is-active' : ''} onClick={() => switchSection('audit')} type="button">
             <History size={17} />
             Audit log
-          </Link>
-          <button
-            className="secondary-button"
-            disabled={loading}
-            onClick={() => {
-              setFormError('');
-              setSuccess('');
-              void usersQuery.refetch();
-            }}
-            type="button"
-          >
-            {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-            {loading ? 'Loading' : 'Refresh'}
           </button>
         </div>
-      </div>
+      </section>
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="user-metrics-grid">
-        <UserMetricCard icon={<Users size={18} />} label="Tổng nhân sự" value={userStats.total} />
-        <UserMetricCard icon={<ShieldCheck size={18} />} label="Đang hoạt động" value={userStats.active} />
-        <UserMetricCard icon={<Briefcase size={18} />} label="Kỹ thuật" value={userStats.technical} />
-        <UserMetricCard icon={<MapPin size={18} />} label="Admin" value={userStats.admins} note={userStats.inactive ? `${userStats.inactive} tạm khóa` : 'Ổn định'} />
-      </section>
-
-      <section className="user-directory-panel">
+      {activeSection === 'people' ? (
+        <section className="user-directory-panel">
           <div className="user-directory-toolbar">
             <label className="user-search-field">
               <Search size={18} />
@@ -434,10 +497,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
                 value={query}
               />
             </label>
-            <Link className="primary-button compact" to="/users/new">
-              <UserPlus size={17} />
-              Add nhân sự
-            </Link>
+            <span className="people-result-pill">{filteredUsers.length} nhân sự</span>
           </div>
 
           {loading ? (
@@ -448,11 +508,10 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
           ) : null}
 
           {!loading && filteredUsers.length === 0 ? (
-            <div className="table-state empty-state">
-              <strong>Không có tài khoản phù hợp</strong>
-              <span>Thử đổi từ khóa tìm kiếm hoặc tạo tài khoản mới.</span>
-            </div>
-          ) : null}
+          <div className="table-state empty-state">
+            <strong>Không có tài khoản phù hợp</strong>
+          </div>
+        ) : null}
 
           {!loading && visibleUsers.length ? (
             <div className="user-card-list">
@@ -470,7 +529,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
           <div className="pagination-bar">
             <div>
               <span>
-                Trang {Math.min(page, totalPages)}/{totalPages} - {filteredUsers.length} nhân sự
+                Trang {Math.min(page, totalPages)}/{totalPages}
               </span>
             </div>
 
@@ -503,22 +562,33 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
               </button>
             </div>
           </div>
-      </section>
+        </section>
+      ) : null}
+
+      {activeSection === 'roles' ? <RolesInsidePeoplePanel roles={roles} users={users} /> : null}
+
+      {activeSection === 'audit' ? (
+        <AuditInsidePeoplePanel
+          logs={auditLogsQuery.data ?? []}
+          loading={auditLogsQuery.isLoading || auditLogsQuery.isFetching}
+          error={auditLogsQuery.error instanceof Error ? auditLogsQuery.error.message : ''}
+        />
+      ) : null}
 
       {deletingUser ? (
         <div className="crud-modal-backdrop" role="presentation">
           <section aria-modal="true" className="confirm-modal" role="dialog">
             <div>
-              <span className="confirm-eyebrow">Delete</span>
+              <span className="confirm-eyebrow">Xóa</span>
               <h2>{deletingUser.fullName || deletingUser.email}</h2>
-              <p>Delete this account if backend allows.</p>
+              <p>Xóa nhân sự này nếu hệ thống cho phép.</p>
             </div>
             <div className="modal-actions">
               <button className="secondary-button" onClick={() => setDeletingUser(null)} type="button">
-                Cancel
+                Hủy
               </button>
               <button className="danger-button" disabled={saving} onClick={removeUser} type="button">
-                {saving ? 'Deleting' : 'Delete'}
+                {saving ? 'Đang xóa' : 'Xóa'}
               </button>
             </div>
           </section>
@@ -670,9 +740,6 @@ function UserForm({
             />
             <span>
               Kiêm kỹ sư kỹ thuật
-              <span className="mt-1 block text-xs font-normal leading-5 text-[#667085]">
-                Cho phép nhân sự xuất hiện trong danh sách kỹ sư.
-              </span>
             </span>
           </span>
         </label>
@@ -700,7 +767,6 @@ function UserForm({
           <div className="engineer-profile-section">
             <div className="engineer-profile-heading">
               <span>Hồ sơ kỹ sư</span>
-              <p>Dùng cho phân công và báo cáo kỹ thuật.</p>
             </div>
 
             <div className="form-grid compact-grid">
@@ -759,7 +825,7 @@ function UserForm({
                 Chuyên môn
                 <textarea
                   onChange={(event) => onChange((current) => ({ ...current, specialties: event.target.value }))}
-                  placeholder="Mỗi dòng là một chuyên môn"
+                  placeholder="Chuyên môn"
                   value={form.specialties}
                 />
               </label>
@@ -775,11 +841,11 @@ function UserForm({
 
       <div className="modal-actions">
         <button className="secondary-button" onClick={onCancel} type="button">
-          Cancel
+          Hủy
         </button>
         <button className="primary-button" disabled={saving} type="submit">
           {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-          {saving ? 'Saving' : 'Save'}
+          {saving ? 'Đang lưu' : 'Lưu'}
         </button>
       </div>
     </form>
@@ -847,6 +913,26 @@ function toDateInput(value?: string | null) {
   return value.slice(0, 10);
 }
 
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('vi-VN').format(new Date(value));
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function formatAuditAction(action: string) {
+  return action
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 function isEngineerRole(roleName?: string) {
   const normalized = roleName?.toLowerCase().trim();
   return normalized === 'engineer' || normalized === 'kỹ sư' || normalized === 'ky su';
@@ -871,16 +957,136 @@ function roleTone(roleName?: string | null) {
   return 'default';
 }
 
-function UserMetricCard({ icon, label, note, value }: { icon: ReactNode; label: string; note?: string; value: number }) {
+function normalizePeopleSection(value: string | null): PeopleSection {
+  if (value === 'roles' || value === 'audit') return value;
+  return 'people';
+}
+
+function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <article className="user-metric-card">
-      <span className="user-metric-icon">{icon}</span>
-      <div>
-        <span>{label}</span>
-        <strong>{value}</strong>
-        {note ? <small>{note}</small> : null}
+    <span>
+      <strong>{value}</strong>
+      {label}
+    </span>
+  );
+}
+
+function RolesInsidePeoplePanel({ roles, users }: { roles: Role[]; users: AdminUser[] }) {
+  return (
+    <section className="people-subpanel">
+      <div className="people-subpanel-heading">
+        <div>
+          <span>Phân quyền</span>
+          <h2>Vai trò hệ thống</h2>
+        </div>
+        <Link className="primary-button compact" to="/roles">
+          <ShieldCheck size={17} />
+          Sửa vai trò
+        </Link>
       </div>
-    </article>
+
+      <div className="people-simple-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Vai trò</th>
+              <th>Nhân sự</th>
+              <th>Cập nhật</th>
+            </tr>
+          </thead>
+          <tbody>
+            {roles.map((role) => {
+              const roleUsers = users.filter((user) => user.role?.id === role.id).length;
+
+              return (
+                <tr key={role.id}>
+                  <td>
+                    <div className="people-table-title">
+                      <ShieldCheck size={17} />
+                      <strong>{role.name}</strong>
+                    </div>
+                  </td>
+                  <td>{roleUsers}</td>
+                  <td>{role.updatedAt ? formatDate(role.updatedAt) : '-'}</td>
+                </tr>
+              );
+            })}
+            {!roles.length ? (
+              <tr>
+                <td colSpan={3}>
+                  <div className="table-state empty-state">
+                    <strong>Chưa có vai trò</strong>
+                  </div>
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function AuditInsidePeoplePanel({ error, loading, logs }: { error: string; loading: boolean; logs: AuditLog[] }) {
+  return (
+    <section className="people-subpanel">
+      <div className="people-subpanel-heading">
+        <div>
+          <span>Nhật ký</span>
+          <h2>Audit log gần nhất</h2>
+        </div>
+        <Link className="secondary-button compact" to="/audit-logs">
+          <History size={17} />
+          Xem đầy đủ
+        </Link>
+      </div>
+
+      {error ? <Notice message={error} /> : null}
+
+      <div className="people-simple-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Thời gian</th>
+              <th>Người thao tác</th>
+              <th>Hành động</th>
+              <th>Dữ liệu</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs.map((log) => (
+              <tr key={log.id}>
+                <td>{formatDateTime(log.createdAt)}</td>
+                <td>{log.actor?.fullName || log.actorEmail || log.actor?.email || '-'}</td>
+                <td>
+                  <span className="people-action-pill">{formatAuditAction(log.action)}</span>
+                </td>
+                <td>{[log.entityType, log.entityId].filter(Boolean).join(' / ') || '-'}</td>
+              </tr>
+            ))}
+            {loading ? (
+              <tr>
+                <td colSpan={4}>
+                  <div className="table-state">
+                    <Loader2 className="spin-icon" size={18} />
+                    Đang tải audit log...
+                  </div>
+                </td>
+              </tr>
+            ) : null}
+            {!loading && !logs.length ? (
+              <tr>
+                <td colSpan={4}>
+                  <div className="table-state empty-state">
+                    <strong>Chưa có nhật ký</strong>
+                  </div>
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -929,7 +1135,7 @@ function UserCard({ onDelete, onToggleStatus, user }: { onDelete: () => void; on
       </dl>
 
       <div className="user-card-actions">
-        <Link className="icon-button" to={`/users/${user.id}/edit`} title="Edit">
+        <Link className="icon-button" to={`/users/${user.id}/edit`} title="Sửa">
           <Edit3 size={16} />
         </Link>
         <button
@@ -940,7 +1146,7 @@ function UserCard({ onDelete, onToggleStatus, user }: { onDelete: () => void; on
         >
           {user.status === 'ACTIVE' ? <PowerOff size={16} /> : <Power size={16} />}
         </button>
-        <button className="icon-button danger" onClick={onDelete} title="Delete" type="button">
+        <button className="icon-button danger" onClick={onDelete} title="Xóa" type="button">
           <Trash2 size={16} />
         </button>
       </div>

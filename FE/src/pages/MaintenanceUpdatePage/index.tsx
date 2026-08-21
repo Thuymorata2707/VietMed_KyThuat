@@ -416,7 +416,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 />
                 <label className={`${labelClass} md:col-span-2`}>
                   Checklist
-                  <textarea className={textareaClass} onChange={(event) => updateForm({ checklistText: event.target.value })} placeholder="Mỗi dòng là một hạng mục kiểm tra" value={form.checklistText} />
+                  <textarea className={textareaClass} onChange={(event) => updateForm({ checklistText: event.target.value })} placeholder="Hạng mục kiểm tra" value={form.checklistText} />
                 </label>
                 <div className="md:col-span-2">
                   <StandardChecklistPanel

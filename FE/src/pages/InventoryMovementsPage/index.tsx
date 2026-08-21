@@ -4,7 +4,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
-import { PageTitle } from '../../components/PageTitle';
 import { RoleName } from '../../auth/roles';
 import { displayLabel } from '../../utils/displayLabels';
 import { formatValue } from '../../utils/format';
@@ -219,80 +218,58 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
 
   return (
     <PageFrame>
-      <PageTitle
-        eyebrow="Kho kỹ thuật"
-        title="Kho máy"
-        description="Tồn kho & điều chuyển."
-      />
-
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
-      <section className="grid grid-cols-4 gap-3 max-lg:grid-cols-2 max-sm:grid-cols-1">
-        <SummaryCard icon={<Boxes size={18} />} label="Sẵn sàng xuất kho" tone="neutral" value={stats.available} />
-        <SummaryCard icon={<ClipboardCheck size={18} />} label="Đã giữ hàng" tone="warn" value={stats.reserved} />
-        <SummaryCard icon={<RotateCcw size={18} />} label="Máy trả về" tone="danger" value={stats.returned} detail={`${stats.returnedRepairing} đang sửa`} />
-        <SummaryCard icon={<PackageCheck size={18} />} label="Đã lắp đặt" tone="good" value={stats.installed} />
+      <section className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white font-sans shadow-[0_16px_36px_rgba(24,24,27,0.06)]">
+        <div className="grid gap-4 border-b border-[#eeeeee] bg-[#fbfbfc] p-4 min-[1280px]:grid-cols-[minmax(220px,0.58fr)_minmax(0,1.42fr)_auto] min-[1280px]:items-center">
+          <div className="min-w-0">
+            <span className="text-xs font-black text-[#667085]">Kho kỹ thuật</span>
+            <h1 className="mt-1 truncate text-2xl font-black tracking-[-0.03em] text-[#18181b]">Kho máy</h1>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-4">
+            <InventoryMetric icon={<Boxes size={16} />} label="Sẵn sàng" tone="neutral" value={stats.available} />
+            <InventoryMetric icon={<ClipboardCheck size={16} />} label="Đã giữ" tone="warn" value={stats.reserved} />
+            <InventoryMetric icon={<RotateCcw size={16} />} label="Trả về" tone="danger" value={stats.returned} />
+            <InventoryMetric icon={<PackageCheck size={16} />} label="Đã lắp" tone="good" value={stats.installed} />
+          </div>
+          <button className="secondary-button bg-white min-[1120px]:justify-self-end" disabled={loading} onClick={loadData} type="button">
+            {loading ? <Loader2 className="spin-icon" size={17} /> : <History size={17} />}
+            {loading ? 'Đang tải' : 'Làm mới'}
+          </button>
+        </div>
+
+        <div className="grid gap-3 p-3 min-[1180px]:grid-cols-[minmax(0,1fr)_auto] min-[1180px]:items-center">
+          {tab === 'stock' ? (
+            <StockFilterRail
+              activeStatus={statusFilter}
+              stats={stats}
+              onChange={(nextStatus) => updateInventoryState('stock', query, nextStatus)}
+            />
+          ) : (
+            <span className="text-sm font-bold text-[#667085]">{tab === 'installed' ? 'Máy đã lắp đặt tại khách hàng' : 'Lịch sử điều chuyển kho'}</span>
+          )}
+          <div className="flex flex-wrap gap-2 min-[1180px]:justify-end">
+            <TabButton active={tab === 'stock'} icon={<Boxes size={16} />} label="Tồn kho" onClick={() => updateInventoryState('stock', query, 'ALL')} />
+            <TabButton active={tab === 'installed'} icon={<PackageCheck size={16} />} label="Đã lắp" onClick={() => updateInventoryState('installed', query, 'ALL')} />
+            <TabButton active={tab === 'history'} icon={<History size={16} />} label="Lịch sử" onClick={() => updateInventoryState('history', query, 'ALL')} />
+          </div>
+        </div>
       </section>
 
-      <div className="rounded-[20px] border border-[#e4e4e7] bg-white/90 p-1 font-sans shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
-        <div className="grid grid-cols-3 gap-1 max-sm:grid-cols-1">
-          <TabButton active={tab === 'stock'} icon={<Boxes size={17} />} label="Tồn kho" onClick={() => updateInventoryState('stock', query, 'ALL')} />
-          <TabButton active={tab === 'installed'} icon={<PackageCheck size={17} />} label="Máy đã lắp" onClick={() => updateInventoryState('installed', query, 'ALL')} />
-          <TabButton active={tab === 'history'} icon={<History size={17} />} label="Lịch sử kho" onClick={() => updateInventoryState('history', query, 'ALL')} />
-        </div>
-      </div>
-
-      {tab === 'stock' ? (
-        <section className="grid gap-3 rounded-[22px] border border-[#e4e4e7] bg-[#fafafa] p-4 shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <span className="text-xs font-semibold text-[#18181b]">Hàng đợi kho</span>
-              <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">Chọn nhóm máy cần xử lý</h2>
-            </div>
-            <span className="rounded-[18px] border border-[#e4e4e7] bg-white px-3 py-2 text-sm font-medium text-[#333333]">
-              {filteredMachines.length} máy đang hiển thị
-            </span>
-          </div>
-          <div className="grid gap-2 md:grid-cols-5">
-            <QueueButton active={statusFilter === 'ALL'} count={stats.available + stats.reserved + stats.returned + stats.accessorySplit} label="Tất cả kho" onClick={() => updateInventoryState('stock', query, 'ALL')} />
-            <QueueButton active={statusFilter === 'IN_STOCK'} count={stats.available} label="Sẵn sàng" onClick={() => updateInventoryState('stock', query, 'IN_STOCK')} />
-            <QueueButton active={statusFilter === 'RESERVED'} count={stats.reserved} label="Đã giữ" onClick={() => updateInventoryState('stock', query, 'RESERVED')} />
-            <QueueButton active={statusFilter === 'RETURNED'} count={stats.returned} label="Thu hồi" onClick={() => updateInventoryState('stock', query, 'RETURNED')} />
-            <QueueButton active={statusFilter === 'ACCESSORY_SPLIT'} count={stats.accessorySplit} label="Tách phụ kiện" onClick={() => updateInventoryState('stock', query, 'ACCESSORY_SPLIT')} />
-          </div>
-        </section>
-      ) : null}
-
-      <div className="flex min-w-0 items-center justify-between gap-3.5 max-sm:flex-col max-sm:items-stretch">
-        <div className="flex min-h-11 max-w-[560px] flex-1 items-center gap-2.5 rounded-[20px] border border-[#e4e4e7] bg-white px-3 text-[#666666] shadow-[0_10px_24px_rgba(24,24,27,0.04)] transition focus-within:-translate-y-px focus-within:border-[#18181b] focus-within:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] max-sm:max-w-none">
-          <Search size={18} />
-          <input
-            className="min-w-0 flex-1 border-0 font-sans text-[#1f1f1f] outline-none"
-            onChange={(event) => updateInventoryState(tab, event.target.value, statusFilter)}
-            placeholder={tab === 'history' ? 'Tìm mã phiếu, máy, khách hàng, người tạo' : 'Tìm mã máy, serial, model hoặc khách hàng'}
-            value={query}
-          />
-        </div>
-        <button className="secondary-button" disabled={loading} onClick={loadData} type="button">
-          {loading ? <Loader2 className="spin-icon" size={17} /> : <History size={17} />}
-          {loading ? 'Loading' : 'Refresh'}
-        </button>
-      </div>
+      <InventoryResultToolbar
+        count={tab === 'history' ? filteredMovements.length : filteredMachines.length}
+        query={query}
+        searchPlaceholder={tab === 'history' ? 'Tìm phiếu, máy, khách hàng' : 'Tìm mã máy, serial, model'}
+        subtitle={tab === 'history' ? 'Lịch sử kho' : tab === 'installed' ? 'Máy đã lắp' : 'Danh sách kho'}
+        title={tab === 'history' ? 'Lịch sử điều chuyển' : tab === 'installed' ? 'Máy đang ở khách hàng' : statusFilter === 'ALL' ? 'Tất cả máy trong kho' : displayLabel(statusFilter)}
+        onQueryChange={(nextQuery) => updateInventoryState(tab, nextQuery, statusFilter)}
+      />
 
       {tab === 'history' ? (
         <HistoryTable loading={loading} movements={filteredMovements} resetKey={`history-${query}`} />
       ) : (
         <section className="grid gap-3">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <span className="text-xs font-semibold text-[#18181b]">{tab === 'installed' ? 'Máy đã lắp' : 'Danh sách kho'}</span>
-              <h2 className="mt-1 text-xl font-semibold text-[#1f1f1f]">
-                {tab === 'installed' ? 'Máy đang ở khách hàng' : statusFilter === 'ALL' ? 'Tất cả máy trong kho' : displayLabel(statusFilter)}
-              </h2>
-            </div>
-            <span className="text-sm font-medium text-[#666666]">{filteredMachines.length} kết quả</span>
-          </div>
           <MachineTable
             loading={loading}
             machines={filteredMachines}
@@ -343,11 +320,11 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
 
             <div className="flex justify-end gap-2 border-t border-[#eeeeee] pt-4">
               <button className="secondary-button" disabled={saving} onClick={() => setActiveMove(null)} type="button">
-                Cancel
+                Hủy
               </button>
               <button className="primary-button" disabled={saving} type="submit">
                 {saving ? <Loader2 className="spin-icon" size={17} /> : <ClipboardCheck size={17} />}
-                {saving ? 'Saving' : 'Save'}
+                {saving ? 'Đang lưu' : 'Lưu'}
               </button>
             </div>
           </form>
@@ -382,28 +359,121 @@ function SummaryCard({
   );
 }
 
-function QueueButton({ active, count, label, onClick }: { active: boolean; count: number; label: string; onClick: () => void }) {
+function InventoryMetric({
+  icon,
+  label,
+  tone,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  tone: 'good' | 'warn' | 'danger' | 'neutral';
+  value: number;
+}) {
   return (
-    <button
-      className={`grid min-h-[76px] rounded-[16px] border p-3 text-left transition ${
-        active
-          ? 'border-[#18181b] bg-[#f4f4f5] text-[#18181b] shadow-[0_8px_20px_rgba(24,24,27,0.08)]'
-          : 'border-[#eeeeee] bg-[#fafafa] text-[#333333] hover:border-[#e4e4e7] hover:bg-white'
-      }`}
-      onClick={onClick}
-      type="button"
-    >
-      <span className="text-sm font-semibold">{label}</span>
-      <strong className="mt-2 text-2xl leading-none">{count}</strong>
-    </button>
+    <div className="grid min-h-[74px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[16px] border border-[#e8ecef] bg-white px-3 py-2.5">
+      <span className="min-w-0">
+        <span className="block truncate text-xs font-bold text-[#667085]">{label}</span>
+        <strong className="mt-1 block text-2xl leading-none tracking-[-0.04em] text-[#18181b]">{value}</strong>
+      </span>
+      <span className={`inline-flex h-9 w-9 items-center justify-center rounded-[13px] ${summaryIconTone[tone]}`}>{icon}</span>
+    </div>
+  );
+}
+
+function InventoryResultToolbar({
+  count,
+  onQueryChange,
+  query,
+  searchPlaceholder,
+  subtitle,
+  title,
+}: {
+  count: number;
+  onQueryChange: (value: string) => void;
+  query: string;
+  searchPlaceholder: string;
+  subtitle: string;
+  title: string;
+}) {
+  return (
+    <section className="grid gap-3 rounded-[20px] border border-[#e4e4e7] bg-white p-3 shadow-[0_10px_24px_rgba(24,24,27,0.04)] min-[1180px]:grid-cols-[minmax(220px,0.58fr)_minmax(300px,0.9fr)_auto] min-[1180px]:items-center">
+      <div className="min-w-0">
+        <span className="text-xs font-black text-[#667085]">{subtitle}</span>
+        <h2 className="mt-1 truncate text-xl font-black tracking-[-0.02em] text-[#18181b]">{title}</h2>
+      </div>
+      <label className="flex min-h-11 min-w-0 items-center gap-2.5 rounded-[16px] border border-[#e4e4e7] bg-[#fbfbfc] px-3 text-[#666666] transition focus-within:border-[#18181b] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(24,24,27,0.10)]">
+        <Search size={18} />
+        <input
+          className="min-w-0 flex-1 border-0 bg-transparent font-sans text-[#1f1f1f] outline-none"
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder={searchPlaceholder}
+          value={query}
+        />
+      </label>
+      <span className="rounded-[14px] border border-[#e8ecef] bg-[#fbfbfc] px-3 py-2 text-sm font-bold text-[#3f3f46] min-[980px]:justify-self-end">
+        {count} kết quả
+      </span>
+    </section>
+  );
+}
+
+function StockFilterRail({
+  activeStatus,
+  onChange,
+  stats,
+}: {
+  activeStatus: StatusFilter;
+  onChange: (status: StatusFilter) => void;
+  stats: {
+    accessorySplit: number;
+    available: number;
+    reserved: number;
+    returned: number;
+  };
+}) {
+  const items: Array<{ count: number; label: string; value: StatusFilter }> = [
+    { count: stats.available + stats.reserved + stats.returned + stats.accessorySplit, label: 'Tất cả', value: 'ALL' },
+    { count: stats.available, label: 'Sẵn sàng', value: 'IN_STOCK' },
+    { count: stats.reserved, label: 'Đã giữ', value: 'RESERVED' },
+    { count: stats.returned, label: 'Thu hồi', value: 'RETURNED' },
+    { count: stats.accessorySplit, label: 'Tách phụ kiện', value: 'ACCESSORY_SPLIT' },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="mr-1 text-xs font-black text-[#667085]">Lọc kho</span>
+      {items.map((item) => {
+        const active = activeStatus === item.value;
+
+        return (
+          <button
+            className={[
+              'inline-flex min-h-8 items-center gap-2 rounded-[999px] border px-3 text-sm font-bold transition',
+              active
+                ? 'border-[#18181b] bg-[#18181b] text-white shadow-[0_8px_18px_rgba(24,24,27,0.14)]'
+                : 'border-[#e4e4e7] bg-white text-[#3f3f46] hover:border-[#18181b]/40 hover:bg-[#fafafa]',
+            ].join(' ')}
+            key={item.value}
+            onClick={() => onChange(item.value)}
+            type="button"
+          >
+            <span>{item.label}</span>
+            <strong className={active ? 'text-white' : 'text-[#18181b]'}>{item.count}</strong>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
 function TabButton({ active, icon, label, onClick }: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
   return (
     <button
-      className={`inline-flex min-h-[42px] items-center justify-center gap-2 rounded-[14px] px-3 font-medium transition ${
-        active ? 'bg-[#f4f4f5] text-[#18181b] shadow-[inset_0_-2px_0_#18181b]' : 'text-[#333333] hover:bg-[#fafafa]'
+      className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-[999px] border px-3 text-sm font-bold transition ${
+        active
+          ? 'border-[#18181b] bg-[#18181b] text-white shadow-[0_8px_18px_rgba(24,24,27,0.14)]'
+          : 'border-[#e4e4e7] bg-white text-[#3f3f46] hover:border-[#18181b]/40 hover:bg-[#fafafa]'
       }`}
       onClick={onClick}
       type="button"
@@ -439,8 +509,8 @@ function MachineTable({
 
   return (
     <>
-      <div className="overflow-x-auto rounded-t-[22px] border border-[#e4e4e7] bg-white font-sans shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
-        <table className="w-full min-w-[1040px] border-collapse">
+      <div className="responsive-table-wrap overflow-x-auto rounded-t-[22px] border border-[#e4e4e7] bg-white font-sans shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
+        <table className="responsive-data-table w-full min-w-[1040px] border-collapse">
           <thead>
             <tr>
               {['Máy', 'Serial / Model', 'Khách hàng', 'Trạng thái', mode === 'installed' ? 'Bảo hành / Kỹ sư' : 'Phụ kiện', 'Thao tác'].map((header) => (
@@ -551,10 +621,10 @@ function MachineTable({
                           </button>
                         ) : null}
                         {canManageInventory && (machine.inventoryStatus === 'IN_STOCK' || machine.inventoryStatus === 'RESERVED') && !splitAccessoryMachineIds.has(machine.id) ? (
-                          <button className="secondary-button" onClick={() => onMove(machine, movementActions.sell)} type="button">
+                          <Link className="secondary-button" to={`/installations/create?machineId=${machine.id}&returnTo=${returnTo}`}>
                             <ShoppingCart size={15} />
-                            Bán
-                          </button>
+                            Bán máy
+                          </Link>
                         ) : null}
                         {splitAccessoryMachineIds.has(machine.id) ? (
                           <span className="rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-2.5 py-2 text-xs font-bold text-[#9b5a17]">
@@ -716,8 +786,8 @@ function HistoryTable({ loading, movements, resetKey }: { loading: boolean; move
 
   return (
     <>
-      <div className="overflow-x-auto rounded-t-[22px] border border-[#e4e4e7] bg-white font-sans shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
-        <table className="w-full min-w-[980px] border-collapse">
+      <div className="responsive-table-wrap overflow-x-auto rounded-t-[22px] border border-[#e4e4e7] bg-white font-sans shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
+        <table className="responsive-data-table w-full min-w-[980px] border-collapse">
           <thead>
             <tr>
               {['Mã phiếu', 'Loại', 'Máy', 'Chuyển trạng thái', 'Khách hàng', 'Người tạo', 'Ngày'].map((header) => (
@@ -881,7 +951,6 @@ function EmptyRow({ columns }: { columns: number }) {
         <div className="grid min-h-[180px] place-items-center content-center justify-center gap-2.5 text-center text-[#666666]">
           <Boxes className="rounded-lg border border-[#e4e4e7] bg-[#f4f4f5] p-2.5 text-[#18181b]" size={42} />
           <strong className="text-[15px] text-[#1f1f1f]">Chưa có dữ liệu phù hợp</strong>
-          <span className="text-[13px]">Thử đổi tab hoặc từ khóa tìm kiếm.</span>
         </div>
       </td>
     </tr>
@@ -945,7 +1014,6 @@ const movementActions = {
   reserve: { label: 'Giữ máy cho khách/dự án', type: 'RESERVE', toStatus: 'RESERVED', note: 'Giữ máy từ kho cho khách hàng/dự án.', requiresCustomer: true },
   return: { label: 'Thu hồi máy chờ kiểm tra', type: 'RETURN', toStatus: 'RETURNED', note: 'Thu hồi máy từ khách hàng, chờ kiểm tra tình trạng.', requiresCustomer: true },
   returnToCustomer: { label: 'Trả lại máy cho khách', type: 'INSTALL', toStatus: 'INSTALLED', note: 'Đã sửa/kiểm tra xong và trả lại máy cho khách hàng.', requiresCustomer: true },
-  sell: { label: 'Bán/Thanh lý máy', type: 'SELL', toStatus: 'SOLD', note: 'Xuất bán hoặc thanh lý máy.', requiresCustomer: true },
   splitAccessory: { label: 'Tách phụ kiện khỏi máy', type: 'SPLIT_ACCESSORY', toStatus: 'ACCESSORY_SPLIT', note: 'Tách phụ kiện khỏi máy để quản lý riêng.' },
 } satisfies Record<string, MovementAction>;
 

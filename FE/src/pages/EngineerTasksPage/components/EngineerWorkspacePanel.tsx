@@ -66,7 +66,7 @@ export function EngineerWorkspacePanel({
         ) : null}
 
         {!loading && businessTab !== 'calendar' && groupedTasks.length === 0 ? (
-          <TaskEmptyState description="Thử đổi bộ lọc hoặc kiểm tra lại phiếu được admin phân công." title="Chưa có công việc phù hợp" />
+          <TaskEmptyState title="Chưa có công việc phù hợp" />
         ) : null}
 
         {businessTab !== 'calendar'
@@ -180,7 +180,7 @@ function DailyWorkNotesList({ loading, notes }: { loading: boolean; notes: Daily
   }
 
   if (notes.length === 0) {
-    return <TaskEmptyState description="Lịch admin thêm cho bạn và ghi chú công việc cá nhân sẽ xuất hiện tại đây." title="Chưa có lịch công việc phù hợp" />;
+    return <TaskEmptyState title="Chưa có lịch công việc phù hợp" />;
   }
 
   return (
@@ -233,11 +233,10 @@ function TaskLoadingState({ label }: { label: string }) {
   );
 }
 
-function TaskEmptyState({ description, title }: { description: string; title: string }) {
+function TaskEmptyState({ title }: { title: string }) {
   return (
     <div className="grid min-h-40 place-items-center gap-2 p-6 text-center text-[#666666]">
       <strong className="text-[#1f1f1f]">{title}</strong>
-      <span className="text-sm">{description}</span>
     </div>
   );
 }

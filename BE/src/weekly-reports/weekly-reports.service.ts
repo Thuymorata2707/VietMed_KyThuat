@@ -21,6 +21,7 @@ const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
   WORK: 'Công việc',
   BUSINESS_TRIP: 'Công tác',
   LEAVE: 'Nghỉ phép',
+  UNPAID_LEAVE: 'Nghỉ không phép',
   REPAIR: 'Sửa chữa',
   INSTALLATION: 'Lắp đặt',
   MAINTENANCE: 'Bảo trì/Bảo dưỡng',

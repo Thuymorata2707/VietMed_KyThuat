@@ -643,7 +643,6 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         <PageTitle
           eyebrow="Phiếu dịch vụ"
           title="Tạo phiếu"
-          description="Hồ sơ & nội dung việc."
         />
         <button className="secondary-button" onClick={() => navigate(backHref)} type="button">
           <ArrowLeft size={17} />
@@ -664,7 +663,6 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 <div>
                   <span className={eyebrowClass}>Loại phiếu</span>
                   <h2 className={sectionTitleClass}>Chọn nghiệp vụ và người phụ trách</h2>
-                  <p className={sectionDescriptionClass}>Chọn luồng xử lý.</p>
                 </div>
               </div>
 
@@ -704,7 +702,6 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                   <div>
                     <span className={eyebrowClass}>Hồ sơ</span>
                     <h2 className={sectionTitleClass}>Khách hàng và máy</h2>
-                    <p className={sectionDescriptionClass}>Chọn hoặc tạo nhanh hồ sơ.</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -810,7 +807,6 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 <div>
                   <span className={eyebrowClass}>Nội dung</span>
                   <h2 className={sectionTitleClass}>Thông tin công việc</h2>
-                  <p className={sectionDescriptionClass}>Nhập nội dung kỹ thuật.</p>
                 </div>
               </div>
 
@@ -966,19 +962,17 @@ function RepairFields({ form, models, updateForm }: { form: TicketForm; models: 
 }
 
 function ServiceCreateOperationalGuide({ currentStep, kind }: { currentStep: CreateTicketStep; kind: TicketKind }) {
-  const steps: Array<{ id: CreateTicketStep; number: string; title: string; description: string }> = [
-    { id: 'setup', number: '1', title: 'Loại phiếu', description: ticketKindLabel(kind) },
+  const steps: Array<{ id: CreateTicketStep; number: string; title: string }> = [
+    { id: 'setup', number: '1', title: ticketKindLabel(kind) },
     {
       id: 'records',
       number: '2',
       title: 'Khách hàng & máy',
-      description: kind === 'installation' ? 'Máy lắp đặt' : 'Máy đang sử dụng',
     },
     {
       id: 'work',
       number: '3',
-      title: 'Nội dung kỹ thuật',
-      description: kind === 'repair' ? 'Lỗi và xử lý' : kind === 'maintenance' ? 'Bảo trì và lịch hẹn' : 'Bàn giao và bảo hành',
+      title: 'Nội dung',
     },
   ];
 
@@ -998,7 +992,6 @@ function ServiceCreateOperationalGuide({ currentStep, kind }: { currentStep: Cre
             </span>
             <div className="min-w-0">
               <strong className="block truncate text-sm font-extrabold">{step.title}</strong>
-              <span className={`mt-1 block truncate text-xs font-semibold ${isActive ? 'text-white/75' : 'text-[#666666]'}`}>{step.description}</span>
             </div>
           </div>
         );
@@ -1045,7 +1038,7 @@ function MaintenanceFields({ form, models, updateForm }: { form: TicketForm; mod
       </label>
       <label className={wideLabelClass}>
         Checklist
-        <textarea className={textareaClass} onChange={(event) => updateForm({ checklist: event.target.value })} placeholder="Mỗi dòng là một hạng mục kiểm tra" value={form.checklist} />
+        <textarea className={textareaClass} onChange={(event) => updateForm({ checklist: event.target.value })} placeholder="Hạng mục kiểm tra" value={form.checklist} />
       </label>
       <label className={wideLabelClass}>
         Ghi chú
@@ -1125,7 +1118,6 @@ function InstallationFields({
             <span className="rounded-xl bg-white px-3 py-2">{selectedMachine?.modelName || selectedMachine?.name || form.modelName || 'Chưa có model'}</span>
             <span className="rounded-xl bg-white px-3 py-2">{selectedMachine?.serialNumber ? `S/N ${selectedMachine.serialNumber}` : 'Chưa có S/N'}</span>
           </div>
-          <p className="mt-2 text-xs font-medium text-[#64748b]">Đã có hồ sơ máy.</p>
         </div>
       ) : (
         <>
@@ -1140,7 +1132,6 @@ function InstallationFields({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-bold text-[#172033]">Thiết bị bàn giao thêm</h3>
-            <p className="mt-1 text-xs font-medium text-[#64748b]">Không nhập lại máy chính.</p>
           </div>
           <button className="secondary-button compact" onClick={addDeviceItem} type="button">
             Thêm thiết bị
@@ -1258,7 +1249,7 @@ function QuickCustomerPanel({
   updateForm: (patch: Partial<QuickCustomerForm>) => void;
 }) {
   return (
-    <div className="mb-4 grid min-w-0 gap-4 rounded-[20px] border border-[#dbe6f3] bg-[#fbfdff] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)] md:grid-cols-2">
+    <div className="mt-4 grid min-w-0 gap-5 rounded-[20px] border border-[#dbe6f3] bg-[#fbfdff] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)] md:grid-cols-2">
       <label className={labelClass}>
         Tên khách hàng
         <input className={fieldClass} onChange={(event) => updateForm({ name: event.target.value })} value={form.name} />
@@ -1288,12 +1279,15 @@ function QuickCustomerPanel({
           </select>
         </label>
       )}
-      <VietnamAddressSelects
-        fieldClassName={fieldClass}
-        labelClassName={labelClass}
-        onChange={(patch) => updateForm(patch)}
-        value={form}
-      />
+      <div className="grid min-w-0 gap-4 md:col-span-2 md:grid-cols-3">
+        <VietnamAddressSelects
+          fieldClassName={fieldClass}
+          labelClassName={labelClass}
+          onChange={(patch) => updateForm(patch)}
+          showProvince={false}
+          value={form}
+        />
+      </div>
       <label className={labelClass}>
         Người liên hệ
         <input className={fieldClass} onChange={(event) => updateForm({ contactPerson: event.target.value })} value={form.contactPerson} />
@@ -1303,7 +1297,7 @@ function QuickCustomerPanel({
         <input className={fieldClass} onChange={(event) => updateForm({ phone: event.target.value })} value={form.phone} />
       </label>
       <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#dbe6f3] bg-white px-4 py-3 text-sm font-semibold text-[#667985]">
-        <span className="min-w-0 flex-1 truncate">{buildFullVietnamAddress(form) || 'Chọn đủ địa chỉ để mở Google Maps nhanh.'}</span>
+        <span className="min-w-0 flex-1 truncate">{buildFullVietnamAddress(form) || 'Chưa có địa chỉ'}</span>
         {buildFullVietnamAddress(form) ? <GoogleMapsDirectionsButton address={buildFullVietnamAddress(form)} className="secondary-button compact" /> : null}
       </div>
       <div className="md:col-span-2">
@@ -1343,7 +1337,7 @@ function QuickMachinePanel({
   updateForm: (patch: Partial<QuickMachineForm>) => void;
 }) {
   return (
-    <div className="grid min-w-0 gap-4 overflow-hidden rounded-[20px] border border-[#dbe6f3] bg-[#fbfdff] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)] md:grid-cols-2">
+    <div className="mt-4 grid min-w-0 gap-4 overflow-hidden rounded-[20px] border border-[#dbe6f3] bg-[#fbfdff] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)] md:grid-cols-2">
       <div className="md:col-span-2">
         <span className="rounded-full border border-[#c7d2fe] bg-white px-2.5 py-1 text-xs font-bold text-[#334155]">
           {kind === 'installation' ? 'Thêm thiết bị mới' : 'Thêm thiết bị khách đang dùng'}
@@ -1387,17 +1381,14 @@ function QuickMachinePanel({
             <strong className="mt-1 block min-h-10 rounded-xl bg-[#f8fafc] px-3 py-2 text-sm text-[#172033]">
               {hasTicketCustomer ? customerName : 'Chưa chọn khách hàng'}
             </strong>
-            <span className="mt-1 text-xs font-semibold text-[#64748b]">
-              {kind === 'installation' ? 'Máy sẽ gắn khách hàng sau khi duyệt lắp đặt.' : 'Thiết bị dùng theo khách hàng đã chọn trên phiếu.'}
-            </span>
           </div>
-          <div className="md:col-span-2">
+          <div className="border-t border-[#dbe6f3] pt-4 md:col-span-2">
             {supportsAccessories ? (
               <MachineAccessoryEditor compact mode={accessoryMode ?? 'probe'} onChange={(value) => updateForm({ accessoriesText: value })} value={form.accessoriesText} />
             ) : (
               <label className={labelClass}>
                 Phụ kiện đi kèm
-                <textarea className={textareaClass} onChange={(event) => updateForm({ accessoriesText: event.target.value })} placeholder="Mỗi dòng: Phụ kiện | S/N" value={form.accessoriesText} />
+                <textarea className={textareaClass} onChange={(event) => updateForm({ accessoriesText: event.target.value })} placeholder="Phụ kiện | S/N" value={form.accessoriesText} />
               </label>
             )}
           </div>
@@ -1499,7 +1490,6 @@ const sidePanelClass = 'rounded-[24px] border border-[#e4e4e7] bg-[#ffffff] p-5 
 const stepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-[#18181b] text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(24,24,27,0.24)]';
 const eyebrowClass = 'text-xs font-bold uppercase tracking-[0.16em] text-[#18181b]';
 const sectionTitleClass = 'mt-1 text-lg font-bold leading-tight text-[#1f1f1f]';
-const sectionDescriptionClass = 'mt-1 text-xs font-medium leading-5 text-[#8a8f99]';
 const labelClass = 'grid min-w-0 content-start gap-2 font-sans text-sm font-semibold leading-snug text-[#333333]';
 const wideLabelClass = `${labelClass} md:col-span-2`;
 const fieldClass =

@@ -10,7 +10,6 @@ import {
   MapPinned,
   FileBarChart2,
   SquareCheckBig,
-  ShieldCheck,
   TrendingUp,
   Users,
   Wrench,
@@ -22,6 +21,7 @@ export type NavItem = {
   path: string;
   label: string;
   icon: ReactNode;
+  matchPaths?: string[];
   roles: RoleName[];
 };
 
@@ -36,7 +36,7 @@ export const navItems: NavItem[] = [
   { path: '/customers', label: 'Khách hàng', icon: <Building2 size={18} />, roles: ['admin', 'manager'] },
   { path: '/my-customers', label: 'Khách hàng phụ trách', icon: <Building2 size={18} />, roles: ['engineer'] },
   { path: '/service-tickets', label: 'Trung tâm phiếu kỹ thuật', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
-  { path: '/daily-work', label: 'Lịch làm việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
+  { path: '/daily-work', label: 'Lịch & báo cáo', icon: <CalendarDays size={18} />, matchPaths: ['/daily-work', '/daily-reports', '/weekly-reports'], roles: ['admin', 'engineer'] },
   { path: '/knowledge-base', label: 'Chia sẻ kinh nghiệm', icon: <BookOpenCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/technical-statistics', label: 'Phân tích kỹ thuật', icon: <BarChart3 size={18} />, roles: ['admin', 'engineer'] },
   { path: '/reports', label: 'Báo cáo tổng hợp', icon: <FileBarChart2 size={18} />, roles: ['admin', 'manager'] },
@@ -46,9 +46,7 @@ export const navItems: NavItem[] = [
   { path: '/product-industries', label: 'Ngành hàng', icon: <BriefcaseBusiness size={18} />, roles: ['admin'] },
   { path: '/component-accessories', label: 'Phụ kiện', icon: <Boxes size={18} />, roles: ['admin'] },
   { path: '/users', label: 'Nhân sự', icon: <Users size={18} />, roles: ['admin'] },
-  { path: '/roles', label: 'Vai trò', icon: <ShieldCheck size={18} />, roles: ['admin'] },
   { path: '/regions', label: 'Khu vực', icon: <MapPinned size={18} />, roles: ['admin'] },
-  { path: '/audit-logs', label: 'Audit log', icon: <ShieldCheck size={18} />, roles: ['admin'] },
   { path: '/my-tasks', label: 'Điều phối & duyệt', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
   { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
   { path: '/application-support', label: 'Hỗ trợ app', icon: <Headphones size={18} />, roles: ['engineer'] },
@@ -56,17 +54,18 @@ export const navItems: NavItem[] = [
 
 export const navGroups: NavGroup[] = [
   {
-    label: 'Làm việc',
+    label: 'Vận hành',
     items: [
       { path: '/', label: 'Tổng quan', icon: <Gauge size={18} />, roles: ['admin', 'manager', 'engineer'] },
       { path: '/my-tasks', label: 'Điều phối & duyệt', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
       { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
-      { path: '/application-support', label: 'Hỗ trợ app', icon: <Headphones size={18} />, roles: ['engineer'] },
       { path: '/service-tickets', label: 'Trung tâm phiếu kỹ thuật', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
+      { path: '/daily-work', label: 'Lịch & báo cáo', icon: <CalendarDays size={18} />, matchPaths: ['/daily-work', '/daily-reports', '/weekly-reports'], roles: ['admin', 'engineer'] },
+      { path: '/application-support', label: 'Hỗ trợ app', icon: <Headphones size={18} />, roles: ['engineer'] },
     ],
   },
   {
-    label: 'Khách hàng & máy',
+    label: 'Hồ sơ & kho',
     items: [
       { path: '/customers', label: 'Khách hàng', icon: <Building2 size={18} />, roles: ['admin', 'manager'] },
       { path: '/my-customers', label: 'Khách hàng phụ trách', icon: <Building2 size={18} />, roles: ['engineer'] },
@@ -75,9 +74,8 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: 'Báo cáo',
+    label: 'Phân tích',
     items: [
-      { path: '/daily-work', label: 'Lịch làm việc', icon: <CalendarDays size={18} />, roles: ['admin', 'engineer'] },
       { path: '/reports', label: 'Báo cáo tổng hợp', icon: <FileBarChart2 size={18} />, roles: ['admin', 'manager'] },
       { path: '/technical-statistics', label: 'Phân tích kỹ thuật', icon: <BarChart3 size={18} />, roles: ['admin', 'engineer'] },
       { path: '/engineer-performance', label: 'Hiệu suất kỹ sư', icon: <TrendingUp size={18} />, roles: ['admin', 'engineer'] },
@@ -88,18 +86,10 @@ export const navGroups: NavGroup[] = [
     label: 'Dữ liệu nền',
     defaultCollapsed: true,
     items: [
+      { path: '/users', label: 'Nhân sự', icon: <Users size={18} />, matchPaths: ['/users', '/roles', '/audit-logs'], roles: ['admin'] },
+      { path: '/regions', label: 'Khu vực', icon: <MapPinned size={18} />, roles: ['admin'] },
       { path: '/product-industries', label: 'Ngành hàng', icon: <BriefcaseBusiness size={18} />, roles: ['admin'] },
       { path: '/component-accessories', label: 'Phụ kiện', icon: <Boxes size={18} />, roles: ['admin'] },
-      { path: '/regions', label: 'Khu vực', icon: <MapPinned size={18} />, roles: ['admin'] },
-    ],
-  },
-  {
-    label: 'Hệ thống',
-    defaultCollapsed: true,
-    items: [
-      { path: '/users', label: 'Nhân sự', icon: <Users size={18} />, roles: ['admin'] },
-      { path: '/roles', label: 'Vai trò', icon: <ShieldCheck size={18} />, roles: ['admin'] },
-      { path: '/audit-logs', label: 'Audit log', icon: <ShieldCheck size={18} />, roles: ['admin'] },
     ],
   },
 ];

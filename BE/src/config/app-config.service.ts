@@ -19,9 +19,13 @@ export class AppConfigService {
   readonly jwtSecret = this.readJwtSecret();
   readonly jwtExpiresInSeconds = this.parsePositiveInteger(
     process.env.JWT_EXPIRES_IN,
-    86400,
+    28_800,
     'JWT_EXPIRES_IN',
   );
+  readonly jwtIssuer =
+    process.env.JWT_ISSUER?.trim() || 'vietmed-ky-thuat-api';
+  readonly jwtAudience =
+    process.env.JWT_AUDIENCE?.trim() || 'vietmed-ky-thuat-web';
   readonly rateLimitWindowMs = this.parsePositiveInteger(
     process.env.RATE_LIMIT_WINDOW_MS,
     60_000,
@@ -60,6 +64,10 @@ export class AppConfigService {
         this.jwtSecret.length < 32)
     ) {
       throw new Error('JWT_SECRET must be set to a strong value in production');
+    }
+
+    if (this.isProduction() && this.jwtExpiresInSeconds > 43_200) {
+      throw new Error('JWT_EXPIRES_IN must be 43200 seconds or less in production');
     }
 
     if (this.isProduction() && !process.env.CORS_ORIGINS?.trim()) {

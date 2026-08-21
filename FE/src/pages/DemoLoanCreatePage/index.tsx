@@ -780,7 +780,7 @@ function QuickMachinePanel({
         </label>
         <label className={`${labelClass} md:col-span-3`}>
           Phụ kiện
-          <textarea className={textAreaClass} onChange={(event) => onChange({ accessoriesText: event.target.value })} placeholder="Mỗi dòng: Tên phụ kiện | Serial phụ kiện" value={form.accessoriesText} />
+          <textarea className={textAreaClass} onChange={(event) => onChange({ accessoriesText: event.target.value })} placeholder="Phụ kiện | Serial" value={form.accessoriesText} />
         </label>
       </div>
       <button className="primary-button justify-self-start" disabled={loading} onClick={onSubmit} type="button">
