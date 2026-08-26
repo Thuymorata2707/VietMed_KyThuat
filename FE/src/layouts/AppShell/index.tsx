@@ -128,9 +128,9 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     : location.pathname.startsWith('/technical-statistics')
       ? 'Thống kê kỹ thuật'
     : location.pathname.startsWith('/accessory-inventory')
-      ? 'Kho phụ kiện'
+      ? 'Phụ kiện'
     : location.pathname.startsWith('/machine-components') || location.pathname.startsWith('/component-accessories')
-      ? 'Model & phụ kiện'
+      ? 'Phụ kiện'
     : location.pathname.startsWith('/daily-work') || location.pathname.startsWith('/daily-reports') || location.pathname.startsWith('/weekly-reports')
       ? 'Lịch & báo cáo'
     : location.pathname.startsWith('/users') || location.pathname.startsWith('/roles') || location.pathname.startsWith('/audit-logs')
@@ -945,14 +945,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
 function ComponentAccessoryTabs({ activeKey }: { activeKey: string }) {
   return (
     <div className="flex flex-wrap gap-2">
-      <Link className={activeKey === 'component-accessories' ? 'primary-button compact' : 'secondary-button compact'} to="/component-accessories">
-        Phụ kiện
-      </Link>
       <Link className={activeKey === 'accessory-inventory' ? 'primary-button compact' : 'secondary-button compact'} to="/accessory-inventory">
-        Kho phụ kiện
-      </Link>
-      <Link className={activeKey === 'machine-components' ? 'primary-button compact' : 'secondary-button compact'} to="/machine-components">
-        Nhóm phụ kiện
+        Quay lại Phụ kiện
       </Link>
     </div>
   );
