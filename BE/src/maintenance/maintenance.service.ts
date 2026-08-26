@@ -357,6 +357,7 @@ export class MaintenanceService {
         if (dto.usedParts !== undefined) {
           await replaceWorkUsedParts({
             actor,
+            customerId: updated.customerId,
             machineId: updated.machineId,
             owner: { field: 'maintenanceId', id: updated.id, kind: 'MAINTENANCE' },
             parts: dto.usedParts,

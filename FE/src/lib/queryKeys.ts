@@ -14,6 +14,11 @@ export const queryKeys = {
   notifications: {
     list: ['notifications', 'list'] as const,
   },
+  accessoryInventory: {
+    stock: (params: string) => ['accessory-inventory', 'stock', params] as const,
+    movements: (params: string) => ['accessory-inventory', 'movements', params] as const,
+    options: ['accessory-inventory', 'options'] as const,
+  },
   knowledge: {
     articles: (params: string) => ['knowledge', 'articles', params] as const,
   },

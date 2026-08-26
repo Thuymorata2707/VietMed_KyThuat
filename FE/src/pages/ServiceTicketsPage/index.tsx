@@ -1,4 +1,4 @@
-import { Archive, ArrowLeft, ArrowRight, BarChart3, ChevronDown, ClipboardCheck, Download, Filter, Loader2, Plus, RefreshCw, Search, Stethoscope, Wrench, X } from 'lucide-react';
+import { Archive, ArrowLeft, ArrowRight, BarChart3, ChevronDown, ClipboardCheck, Download, Filter, Loader2, Plus, RefreshCw, Search, Stethoscope, Trash2, Wrench, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
@@ -135,9 +135,32 @@ type DeviceServiceRow = {
   totalRepairCost?: string | null;
   repairCostInWords?: string | null;
   note?: string | null;
+  usedParts?: DeviceUsedPartRow[];
   engineer?: EngineerOption | null;
   customer?: CustomerOption | null;
   machine?: MachineSummary | null;
+};
+
+type DeviceUsedPartRow = {
+  id?: string;
+  name?: string | null;
+  quantity?: number | string | null;
+  unit?: string | null;
+  serialNumber?: string | null;
+  unitCost?: number | string | null;
+  unitPrice?: number | string | null;
+  totalPrice?: number | string | null;
+  note?: string | null;
+};
+
+type DeviceUsedPartDraft = {
+  name: string;
+  note: string;
+  quantity: number;
+  serialNumber: string;
+  unit: string;
+  unitCost: number;
+  unitPrice: number;
 };
 
 type DeviceReceiveForm = {
@@ -169,6 +192,7 @@ type DeviceReturnForm = {
   returnedAt: string;
   ticket: DeviceServiceRow;
   totalRepairCost: string;
+  usedParts: DeviceUsedPartDraft[];
 };
 
 type ServiceRow = {
@@ -1217,7 +1241,7 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
   const returnMutation = useMutation({
     mutationFn: (form: DeviceReturnForm) =>
       apiFetch<DeviceServiceRow>(`/device-service-tickets/${form.ticket.id}/return`, {
-        method: 'POST',
+        method: form.ticket.status === 'RECEIVED' ? 'POST' : 'PATCH',
         body: JSON.stringify(compactPayload({
           returnedAt: form.returnedAt,
           repairMethod: form.repairMethod,
@@ -1226,6 +1250,7 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
           returnCondition: form.returnCondition,
           totalRepairCost: form.totalRepairCost,
           repairCostInWords: form.repairCostInWords,
+          usedParts: normalizeDeviceUsedPartsPayload(form.usedParts),
         })),
       }),
     onSuccess: async () => {
@@ -2193,6 +2218,8 @@ function DeviceTextarea({ label, onChange, value }: { label: string; onChange: (
 }
 
 function DeviceServiceCard({ loading, onReturn, ticket }: { loading: boolean; onReturn: () => void; ticket: DeviceServiceRow }) {
+  const usedParts = ticket.usedParts ?? [];
+  const partsTotal = usedParts.reduce((sum, part) => sum + Number(part.totalPrice ?? Number(part.quantity || 0) * Number(part.unitPrice || 0)), 0);
   return (
     <article className="grid gap-3 rounded-[20px] bg-[#fafafa] p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)] min-[980px]:grid-cols-[minmax(0,1fr)_220px_180px] min-[980px]:items-center">
       <div className="grid min-w-0 gap-2">
@@ -2207,11 +2234,22 @@ function DeviceServiceCard({ loading, onReturn, ticket }: { loading: boolean; on
           <span>{ticket.address || ''}</span>
         </div>
         {ticket.preliminaryCause ? <p className="line-clamp-2 text-sm leading-6 text-[#667085]">{ticket.preliminaryCause}</p> : null}
+        {usedParts.length ? (
+          <div className="flex flex-wrap gap-2">
+            {usedParts.slice(0, 3).map((part, index) => (
+              <span className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-[#3e8375] shadow-[inset_0_0_0_1px_rgba(62,131,117,0.18)]" key={part.id || `${part.name}-${index}`}>
+                {part.name} x {Number(part.quantity || 0)}
+              </span>
+            ))}
+            {usedParts.length > 3 ? <span className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-[#667085]">+{usedParts.length - 3}</span> : null}
+          </div>
+        ) : null}
       </div>
       <div className="grid gap-2 text-sm text-[#667085]">
         <span>Ngày nhận: <strong className="text-[#202124]">{formatDate(ticket.receivedAt)}</strong></span>
         <span>Ngày trả: <strong className="text-[#202124]">{ticket.returnedAt ? formatDate(ticket.returnedAt) : 'Chưa trả'}</strong></span>
         <span>Kỹ sư: <strong className="text-[#202124]">{ticket.engineer ? technicalUserName(ticket.engineer) : 'Chưa phân'}</strong></span>
+        <span>Phụ kiện: <strong className="text-[#202124]">{usedParts.length ? `${usedParts.length} dòng - ${formatMoney(partsTotal)}` : 'Chưa có'}</strong></span>
       </div>
       <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
         {ticket.status === 'RECEIVED' ? (
@@ -2219,7 +2257,12 @@ function DeviceServiceCard({ loading, onReturn, ticket }: { loading: boolean; on
             {loading ? <Loader2 className="spin-icon" size={15} /> : null}
             Trả thiết bị
           </button>
-        ) : null}
+        ) : (
+          <button className="secondary-button rounded-2xl" disabled={loading} onClick={onReturn} type="button">
+            {loading ? <Loader2 className="spin-icon" size={15} /> : null}
+            Sửa chi tiết
+          </button>
+        )}
       </div>
     </article>
   );
@@ -2238,6 +2281,35 @@ function DeviceReturnModal({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  function updatePart(index: number, patch: Partial<DeviceUsedPartDraft>) {
+    onChange({
+      usedParts: form.usedParts.map((part, partIndex) => (partIndex === index ? { ...part, ...patch } : part)),
+    });
+  }
+
+  function addPart() {
+    onChange({
+      usedParts: [
+        ...form.usedParts,
+        {
+          name: '',
+          note: '',
+          quantity: 1,
+          serialNumber: '',
+          unit: 'cái',
+          unitCost: 0,
+          unitPrice: 0,
+        },
+      ],
+    });
+  }
+
+  function removePart(index: number) {
+    onChange({ usedParts: form.usedParts.filter((_, partIndex) => partIndex !== index) });
+  }
+
+  const usedPartsTotal = form.usedParts.reduce((sum, part) => sum + Number(part.quantity || 0) * Number(part.unitPrice || 0), 0);
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
       <form
@@ -2267,11 +2339,49 @@ function DeviceReturnModal({
           <DeviceTextarea label="Kết quả" onChange={(value) => onChange({ resultNote: value })} value={form.resultNote} />
           <DeviceTextarea label="Tình trạng khi trả" onChange={(value) => onChange({ returnCondition: value })} value={form.returnCondition} />
         </div>
+        <section className="grid gap-3 rounded-[22px] border border-[#e4e4e7] bg-[#fafafa] p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-base font-semibold text-[#202124]">Phụ kiện / linh kiện thay thế</h3>
+              <span className="text-xs font-semibold text-[#667085]">Tổng giá bán: {formatMoney(usedPartsTotal)}</span>
+            </div>
+            <button className="secondary-button compact" onClick={addPart} type="button">
+              <Plus size={15} />
+              Thêm
+            </button>
+          </div>
+          <div className="grid gap-2">
+            {form.usedParts.map((part, index) => (
+              <article className="grid gap-2 rounded-2xl bg-white p-3 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]" key={`${index}-${part.name}-${part.serialNumber}`}>
+                <div className="grid gap-2 min-[900px]:grid-cols-[minmax(180px,1.5fr)_80px_90px_120px_120px_120px_auto]">
+                  <input className={deviceFieldClass} onChange={(event) => updatePart(index, { name: event.target.value })} placeholder="Tên phụ kiện, ví dụ Chấn tử đầu dò" value={part.name} />
+                  <input className={deviceFieldClass} min={0.01} onChange={(event) => updatePart(index, { quantity: Number(event.target.value) })} step={0.01} type="number" value={part.quantity} />
+                  <input className={deviceFieldClass} onChange={(event) => updatePart(index, { unit: event.target.value })} placeholder="Đơn vị" value={part.unit} />
+                  <input className={deviceFieldClass} onChange={(event) => updatePart(index, { serialNumber: event.target.value })} placeholder="Serial" value={part.serialNumber} />
+                  <input className={deviceFieldClass} min={0} onChange={(event) => updatePart(index, { unitCost: Number(event.target.value) })} placeholder="Giá vốn" step={1000} type="number" value={part.unitCost || ''} />
+                  <input className={deviceFieldClass} min={0} onChange={(event) => updatePart(index, { unitPrice: Number(event.target.value) })} placeholder="Giá bán" step={1000} type="number" value={part.unitPrice || ''} />
+                  <button className="secondary-button compact justify-center text-[#b5121b]" onClick={() => removePart(index)} type="button" aria-label="Xóa phụ kiện">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+                <div className="grid gap-2 min-[760px]:grid-cols-[minmax(0,1fr)_140px] min-[760px]:items-center">
+                  <input className={deviceFieldClass} onChange={(event) => updatePart(index, { note: event.target.value })} placeholder="Ghi chú sửa chữa/thay thế" value={part.note} />
+                  <strong className="rounded-xl bg-[#eefaf3] px-3 py-2 text-sm text-[#177245]">{formatMoney(Number(part.quantity || 0) * Number(part.unitPrice || 0))}</strong>
+                </div>
+              </article>
+            ))}
+            {!form.usedParts.length ? (
+              <div className="rounded-2xl bg-white px-4 py-5 text-center text-sm font-semibold text-[#667085]">
+                Chưa có phụ kiện thay thế.
+              </div>
+            ) : null}
+          </div>
+        </section>
         <div className="flex flex-wrap justify-end gap-2">
           <button className="secondary-button" onClick={onClose} type="button">Hủy</button>
           <button className="primary-button" disabled={loading} type="submit">
             {loading ? <Loader2 className="spin-icon" size={16} /> : null}
-            Lưu phiếu trả
+            {form.ticket.status === 'RECEIVED' ? 'Lưu phiếu trả' : 'Cập nhật phiếu'}
           </button>
         </div>
       </form>
@@ -2308,10 +2418,37 @@ function emptyDeviceReturnForm(ticket: DeviceServiceRow): DeviceReturnForm {
     repairMethod: ticket.repairMethod || '',
     resultNote: ticket.resultNote || '',
     returnCondition: ticket.returnCondition || '',
-    returnedAt: toDateInput(new Date()),
+    returnedAt: ticket.returnedAt ? toDateInput(new Date(ticket.returnedAt)) : toDateInput(new Date()),
     ticket,
     totalRepairCost: ticket.totalRepairCost || '',
+    usedParts: buildDeviceUsedParts(ticket.usedParts),
   };
+}
+
+function buildDeviceUsedParts(parts?: DeviceUsedPartRow[] | null): DeviceUsedPartDraft[] {
+  return (parts ?? []).map((part) => ({
+    name: part.name || '',
+    note: part.note || '',
+    quantity: Number(part.quantity || 1),
+    serialNumber: part.serialNumber || '',
+    unit: part.unit || 'cái',
+    unitCost: Number(part.unitCost || 0),
+    unitPrice: Number(part.unitPrice || 0),
+  }));
+}
+
+function normalizeDeviceUsedPartsPayload(parts: DeviceUsedPartDraft[]) {
+  return parts
+    .map((part) => ({
+      name: part.name.trim(),
+      note: part.note.trim() || undefined,
+      quantity: Number(part.quantity || 0),
+      serialNumber: part.serialNumber.trim() || undefined,
+      unit: part.unit.trim() || 'cái',
+      unitCost: Number(part.unitCost || 0),
+      unitPrice: Number(part.unitPrice || 0),
+    }))
+    .filter((part) => part.name && part.quantity > 0);
 }
 
 function compactPayload<T extends Record<string, unknown>>(payload: T) {
@@ -2330,6 +2467,15 @@ function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN');
+}
+
+function formatMoney(value: number) {
+  if (!value) return '0 đ';
+  return new Intl.NumberFormat('vi-VN', {
+    maximumFractionDigits: 0,
+    style: 'currency',
+    currency: 'VND',
+  }).format(value);
 }
 
 function currentMonthRange() {

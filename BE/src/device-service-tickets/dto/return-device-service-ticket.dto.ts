@@ -1,6 +1,7 @@
 import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { UsedPartsContainerDto } from '../../common/dto/used-part.dto';
 
-export class ReturnDeviceServiceTicketDto {
+export class ReturnDeviceServiceTicketDto extends UsedPartsContainerDto {
   @IsOptional()
   @IsDateString()
   returnedAt?: string;

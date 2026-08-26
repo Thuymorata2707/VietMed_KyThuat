@@ -3,15 +3,17 @@ import { Prisma, WorkTaskKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RequestUser } from './request-user.type';
 import { UsedPartDto } from './dto/used-part.dto';
+import { replaceWorkAccessoryStockExports } from './accessory-stock';
 
 type WorkOwner = {
   id: string;
   kind: WorkTaskKind;
-  field: 'repairId' | 'maintenanceId';
+  field: 'repairId' | 'maintenanceId' | 'deviceServiceTicketId';
 };
 
 export async function replaceWorkUsedParts({
   actor,
+  customerId,
   machineId,
   owner,
   parts,
@@ -19,6 +21,7 @@ export async function replaceWorkUsedParts({
   tx,
 }: {
   actor: RequestUser;
+  customerId?: string | null;
   machineId: string | null;
   owner: WorkOwner;
   parts: UsedPartDto[];
@@ -29,6 +32,15 @@ export async function replaceWorkUsedParts({
   const normalized = await normalizeWorkUsedParts(prisma, parts, machineId);
 
   if (!normalized.length) {
+    await replaceWorkAccessoryStockExports({
+      actor,
+      customerId,
+      machineId,
+      owner,
+      parts: [],
+      prisma,
+      tx,
+    });
     return;
   }
 
@@ -51,6 +63,16 @@ export async function replaceWorkUsedParts({
       usedAt: new Date(),
       createdById: actor.id,
     })),
+  });
+
+  await replaceWorkAccessoryStockExports({
+    actor,
+    customerId,
+    machineId,
+    owner,
+    parts: normalized,
+    prisma,
+    tx,
   });
 }
 

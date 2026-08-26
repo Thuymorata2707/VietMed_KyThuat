@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -51,5 +51,15 @@ export class DeviceServiceTicketsController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.service.returnDevice(id, dto, user);
+  }
+
+  @Roles('admin', 'engineer')
+  @Patch(':id/return')
+  updateReturnDetails(
+    @Param('id') id: string,
+    @Body() dto: ReturnDeviceServiceTicketDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.updateReturnDetails(id, dto, user);
   }
 }

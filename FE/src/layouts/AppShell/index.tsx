@@ -14,6 +14,7 @@ import { queryKeys } from '../../lib/queryKeys';
 import { initials } from '../../utils/format';
 
 const AccessDeniedPage = lazy(() => import('../../pages/AccessDeniedPage').then((module) => ({ default: module.AccessDeniedPage })));
+const AccessoryInventoryPage = lazy(() => import('../../pages/AccessoryInventoryPage').then((module) => ({ default: module.AccessoryInventoryPage })));
 const AccountSettingsPage = lazy(() => import('../../pages/AccountSettingsPage').then((module) => ({ default: module.AccountSettingsPage })));
 const AdminCrudFormPage = lazy(() => import('../../pages/AdminCrudPage').then((module) => ({ default: module.AdminCrudFormPage })));
 const AdminCrudPage = lazy(() => import('../../pages/AdminCrudPage').then((module) => ({ default: module.AdminCrudPage })));
@@ -126,6 +127,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Hỗ trợ app'
     : location.pathname.startsWith('/technical-statistics')
       ? 'Thống kê kỹ thuật'
+    : location.pathname.startsWith('/accessory-inventory')
+      ? 'Kho phụ kiện'
     : location.pathname.startsWith('/machine-components') || location.pathname.startsWith('/component-accessories')
       ? 'Model & phụ kiện'
     : location.pathname.startsWith('/daily-work') || location.pathname.startsWith('/daily-reports') || location.pathname.startsWith('/weekly-reports')
@@ -889,6 +892,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <InventoryMovementsPage currentRole={role} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/accessory-inventory"
+            element={
+              <RequireRole
+                allowedRoles={['admin', 'manager', 'engineer']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <AccessoryInventoryPage user={user} />
               </RequireRole>
             }
           />

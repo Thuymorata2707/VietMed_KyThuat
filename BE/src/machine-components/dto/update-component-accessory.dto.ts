@@ -32,6 +32,10 @@ export class UpdateComponentAccessoryDto {
   description?: string | null;
 
   @IsOptional()
+  @IsString()
+  unit?: string | null;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)

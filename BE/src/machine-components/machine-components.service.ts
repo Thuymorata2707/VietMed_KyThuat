@@ -152,6 +152,7 @@ export class MachineComponentsService {
         code: this.normalizeCode(code),
         name: dto.name.trim(),
         description: dto.description?.trim() || null,
+        unit: dto.unit?.trim() || 'cái',
         quantity: dto.quantity ?? 1,
         requiresSerial: dto.requiresSerial ?? true,
         unitCost: dto.unitCost ?? null,
@@ -258,6 +259,7 @@ export class MachineComponentsService {
           dto.description === undefined
             ? undefined
             : dto.description?.trim() || null,
+        unit: dto.unit === undefined ? undefined : dto.unit?.trim() || 'cái',
         quantity: dto.quantity,
         requiresSerial: dto.requiresSerial,
         unitCost: dto.unitCost,

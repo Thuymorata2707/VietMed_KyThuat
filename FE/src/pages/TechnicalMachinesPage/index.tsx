@@ -98,6 +98,8 @@ type DashboardMachine = {
     title?: string | null;
     resultNote?: string | null;
     engineer?: DashboardEngineer | null;
+    customer?: DashboardCustomer | null;
+    usedParts?: MachineUsedPart[];
   }>;
   maintenances?: Array<{
     id: string;
@@ -109,6 +111,22 @@ type DashboardMachine = {
     resultNote?: string | null;
     nextDueDate?: string | null;
     engineer?: DashboardEngineer | null;
+    customer?: DashboardCustomer | null;
+    usedParts?: MachineUsedPart[];
+  }>;
+  deviceServiceTickets?: Array<{
+    id: string;
+    receiveCode: string;
+    returnCode?: string | null;
+    status: string;
+    receivedAt?: string | null;
+    returnedAt?: string | null;
+    deviceName?: string | null;
+    modelName?: string | null;
+    serialNumber?: string | null;
+    engineer?: DashboardEngineer | null;
+    customer?: DashboardCustomer | null;
+    usedParts?: MachineUsedPart[];
   }>;
   inventoryMovements?: Array<{
     id: string;
@@ -144,6 +162,30 @@ type DashboardMachine = {
     endDate: string;
     note?: string | null;
   }>;
+};
+
+type MachineUsedPart = {
+  id: string;
+  name: string;
+  quantity?: number | string | null;
+  unit?: string | null;
+  serialNumber?: string | null;
+  unitPrice?: number | string | null;
+  totalPrice?: number | string | null;
+  note?: string | null;
+  usedAt?: string | null;
+  inventoryItemId?: string | null;
+};
+
+type MachinePartHistoryItem = {
+  id: string;
+  sourceCode: string;
+  sourceKind: 'Sửa chữa' | 'Bảo trì' | 'Nhận/trả';
+  sourceId: string;
+  date?: string | null;
+  part: MachineUsedPart;
+  engineer?: DashboardEngineer | null;
+  customer?: DashboardCustomer | null;
 };
 
 type MachineLifecycleEvent = {
@@ -1330,7 +1372,7 @@ function MachineDetailPanel({
   onVerify: (machine: DashboardMachine) => void;
   verifying: boolean;
 }) {
-  const [activeSection, setActiveSection] = useState<'overview' | 'accessories' | 'customer' | 'history'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'accessories' | 'parts' | 'customer' | 'history'>('overview');
 
   if (!machine) {
     return (
@@ -1350,6 +1392,7 @@ function MachineDetailPanel({
   const installations = machine.installations ?? [];
   const movements = machine.inventoryMovements ?? [];
   const warrantyCards = machine.warrantyCards ?? [];
+  const partHistory = buildMachinePartHistory(machine);
   const warrantyEndDate = machine.warrantyEndDate ?? warrantyCards[0]?.endDate ?? latestInstallation?.warrantyCard?.endDate;
   const lifecycleEvents = buildMachineLifecycleEvents(machine);
   const businessSignals = buildMachineBusinessSignals(machine, warrantyEndDate);
@@ -1358,6 +1401,7 @@ function MachineDetailPanel({
   const detailTabs = [
     { id: 'overview', label: 'Tổng quan', value: completedGaps },
     { id: 'accessories', label: 'Phụ kiện', value: accessories.length },
+    { id: 'parts', label: 'Linh kiện', value: partHistory.length },
     { id: 'customer', label: 'Khách hàng', value: customer ? 1 : 0 },
     { id: 'history', label: 'Lịch sử', value: lifecycleEvents.length },
   ] as const;
@@ -1398,10 +1442,10 @@ function MachineDetailPanel({
           <ProfileStat label="Sửa chữa" value={repairs.length} />
           <ProfileStat label="Bảo trì" value={maintenances.length} />
           <ProfileStat label="Luân chuyển kho" value={movements.length} />
-          <ProfileStat label="Phụ kiện" value={accessories.length} />
+          <ProfileStat label="Linh kiện thay" value={partHistory.length} />
         </div>
 
-        <div className="mb-5 grid gap-2 rounded-[18px] border border-[#e4e4e7] bg-[#fafafa] p-2 md:grid-cols-4">
+        <div className="mb-5 grid gap-2 rounded-[18px] border border-[#e4e4e7] bg-[#fafafa] p-2 md:grid-cols-5">
           {detailTabs.map((tab) => (
             <button
               className={`flex min-h-11 items-center justify-between rounded-[14px] px-3 text-left text-sm font-semibold transition ${
@@ -1465,6 +1509,44 @@ function MachineDetailPanel({
               </div>
             ) : (
               <EmptyState text="Chưa có thông tin đầu dò/phụ kiện." />
+            )}
+          </div>
+        ) : null}
+
+        {activeSection === 'parts' ? (
+          <div className="border-t border-[#eeeeee] pt-5">
+            <div className="mb-3">
+              <h3 className="text-xl font-medium text-[#1f1f1f]">Lịch sử linh kiện thay thế</h3>
+              <p className="mt-1 text-sm text-[#666666]">Theo dõi máy đã thay gì, ngày nào, ai thay, phiếu nào, khách hàng nào và giá bán bao nhiêu.</p>
+            </div>
+            {partHistory.length ? (
+              <div className="grid gap-2">
+                {partHistory.map((item) => (
+                  <article className="grid gap-3 rounded-[18px] border border-[#eeeeee] bg-[#fafafa] p-4 min-[980px]:grid-cols-[minmax(0,1fr)_170px_220px]" key={item.id}>
+                    <div className="min-w-0">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-[#3e8375] shadow-[inset_0_0_0_1px_rgba(62,131,117,0.18)]">{item.sourceKind}</span>
+                        <span className="text-xs font-semibold text-[#667085]">{item.sourceCode}</span>
+                      </div>
+                      <strong className="block truncate text-base font-semibold text-[#202124]">{item.part.name}</strong>
+                      <span className="mt-1 block text-sm text-[#667085]">
+                        {[item.part.serialNumber ? `S/N ${item.part.serialNumber}` : '', item.part.note].filter(Boolean).join(' - ') || 'Không có ghi chú'}
+                      </span>
+                    </div>
+                    <div className="grid content-start gap-1 text-sm text-[#667085]">
+                      <span>Ngày: <strong className="text-[#202124]">{formatDashboardDate(item.date)}</strong></span>
+                      <span>Số lượng: <strong className="text-[#202124]">{formatNumber(Number(item.part.quantity || 0))} {item.part.unit || ''}</strong></span>
+                      <span>Giá bán: <strong className="text-[#202124]">{formatCurrency(Number(item.part.totalPrice ?? Number(item.part.quantity || 0) * Number(item.part.unitPrice || 0)))}</strong></span>
+                    </div>
+                    <div className="grid content-start gap-1 text-sm text-[#667085]">
+                      <span>Kỹ sư: <strong className="text-[#202124]">{item.engineer?.fullName || item.engineer?.email || '-'}</strong></span>
+                      <span>Khách: <strong className="text-[#202124]">{item.customer?.hospitalName || item.customer?.name || customer?.hospitalName || customer?.name || '-'}</strong></span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState text="Chưa có lịch sử thay thế linh kiện cho máy này." />
             )}
           </div>
         ) : null}
@@ -2113,6 +2195,57 @@ function buildMachineLifecycleEvents(machine: DashboardMachine): MachineLifecycl
   return events.sort((left, right) => lifecycleDateValue(right.date) - lifecycleDateValue(left.date));
 }
 
+function buildMachinePartHistory(machine: DashboardMachine): MachinePartHistoryItem[] {
+  const items: MachinePartHistoryItem[] = [];
+
+  (machine.repairs ?? []).forEach((repair) => {
+    (repair.usedParts ?? []).forEach((part) => {
+      items.push({
+        id: `repair-${repair.id}-${part.id}`,
+        sourceCode: repair.code,
+        sourceId: repair.id,
+        sourceKind: 'Sửa chữa',
+        date: part.usedAt || repair.completedAt || repair.reportedAt,
+        part,
+        engineer: repair.engineer,
+        customer: repair.customer ?? machine.customer,
+      });
+    });
+  });
+
+  (machine.maintenances ?? []).forEach((maintenance) => {
+    (maintenance.usedParts ?? []).forEach((part) => {
+      items.push({
+        id: `maintenance-${maintenance.id}-${part.id}`,
+        sourceCode: maintenance.code,
+        sourceId: maintenance.id,
+        sourceKind: 'Bảo trì',
+        date: part.usedAt || maintenance.completedAt || maintenance.scheduledDate,
+        part,
+        engineer: maintenance.engineer,
+        customer: maintenance.customer ?? machine.customer,
+      });
+    });
+  });
+
+  (machine.deviceServiceTickets ?? []).forEach((ticket) => {
+    (ticket.usedParts ?? []).forEach((part) => {
+      items.push({
+        id: `device-service-${ticket.id}-${part.id}`,
+        sourceCode: ticket.returnCode || ticket.receiveCode,
+        sourceId: ticket.id,
+        sourceKind: 'Nhận/trả',
+        date: part.usedAt || ticket.returnedAt || ticket.receivedAt,
+        part,
+        engineer: ticket.engineer,
+        customer: ticket.customer ?? machine.customer,
+      });
+    });
+  });
+
+  return items.sort((left, right) => lifecycleDateValue(right.date) - lifecycleDateValue(left.date));
+}
+
 function lifecycleDateValue(value?: string | null) {
   if (!value) return 0;
   const date = new Date(value);
@@ -2611,6 +2744,19 @@ function formatDashboardDate(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN');
+}
+
+function formatCurrency(value: number) {
+  if (!value) return '0 đ';
+  return new Intl.NumberFormat('vi-VN', {
+    currency: 'VND',
+    maximumFractionDigits: 0,
+    style: 'currency',
+  }).format(value);
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(value);
 }
 
 function emptyEditMachineForm(): EditMachineForm {

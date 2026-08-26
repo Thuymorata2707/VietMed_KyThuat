@@ -16,6 +16,7 @@ export type WorkAccessoryOption = {
   code?: string | null;
   name: string;
   quantity?: number | null;
+  unit?: string | null;
   requiresSerial?: boolean | null;
   salePrice?: number | string | null;
   unitCost?: number | string | null;
@@ -68,7 +69,7 @@ export function WorkUsedPartsEditor({
       componentAccessoryId: accessoryId,
       name: accessory?.name || '',
       quantity: items[index]?.quantity || accessory?.quantity || 1,
-      unit: items[index]?.unit || 'cái',
+      unit: items[index]?.unit || accessory?.unit || 'cái',
       unitCost: Number(accessory?.unitCost || 0),
       unitPrice: Number(accessory?.salePrice || 0),
     });

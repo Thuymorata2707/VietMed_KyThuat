@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { DeviceServiceTicketStatus, MachineStatus, Prisma } from '@prisma/client';
+import { DeviceServiceTicketStatus, MachineStatus, Prisma, WorkTaskKind } from '@prisma/client';
 import {
   deviceServiceTicketAccessWhere,
   isEngineer,
 } from '../auth/access-scope';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
+import { replaceWorkUsedParts } from '../common/work-used-parts';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDeviceServiceTicketDto } from './dto/create-device-service-ticket.dto';
 import { ListDeviceServiceTicketsQueryDto } from './dto/list-device-service-tickets-query.dto';
@@ -132,7 +133,7 @@ export class DeviceServiceTicketsService {
     const returnedAt = this.parseDate(dto.returnedAt) ?? new Date();
 
     return this.prisma.$transaction(async (tx) => {
-      const ticket = await tx.deviceServiceTicket.update({
+      await tx.deviceServiceTicket.update({
         where: { id },
         data: {
           returnCode: await this.generateCode(tx, 'PTTB', returnedAt, 'returnCode'),
@@ -149,6 +150,22 @@ export class DeviceServiceTicketsService {
         include: this.defaultInclude(),
       });
 
+      if (dto.usedParts !== undefined) {
+        await replaceWorkUsedParts({
+          actor: user!,
+          customerId: current.customerId,
+          machineId: current.machineId,
+          owner: {
+            id,
+            kind: WorkTaskKind.DEVICE_SERVICE,
+            field: 'deviceServiceTicketId',
+          },
+          parts: dto.usedParts,
+          prisma: this.prisma,
+          tx,
+        });
+      }
+
       if (current.machine) {
         await tx.machine.update({
           where: { id: current.machine.id },
@@ -156,7 +173,77 @@ export class DeviceServiceTicketsService {
         });
       }
 
-      return ticket;
+      return tx.deviceServiceTicket.findUnique({
+        where: { id },
+        include: this.defaultInclude(),
+      });
+    });
+  }
+
+  async updateReturnDetails(id: string, dto: ReturnDeviceServiceTicketDto, user?: RequestUser) {
+    const current = await this.prisma.deviceServiceTicket.findFirst({
+      where: {
+        AND: [{ id }, deviceServiceTicketAccessWhere(user)],
+      },
+      include: { machine: true },
+    });
+    if (!current) throw new NotFoundException('Device service ticket not found');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.deviceServiceTicket.update({
+        where: { id },
+        data: {
+          returnedAt:
+            dto.returnedAt === undefined
+              ? undefined
+              : this.parseDate(dto.returnedAt) ?? current.returnedAt,
+          repairMethod:
+            dto.repairMethod === undefined
+              ? undefined
+              : this.clean(dto.repairMethod),
+          repairCostItems:
+            dto.repairCostItems === undefined
+              ? undefined
+              : this.clean(dto.repairCostItems),
+          resultNote:
+            dto.resultNote === undefined ? undefined : this.clean(dto.resultNote),
+          returnCondition:
+            dto.returnCondition === undefined
+              ? undefined
+              : this.clean(dto.returnCondition),
+          totalRepairCost:
+            dto.totalRepairCost === undefined
+              ? undefined
+              : this.clean(dto.totalRepairCost),
+          repairCostInWords:
+            dto.repairCostInWords === undefined
+              ? undefined
+              : this.clean(dto.repairCostInWords),
+          note: dto.note === undefined ? undefined : this.clean(dto.note),
+        },
+        include: this.defaultInclude(),
+      });
+
+      if (dto.usedParts !== undefined) {
+        await replaceWorkUsedParts({
+          actor: user!,
+          customerId: current.customerId,
+          machineId: current.machineId,
+          owner: {
+            id,
+            kind: WorkTaskKind.DEVICE_SERVICE,
+            field: 'deviceServiceTicketId',
+          },
+          parts: dto.usedParts,
+          prisma: this.prisma,
+          tx,
+        });
+      }
+
+      return tx.deviceServiceTicket.findUnique({
+        where: { id },
+        include: this.defaultInclude(),
+      });
     });
   }
 
@@ -195,6 +282,7 @@ export class DeviceServiceTicketsService {
       engineer: { select: { id: true, email: true, fullName: true, role: true, region: true } },
       machine: { include: { machineModel: true, customer: true } },
       createdBy: { select: { id: true, email: true, fullName: true } },
+      usedParts: { orderBy: { createdAt: 'asc' as const } },
     };
   }
 

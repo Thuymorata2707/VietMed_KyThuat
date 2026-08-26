@@ -204,6 +204,10 @@ export class MachinesService {
                 phone: true,
               },
             },
+            customer: true,
+            usedParts: {
+              orderBy: { usedAt: 'desc' as const },
+            },
           },
           orderBy: {
             createdAt: 'desc',
@@ -218,6 +222,10 @@ export class MachinesService {
                 email: true,
                 phone: true,
               },
+            },
+            customer: true,
+            usedParts: {
+              orderBy: { usedAt: 'desc' as const },
             },
           },
           orderBy: {
@@ -237,6 +245,25 @@ export class MachinesService {
           },
           orderBy: {
             occurredAt: 'desc',
+          },
+        },
+        deviceServiceTickets: {
+          include: {
+            customer: true,
+            engineer: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+            usedParts: {
+              orderBy: { usedAt: 'desc' as const },
+            },
+          },
+          orderBy: {
+            receivedAt: 'desc',
           },
         },
         installations: {
@@ -294,6 +321,10 @@ export class MachinesService {
                 phone: true,
               },
             },
+            customer: true,
+            usedParts: {
+              orderBy: { usedAt: 'desc' as const },
+            },
           },
           orderBy: {
             createdAt: 'desc',
@@ -308,6 +339,10 @@ export class MachinesService {
                 email: true,
                 phone: true,
               },
+            },
+            customer: true,
+            usedParts: {
+              orderBy: { usedAt: 'desc' as const },
             },
           },
           orderBy: {
@@ -327,6 +362,25 @@ export class MachinesService {
           },
           orderBy: {
             occurredAt: 'desc',
+          },
+        },
+        deviceServiceTickets: {
+          include: {
+            customer: true,
+            engineer: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+            usedParts: {
+              orderBy: { usedAt: 'desc' as const },
+            },
+          },
+          orderBy: {
+            receivedAt: 'desc',
           },
         },
         installations: {

@@ -33,6 +33,10 @@ export class CreateComponentAccessoryDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

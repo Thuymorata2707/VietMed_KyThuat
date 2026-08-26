@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {
@@ -232,6 +233,7 @@ enum WorkTaskKind {
   REPAIR
   MAINTENANCE
   INSTALLATION
+  DEVICE_SERVICE
 }
 
 enum UsedPartStatus {
@@ -239,6 +241,12 @@ enum UsedPartStatus {
   USED
   WAITING
   RETURNED
+}
+
+enum AccessoryStockMovementType {
+  IMPORT
+  EXPORT
+  ADJUSTMENT
 }
 
 enum TaskChecklistStatus {
@@ -358,6 +366,7 @@ model User {
   updatedKnowledgeArticles    KnowledgeArticle[]         @relation("KnowledgeArticleUpdatedBy")
   createdWorkLogs             WorkLog[]                  @relation("WorkLogCreatedBy")
   createdUsedParts            UsedPart[]                 @relation("UsedPartCreatedBy")
+  accessoryStockMovements     AccessoryStockMovement[]   @relation("AccessoryStockMovementCreatedBy")
   updatedTaskChecklistItems   TaskChecklistItem[]        @relation("TaskChecklistUpdatedBy")
   applicationSupportCases     ApplicationSupportCase[]   @relation("ApplicationSupportEngineer")
   deviceServiceTickets        DeviceServiceTicket[]
@@ -627,6 +636,7 @@ model Customer {
   maintenances            Maintenance[]
   deviceServiceTickets    DeviceServiceTicket[]
   applicationSupportCases ApplicationSupportCase[]
+  accessoryStockMovements AccessoryStockMovement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -728,6 +738,7 @@ model ComponentAccessory {
   code           String
   name           String
   description    String?
+  unit           String             @default("cái")
   quantity       Int                @default(1)
   requiresSerial Boolean            @default(true)
   unitCost       Decimal?           @db.Decimal(15, 2)
@@ -742,6 +753,7 @@ model ComponentAccessory {
   component   MachineComponent? @relation(fields: [componentId], references: [id], onDelete: SetNull)
 
   machineAccessories MachineAccessory[]
+  stockMovements      AccessoryStockMovement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -750,6 +762,59 @@ model ComponentAccessory {
   @@index([machineModelId])
   @@index([componentId])
   @@index([status])
+}
+
+model AccessoryStockMovement {
+  id String @id @default(cuid())
+
+  code String @unique
+  type AccessoryStockMovementType
+
+  componentAccessoryId String
+  componentAccessory   ComponentAccessory @relation(fields: [componentAccessoryId], references: [id], onDelete: Cascade)
+
+  quantityDelta Decimal  @db.Decimal(12, 2)
+  unit          String?
+  serialNumber  String?
+  unitCost      Decimal? @db.Decimal(15, 2)
+  unitPrice     Decimal? @db.Decimal(15, 2)
+  totalCost     Decimal? @db.Decimal(15, 2)
+  totalPrice    Decimal? @db.Decimal(15, 2)
+  reason        String?
+  note          String?  @db.Text
+  occurredAt    DateTime @default(now())
+
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  repairId String?
+  repair   Repair? @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  maintenanceId String?
+  maintenance   Maintenance? @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+
+  deviceServiceTicketId String?
+  deviceServiceTicket   DeviceServiceTicket? @relation(fields: [deviceServiceTicketId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  createdBy   User? @relation("AccessoryStockMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([componentAccessoryId])
+  @@index([machineId])
+  @@index([customerId])
+  @@index([repairId])
+  @@index([maintenanceId])
+  @@index([deviceServiceTicketId])
+  @@index([createdById])
+  @@index([type])
+  @@index([occurredAt])
+  @@index([serialNumber])
 }
 
 model Machine {
@@ -802,6 +867,7 @@ model Machine {
   warrantyCards           WarrantyCard[]
   accessories             MachineAccessory[]
   applicationSupportCases ApplicationSupportCase[]
+  accessoryStockMovements AccessoryStockMovement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -893,6 +959,9 @@ model DeviceServiceTicket {
 
   createdById String?
   createdBy   User?   @relation("DeviceServiceTicketCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  usedParts               UsedPart[]
+  accessoryStockMovements AccessoryStockMovement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1028,9 +1097,9 @@ model MachineInstallation {
   reviewer     User?            @relation("InstallationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
 
   warrantyCard   WarrantyCard?
-  workLogs       WorkLog[]
-  usedParts      UsedPart[]
-  checklistItems TaskChecklistItem[]
+  workLogs                WorkLog[]
+  usedParts               UsedPart[]
+  checklistItems          TaskChecklistItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1147,9 +1216,10 @@ model Maintenance {
   modelName       String?
   serialNumber    String?
 
-  workLogs       WorkLog[]
-  usedParts      UsedPart[]
-  checklistItems TaskChecklistItem[]
+  workLogs                WorkLog[]
+  usedParts               UsedPart[]
+  accessoryStockMovements AccessoryStockMovement[]
+  checklistItems          TaskChecklistItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1214,9 +1284,10 @@ model Repair {
   totalRepairCost        String?
   repairCostInWords      String?
 
-  workLogs       WorkLog[]
-  usedParts      UsedPart[]
-  checklistItems TaskChecklistItem[]
+  workLogs                WorkLog[]
+  usedParts               UsedPart[]
+  accessoryStockMovements AccessoryStockMovement[]
+  checklistItems          TaskChecklistItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1274,6 +1345,9 @@ model UsedPart {
   installationId String?
   installation   MachineInstallation? @relation(fields: [installationId], references: [id], onDelete: Cascade)
 
+  deviceServiceTicketId String?
+  deviceServiceTicket   DeviceServiceTicket? @relation(fields: [deviceServiceTicketId], references: [id], onDelete: Cascade)
+
   name            String
   quantity        Decimal        @default(1) @db.Decimal(12, 2)
   unit            String?
@@ -1297,6 +1371,7 @@ model UsedPart {
   @@index([repairId])
   @@index([maintenanceId])
   @@index([installationId])
+  @@index([deviceServiceTicketId])
   @@index([createdById])
   @@index([status])
   @@index([usedAt])
