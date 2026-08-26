@@ -948,6 +948,9 @@ function ComponentAccessoryTabs({ activeKey }: { activeKey: string }) {
       <Link className={activeKey === 'component-accessories' ? 'primary-button compact' : 'secondary-button compact'} to="/component-accessories">
         Phụ kiện
       </Link>
+      <Link className={activeKey === 'accessory-inventory' ? 'primary-button compact' : 'secondary-button compact'} to="/accessory-inventory">
+        Kho phụ kiện
+      </Link>
       <Link className={activeKey === 'machine-components' ? 'primary-button compact' : 'secondary-button compact'} to="/machine-components">
         Nhóm phụ kiện
       </Link>

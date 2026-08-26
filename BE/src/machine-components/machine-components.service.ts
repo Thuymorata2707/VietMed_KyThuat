@@ -278,6 +278,7 @@ export class MachineComponentsService {
         _count: {
           select: {
             machineAccessories: true,
+            stockMovements: true,
           },
         },
       },
@@ -287,6 +288,20 @@ export class MachineComponentsService {
       throw new NotFoundException('Component accessory not found');
     if (accessory._count.machineAccessories > 0) {
       throw new BadRequestException('Cannot delete accessory used by machines');
+    }
+    if (accessory._count.stockMovements > 0) {
+      throw new BadRequestException(
+        'Cannot delete accessory with inventory history',
+      );
+    }
+
+    const usedPartCount = await this.prisma.usedPart.count({
+      where: { inventoryItemId: id },
+    });
+    if (usedPartCount > 0) {
+      throw new BadRequestException(
+        'Cannot delete accessory used in repair or maintenance records',
+      );
     }
 
     await this.prisma.componentAccessory.delete({ where: { id } });

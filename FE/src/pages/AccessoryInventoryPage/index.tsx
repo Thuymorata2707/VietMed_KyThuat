@@ -1,7 +1,9 @@
 import { Boxes, Download, Loader2, Plus, RefreshCw, Search } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
+import { getRoleName } from '../../auth/roles';
 import { DateInput } from '../../components/DateInput';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -92,6 +94,8 @@ const movementTypes: StockMovementType[] = ['IMPORT', 'EXPORT', 'ADJUSTMENT'];
 
 export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
   const queryClient = useQueryClient();
+  const role = getRoleName(user);
+  const canManageAccessories = role === 'admin';
   const [search, setSearch] = useState('');
   const [movementSearch, setMovementSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -190,6 +194,18 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <PageTitle eyebrow="Kho phụ kiện" title="Tồn kho & lịch sử thay thế" />
           <div className="flex flex-wrap gap-2">
+            {canManageAccessories ? (
+              <>
+                <Link className="secondary-button" to="/component-accessories">
+                  <Boxes size={16} />
+                  Danh mục phụ kiện
+                </Link>
+                <Link className="secondary-button" to="/component-accessories/new">
+                  <Plus size={16} />
+                  Thêm phụ kiện
+                </Link>
+              </>
+            ) : null}
             <button className="secondary-button" disabled={stockQuery.isFetching || movementsQuery.isFetching} onClick={() => void Promise.all([stockQuery.refetch(), movementsQuery.refetch()])} type="button">
               {stockQuery.isFetching || movementsQuery.isFetching ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
               Làm mới
@@ -307,11 +323,12 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
                     <th className="border-b border-[#eef0f3] px-4 py-3">Giá vốn</th>
                     <th className="border-b border-[#eef0f3] px-4 py-3">Giá bán</th>
                     <th className="border-b border-[#eef0f3] px-4 py-3">Giá trị tồn</th>
+                    {canManageAccessories ? <th className="border-b border-[#eef0f3] px-4 py-3">Thao tác</th> : null}
                   </tr>
                 </thead>
                 <tbody>
-                  {stockQuery.isLoading ? <TableMessage colSpan={7} text="Đang tải tồn kho" /> : null}
-                  {!stockQuery.isLoading && !stockRows.length ? <TableMessage colSpan={7} text="Chưa có phụ kiện phù hợp." /> : null}
+                  {stockQuery.isLoading ? <TableMessage colSpan={canManageAccessories ? 8 : 7} text="Đang tải tồn kho" /> : null}
+                  {!stockQuery.isLoading && !stockRows.length ? <TableMessage colSpan={canManageAccessories ? 8 : 7} text="Chưa có phụ kiện phù hợp." /> : null}
                   {stockRows.map((row) => (
                     <tr className="hover:bg-[#fafafa]" key={row.id}>
                       <td className="border-b border-[#f1f2f4] px-4 py-3">
@@ -328,6 +345,13 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
                       <td className="border-b border-[#f1f2f4] px-4 py-3">{formatMoney(Number(row.unitCost || 0))}</td>
                       <td className="border-b border-[#f1f2f4] px-4 py-3">{formatMoney(Number(row.salePrice || 0))}</td>
                       <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{formatMoney(Number(row.stockValue || 0))}</td>
+                      {canManageAccessories ? (
+                        <td className="border-b border-[#f1f2f4] px-4 py-3">
+                          <Link className="secondary-button compact" to={`/component-accessories/${row.id}/edit`}>
+                            Sửa
+                          </Link>
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>
