@@ -337,12 +337,6 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
           <Notice message="Tài khoản của bạn được xem danh mục phụ kiện. Thao tác thêm, sửa, xóa chỉ dành cho admin." />
         ) : null}
 
-        {canManageAccessories && activeTab === 'catalog' ? (
-          <div className="rounded-[18px] border border-[#dbe6f3] bg-[#fbfdff] px-4 py-3 text-sm font-medium text-[#586174]">
-            Danh mục phụ kiện và kho đã được gom chung tại đây. Sau khi thêm hoặc sửa, bạn vẫn ở lại màn Phụ kiện để kiểm tra tồn kho và lịch sử.
-          </div>
-        ) : null}
-
         <div className="grid gap-3 md:grid-cols-4">
           <InventoryMetric label="Mã phụ kiện" value={totals.accessories} />
           <InventoryMetric label="Tổng tồn" value={formatQuantity(totals.stock)} />
@@ -360,7 +354,6 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold text-[#202124]">Phiếu kho phụ kiện</h2>
-                <p className="mt-1 text-sm font-medium text-[#667085]">Nhập kho, xuất kho ngoài phiếu hoặc điều chỉnh tồn.</p>
               </div>
               <span className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-[#3e8375] shadow-[inset_0_0_0_1px_rgba(62,131,117,0.18)]">
                 {movementTypeLabel(form.type)}
@@ -643,7 +636,6 @@ function CatalogAccessoryModal({
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold text-[#202124]">{form.id ? 'Sửa phụ kiện' : 'Thêm phụ kiện'}</h2>
-            <p className="mt-1 text-sm font-medium text-[#667085]">Khai báo đơn vị, giá vốn, giá bán và yêu cầu serial ngay trong màn Phụ kiện.</p>
           </div>
           <button className="secondary-button compact" onClick={onClose} type="button" title="Đóng">
             <X size={16} />
