@@ -42,6 +42,7 @@ export class EngineerProfilesService {
       await this.ensureEmployeeCodeIsAvailable(dto.employeeCode, userId);
     }
 
+    const groups = dto.expertiseGroups ?? (dto.expertiseGroup ? [dto.expertiseGroup] : undefined);
     const profile = await this.prisma.engineerProfile.upsert({
       where: { userId },
       create: {
@@ -55,7 +56,9 @@ export class EngineerProfilesService {
           'workStartDate',
         ),
         specialties: this.normalizeSpecialties(dto.specialties),
-        expertiseGroup: dto.expertiseGroup ?? null,
+        expertiseGroup: groups?.length === 1 ? groups[0] : dto.expertiseGroup ?? null,
+        expertiseImaging: groups?.includes('IMAGING') ?? false,
+        expertiseLabTesting: groups?.includes('LAB_TESTING') ?? false,
         certificateNo: dto.certificateNo?.trim() || null,
         photoUrl: dto.photoUrl?.trim() || null,
         note: dto.note?.trim() || null,
@@ -83,8 +86,9 @@ export class EngineerProfilesService {
           dto.specialties === undefined
             ? undefined
             : this.normalizeSpecialties(dto.specialties),
-        expertiseGroup:
-          dto.expertiseGroup === undefined ? undefined : dto.expertiseGroup,
+        expertiseGroup: groups === undefined ? undefined : groups.length === 1 ? groups[0] : null,
+        expertiseImaging: groups === undefined ? undefined : groups.includes('IMAGING'),
+        expertiseLabTesting: groups === undefined ? undefined : groups.includes('LAB_TESTING'),
         certificateNo:
           dto.certificateNo === undefined
             ? undefined
@@ -195,8 +199,23 @@ export class EngineerProfilesService {
   private withComputedFields<T extends { workStartDate: Date | null }>(
     profile: T,
   ) {
+    const expertise = profile as T & {
+      expertiseGroup?: string | null;
+      expertiseImaging?: boolean;
+      expertiseLabTesting?: boolean;
+    };
+    const expertiseGroups = [
+      expertise.expertiseImaging ? 'IMAGING' : null,
+      expertise.expertiseLabTesting ? 'LAB_TESTING' : null,
+    ].filter((group): group is 'IMAGING' | 'LAB_TESTING' => Boolean(group));
+
     return {
       ...profile,
+      expertiseGroups: expertiseGroups.length
+        ? expertiseGroups
+        : expertise.expertiseGroup === 'IMAGING' || expertise.expertiseGroup === 'LAB_TESTING'
+          ? [expertise.expertiseGroup]
+          : [],
       yearsOfExperience: this.calculateYearsOfExperience(profile.workStartDate),
     };
   }

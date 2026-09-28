@@ -6,8 +6,64 @@ import {
   isOverdueTask,
   isUpcomingTask,
   taskAttention,
+  normalizeInstallationDeviceItems,
 } from '../utils';
 import type { EngineerTask } from '../types';
+
+describe('normalizeInstallationDeviceItems', () => {
+  it('preserves the machine record ID for a selected handover device', () => {
+    expect(normalizeInstallationDeviceItems([{
+      itemName: 'Máy siêu âm',
+      model: 'Model A',
+      serialNumber: 'SN-002',
+      manufactureDate: '',
+      quantity: 1,
+      sourceMachineId: 'machine-2',
+      warrantyPeriod: '',
+    }])).toEqual([{
+      itemName: 'Máy siêu âm',
+      sourceMachineId: 'machine-2',
+      model: 'Model A',
+      serialNumber: 'SN-002',
+      manufactureDate: undefined,
+      quantity: 1,
+      warrantyPeriod: undefined,
+    }]);
+  });
+
+  it('keeps primary-machine accessories staged on the installation ticket', () => {
+    expect(normalizeInstallationDeviceItems([{
+      itemName: 'Máy siêu âm X-CUBE 50',
+      model: 'X-CUBE-50',
+      serialNumber: 'Q02341',
+      manufactureDate: '',
+      quantity: 1,
+      warrantyPeriod: '',
+      isPrimary: true,
+      accessoriesConfigured: true,
+      accessoriesText: JSON.stringify([{
+        code: 'C5-2',
+        name: 'Đầu dò C5-2',
+        serialNumber: 'PROBE-001',
+        quantity: 1,
+      }]),
+    }])).toEqual([{
+      itemName: 'Máy siêu âm X-CUBE 50',
+      model: 'X-CUBE-50',
+      serialNumber: 'Q02341',
+      manufactureDate: undefined,
+      quantity: 1,
+      isPrimary: true,
+      accessories: [{
+        code: 'C5-2',
+        name: 'Đầu dò C5-2',
+        quantity: 1,
+        serialNumber: 'PROBE-001',
+        description: undefined,
+      }],
+    }]);
+  });
+});
 
 // ── helpers ──────────────────────────────────────────────
 // Default kind is 'maintenance' → taskDateValue uses scheduledDate,

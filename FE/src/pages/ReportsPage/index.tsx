@@ -12,7 +12,7 @@ import { displayLabel } from '../../utils/displayLabels';
 import { exportReportXlsx } from '../../utils/xlsxExport';
 
 type ReportView = 'summary' | 'kinds' | 'customers' | 'machines' | 'models' | 'provinces' | 'details' | 'customer';
-type WorkKind = 'installation' | 'repair' | 'maintenance' | 'demo' | 'applicationSupport';
+type WorkKind = 'installation' | 'repair' | 'maintenance' | 'demo' | 'deviceService' | 'applicationSupport';
 
 type EngineerFilterOption = {
   id: string;
@@ -50,6 +50,7 @@ type TechnicalReportGroup = {
   repair: number;
   maintenance: number;
   demo: number;
+  deviceService: number;
   applicationSupport: number;
   customers: number;
   machines: number;
@@ -69,6 +70,7 @@ type TechnicalMachineGroup = {
   repair: number;
   maintenance: number;
   demo: number;
+  deviceService: number;
   applicationSupport: number;
   lastWorkedAt: string | null;
 };
@@ -100,6 +102,7 @@ type TechnicalReport = {
     repairs: number;
     maintenances: number;
     demos: number;
+    deviceServiceTickets: number;
     applicationSupport: number;
     customers: number;
     machines: number;
@@ -210,7 +213,6 @@ export function ReportsPage() {
       <div className="grid gap-5 rounded-[28px] bg-white/95 p-5 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
-            description="Theo khách hàng & máy — bấm vào khách hàng để xem chi tiết."
             eyebrow="Báo cáo kỹ thuật"
             title="Báo cáo tổng hợp"
           />
@@ -295,13 +297,14 @@ function ReportSummary({ from, report, to }: { from: string; report: TechnicalRe
           {report.summary.total} việc từ {formatDate(from)} đến {formatDate(to)}
         </h2>
       </div>
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
         <SummaryCard label="Tổng việc" value={report.summary.total} />
         <SummaryCard label="Lắp đặt" value={report.summary.installations} />
         <SummaryCard label="Sửa chữa" value={report.summary.repairs} />
         <SummaryCard label="Bảo trì" value={report.summary.maintenances} />
         <SummaryCard label="Demo" value={report.summary.demos} />
-        <SummaryCard label="Hỗ trợ app" value={report.summary.applicationSupport} />
+        <SummaryCard label="Nhận/trả thiết bị" value={report.summary.deviceServiceTickets} />
+        <SummaryCard label="Ứng dụng xét nghiệm" value={report.summary.applicationSupport} />
       </div>
       <div className="grid gap-3 md:grid-cols-4">
         <MiniSummary label="Khách hàng" value={report.summary.customers} />
@@ -356,7 +359,8 @@ function KindTable({ report }: { report: TechnicalReport }) {
     { key: 'repair' as WorkKind, label: 'Sửa chữa', value: report.summary.repairs },
     { key: 'maintenance' as WorkKind, label: 'Bảo trì', value: report.summary.maintenances },
     { key: 'demo' as WorkKind, label: 'Demo / dùng thử', value: report.summary.demos },
-    { key: 'applicationSupport' as WorkKind, label: 'Hỗ trợ app', value: report.summary.applicationSupport },
+    { key: 'deviceService' as WorkKind, label: 'Nhận/trả thiết bị', value: report.summary.deviceServiceTickets },
+    { key: 'applicationSupport' as WorkKind, label: 'Ứng dụng xét nghiệm', value: report.summary.applicationSupport },
   ];
   const max = Math.max(1, ...rows.map((row) => row.value));
   return (
@@ -395,6 +399,7 @@ function GroupTable({ onSelect, rows, title }: { onSelect?: (id: string) => void
               <th className="border-b border-[#eef0f3] px-4 py-3">Sửa</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Bảo trì</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Demo</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Nhận/trả</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">App</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Phạm vi</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Gần nhất</th>
@@ -418,6 +423,7 @@ function GroupTable({ onSelect, rows, title }: { onSelect?: (id: string) => void
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.repair}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.maintenance}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.demo}</td>
+                <td className="border-b border-[#f1f2f4] px-4 py-3">{row.deviceService}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.applicationSupport}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{row.customers} khách · {row.machines} máy</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.lastWorkedAt)}</td>
@@ -451,6 +457,7 @@ function MachineGroupTable({ rows, title }: { rows: TechnicalMachineGroup[]; tit
               <th className="border-b border-[#eef0f3] px-4 py-3">Sửa</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Bảo trì</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Demo</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Nhận/trả</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">App</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Gần nhất</th>
             </tr>
@@ -472,6 +479,7 @@ function MachineGroupTable({ rows, title }: { rows: TechnicalMachineGroup[]; tit
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.repair}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.maintenance}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.demo}</td>
+                <td className="border-b border-[#f1f2f4] px-4 py-3">{row.deviceService}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.applicationSupport}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.lastWorkedAt)}</td>
               </tr>
@@ -576,7 +584,7 @@ function CustomerHighlights({ onOpen, report, title }: { onOpen: (customerId: st
                 <KindChip label="Sửa chữa" value={row.repair} />
                 <KindChip label="Bảo trì" value={row.maintenance} />
                 <KindChip label="Demo" value={row.demo} />
-                <KindChip label="Hỗ trợ app" value={row.applicationSupport} />
+                <KindChip label="Ứng dụng xét nghiệm" value={row.applicationSupport} />
               </div>
               <span className="text-xs font-medium text-[#667085]">
                 {row.machines} máy · gần nhất {formatDate(row.lastWorkedAt)} · bấm để xem chi tiết
@@ -659,7 +667,7 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
           <KindStat label="Sửa chữa" value={group.repair} />
           <KindStat label="Bảo trì" value={group.maintenance} />
           <KindStat label="Demo" value={group.demo} />
-          <KindStat label="Hỗ trợ app" value={group.applicationSupport} />
+          <KindStat label="Ứng dụng xét nghiệm" value={group.applicationSupport} />
         </div>
       </section>
 
@@ -692,6 +700,7 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
                     <td className="border-b border-[#f1f2f4] px-4 py-3">{row.repair}</td>
                     <td className="border-b border-[#f1f2f4] px-4 py-3">{row.maintenance}</td>
                     <td className="border-b border-[#f1f2f4] px-4 py-3">{row.demo}</td>
+                    <td className="border-b border-[#f1f2f4] px-4 py-3">{row.deviceService}</td>
                     <td className="border-b border-[#f1f2f4] px-4 py-3">{row.applicationSupport}</td>
                     <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.lastWorkedAt)}</td>
                   </tr>
@@ -709,7 +718,7 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eef0f3] px-4 py-3">
           <h2 className="font-semibold text-[#202124]">Toàn bộ phiếu trong kỳ</h2>
           <div className="flex flex-wrap gap-1.5">
-            {(['', 'installation', 'repair', 'maintenance', 'demo', 'applicationSupport'] as const).map((kind) => (
+            {(['', 'installation', 'repair', 'maintenance', 'demo', 'deviceService', 'applicationSupport'] as const).map((kind) => (
               <button
                 className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${kindFilter === kind ? 'border-[#3e8375] bg-[#eefaf3] text-[#177245]' : 'border-[#eef0f3] bg-[#fafafa] text-[#667085] hover:text-[#18181b]'}`}
                 key={kind || 'all'}
@@ -887,7 +896,6 @@ function workHref(row: WorkReportRow) {
   if (row.kind === 'installation') return `/installations/${row.id}/update`;
   if (row.kind === 'repair') return `/repairs/${row.id}/update`;
   if (row.kind === 'maintenance') return `/maintenance/${row.id}/update`;
-  if (row.kind === 'applicationSupport') return '/application-support';
   return null;
 }
 
@@ -896,7 +904,8 @@ function workLabel(kind: WorkKind) {
   if (kind === 'repair') return 'Sửa chữa';
   if (kind === 'maintenance') return 'Bảo trì';
   if (kind === 'demo') return 'Demo';
-  return 'Hỗ trợ app';
+  if (kind === 'deviceService') return 'Nhận/trả thiết bị';
+  return 'Ứng dụng xét nghiệm';
 }
 
 function normalizeView(value: string | null): ReportView {

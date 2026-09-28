@@ -1,12 +1,11 @@
 import { ResourceConfig } from './resources';
-import { vietnamProvinceOptions } from './vietnamProvinces';
 import { enumOptions } from '../utils/displayLabels';
 
 export type CrudField = {
   name: string;
   label: string;
   placeholder?: string;
-  type?: 'text' | 'email' | 'url' | 'image' | 'date' | 'number' | 'select' | 'textarea' | 'tags' | 'accessories' | 'businessLines';
+  type?: 'text' | 'email' | 'url' | 'image' | 'date' | 'number' | 'select' | 'multiSelect' | 'textarea' | 'tags' | 'accessories' | 'businessLines';
   required?: boolean;
   createOnly?: boolean;
   updateOnly?: boolean;
@@ -39,8 +38,6 @@ export type AdminCrudConfig = ResourceConfig & {
 const customerTypes = enumOptions(['HOSPITAL', 'CLINIC', 'LAB', 'DISTRIBUTOR', 'UNIVERSITY', 'COMPANY', 'OTHER']);
 
 const customerStatuses = enumOptions(['ACTIVE', 'INACTIVE', 'POTENTIAL', 'BLACKLISTED']);
-
-const provinceOptions = vietnamProvinceOptions.map((province) => ({ label: province.name, value: province.name }));
 
 const activeInactiveStatuses = enumOptions(['ACTIVE', 'INACTIVE']);
 
@@ -84,10 +81,10 @@ const installationStatuses = enumOptions(['PENDING', 'INSTALLED', 'CANCELLED']);
 const maintenanceTypes = enumOptions(['PERIODIC', 'WARRANTY', 'CONTRACT', 'INTERNAL', 'OTHER']);
 
 const engineerOptionSource = {
-  endpoint: '/users?limit=20&roleName=engineer',
+  endpoint: '/users?roleName=engineer',
   labelPath: 'fullName',
   labelPaths: ['fullName', 'email', 'region.name'],
-  searchable: true,
+  searchable: false,
   valuePath: 'id',
 };
 
@@ -137,43 +134,28 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
     searchPlaceholder: 'Tìm tên, mã, tỉnh, SĐT',
     roles: ['admin'],
     columns: [
-      { key: 'hospitalName', label: 'Khách hàng', fallbackKeys: ['name'] },
+      { key: 'name', label: 'Khách hàng' },
       { key: 'customerCode', label: 'Mã' },
-      { key: 'province', label: 'Tỉnh/TP' },
+      { key: 'provinceRef.name', label: 'Tỉnh/TP', fallbackKeys: ['province'] },
+      { key: 'provinceRef.branch.name', label: 'Chi nhánh' },
       { key: 'phone', label: 'SĐT', fallbackKeys: ['contactPhone'] },
-      { key: 'primaryEngineer.fullName', label: 'Kỹ sư' },
+      { key: 'engineers', label: 'Kỹ sư quản lý' },
       { key: '_count.machines', label: 'Máy' },
       { key: 'status', label: 'Trạng thái' },
     ],
     fields: [
       { name: 'name', label: 'Tên khách hàng', required: true },
-      { name: 'hospitalName', label: 'Tên bệnh viện/đơn vị' },
-      { name: 'shortName', label: 'Tên viết tắt' },
       { name: 'customerCode', label: 'Mã khách hàng', placeholder: 'Để trống để tự sinh, ví dụ BV-HN-001' },
       { name: 'customerType', label: 'Loại khách hàng', type: 'select', options: customerTypes },
       { name: 'status', label: 'Trạng thái', type: 'select', options: customerStatuses },
-      {
-        name: 'regionId',
-        label: 'Khu vực',
-        type: 'select',
-        required: true,
-        valuePath: 'region.id',
-        optionSource: { endpoint: '/regions', labelPath: 'name', valuePath: 'id' },
-      },
-      {
-        name: 'primaryEngineerId',
-        label: 'Kỹ sư phụ trách',
-        type: 'select',
-        valuePath: 'primaryEngineer.id',
-        optionSource: engineerOptionSource,
-      },
+      { name: 'engineerIds', label: 'Kỹ sư cùng quản lý', type: 'multiSelect', wide: true, optionSource: engineerOptionSource },
       { name: 'phone', label: 'Điện thoại' },
       { name: 'email', label: 'Email', type: 'email' },
       { name: 'taxCode', label: 'Mã số thuế' },
       { name: 'contactPerson', label: 'Người liên hệ' },
       { name: 'contactPhone', label: 'SĐT liên hệ' },
       { name: 'contactEmail', label: 'Email liên hệ', type: 'email' },
-      { name: 'province', label: 'Tỉnh/Thành', type: 'select', options: provinceOptions },
+      { name: 'provinceId', label: 'Danh mục tỉnh/thành', type: 'select', valuePath: 'provinceRef.id', optionSource: { endpoint: '/provinces', labelPath: 'name', labelPaths: ['name', 'code', 'branch.name'], valuePath: 'id' } },
       { name: 'district', label: 'Quận/Huyện' },
       { name: 'ward', label: 'Phường/Xã' },
       { name: 'address', label: 'Địa chỉ' },
@@ -299,40 +281,6 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'note', label: 'Ghi chú', type: 'textarea' },
     ],
   },
-  'machine-components': {
-    title: 'Nhóm phụ kiện',
-    entityLabel: 'nhóm phụ kiện',
-    description: 'Nhóm phụ kiện.',
-    endpoint: '/machine-components',
-    icon: null,
-    searchPlaceholder: 'Tìm nhóm phụ kiện, model hoặc mã',
-    roles: ['admin'],
-    columns: [
-      { key: 'name', label: 'Nhóm phụ kiện' },
-      { key: 'code', label: 'Mã' },
-      { key: 'machineModel.name', label: 'Tên model' },
-      { key: 'machineModel.code', label: 'Model' },
-      { key: 'machineModel.businessLine.name', label: 'Nhóm sản phẩm' },
-      { key: '_count.ComponentAccessory', label: 'Số phụ kiện' },
-      { key: 'status', label: 'Trạng thái' },
-    ],
-    fields: [
-      {
-        name: 'machineModelId',
-        label: 'Model áp dụng',
-        type: 'select',
-        required: true,
-        wide: true,
-        valuePath: 'machineModel.id',
-        optionSource: machineModelOptionSource,
-      },
-      { name: 'code', label: 'Mã nhóm phụ kiện', required: true },
-      { name: 'name', label: 'Tên nhóm phụ kiện', required: true },
-      { name: 'sortOrder', label: 'Ưu tiên hiển thị (tùy chọn)', placeholder: 'Để trống nếu không cần sắp xếp riêng' },
-      { name: 'status', label: 'Trạng thái', type: 'select', options: activeInactiveStatuses },
-      { name: 'description', label: 'Mô tả', type: 'textarea' },
-    ],
-  },
   'component-accessories': {
     title: 'Phụ kiện',
     entityLabel: 'phụ kiện',
@@ -347,7 +295,6 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { key: 'machineModel.name', label: 'Tên model' },
       { key: 'machineModel.code', label: 'Model' },
       { key: 'machineModel.businessLine.name', label: 'Nhóm sản phẩm' },
-      { key: 'component.name', label: 'Nhóm phụ kiện' },
       { key: 'quantity', label: 'SL tiêu chuẩn' },
       { key: 'unit', label: 'Đơn vị' },
       { key: 'unitCost', label: 'Giá vốn' },
@@ -365,15 +312,6 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
         wide: true,
         valuePath: 'machineModel.id',
         optionSource: machineModelOptionSource,
-      },
-      {
-        name: 'componentId',
-        label: 'Nhóm phụ kiện (tùy chọn)',
-        type: 'select',
-        nullable: true,
-        wide: true,
-        valuePath: 'component.id',
-        optionSource: { endpoint: '/machine-components?limit=100', labelPath: 'name', labelPaths: ['machineModel.code', 'machineModel.name', 'name'], searchable: true, valuePath: 'id' },
       },
       { name: 'code', label: 'Mã phụ kiện', autoGenerated: true, previewCode: 'componentAccessory', placeholder: 'Đang sinh mã, ví dụ XCUBE50-PK-001' },
       { name: 'name', label: 'Tên phụ kiện', required: true },

@@ -122,10 +122,7 @@ export class DailyWorkNotesService {
             ? undefined
             : this.cleanRequired(dto.title, 'title'),
         note: dto.note === undefined ? undefined : this.cleanOptional(dto.note),
-        workDate:
-          dto.workDate === undefined
-            ? undefined
-            : workDate,
+        workDate: dto.workDate === undefined ? undefined : workDate,
         startTime:
           dto.startTime === undefined
             ? undefined

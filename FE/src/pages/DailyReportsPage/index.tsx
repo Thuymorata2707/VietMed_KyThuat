@@ -155,7 +155,7 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
         }),
       }),
     onSuccess: async () => {
-      setSuccess('Đã lưu nháp trong báo cáo ngày và cập nhật vào báo cáo tuần.');
+      setSuccess('Đã lưu nháp.');
       await queryClient.invalidateQueries({ queryKey: ['daily-reports', 'report'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'report'] });
     },
@@ -173,14 +173,14 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
     setSummary(suggested?.summary ?? '');
     setPending(suggested?.pending ?? '');
     setProposal(suggested?.proposal ?? '');
-    setSuccess('Đã đưa dữ liệu gợi ý vào báo cáo ngày.');
+    setSuccess('Đã thêm dữ liệu gợi ý.');
   }
 
   function useMedicalEngineerTemplate() {
     setSummary((current) => current.trim() || medicalEngineerTemplate);
     setPending((current) => current.trim() || pendingTemplate);
     setProposal((current) => current.trim() || proposalTemplate);
-    setSuccess('Đã mở mẫu báo cáo đủ ý cho kỹ sư thiết bị y tế.');
+    setSuccess('Đã áp dụng mẫu báo cáo.');
   }
 
   async function saveReport() {

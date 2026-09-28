@@ -1,6 +1,12 @@
 import { RepairPriority, RepairStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsArray, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { UsedPartDto } from '../../common/dto/used-part.dto';
 
 export class UpdateRepairDto {

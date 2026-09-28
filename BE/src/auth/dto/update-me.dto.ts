@@ -2,6 +2,7 @@ import { ExpertiseGroup } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  ArrayUnique,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -40,6 +41,12 @@ export class UpdateMyEngineerProfileDto {
   @IsOptional()
   @IsEnum(ExpertiseGroup)
   expertiseGroup?: ExpertiseGroup | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(ExpertiseGroup, { each: true })
+  expertiseGroups?: ExpertiseGroup[];
 
   @IsOptional()
   @IsString()

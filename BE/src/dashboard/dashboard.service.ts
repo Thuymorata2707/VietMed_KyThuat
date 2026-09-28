@@ -2,6 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   customerAccessWhere,
+  demoLoanAccessWhere,
+  deviceServiceTicketAccessWhere,
   inventoryMovementAccessWhere,
   installationAccessWhere,
   machineAccessWhere,
@@ -10,6 +12,9 @@ import {
   userAccessWhere,
 } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
+import { addDateOnlyDays, startOfVietnamDay } from '../common/date-only';
+import { isMaintenanceOverdue } from '../common/maintenance-overdue';
+import { buildBusinessLineIndustryScope } from './industry-scope';
 import { PrismaService } from '../prisma/prisma.service';
 
 type MachineStatusValue = 'ACTIVE' | 'MAINTENANCE' | 'REPAIRING' | 'INACTIVE';
@@ -59,6 +64,7 @@ type TechnicalTask = {
   status: string;
   reviewStatus: string;
   date: Date;
+  dueDate?: Date;
   completedAt?: Date | null;
   engineerId?: string | null;
   engineerName?: string | null;
@@ -90,32 +96,31 @@ export class DashboardService {
             engineerProfile: {
               select: {
                 expertiseGroup: true,
+                expertiseImaging: true,
+                expertiseLabTesting: true,
               },
             },
           },
         })
       : null;
-    const engineerExpertiseGroup =
-      selectedEngineer?.engineerProfile?.expertiseGroup || null;
-    const productIndustryId = engineerExpertiseGroup
-      ? ''
-      : requestedProductIndustryId;
-    const businessLineIndustryScope = productIndustryId
-      ? { productIndustryId }
-      : engineerExpertiseGroup
-        ? {
-            productIndustry: {
-              expertiseGroup: engineerExpertiseGroup,
-            },
-          }
-        : {};
+    const engineerExpertiseGroups = selectedEngineer?.engineerProfile
+      ? [selectedEngineer.engineerProfile.expertiseImaging ? 'IMAGING' : null, selectedEngineer.engineerProfile.expertiseLabTesting ? 'LAB_TESTING' : null]
+          .filter((group): group is 'IMAGING' | 'LAB_TESTING' => Boolean(group))
+      : selectedEngineer?.engineerProfile?.expertiseGroup ? [selectedEngineer.engineerProfile.expertiseGroup] : [];
+    const businessLineIndustryScope = buildBusinessLineIndustryScope(
+      requestedProductIndustryId,
+      engineerExpertiseGroups,
+    );
+    const hasIndustryScope = Boolean(
+      requestedProductIndustryId || engineerExpertiseGroups.length,
+    );
 
     const repairWhere: Prisma.RepairWhereInput = {
       AND: [
         repairAccessWhere(user),
         { reportedAt: { gte: period.start, lt: period.end } },
         engineerId ? { engineerId } : {},
-        productIndustryId || engineerExpertiseGroup
+        hasIndustryScope
           ? {
               machine: {
                 businessLine: businessLineIndustryScope,
@@ -129,7 +134,7 @@ export class DashboardService {
         maintenanceAccessWhere(user),
         { scheduledDate: { gte: period.start, lt: period.end } },
         engineerId ? { engineerId } : {},
-        productIndustryId || engineerExpertiseGroup
+        hasIndustryScope
           ? {
               machine: {
                 businessLine: businessLineIndustryScope,
@@ -143,7 +148,7 @@ export class DashboardService {
         installationAccessWhere(user),
         { installedAt: { gte: period.start, lt: period.end } },
         engineerId ? { installedById: engineerId } : {},
-        productIndustryId || engineerExpertiseGroup
+        hasIndustryScope
           ? {
               OR: [
                 {
@@ -367,6 +372,7 @@ export class DashboardService {
         status: item.status,
         reviewStatus: item.reviewStatus,
         date: item.scheduledDate,
+        dueDate: item.scheduledDate,
         completedAt: item.completedAt,
         engineerId: item.engineerId,
         engineerName: item.engineer?.fullName || item.engineer?.email || null,
@@ -417,8 +423,14 @@ export class DashboardService {
     const waitingReview = tasks.filter(
       (item) => item.reviewStatus === 'PENDING',
     ).length;
+    const todayStart = startOfVietnamDay();
     const overdue = tasks.filter((item) =>
-      this.isOverdueTask(item.kind, item.status),
+      this.isOverdueTask(
+        item.kind,
+        item.status,
+        'dueDate' in item ? item.dueDate : undefined,
+        todayStart,
+      ),
     ).length;
     const completionRate = tasks.length
       ? Math.round((completed / tasks.length) * 100)
@@ -795,7 +807,7 @@ export class DashboardService {
       filteredTotal,
       page,
       limit,
-      totalPages: Math.max(Math.ceil(filteredTotal / limit), 1),
+      totalPages: Math.ceil(filteredTotal / limit),
       businessLines: businessLineGroups,
       productIndustries: productIndustryGroups,
       machines: machines.map((machine) => {
@@ -1072,6 +1084,7 @@ export class DashboardService {
   }
 
   async getSummary(user?: RequestUser) {
+    const todayStart = startOfVietnamDay();
     const customerScope = customerAccessWhere(user);
     const businessLineScope = this.businessLineAccessWhere(user);
     const inventoryMovementScope = inventoryMovementAccessWhere(user);
@@ -1079,6 +1092,9 @@ export class DashboardService {
     const userScope = this.userAccessWhere(user);
     const repairScope = repairAccessWhere(user);
     const maintenanceScope = maintenanceAccessWhere(user);
+    const installationScope = installationAccessWhere(user);
+    const demoLoanScope = demoLoanAccessWhere(user);
+    const deviceServiceTicketScope = deviceServiceTicketAccessWhere(user);
 
     const [
       totalCustomers,
@@ -1140,7 +1156,10 @@ export class DashboardService {
       openRepairsWithoutMachine,
       maintenancesWithoutMachine,
       openMaintenancesWithoutMachine,
-      returnedMachines,
+      openMaintenances,
+      openInstallations,
+      openDemoLoans,
+      openDeviceServiceTickets,
       returnedRepairingMachines,
     ] = await Promise.all([
       this.prisma.customer.count({
@@ -1322,7 +1341,15 @@ export class DashboardService {
         where: this.maintenanceWhere(maintenanceScope, { status: 'COMPLETED' }),
       }),
       this.prisma.maintenance.count({
-        where: this.maintenanceWhere(maintenanceScope, { status: 'OVERDUE' }),
+        where: this.maintenanceWhere(maintenanceScope, {
+          OR: [
+            { status: 'OVERDUE' },
+            {
+              status: { in: ['SCHEDULED', 'ASSIGNED', 'IN_PROGRESS'] },
+              scheduledDate: { lt: todayStart },
+            },
+          ],
+        }),
       }),
       this.prisma.maintenance.count({
         where: this.maintenanceWhere(maintenanceScope, { status: 'CANCELLED' }),
@@ -1333,8 +1360,8 @@ export class DashboardService {
             in: ['SCHEDULED', 'ASSIGNED'],
           },
           scheduledDate: {
-            gte: new Date(),
-            lte: this.daysFromNow(30),
+            gte: todayStart,
+            lte: addDateOnlyDays(todayStart, 30),
           },
         }),
       }),
@@ -1360,8 +1387,21 @@ export class DashboardService {
           },
         }),
       }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { inventoryStatus: 'RETURNED' }),
+      this.prisma.maintenance.count({
+        where: this.maintenanceWhere(maintenanceScope, {
+          status: { in: ['SCHEDULED', 'ASSIGNED', 'IN_PROGRESS', 'OVERDUE'] },
+        }),
+      }),
+      this.prisma.machineInstallation.count({
+        where: { AND: [installationScope, { status: 'PENDING' }] },
+      }),
+      this.prisma.demoLoan.count({
+        where: {
+          AND: [demoLoanScope, { status: { in: ['PLANNED', 'HANDED_OVER', 'OVERDUE'] } }],
+        },
+      }),
+      this.prisma.deviceServiceTicket.count({
+        where: { AND: [deviceServiceTicketScope, { status: 'RECEIVED' }] },
       }),
       this.prisma.machine.count({
         where: this.machineWhere(machineScope, {
@@ -1456,7 +1496,7 @@ export class DashboardService {
       maintenanceStatusCounts,
       machinesInMaintenance,
       machinesRepairing,
-      returnedMachines,
+      returnedMachines: machinesReturned,
       returnedRepairingMachines,
       pendingRepairs,
       activeRepairs: assignedRepairs + inProgressRepairs + waitingPartsRepairs,
@@ -1467,15 +1507,13 @@ export class DashboardService {
       openRepairsWithoutMachine,
       maintenancesWithoutMachine,
       openMaintenancesWithoutMachine,
+      openMaintenances,
+      openInstallations,
+      openDemoLoans,
+      openDeviceServiceTickets,
       openTicketsWithoutMachine:
         openRepairsWithoutMachine + openMaintenancesWithoutMachine,
     };
-  }
-
-  private daysFromNow(days: number): Date {
-    const date = new Date();
-    date.setDate(date.getDate() + days);
-    return date;
   }
 
   private customerWhere(
@@ -1547,6 +1585,11 @@ export class DashboardService {
 
   private resolveStatisticsPeriod(query: Record<string, string | undefined>) {
     const now = new Date();
+    const today = startOfVietnamDay(now);
+    const currentMonthStart = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
+    );
+    const currentMonth = currentMonthStart.toISOString().slice(0, 7);
     const from = query.from?.trim();
     const to = query.to?.trim();
 
@@ -1559,8 +1602,7 @@ export class DashboardService {
         to || from || this.firstDayOfCurrentMonth(now),
         'to',
       );
-      const end = new Date(endDate);
-      end.setDate(end.getDate() + 1);
+      const end = addDateOnlyDays(endDate, 1);
 
       if (end <= start) {
         throw new BadRequestException('to must be after from');
@@ -1575,16 +1617,17 @@ export class DashboardService {
 
     const month = /^\d{4}-\d{2}$/.test(query.month || '')
       ? query.month!
-      : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      : currentMonth;
     const [year, monthIndex] = month.split('-').map(Number);
-    const start = new Date(year, monthIndex - 1, 1);
-    const end = new Date(year, monthIndex, 1);
+    const start = new Date(Date.UTC(year, monthIndex - 1, 1));
+    const end = new Date(Date.UTC(year, monthIndex, 1));
 
     return { month, start, end };
   }
 
   private firstDayOfCurrentMonth(date: Date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+    const today = startOfVietnamDay(date);
+    return `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-01`;
   }
 
   private parseDateInput(value: string, fieldName: string) {
@@ -1727,7 +1770,7 @@ export class DashboardService {
         installation: 0,
         total: 0,
       });
-      cursor.setDate(cursor.getDate() + 1);
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
 
     const map = new Map(days.map((item) => [item.date, item]));
@@ -1753,9 +1796,15 @@ export class DashboardService {
     return ['COMPLETED', 'CANCELLED'].includes(status);
   }
 
-  private isOverdueTask(kind: TechnicalTaskKind, status: string) {
-    if (kind === 'maintenance') return status === 'OVERDUE';
-    if (kind === 'repair') return status === 'WAITING_PARTS';
+  private isOverdueTask(
+    kind: TechnicalTaskKind,
+    status: string,
+    dueDate?: Date,
+    todayStart = startOfVietnamDay(),
+  ) {
+    if (kind === 'maintenance' && dueDate) {
+      return isMaintenanceOverdue(status, dueDate, todayStart);
+    }
     return false;
   }
 

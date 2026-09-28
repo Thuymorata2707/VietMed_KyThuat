@@ -69,6 +69,14 @@ export function getMachineStatusForInventoryStatus(
   return MachineStatus.ACTIVE;
 }
 
+export function getMachineStatusAfterWork(
+  inventoryStatus: MachineInventoryStatus,
+): MachineStatus {
+  return inventoryStatus === MachineInventoryStatus.RETURNED
+    ? MachineStatus.REPAIRING
+    : MachineStatus.ACTIVE;
+}
+
 export function validateInventoryMovement(
   type: InventoryMovementType,
   currentStatus: MachineInventoryStatus,

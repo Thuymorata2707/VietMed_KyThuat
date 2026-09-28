@@ -2,7 +2,7 @@ import { AlertTriangle, Archive, CheckCircle2, ClipboardCheck, Clock3, Eye, Load
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
+import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -198,10 +198,10 @@ export function AdminWorkAssignmentPage() {
     queryKey: queryKeys.workAssignments.dashboard(debouncedQuery),
     queryFn: async (): Promise<WorkAssignmentsData> => {
       const [userResult, repairResult, maintenanceResult, installationResult, pendingMachineResult] = await Promise.all([
-        apiFetch<Paginated<ApiUser> | ApiUser[]>('/users?limit=100&status=ACTIVE'),
-        apiFetch<Paginated<RepairAssignment> | RepairAssignment[]>(withQueryParams('/repairs?limit=100', { search: debouncedQuery })),
-        apiFetch<Paginated<MaintenanceAssignment> | MaintenanceAssignment[]>(withQueryParams('/maintenance?limit=100', { search: debouncedQuery })),
-        apiFetch<Paginated<InstallationAssignment> | InstallationAssignment[]>(withQueryParams('/installations?limit=100', { search: debouncedQuery })),
+        apiFetchAllPages<ApiUser>('/users?status=ACTIVE'),
+        apiFetchAllPages<RepairAssignment>(withQueryParams('/repairs', { search: debouncedQuery })),
+        apiFetchAllPages<MaintenanceAssignment>(withQueryParams('/maintenance', { search: debouncedQuery })),
+        apiFetchAllPages<InstallationAssignment>(withQueryParams('/installations', { search: debouncedQuery })),
         apiFetch<Paginated<ReviewMachine> | ReviewMachine[]>(withQueryParams('/machines?limit=12&dataStatus=PENDING_REVIEW', { search: debouncedQuery })),
       ]);
 
@@ -210,7 +210,7 @@ export function AdminWorkAssignmentPage() {
       const nextInstallations = unpack(installationResult);
 
       return {
-        engineers: unpack(userResult).filter(isTechnicalUser),
+        engineers: userResult.filter(isTechnicalUser),
         pendingMachines: unpack(pendingMachineResult),
         repairs: nextRepairs,
         maintenances: nextMaintenances,
@@ -790,7 +790,7 @@ function PendingMachineReviewPanel({ machines }: { machines: ReviewMachine[] }) 
       <div className="mt-3 grid gap-2">
         {machines.map((machine) => {
           const gaps = machineReviewGaps(machine);
-          const customerName = machine.customer?.hospitalName || machine.customer?.name;
+          const customerName = machine.customer?.name || machine.customer?.hospitalName;
           return (
             <article className="grid gap-3 rounded-2xl border border-[#efd8a8] bg-white p-3" key={machine.id}>
               <div className="min-w-0">

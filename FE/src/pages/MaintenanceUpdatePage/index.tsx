@@ -7,6 +7,7 @@ import { CustomerSiteFields } from '../../components/CustomerSiteFields';
 import { Notice } from '../../components/Notice';
 import { DateInput } from '../../components/DateInput';
 import { DeleteRequestReviewPanel } from '../../components/DeleteRequestReviewPanel';
+import { DeleteTicketDialog } from '../../components/DeleteTicketDialog';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { WorkAttachmentsPanel } from '../../components/WorkAttachmentsPanel';
@@ -93,6 +94,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
   const isAdmin = getRoleName(user) === 'admin';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [detail, setDetail] = useState<MaintenanceTask | null>(null);
@@ -188,8 +190,8 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
 
   async function loadInstalledMachines() {
     try {
-      const result = await apiFetch<Paginated<StockMachine>>('/machines?limit=200&inventoryStatus=INSTALLED');
-      setInstalledMachines(result.data);
+      const result = await apiFetchAllPages<StockMachine>('/machines?inventoryStatus=INSTALLED');
+      setInstalledMachines(result);
     } catch {
       setInstalledMachines([]);
     }
@@ -264,28 +266,23 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
   }
 
   async function deleteTicket() {
-    const reason = isAdmin ? '' : window.prompt('Nhập lý do yêu cầu xóa phiếu bảo trì:')?.trim();
-    if (!isAdmin && !reason) return;
-
-    const message = isAdmin
-      ? 'Xóa vĩnh viễn phiếu bảo trì này?'
-      : 'Gửi yêu cầu xóa phiếu bảo trì để admin duyệt?';
-    if (!window.confirm(message)) return;
+    if (!isAdmin) return;
 
     setSaving(true);
     setError('');
     setSuccess('');
 
     try {
-      const response = await deleteWorkTicket(`/maintenance/${id}`, reason);
+      const response = await deleteWorkTicket(`/maintenance/${id}`, '');
 
       if (response.deleted) {
+        setShowDeleteConfirm(false);
         navigate(returnTo);
         return;
       }
 
       if (response.deleteRequested) {
-        setSuccess('Đã gửi yêu cầu xóa phiếu. Admin sẽ duyệt trước khi xóa.');
+        setSuccess('Đã gửi yêu cầu xóa, chờ admin duyệt.');
         await loadDetail();
       }
     } catch (err) {
@@ -326,7 +323,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Bảo trì"
           title="Cập nhật phiếu bảo trì"
-          description="Checklist & kết quả."
+          description={detail?.code ? `Mã phiếu ${detail.code} · ${statusLabel(detail.status || '')}` : 'Lịch bảo trì và kết quả kiểm tra'}
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
@@ -351,7 +348,6 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Thông tin phiếu</span>
                   <h2 className={sectionTitleClass}>{detail?.title || 'Phiếu bảo trì'}</h2>
-                  <p className={sectionDescriptionClass}>{detail?.code} - {statusLabel(detail?.status || '')}</p>
                 </div>
               </div>
 
@@ -506,10 +502,12 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
                   Hủy
                 </button>
-                <button className="secondary-button justify-center text-[#b5121b]" disabled={saving} onClick={() => void deleteTicket()} type="button">
-                  <Trash2 size={17} />
-                  {isAdmin ? 'Xóa phiếu' : 'Yêu cầu xóa'}
-                </button>
+                {isAdmin ? (
+                  <button className="secondary-button justify-center text-[#b5121b]" disabled={saving} onClick={() => setShowDeleteConfirm(true)} type="button">
+                    <Trash2 size={17} />
+                    Xóa phiếu
+                  </button>
+                ) : null}
                 <button className="primary-button" disabled={saving} type="submit">
                   {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
                   {saving ? 'Đang lưu' : 'Lưu phiếu'}
@@ -519,6 +517,22 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
           </aside>
         </form>
       )}
+      {showDeleteConfirm && detail ? (
+        <DeleteTicketDialog
+          details={[
+            { label: 'Mã phiếu', value: detail.code },
+            { label: 'Khách hàng', value: detail.customer?.name || detail.usingDepartment },
+            { label: 'Thiết bị', value: detail.deviceName || detail.machine?.name || detail.modelName },
+            { label: 'Serial', value: detail.serialNumber || detail.machine?.serialNumber },
+            { label: 'Trạng thái', value: statusLabel(detail.status) },
+          ]}
+          loading={saving}
+          onCancel={() => setShowDeleteConfirm(false)}
+          onConfirm={() => void deleteTicket()}
+          title="Bạn sắp xóa phiếu bảo trì này"
+          warning="Phiếu và dữ liệu liên kết sẽ bị xóa vĩnh viễn. Kỹ sư có thể tạo lại phiếu sau đó."
+        />
+      ) : null}
     </PageFrame>
   );
 }

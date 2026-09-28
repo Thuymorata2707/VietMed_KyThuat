@@ -1,3 +1,4 @@
+import { sequenceCode } from './sequence-code';
 import {
   AccessoryStockMovementType,
   Prisma,
@@ -50,8 +51,14 @@ export async function replaceWorkAccessoryStockExports({
   const occurredAt = new Date();
   for (const part of stockParts) {
     const quantity = Number(part.quantity || 0);
-    const unitCost = part.unitCost === null || part.unitCost === undefined ? null : Number(part.unitCost);
-    const unitPrice = part.unitPrice === null || part.unitPrice === undefined ? null : Number(part.unitPrice);
+    const unitCost =
+      part.unitCost === null || part.unitCost === undefined
+        ? null
+        : Number(part.unitCost);
+    const unitPrice =
+      part.unitPrice === null || part.unitPrice === undefined
+        ? null
+        : Number(part.unitPrice);
 
     await tx.accessoryStockMovement.create({
       data: {
@@ -85,19 +92,13 @@ export async function generateAccessoryStockMovementCode(
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const prefix = `PK-${year}${month}${day}`;
-  const latest = await client.accessoryStockMovement.findFirst({
-    where: { code: { startsWith: `${prefix}-` } },
-    orderBy: { code: 'desc' },
-    select: { code: true },
-  });
-  const latestNumber = latest?.code ? Number(latest.code.slice(prefix.length + 1)) : 0;
-  const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-  return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+  return sequenceCode(client, 'accessoryStock', prefix, 3, false);
 }
 
 function reasonForWorkKind(kind: WorkTaskKind) {
   if (kind === WorkTaskKind.REPAIR) return 'Xuất thay thế phiếu sửa chữa';
   if (kind === WorkTaskKind.MAINTENANCE) return 'Xuất thay thế phiếu bảo trì';
-  if (kind === WorkTaskKind.DEVICE_SERVICE) return 'Xuất thay thế phiếu nhận/trả thiết bị';
+  if (kind === WorkTaskKind.DEVICE_SERVICE)
+    return 'Xuất thay thế phiếu nhận/trả thiết bị';
   return 'Xuất thay thế';
 }

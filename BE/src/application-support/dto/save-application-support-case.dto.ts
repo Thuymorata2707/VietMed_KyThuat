@@ -11,6 +11,7 @@ import {
 import {
   ApplicationSupportChannel,
   ApplicationSupportIssueCategory,
+  ApplicationSupportWorkType,
   ApplicationSupportStatus,
 } from '@prisma/client';
 
@@ -37,6 +38,10 @@ export class SaveApplicationSupportCaseDto {
   @IsOptional()
   @IsEnum(ApplicationSupportChannel)
   channel?: ApplicationSupportChannel;
+
+  @IsOptional()
+  @IsEnum(ApplicationSupportWorkType)
+  workType?: ApplicationSupportWorkType;
 
   @IsOptional()
   @IsEnum(ApplicationSupportIssueCategory)
@@ -69,6 +74,34 @@ export class SaveApplicationSupportCaseDto {
   @IsOptional()
   @IsString()
   impactLevel?: string;
+
+  @IsOptional()
+  @IsString()
+  reagentName?: string;
+
+  @IsOptional()
+  @IsString()
+  reagentLot?: string;
+
+  @IsOptional()
+  @IsString()
+  reagentExpiry?: string;
+
+  @IsOptional()
+  @IsString()
+  assayName?: string;
+
+  @IsOptional()
+  @IsString()
+  qcResult?: string;
+
+  @IsOptional()
+  @IsString()
+  calibrationResult?: string;
+
+  @IsOptional()
+  @IsString()
+  lisHisStatus?: string;
 
   @IsString()
   title!: string;

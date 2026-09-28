@@ -3,15 +3,14 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
-  IsNotEmpty,
   IsOptional,
   IsString,
 } from 'class-validator';
 
 export class CreateMaintenanceDto {
   @IsString()
-  @IsNotEmpty()
-  title!: string;
+  @IsOptional()
+  title?: string;
 
   @IsOptional()
   @IsString()
@@ -33,8 +32,14 @@ export class CreateMaintenanceDto {
   @IsString()
   engineerId?: string;
 
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  engineerIds?: string[];
+
+  @IsOptional()
   @IsDateString()
-  scheduledDate!: string;
+  scheduledDate?: string;
 
   @IsOptional()
   @IsArray()

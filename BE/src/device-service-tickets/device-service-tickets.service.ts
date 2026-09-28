@@ -1,20 +1,36 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { DeviceServiceTicketStatus, MachineStatus, Prisma, WorkTaskKind } from '@prisma/client';
+import { sequenceCode } from '../common/sequence-code';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  DeviceServiceTicketStatus,
+  MachineStatus,
+  Prisma,
+  WorkTaskKind,
+} from '@prisma/client';
 import {
   deviceServiceTicketAccessWhere,
+  isAdmin,
   isEngineer,
 } from '../auth/access-scope';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { replaceWorkUsedParts } from '../common/work-used-parts';
+import { reconcileMachineStatusFromOpenWork } from '../common/machine-work-status';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
+import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { CreateDeviceServiceTicketDto } from './dto/create-device-service-ticket.dto';
 import { ListDeviceServiceTicketsQueryDto } from './dto/list-device-service-tickets-query.dto';
 import { ReturnDeviceServiceTicketDto } from './dto/return-device-service-ticket.dto';
 
 @Injectable()
 export class DeviceServiceTicketsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly auditLogsService: AuditLogsService) {}
 
   async findAll(
     query: ListDeviceServiceTicketsQueryDto,
@@ -59,6 +75,26 @@ export class DeviceServiceTicketsService {
     return item;
   }
 
+  async remove(id: string, user: RequestUser) {
+    assertPermission(user, PERMISSIONS.DEVICE_SERVICE_DELETE);
+    if (!isAdmin(user)) throw new ForbiddenException('Only administrators can delete device service tickets');
+    const ticket = await this.findOne(id, user);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.deviceServiceTicket.delete({ where: { id } });
+      if (ticket.machineId && ticket.machine) {
+        await reconcileMachineStatusFromOpenWork(tx, ticket.machineId, ticket.machine.inventoryStatus);
+      }
+      await this.auditLogsService.create({
+        action: AUDIT_ACTIONS.DELETE,
+        entityType: 'DeviceServiceTicket',
+        entityId: id,
+        actor: user,
+        metadata: { receiveCode: ticket.receiveCode, returnCode: ticket.returnCode, machineId: ticket.machineId, status: ticket.status },
+      }, tx);
+    });
+    return { deleted: true };
+  }
+
   async create(dto: CreateDeviceServiceTicketDto, user?: RequestUser) {
     const receivedAt = this.parseDate(dto.receivedAt) ?? new Date();
     const machine = dto.machineId
@@ -67,32 +103,64 @@ export class DeviceServiceTicketsService {
           include: { customer: true, machineModel: true },
         })
       : null;
-    if (dto.machineId && !machine) throw new BadRequestException('Machine not found');
+    if (dto.machineId && !machine)
+      throw new BadRequestException('Machine not found');
 
     const customer = dto.customerId
       ? await this.prisma.customer.findUnique({ where: { id: dto.customerId } })
-      : machine?.customer ?? null;
-    if (dto.customerId && !customer) throw new BadRequestException('Customer not found');
+      : (machine?.customer ?? null);
+    if (dto.customerId && !customer)
+      throw new BadRequestException('Customer not found');
 
-    const engineerId = isEngineer(user) ? user?.id ?? null : dto.engineerId || user?.id || null;
+    const engineerId = isEngineer(user)
+      ? (user?.id ?? null)
+      : dto.engineerId || user?.id || null;
 
     return this.prisma.$transaction(async (tx) => {
       const ticket = await tx.deviceServiceTicket.create({
         data: {
-          receiveCode: await this.generateCode(tx, 'PNTB', receivedAt, 'receiveCode'),
+          receiveCode: await this.generateCode(
+            tx,
+            'PNTB',
+            receivedAt,
+            'receiveCode',
+          ),
           status: DeviceServiceTicketStatus.RECEIVED,
           customerId: customer?.id ?? null,
           engineerId,
           machineId: machine?.id ?? null,
           receivedAt,
-          usingDepartment: this.clean(dto.usingDepartment) || customer?.name || null,
-          representative: this.clean(dto.representative) || customer?.contactPerson || null,
-          representativePosition: this.clean(dto.representativePosition) || customer?.contactPosition || null,
-          contactPhone: this.clean(dto.contactPhone) || customer?.contactPhone || customer?.phone || null,
-          address: this.clean(dto.address) || customer?.fullAddress || customer?.address || null,
-          deviceName: this.clean(dto.deviceName) || machine?.name || machine?.modelName || null,
-          modelName: this.clean(dto.modelName) || machine?.modelName || machine?.machineModel?.displayName || machine?.machineModel?.name || null,
-          serialNumber: this.clean(dto.serialNumber) || machine?.serialNumber || null,
+          usingDepartment:
+            this.clean(dto.usingDepartment) || customer?.name || null,
+          representative:
+            this.clean(dto.representative) || customer?.contactPerson || null,
+          representativePosition:
+            this.clean(dto.representativePosition) ||
+            customer?.contactPosition ||
+            null,
+          contactPhone:
+            this.clean(dto.contactPhone) ||
+            customer?.contactPhone ||
+            customer?.phone ||
+            null,
+          address:
+            this.clean(dto.address) ||
+            customer?.fullAddress ||
+            customer?.address ||
+            null,
+          deviceName:
+            this.clean(dto.deviceName) ||
+            machine?.name ||
+            machine?.modelName ||
+            null,
+          modelName:
+            this.clean(dto.modelName) ||
+            machine?.modelName ||
+            machine?.machineModel?.displayName ||
+            machine?.machineModel?.name ||
+            null,
+          serialNumber:
+            this.clean(dto.serialNumber) || machine?.serialNumber || null,
           warrantyStatus: this.clean(dto.warrantyStatus),
           warrantyTerm: this.clean(dto.warrantyTerm),
           receivedCondition: this.clean(dto.receivedCondition),
@@ -118,14 +186,19 @@ export class DeviceServiceTicketsService {
     });
   }
 
-  async returnDevice(id: string, dto: ReturnDeviceServiceTicketDto, user?: RequestUser) {
+  async returnDevice(
+    id: string,
+    dto: ReturnDeviceServiceTicketDto,
+    user?: RequestUser,
+  ) {
     const current = await this.prisma.deviceServiceTicket.findFirst({
       where: {
         AND: [{ id }, deviceServiceTicketAccessWhere(user)],
       },
       include: { machine: true },
     });
-    if (!current) throw new NotFoundException('Device service ticket not found');
+    if (!current)
+      throw new NotFoundException('Device service ticket not found');
     if (current.status !== DeviceServiceTicketStatus.RECEIVED) {
       throw new BadRequestException('Only received devices can be returned');
     }
@@ -133,10 +206,15 @@ export class DeviceServiceTicketsService {
     const returnedAt = this.parseDate(dto.returnedAt) ?? new Date();
 
     return this.prisma.$transaction(async (tx) => {
-      await tx.deviceServiceTicket.update({
-        where: { id },
+      const updatedTicket = await tx.deviceServiceTicket.updateMany({
+        where: { id, status: DeviceServiceTicketStatus.RECEIVED },
         data: {
-          returnCode: await this.generateCode(tx, 'PTTB', returnedAt, 'returnCode'),
+          returnCode: await this.generateCode(
+            tx,
+            'PTTB',
+            returnedAt,
+            'returnCode',
+          ),
           status: DeviceServiceTicketStatus.RETURNED,
           returnedAt,
           repairMethod: this.clean(dto.repairMethod),
@@ -147,8 +225,12 @@ export class DeviceServiceTicketsService {
           repairCostInWords: this.clean(dto.repairCostInWords),
           note: this.clean(dto.note) ?? current.note,
         },
-        include: this.defaultInclude(),
       });
+      if (updatedTicket.count !== 1) {
+        throw new BadRequestException(
+          'Device service ticket has already been returned',
+        );
+      }
 
       if (dto.usedParts !== undefined) {
         await replaceWorkUsedParts({
@@ -167,10 +249,11 @@ export class DeviceServiceTicketsService {
       }
 
       if (current.machine) {
-        await tx.machine.update({
-          where: { id: current.machine.id },
-          data: { status: MachineStatus.ACTIVE },
-        });
+        await reconcileMachineStatusFromOpenWork(
+          tx,
+          current.machine.id,
+          current.machine.inventoryStatus,
+        );
       }
 
       return tx.deviceServiceTicket.findUnique({
@@ -180,14 +263,19 @@ export class DeviceServiceTicketsService {
     });
   }
 
-  async updateReturnDetails(id: string, dto: ReturnDeviceServiceTicketDto, user?: RequestUser) {
+  async updateReturnDetails(
+    id: string,
+    dto: ReturnDeviceServiceTicketDto,
+    user?: RequestUser,
+  ) {
     const current = await this.prisma.deviceServiceTicket.findFirst({
       where: {
         AND: [{ id }, deviceServiceTicketAccessWhere(user)],
       },
       include: { machine: true },
     });
-    if (!current) throw new NotFoundException('Device service ticket not found');
+    if (!current)
+      throw new NotFoundException('Device service ticket not found');
 
     return this.prisma.$transaction(async (tx) => {
       await tx.deviceServiceTicket.update({
@@ -196,7 +284,7 @@ export class DeviceServiceTicketsService {
           returnedAt:
             dto.returnedAt === undefined
               ? undefined
-              : this.parseDate(dto.returnedAt) ?? current.returnedAt,
+              : (this.parseDate(dto.returnedAt) ?? current.returnedAt),
           repairMethod:
             dto.repairMethod === undefined
               ? undefined
@@ -206,7 +294,9 @@ export class DeviceServiceTicketsService {
               ? undefined
               : this.clean(dto.repairCostItems),
           resultNote:
-            dto.resultNote === undefined ? undefined : this.clean(dto.resultNote),
+            dto.resultNote === undefined
+              ? undefined
+              : this.clean(dto.resultNote),
           returnCondition:
             dto.returnCondition === undefined
               ? undefined
@@ -252,10 +342,17 @@ export class DeviceServiceTicketsService {
   }
 
   async previewReceiveCode(date?: string) {
-    return this.generateCode(this.prisma, 'PNTB', this.parseDate(date) ?? new Date(), 'receiveCode');
+    return this.generateCode(
+      this.prisma,
+      'PNTB',
+      this.parseDate(date) ?? new Date(),
+      'receiveCode',
+    );
   }
 
-  private buildWhere(query: ListDeviceServiceTicketsQueryDto): Prisma.DeviceServiceTicketWhereInput {
+  private buildWhere(
+    query: ListDeviceServiceTicketsQueryDto,
+  ): Prisma.DeviceServiceTicketWhereInput {
     const search = query.search?.trim();
     return {
       status: this.parseStatus(query.status),
@@ -279,7 +376,15 @@ export class DeviceServiceTicketsService {
   private defaultInclude() {
     return {
       customer: { include: { region: true } },
-      engineer: { select: { id: true, email: true, fullName: true, role: true, region: true } },
+      engineer: {
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          role: true,
+          region: true,
+        },
+      },
       machine: { include: { machineModel: true, customer: true } },
       createdBy: { select: { id: true, email: true, fullName: true } },
       usedParts: { orderBy: { createdAt: 'asc' as const } },
@@ -296,23 +401,30 @@ export class DeviceServiceTicketsService {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = String(date.getFullYear()).slice(-2);
     const datePart = `${day}${month}${year}`;
-    const startsWith = `${prefix}-${datePart}-`;
-    const count = await client.deviceServiceTicket.count({
-      where: { [field]: { startsWith } },
-    });
-    return `${startsWith}${String(count + 1).padStart(3, '0')}`;
+    return sequenceCode(
+      client,
+      field === 'receiveCode' ? 'receive' : 'return',
+      `${prefix}-${datePart}`,
+      3,
+      client === this.prisma,
+    );
   }
 
   private parseDate(value?: string) {
     if (!value) return undefined;
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) throw new BadRequestException('Invalid date');
+    if (Number.isNaN(date.getTime()))
+      throw new BadRequestException('Invalid date');
     return date;
   }
 
   private parseStatus(value?: string) {
     if (!value) return undefined;
-    if (!Object.values(DeviceServiceTicketStatus).includes(value as DeviceServiceTicketStatus)) {
+    if (
+      !Object.values(DeviceServiceTicketStatus).includes(
+        value as DeviceServiceTicketStatus,
+      )
+    ) {
       throw new BadRequestException('Invalid status');
     }
     return value as DeviceServiceTicketStatus;

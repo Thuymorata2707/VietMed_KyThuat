@@ -33,7 +33,13 @@ const ALLOWED_UPLOAD_EXTENSIONS: Record<string, string> = {
   'image/webp': 'webp',
   'application/pdf': 'pdf',
 };
-const ALLOWED_UPLOAD_EXTENSION_SET = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf']);
+const ALLOWED_UPLOAD_EXTENSION_SET = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.pdf',
+]);
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('attachments')
@@ -47,7 +53,9 @@ export class AttachmentsController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
-        fileSize: Number(process.env.UPLOAD_MAX_FILE_SIZE_BYTES ?? 10 * 1024 * 1024),
+        fileSize: Number(
+          process.env.UPLOAD_MAX_FILE_SIZE_BYTES ?? 10 * 1024 * 1024,
+        ),
       },
       storage: memoryStorage(),
       fileFilter: (_req, file, callback) => {

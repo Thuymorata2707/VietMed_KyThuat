@@ -880,7 +880,7 @@
   color: #18181b;
   font-size: 11px;
   font-weight: 800;
-  text-transform:;
+  text-transform: none;
 }
 
 .expanded-crud-modal .form-panel-heading h2 {
@@ -917,15 +917,13 @@
 }
 
 .crud-form-page {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88)),
-    repeating-linear-gradient(135deg, rgba(15, 23, 42, 0.018) 0, rgba(15, 23, 42, 0.018) 1px, transparent 1px, transparent 18px);
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  border-radius: 28px;
-  box-shadow: 0 20px 54px rgba(15, 23, 42, 0.06);
+  background: #fffefa;
+  border: 1px solid #e5e0da;
+  border-radius: 14px;
+  box-shadow: var(--shadow-panel);
   display: grid;
   gap: 20px;
-  padding: 28px;
+  padding: clamp(16px, 2.2vw, 26px);
   width: 100%;
 }
 
@@ -946,14 +944,55 @@
   gap: 14px;
 }
 
+.multi-select-field {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.multi-select-field legend {
+  color: #334047;
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+
+.multi-select-options {
+  background: #fff;
+  border: 1px solid #e4dfd8;
+  border-radius: 9px;
+  display: grid;
+  gap: 2px 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  max-height: 228px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.multi-select-option {
+  align-items: center;
+  border-radius: 6px;
+  color: #374147;
+  display: flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 9px;
+  min-height: 36px;
+  padding: 5px 7px;
+}
+
+.multi-select-option:hover { background: #f6f3ee; }
+.multi-select-option input { accent-color: var(--color-accent); height: 16px; margin: 0; width: 16px; }
+
 .customer-form-section {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 22px;
+  background: #fbfaf7;
+  border: 1px solid #e9e4dd;
+  border-radius: 10px;
   display: grid;
   gap: 18px;
-  padding: 22px;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.035);
+  padding: clamp(14px, 1.8vw, 20px);
+  box-shadow: none;
 }
 
 .customer-form-section-heading {
@@ -1002,13 +1041,13 @@
 .customer-form-page .admin-crud-form textarea,
 .customer-form-page .searchable-select input {
   background: rgba(255, 255, 255, 0.96);
-  border-color: #dbe3ec;
-  border-radius: 18px;
+  border-color: #d8d4ce;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 560;
   line-height: 1.5;
-  min-height: 52px;
-  padding-inline: 16px;
+  min-height: 46px;
+  padding-inline: 13px;
 }
 
 .customer-form-page .admin-crud-form textarea {
@@ -1029,25 +1068,27 @@
 }
 
 .crud-form-page .form-panel-heading {
-  background: #ffffff;
-  border: 1px solid rgba(226, 232, 240, 0.86);
-  border-radius: 22px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.045);
+  background: transparent;
+  border: 0;
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0;
+  box-shadow: none;
   margin-bottom: 0;
-  padding: 22px;
+  padding: 4px 0 4px 16px;
 }
 
 .crud-form-page .form-panel-heading span {
-  color: #64748b;
+  color: var(--color-accent);
   font-size: 12px;
   font-weight: 760;
   letter-spacing: 0;
 }
 
 .crud-form-page .form-panel-heading h2 {
-  color: #111827;
+  color: #252c30;
   font-size: 25px;
-  font-weight: 820;
+  font-weight: 700;
+  letter-spacing: -0.035em;
   line-height: 1.12;
   margin-top: 6px;
   text-wrap: balance;
@@ -1077,12 +1118,12 @@
 .crud-form-page .form-grid select,
 .crud-form-page .form-grid textarea,
 .crud-form-page .searchable-select input {
-  border-color: #dbe3ec;
-  border-radius: 18px;
+  border-color: #d8d4ce;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 560;
-  min-height: 52px;
-  padding-inline: 16px;
+  min-height: 46px;
+  padding-inline: 13px;
 }
 
 .crud-form-page .form-grid textarea {
@@ -1091,11 +1132,11 @@
 }
 
 .crud-form-page .modal-actions {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 22px;
+  background: rgba(255, 254, 250, 0.96);
+  border: 1px solid #e5e0da;
+  border-radius: 10px;
   bottom: 0;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
+  box-shadow: var(--shadow-sm);
   margin-top: 4px;
   padding: 14px;
   position: sticky;

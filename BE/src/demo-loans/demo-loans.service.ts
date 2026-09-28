@@ -1,3 +1,6 @@
+import { sequenceCode } from '../common/sequence-code';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
 import {
   BadRequestException,
   ForbiddenException,
@@ -29,7 +32,7 @@ import { UpdateDemoLoanDto } from './dto/update-demo-loan.dto';
 
 @Injectable()
 export class DemoLoansService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly auditLogsService: AuditLogsService) {}
 
   async findAll(
     query: ListDemoLoansQueryDto,
@@ -182,8 +185,11 @@ export class DemoLoansService {
         },
       });
 
-      await tx.machine.update({
-        where: { id: machine.id },
+      const machineUpdate = await tx.machine.updateMany({
+        where: {
+          id: machine.id,
+          inventoryStatus: machine.inventoryStatus,
+        },
         data: {
           inventoryStatus: MachineInventoryStatus.RESERVED,
           status: MachineStatus.ACTIVE,
@@ -191,6 +197,9 @@ export class DemoLoansService {
           primaryEngineerId: engineer.id,
         },
       });
+      if (machineUpdate.count !== 1) {
+        throw new BadRequestException('Machine inventory status has changed');
+      }
 
       return loan;
     });
@@ -309,8 +318,8 @@ export class DemoLoansService {
     );
 
     return this.prisma.$transaction(async (tx) => {
-      const loan = await tx.demoLoan.update({
-        where: { id },
+      const loanUpdate = await tx.demoLoan.updateMany({
+        where: { id, status: { in: returnableStatuses } },
         data: {
           status: DemoLoanStatus.RETURNED,
           returnedAt,
@@ -319,6 +328,12 @@ export class DemoLoansService {
             dto.accessories === undefined ? undefined : dto.accessories,
           returnNote: this.clean(dto.note),
         },
+      });
+      if (loanUpdate.count !== 1) {
+        throw new BadRequestException('Demo loan is already closed');
+      }
+      const loan = await tx.demoLoan.findUniqueOrThrow({
+        where: { id },
         include: this.defaultInclude(),
       });
 
@@ -336,14 +351,20 @@ export class DemoLoansService {
         },
       });
 
-      await tx.machine.update({
-        where: { id: machine.id },
+      const machineUpdate = await tx.machine.updateMany({
+        where: {
+          id: machine.id,
+          inventoryStatus: machine.inventoryStatus,
+        },
         data: {
           inventoryStatus: MachineInventoryStatus.RETURNED,
           status: MachineStatus.REPAIRING,
           customerId: null,
         },
       });
+      if (machineUpdate.count !== 1) {
+        throw new BadRequestException('Machine inventory status has changed');
+      }
 
       return loan;
     });
@@ -362,9 +383,15 @@ export class DemoLoansService {
     const machine = await this.ensureMachine(current.machineId);
 
     return this.prisma.$transaction(async (tx) => {
-      const loan = await tx.demoLoan.update({
-        where: { id },
+      const loanUpdate = await tx.demoLoan.updateMany({
+        where: { id, status: current.status },
         data: { status: DemoLoanStatus.CANCELLED },
+      });
+      if (loanUpdate.count !== 1) {
+        throw new BadRequestException('Demo loan has already been closed');
+      }
+      const loan = await tx.demoLoan.findUniqueOrThrow({
+        where: { id },
         include: this.defaultInclude(),
       });
 
@@ -382,29 +409,61 @@ export class DemoLoansService {
             createdById: user?.id || null,
           },
         });
-        await tx.machine.update({
-          where: { id: machine.id },
+        const machineUpdate = await tx.machine.updateMany({
+          where: {
+            id: machine.id,
+            inventoryStatus: MachineInventoryStatus.RESERVED,
+          },
           data: {
             inventoryStatus: MachineInventoryStatus.IN_STOCK,
             status: MachineStatus.ACTIVE,
             customerId: null,
           },
         });
+        if (machineUpdate.count !== 1) {
+          throw new BadRequestException('Machine inventory status has changed');
+        }
       }
 
       return loan;
     });
   }
 
-  async remove(id: string, user?: RequestUser) {
+  async remove(id: string, user: RequestUser) {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_DELETE);
-    this.assertAdminOrManager(user);
+    if (!isAdmin(user)) throw new ForbiddenException('Only administrators can delete demo loans');
     const current = await this.findOne(id, user);
-    if (current.status !== DemoLoanStatus.CANCELLED) {
-      throw new BadRequestException('Only cancelled demo loans can be deleted');
-    }
-    await this.prisma.demoLoan.delete({ where: { id } });
-    return { ok: true };
+    return this.prisma.$transaction(async (tx) => {
+      if (current.machine?.inventoryStatus === MachineInventoryStatus.RESERVED) {
+        await tx.machineInventoryMovement.create({
+          data: {
+            code: await this.generateMovementCode(tx),
+            type: InventoryMovementType.ADJUST_STATUS,
+            machineId: current.machineId,
+            fromStatus: MachineInventoryStatus.RESERVED,
+            toStatus: MachineInventoryStatus.IN_STOCK,
+            occurredAt: new Date(),
+            note: `Delete demo loan ${current.code}`,
+            customerId: current.customerId,
+            createdById: user.id,
+          },
+        });
+        const updated = await tx.machine.updateMany({
+          where: { id: current.machineId, inventoryStatus: MachineInventoryStatus.RESERVED },
+          data: { inventoryStatus: MachineInventoryStatus.IN_STOCK, status: MachineStatus.ACTIVE, customerId: null },
+        });
+        if (updated.count !== 1) throw new BadRequestException('Machine inventory status has changed');
+      }
+      await tx.demoLoan.delete({ where: { id } });
+      await this.auditLogsService.create({
+        action: AUDIT_ACTIONS.DELETE,
+        entityType: 'DemoLoan',
+        entityId: id,
+        actor: user,
+        metadata: { code: current.code, status: current.status, machineId: current.machineId, customerId: current.customerId },
+      }, tx);
+      return { deleted: true };
+    });
   }
 
   getStatuses() {
@@ -535,16 +594,7 @@ export class DemoLoansService {
   private async generateDemoLoanCode(tx: Prisma.TransactionClient) {
     const year = new Date().getFullYear();
     const prefix = `DM-${year}`;
-    const latest = await tx.demoLoan.findFirst({
-      where: { code: { startsWith: `${prefix}-` } },
-      orderBy: { code: 'desc' },
-      select: { code: true },
-    });
-    const latestNumber = latest?.code
-      ? Number(latest.code.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-    return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
+    return sequenceCode(tx, 'demo', prefix, 4, false);
   }
 
   private async generateMovementCode(tx: Prisma.TransactionClient) {
@@ -553,16 +603,7 @@ export class DemoLoansService {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     const prefix = `INV-${year}${month}${day}`;
-    const latest = await tx.machineInventoryMovement.findFirst({
-      where: { code: { startsWith: `${prefix}-` } },
-      orderBy: { code: 'desc' },
-      select: { code: true },
-    });
-    const latestNumber = latest?.code
-      ? Number(latest.code.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-    return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
+    return sequenceCode(tx, 'inventory', prefix, 4, false);
   }
 
   private defaultInclude() {

@@ -264,6 +264,10 @@ export class MachineModelsService {
         _count: {
           select: {
             machines: true,
+            components: true,
+            componentAccessories: true,
+            plannedInstallations: true,
+            applicationSupportCases: true,
           },
         },
       },
@@ -273,9 +277,9 @@ export class MachineModelsService {
       throw new NotFoundException('Machine model not found');
     }
 
-    if (machineModel._count.machines > 0) {
+    if (Object.values(machineModel._count).some((count) => count > 0)) {
       throw new BadRequestException(
-        'Cannot delete machine model with machines',
+        'Cannot delete machine model with linked machines, accessories or history',
       );
     }
 

@@ -1,4 +1,4 @@
-import { InstallationStatus } from '@prisma/client';
+import { InstallationStatus, MachineProductCategory } from '@prisma/client';
 import {
   IsArray,
   IsDateString,
@@ -7,7 +7,9 @@ import {
   IsString,
 } from 'class-validator';
 import { CreateInstallationDto } from './create-installation.dto';
-import { CreateMachineAccessoryDto } from '../../machines/dto/machine-accessory.dto';
+import { UpdateMachineAccessoryItemDto } from '../../machines/dto/update-machine.dto';
+import { Type } from 'class-transformer';
+import { ValidateNested } from 'class-validator';
 
 export class UpdateInstallationDto {
   @IsOptional()
@@ -41,6 +43,18 @@ export class UpdateInstallationDto {
   @IsOptional()
   @IsString()
   machineName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  modelName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  manufacturer?: string | null;
+
+  @IsOptional()
+  @IsEnum(MachineProductCategory)
+  productCategory?: MachineProductCategory;
 
   @IsOptional()
   @IsString()
@@ -103,7 +117,10 @@ export class UpdateInstallationDto {
   installedDeviceItems?: CreateInstallationDto['installedDeviceItems'];
 
   @IsOptional()
-  machineAccessories?: CreateMachineAccessoryDto[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateMachineAccessoryItemDto)
+  machineAccessories?: UpdateMachineAccessoryItemDto[];
 
   @IsOptional()
   @IsString()

@@ -23,7 +23,7 @@ type AccountFormState = {
   position: string;
   department: string;
   workStartDate: string;
-  expertiseGroup: '' | 'IMAGING' | 'LAB_TESTING';
+  expertiseGroups: Array<'IMAGING' | 'LAB_TESTING'>;
   specialties: string;
   certificateNo: string;
   photoUrl: string;
@@ -85,7 +85,6 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
           <div>
             <span className="mb-2 inline-flex rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-semibold text-[#18181b]">Account settings</span>
             <h1 className="mb-2.5 text-[clamp(28px,4vw,46px)] font-semibold leading-none tracking-[-0.03em] text-[#171717]">{form.fullName || user.email}</h1>
-            <p className="max-w-[640px] text-[15px] leading-7 text-[#555555]">Cập nhật thông tin cá nhân và hồ sơ kỹ sư.</p>
           </div>
         </div>
 
@@ -107,7 +106,6 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
             </span>
             <div>
               <strong className="block text-[#1f1f1f]">Quyền truy cập</strong>
-              <p className="mt-1 text-[#666666]">Vai trò và khu vực do admin quản lý.</p>
             </div>
           </div>
 
@@ -145,7 +143,6 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
               <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#fafafa] p-[9px] text-[#18181b]" size={18} />
               <div>
                 <h2 className="text-[#1f1f1f]">Thông tin cá nhân</h2>
-                <p className="mt-1 text-[#666666]">Liên hệ dùng khi phân việc và bàn giao.</p>
               </div>
             </div>
 
@@ -203,7 +200,6 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
                 <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#fafafa] p-[9px] text-[#18181b]" size={18} />
                 <div>
                   <h2 className="text-[#1f1f1f]">Hồ sơ kỹ sư</h2>
-                  <p className="mt-1 text-[#666666]">Chuyên môn để điều phối công việc.</p>
                 </div>
               </div>
 
@@ -223,17 +219,28 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
                   <input onChange={(event) => updateField('department', event.target.value)} value={form.department} />
                 </label>
 
-                <label>
-                  Nhóm chuyên môn
-                  <select
-                    onChange={(event) => updateField('expertiseGroup', event.target.value as AccountFormState['expertiseGroup'])}
-                    value={form.expertiseGroup}
-                  >
-                    <option value="">Chưa chọn</option>
-                    <option value="IMAGING">Chẩn đoán hình ảnh</option>
-                    <option value="LAB_TESTING">Xét nghiệm</option>
-                  </select>
-                </label>
+                <fieldset className="grid gap-2 rounded-xl border border-[#d6d6d6] bg-white p-3">
+                  <legend className="px-1">Nhóm chuyên môn</legend>
+                  {[
+                    { label: 'Chẩn đoán hình ảnh', value: 'IMAGING' as const },
+                    { label: 'Xét nghiệm', value: 'LAB_TESTING' as const },
+                  ].map((option) => (
+                    <label className="!flex min-h-8 grid-cols-[18px_1fr] !items-center !gap-2" key={option.value}>
+                      <input
+                        className="!h-4 !min-h-4 !w-4 !p-0 accent-[#177245]"
+                        checked={form.expertiseGroups.includes(option.value)}
+                        onChange={(event) => updateField(
+                          'expertiseGroups',
+                          event.target.checked
+                            ? [...new Set([...form.expertiseGroups, option.value])]
+                            : form.expertiseGroups.filter((group) => group !== option.value),
+                        )}
+                        type="checkbox"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </fieldset>
 
                 <DateInput label="Ngày sinh" onChange={(value) => updateField('dateOfBirth', value)} value={form.dateOfBirth} />
 
@@ -288,7 +295,9 @@ function toFormState(user: ApiUser): AccountFormState {
     position: profile?.position || '',
     department: profile?.department || '',
     workStartDate: toDateInput(profile?.workStartDate),
-    expertiseGroup: profile?.expertiseGroup || '',
+    expertiseGroups: profile?.expertiseGroups?.length
+      ? profile.expertiseGroups
+      : profile?.expertiseGroup ? [profile.expertiseGroup] : [],
     specialties: profile?.specialties?.join('\n') || '',
     certificateNo: profile?.certificateNo || '',
     photoUrl: profile?.photoUrl || '',
@@ -310,7 +319,7 @@ function buildPayload(form: AccountFormState, includeEngineerProfile: boolean) {
           position: form.position.trim() || null,
           department: form.department.trim() || null,
           workStartDate: form.workStartDate || null,
-          expertiseGroup: form.expertiseGroup || null,
+          expertiseGroups: form.expertiseGroups,
           specialties: form.specialties
             .split('\n')
             .map((item) => item.trim())

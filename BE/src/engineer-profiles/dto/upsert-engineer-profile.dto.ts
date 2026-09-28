@@ -1,6 +1,7 @@
 import { ExpertiseGroup } from '@prisma/client';
 import {
   IsArray,
+  ArrayUnique,
   IsDateString,
   IsEnum,
   IsOptional,
@@ -36,6 +37,12 @@ export class UpsertEngineerProfileDto {
   @IsOptional()
   @IsEnum(ExpertiseGroup)
   expertiseGroup?: ExpertiseGroup | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(ExpertiseGroup, { each: true })
+  expertiseGroups?: ExpertiseGroup[];
 
   @IsOptional()
   @IsString()

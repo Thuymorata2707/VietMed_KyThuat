@@ -20,6 +20,6 @@ export function roleLabel(role: RoleName) {
 }
 
 export function homePathForRole(role: RoleName) {
-  if (role === 'engineer') return '/machines';
+  if (role === 'engineer') return '/my-tasks';
   return '/';
 }

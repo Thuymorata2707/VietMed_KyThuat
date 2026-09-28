@@ -253,6 +253,7 @@ export class BusinessLinesService {
           select: {
             machines: true,
             machineModels: true,
+            machineInstallations: true,
           },
         },
       },
@@ -262,15 +263,9 @@ export class BusinessLinesService {
       throw new NotFoundException('Business line not found');
     }
 
-    if (businessLine._count.machines > 0) {
+    if (Object.values(businessLine._count).some((count) => count > 0)) {
       throw new BadRequestException(
-        'Cannot delete business line with machines',
-      );
-    }
-
-    if (businessLine._count.machineModels > 0) {
-      throw new BadRequestException(
-        'Cannot delete business line with machine models',
+        'Cannot delete product group with linked machines or installation history',
       );
     }
 

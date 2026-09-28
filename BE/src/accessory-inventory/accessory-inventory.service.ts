@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { AccessoryStockMovementType, Prisma } from '@prisma/client';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { PaginatedResult } from '../common/paginated-result.type';
@@ -13,7 +17,10 @@ import { ListAccessoryStockMovementsQueryDto } from './dto/list-accessory-stock-
 export class AccessoryInventoryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findStock(query: ListAccessoryInventoryQueryDto, user?: RequestUser): Promise<PaginatedResult<unknown>> {
+  async findStock(
+    query: ListAccessoryInventoryQueryDto,
+    user?: RequestUser,
+  ): Promise<PaginatedResult<unknown>> {
     assertPermission(user, PERMISSIONS.INVENTORY_READ);
     const page = query.page ?? 1;
     const limit = query.limit ?? 100;
@@ -61,7 +68,10 @@ export class AccessoryInventoryService {
 
     return {
       data: accessories.map((accessory) => {
-        const currentStock = accessory.stockMovements.reduce((sum, movement) => sum + Number(movement.quantityDelta), 0);
+        const currentStock = accessory.stockMovements.reduce(
+          (sum, movement) => sum + Number(movement.quantityDelta),
+          0,
+        );
         const stockValue = currentStock * Number(accessory.unitCost || 0);
         return {
           ...accessory,
@@ -118,16 +128,82 @@ export class AccessoryInventoryService {
     };
   }
 
-  async createMovement(dto: CreateAccessoryStockMovementDto, user?: RequestUser) {
+  async createMovement(
+    dto: CreateAccessoryStockMovementDto,
+    user?: RequestUser,
+  ) {
     assertPermission(user, PERMISSIONS.INVENTORY_CREATE);
     const accessory = await this.prisma.componentAccessory.findUnique({
       where: { id: dto.componentAccessoryId },
     });
     if (!accessory) throw new NotFoundException('Accessory not found');
+    if (accessory.status !== 'ACTIVE') {
+      throw new BadRequestException(
+        'Cannot create movement for an inactive accessory',
+      );
+    }
 
     const occurredAt = this.parseDate(dto.occurredAt) ?? new Date();
     const quantityDelta = this.resolveQuantityDelta(dto);
     const quantityAbs = Math.abs(quantityDelta);
+    if (accessory.requiresSerial && !dto.serialNumber?.trim()) {
+      throw new BadRequestException(
+        'Serial number is required for this accessory',
+      );
+    }
+    if (accessory.requiresSerial && quantityAbs !== 1) {
+      throw new BadRequestException(
+        'Serialized accessories must be moved one at a time',
+      );
+    }
+
+    const machine = dto.machineId
+      ? await this.prisma.machine.findUnique({
+          where: { id: dto.machineId },
+          select: { id: true, machineModelId: true, customerId: true },
+        })
+      : null;
+    if (dto.machineId && !machine) {
+      throw new BadRequestException('Machine does not exist');
+    }
+    if (machine && machine.machineModelId !== accessory.machineModelId) {
+      throw new BadRequestException(
+        'Accessory does not belong to the selected machine model',
+      );
+    }
+    if (machine && dto.customerId && machine.customerId !== dto.customerId) {
+      throw new BadRequestException(
+        'Customer does not belong to the selected machine',
+      );
+    }
+
+    const movements = await this.prisma.accessoryStockMovement.findMany({
+      where: { componentAccessoryId: accessory.id },
+      select: { quantityDelta: true, serialNumber: true },
+    });
+    const currentStock = movements.reduce(
+      (sum, movement) => sum + Number(movement.quantityDelta),
+      0,
+    );
+    if (quantityDelta < 0 && currentStock < quantityAbs) {
+      throw new BadRequestException(
+        `Insufficient stock. Current stock: ${currentStock}`,
+      );
+    }
+    if (
+      accessory.requiresSerial &&
+      dto.type === AccessoryStockMovementType.EXPORT
+    ) {
+      const serial = dto.serialNumber!.trim();
+      const serialStock = movements
+        .filter((movement) => movement.serialNumber === serial)
+        .reduce((sum, movement) => sum + Number(movement.quantityDelta), 0);
+      if (serialStock < 1) {
+        throw new BadRequestException(
+          'This serial number is not available in stock',
+        );
+      }
+    }
     const unitCost = dto.unitCost ?? Number(accessory.unitCost || 0);
     const unitPrice = dto.unitPrice ?? Number(accessory.salePrice || 0);
 
@@ -147,7 +223,7 @@ export class AccessoryInventoryService {
         note: dto.note?.trim() || null,
         occurredAt,
         machineId: dto.machineId || null,
-        customerId: dto.customerId || null,
+        customerId: dto.customerId || machine?.customerId || null,
         createdById: user?.id || null,
       },
       include: this.movementInclude(),
@@ -170,7 +246,15 @@ export class AccessoryInventoryService {
       customer: true,
       repair: { select: { id: true, code: true, title: true } },
       maintenance: { select: { id: true, code: true, title: true } },
-      deviceServiceTicket: { select: { id: true, receiveCode: true, returnCode: true, deviceName: true, modelName: true } },
+      deviceServiceTicket: {
+        select: {
+          id: true,
+          receiveCode: true,
+          returnCode: true,
+          deviceName: true,
+          modelName: true,
+        },
+      },
       createdBy: { select: { id: true, fullName: true, email: true } },
     };
   }
@@ -183,7 +267,10 @@ export class AccessoryInventoryService {
       return -Number(dto.quantity || 0);
     }
     const delta = Number(dto.quantityDelta || 0);
-    if (!delta) throw new BadRequestException('Adjustment delta must be different from 0');
+    if (!delta)
+      throw new BadRequestException(
+        'Adjustment delta must be different from 0',
+      );
     return delta;
   }
 
@@ -196,7 +283,8 @@ export class AccessoryInventoryService {
   private parseDate(value?: string) {
     if (!value) return undefined;
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) throw new BadRequestException('Invalid date');
+    if (Number.isNaN(date.getTime()))
+      throw new BadRequestException('Invalid date');
     return date;
   }
 }

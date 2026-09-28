@@ -1,4 +1,4 @@
-import { AlertTriangle, Boxes, CheckCircle2, ClipboardCheck, Database, Layers3, Loader2, PackageSearch, RefreshCw, Route, Users, Wrench } from 'lucide-react';
+import { Boxes, CheckCircle2, ClipboardCheck, Database, Layers3, Loader2, PackageSearch, RefreshCw, Route, Users, Wrench } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { queryKeys } from '../../lib/queryKeys';
+import { totalOpenWorkCount } from './metrics';
 
 type Summary = {
   totalCustomers?: number;
@@ -26,6 +27,10 @@ type Summary = {
   openRepairsWithoutMachine?: number;
   maintenancesWithoutMachine?: number;
   openMaintenancesWithoutMachine?: number;
+  openMaintenances?: number;
+  openInstallations?: number;
+  openDemoLoans?: number;
+  openDeviceServiceTickets?: number;
   openTicketsWithoutMachine?: number;
   returnedMachines?: number;
   returnedRepairingMachines?: number;
@@ -81,12 +86,10 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
   const assignedRepairs = count(summary?.repairStatusCounts, 'ASSIGNED');
   const inProgressRepairs = count(summary?.repairStatusCounts, 'IN_PROGRESS');
   const waitingPartsRepairs = count(summary?.repairStatusCounts, 'WAITING_PARTS');
-  const completedRepairs = count(summary?.repairStatusCounts, 'COMPLETED');
   const overdueMaintenances = count(summary?.maintenanceStatusCounts, 'OVERDUE');
   const scheduledMaintenances = count(summary?.maintenanceStatusCounts, 'SCHEDULED');
   const assignedMaintenances = count(summary?.maintenanceStatusCounts, 'ASSIGNED');
   const inProgressMaintenances = count(summary?.maintenanceStatusCounts, 'IN_PROGRESS');
-  const completedMaintenances = count(summary?.maintenanceStatusCounts, 'COMPLETED');
   const inStockMachines = count(summary?.machineInventoryStatusCounts, 'IN_STOCK');
   const installedMachines = count(summary?.machineInventoryStatusCounts, 'INSTALLED');
   const reservedMachines = count(summary?.machineInventoryStatusCounts, 'RESERVED');
@@ -101,8 +104,17 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
   const returnedRepairingMachines = summary?.returnedRepairingMachines ?? 0;
   const totalMachines = summary?.totalMachines ?? 0;
   const openRepairWork = pendingRepairs + assignedRepairs + inProgressRepairs + waitingPartsRepairs;
-  const openMaintenanceWork = (summary?.upcomingMaintenances ?? scheduledMaintenances) + assignedMaintenances + inProgressMaintenances + overdueMaintenances;
-  const totalOpenWork = openRepairWork + openMaintenanceWork;
+  const openMaintenanceWork = summary?.openMaintenances ?? (scheduledMaintenances + assignedMaintenances + inProgressMaintenances + overdueMaintenances);
+  const openInstallationWork = summary?.openInstallations ?? 0;
+  const openDemoWork = summary?.openDemoLoans ?? 0;
+  const openDeviceServiceWork = summary?.openDeviceServiceTickets ?? 0;
+  const totalOpenWork = totalOpenWorkCount({
+    repairs: openRepairWork,
+    maintenances: openMaintenanceWork,
+    installations: openInstallationWork,
+    demoLoans: openDemoWork,
+    deviceServiceTickets: openDeviceServiceWork,
+  });
   const availabilityRate = totalMachines > 0 ? Math.round((activeMachines / totalMachines) * 100) : 0;
   const isAdmin = role === 'admin';
   const canOpenReports = role === 'admin' || role === 'manager';
@@ -114,14 +126,8 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     { label: 'Đợi linh kiện', value: waitingPartsRepairs, tone: waitingPartsRepairs > 0 ? ('warn' as const) : ('good' as const) },
     { label: 'Bảo trì sắp tới', value: summary?.upcomingMaintenances ?? scheduledMaintenances, tone: 'good' as const },
     { label: 'Quá hạn', value: overdueMaintenances, tone: overdueMaintenances > 0 ? ('danger' as const) : ('good' as const) },
-  ];
-
-  const serviceFlow = [
-    { label: 'Chờ nhận', value: pendingRepairs + scheduledMaintenances, tone: pendingRepairs + scheduledMaintenances > 0 ? ('warn' as const) : ('good' as const) },
-    { label: 'Đã giao việc', value: assignedRepairs + assignedMaintenances, tone: 'neutral' as const },
-    { label: 'Đang xử lý', value: inProgressRepairs + inProgressMaintenances, tone: 'neutral' as const },
-    { label: 'Đợi vật tư', value: waitingPartsRepairs + returnedRepairingMachines, tone: waitingPartsRepairs + returnedRepairingMachines > 0 ? ('warn' as const) : ('good' as const) },
-    { label: 'Hoàn tất', value: completedRepairs + completedMaintenances, tone: 'good' as const },
+    { label: 'Phiếu lắp đặt', value: openInstallationWork, tone: openInstallationWork > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Demo / nhận-trả', value: openDemoWork + openDeviceServiceWork, tone: openDemoWork + openDeviceServiceWork > 0 ? ('warn' as const) : ('good' as const) },
   ];
 
   const machineQueues = [
@@ -133,9 +139,24 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
   const priorityRows = [
     {
+      code: 'INSTALL-PENDING',
+      name: 'Phiếu lắp đặt đang mở',
+      status: openInstallationWork > 0 ? 'Chưa hoàn tất' : 'Không có phiếu mở',
+      value: openInstallationWork,
+      tone: openInstallationWork > 0 ? ('warn' as const) : ('good' as const),
+      to: '/installations',
+    },
+    {
+      code: 'DEMO-ACTIVE',
+      name: 'Phiếu demo chưa thu hồi',
+      status: openDemoWork > 0 ? 'Cần theo dõi' : 'Không có phiếu mở',
+      value: openDemoWork,
+      tone: openDemoWork > 0 ? ('warn' as const) : ('good' as const),
+      to: '/demo-loans',
+    },
+    {
       code: 'MT-OVERDUE',
       name: 'Bảo trì quá hạn',
-      owner: 'Điều phối kỹ thuật',
       status: overdueMaintenances > 0 ? 'Cần xử lý' : 'Ổn định',
       value: overdueMaintenances,
       tone: overdueMaintenances > 0 ? ('danger' as const) : ('good' as const),
@@ -144,7 +165,6 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     {
       code: 'RP-PENDING',
       name: 'Phiếu sửa chữa chờ nhận',
-      owner: 'Trưởng nhóm / Admin',
       status: pendingRepairs > 0 ? 'Chờ phân công' : 'Ổn định',
       value: pendingRepairs,
       tone: pendingRepairs > 0 ? ('warn' as const) : ('good' as const),
@@ -153,7 +173,6 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     {
       code: 'RP-PARTS',
       name: 'Ca sửa chữa đợi linh kiện',
-      owner: 'Kho / Phụ trách ca',
       status: waitingPartsRepairs > 0 ? 'Đang nghẽn' : 'Ổn định',
       value: waitingPartsRepairs,
       tone: waitingPartsRepairs > 0 ? ('warn' as const) : ('good' as const),
@@ -162,7 +181,6 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     {
       code: 'DATA-REVIEW',
       name: 'Máy chờ xác nhận dữ liệu',
-      owner: 'Admin hệ thống',
       status: (summary?.pendingReviewMachines ?? 0) > 0 ? 'Cần duyệt' : 'Ổn định',
       value: summary?.pendingReviewMachines ?? 0,
       tone: (summary?.pendingReviewMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const),
@@ -171,7 +189,6 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     {
       code: 'NO-MACHINE',
       name: 'Phiếu chưa gắn máy',
-      owner: 'Admin / Kỹ thuật',
       status: openTicketsWithoutMachine > 0 ? 'Cần bổ sung' : 'Ổn định',
       value: openTicketsWithoutMachine,
       tone: openTicketsWithoutMachine > 0 ? ('warn' as const) : ('good' as const),
@@ -180,7 +197,6 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     {
       code: 'WH-RETURN',
       name: 'Máy trả về kho cần xử lý',
-      owner: 'Kho kỹ thuật',
       status: returnedRepairingMachines > 0 ? 'Đang sửa' : returnedMachines > 0 ? 'Chờ phân loại' : 'Ổn định',
       value: returnedMachines,
       tone: returnedRepairingMachines > 0 || returnedMachines > 0 ? ('warn' as const) : ('good' as const),
@@ -191,62 +207,26 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     {
       label: 'Việc chưa xong',
       value: totalOpenWork,
-      detail: `${openRepairWork} sửa chữa · ${openMaintenanceWork} bảo trì`,
+      detail: 'Sửa chữa, bảo trì, lắp đặt, demo và nhận/trả thiết bị',
       tone: totalOpenWork > 0 ? ('warn' as const) : ('good' as const),
       href: canOpenReports ? reportsHref('summary') : undefined,
     },
     {
-      label: 'Máy sẵn sàng',
+      label: 'Máy đang hoạt động',
       value: `${availabilityRate}%`,
-      detail: `${activeMachines}/${totalMachines} máy hoạt động`,
+      detail: `${activeMachines} trên ${totalMachines} máy`,
       tone: availabilityRate >= 80 ? ('good' as const) : ('warn' as const),
       href: canOpenReports ? reportsHref('machines') : undefined,
     },
     {
-      label: 'Cần bổ sung',
-      value: (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine,
-      detail: 'Dữ liệu thiếu hoặc chờ duyệt',
-      tone: (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine > 0 ? ('warn' as const) : ('good' as const),
+      label: 'Máy chưa xác minh',
+      value: summary?.unverifiedMachines ?? 0,
+      detail: `${summary?.pendingReviewMachines ?? 0} đang chờ duyệt`,
+      tone: (summary?.unverifiedMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const),
       href: canOpenReports ? reportsHref('details') : undefined,
     },
   ];
   const topPriorityRows = loading ? priorityRows.slice(0, 4) : priorityRows.filter((row) => row.value > 0).slice(0, 4);
-  const warningCount = overdueMaintenances + pendingRepairs + waitingPartsRepairs + returnedRepairingMachines;
-  const missingDataCount = (summary?.pendingReviewMachines ?? 0) + openTicketsWithoutMachine;
-  const visualCards = [
-    {
-      label: 'Việc mở',
-      value: totalOpenWork,
-      hint: `${openRepairWork} sửa · ${openMaintenanceWork} bảo trì`,
-      tone: totalOpenWork > 0 ? ('warn' as const) : ('good' as const),
-      href: '/service-tickets',
-      percent: totalOpenWork > 0 ? Math.min(100, Math.max(18, totalOpenWork * 9)) : 0,
-    },
-    {
-      label: 'Máy sẵn sàng',
-      value: `${availabilityRate}%`,
-      hint: `${activeMachines}/${totalMachines || 0} hoạt động`,
-      tone: availabilityRate >= 80 ? ('good' as const) : ('warn' as const),
-      href: canOpenReports ? reportsHref('machines') : '/technical-machines',
-      percent: availabilityRate,
-    },
-    {
-      label: 'Cảnh báo',
-      value: warningCount,
-      hint: warningCount > 0 ? 'Cần xem trước' : 'Đang ổn',
-      tone: warningCount > 0 ? ('danger' as const) : ('good' as const),
-      href: '/service-tickets',
-      percent: warningCount > 0 ? Math.min(100, Math.max(16, warningCount * 12)) : 0,
-    },
-    {
-      label: 'Thiếu dữ liệu',
-      value: missingDataCount,
-      hint: missingDataCount > 0 ? 'Cần bổ sung hồ sơ' : 'Đủ thông tin',
-      tone: missingDataCount > 0 ? ('warn' as const) : ('good' as const),
-      href: canOpenReports ? reportsHref('details') : '/technical-machines',
-      percent: missingDataCount > 0 ? Math.min(100, Math.max(16, missingDataCount * 12)) : 0,
-    },
-  ];
   const departmentMetrics = [
     {
       label: 'Khách hàng',
@@ -276,24 +256,10 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
       tone: 'neutral' as const,
       to: '/product-catalog',
     },
-    {
-      label: 'Máy đã xác nhận',
-      value: summary?.verifiedMachines ?? 0,
-      icon: <CheckCircle2 size={18} />,
-      tone: 'good' as const,
-      to: '/technical-machines',
-    },
-    {
-      label: 'Chờ bổ sung',
-      value: (summary?.unverifiedMachines ?? 0) + (summary?.pendingReviewMachines ?? 0),
-      icon: <Database size={18} />,
-      tone: (summary?.unverifiedMachines ?? 0) + (summary?.pendingReviewMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const),
-      to: '/technical-machines',
-    },
   ];
   const inventoryRows = [
     { label: 'Trong kho', value: inStockMachines, tone: 'good' as const },
-    { label: 'Đã giao', value: installedMachines || installedMachineTotal, tone: 'neutral' as const },
+    { label: 'Đang ghi nhận đã lắp', value: installedMachines, tone: 'neutral' as const },
     { label: 'Đã giữ', value: reservedMachines, tone: 'warn' as const },
     { label: 'Đã bán', value: soldMachines, tone: 'good' as const },
     { label: 'Tách phụ kiện', value: accessorySplitMachines, tone: 'neutral' as const },
@@ -306,22 +272,20 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     { label: 'Hạn chế', value: blacklistedCustomers, tone: blacklistedCustomers > 0 ? ('danger' as const) : ('good' as const) },
   ];
   const dataRows = [
-    { label: 'Máy thiếu xác nhận', value: summary?.unverifiedMachines ?? 0, tone: (summary?.unverifiedMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const) },
-    { label: 'Máy chờ duyệt', value: summary?.pendingReviewMachines ?? 0, tone: (summary?.pendingReviewMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Máy chưa xác minh', value: summary?.unverifiedMachines ?? 0, tone: (summary?.unverifiedMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Đang chờ duyệt (trong số trên)', value: summary?.pendingReviewMachines ?? 0, tone: (summary?.pendingReviewMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const) },
     { label: 'Phiếu chưa gắn máy', value: openTicketsWithoutMachine, tone: openTicketsWithoutMachine > 0 ? ('warn' as const) : ('good' as const) },
     { label: 'Máy kỹ sư tạo', value: summary?.engineerCreatedMachines ?? 0, tone: 'neutral' as const },
   ];
 
   return (
     <PageFrame>
-      <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#f4f4f5] p-5 text-[#1f1f1f] shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_6%_12%,rgba(37,99,235,0.12),transparent_30%),radial-gradient(circle_at_86%_6%,rgba(255,255,255,0.96),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.88),rgba(239,246,255,0.78))]" />
-        <div className="pointer-events-none absolute -right-16 bottom-[-120px] h-72 w-72 rounded-full border border-[#e4e4e7] bg-white/45" />
-        <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-          <div className="grid content-between gap-10 rounded-[24px] border border-white/80 bg-white/70 p-6 shadow-[0_18px_44px_rgba(24,24,27,0.08)] backdrop-blur-md max-sm:p-5">
+      <section className="rounded-[22px] border border-[#e4e4e7] bg-[#f7f7f6] p-4 text-[#1f1f1f] sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
+          <div className="grid content-between gap-6 rounded-[18px] border border-[#e4e4e7] bg-white p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="inline-flex rounded-full border border-[#e4e4e7] bg-[#f4f4f5] px-3 py-2 text-[12px] font-semibold text-[#18181b]">
-                {isAdmin ? 'Admin console' : 'Trung tâm kỹ sư'}
+              <span className="inline-flex rounded-md border border-[#e4e4e7] bg-[#f4f4f5] px-3 py-2 text-[12px] font-semibold text-[#18181b]">
+                Tổng quan kỹ thuật
               </span>
               <button
                 className="secondary-button border-[#e4e4e7] bg-white/90 text-[#333333]"
@@ -335,24 +299,9 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             </div>
 
             <div className="max-w-[780px]">
-              <h1 className="max-w-[720px] text-[clamp(34px,5vw,62px)] font-bold leading-[0.98] tracking-[-0.03em] text-[#171717]">
-                {loading
-                  ? 'Đang tổng hợp số liệu kỹ thuật'
-                  : totalOpenWork > 0
-                  ? isAdmin
-                    ? 'Có việc kỹ thuật cần điều phối'
-                    : 'Việc của bạn trong hôm nay'
-                  : isAdmin
-                    ? 'Vận hành kỹ thuật đang ổn định'
-                    : 'Không có việc gấp cần xử lý'}
+              <h1 className="max-w-[720px] text-[clamp(30px,4vw,48px)] font-bold leading-[1.05] tracking-[-0.03em] tabular-nums text-[#171717]">
+                {loading ? 'Đang tải tổng quan' : totalOpenWork > 0 ? `${totalOpenWork} việc đang mở` : 'Không có việc đang mở'}
               </h1>
-              <p className="mt-5 max-w-[620px] text-[15px] leading-7 text-[#555555]">
-                {loading
-                  ? 'Đang gom dữ liệu mới nhất.'
-                  : totalOpenWork > 0
-                  ? `${totalOpenWork} việc chưa xong.`
-                  : 'Không có cảnh báo lớn.'}
-              </p>
             </div>
 
             <div className="grid max-w-[720px] grid-cols-3 gap-3 max-sm:grid-cols-1">
@@ -362,11 +311,10 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             </div>
           </div>
 
-          <div className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white/88 p-4 text-[#18212f] shadow-[0_18px_44px_rgba(24,24,27,0.10)]">
+          <div className="grid content-start gap-3 rounded-[18px] border border-[#e4e4e7] bg-white p-4 text-[#18212f]">
             <div className="flex items-start justify-between gap-3 border-b border-[#ededf0] pb-3">
               <div>
-                <span className="text-[12px] font-semibold text-[#71717a]">Ưu tiên lúc này</span>
-                <h2 className="mt-1 text-lg font-semibold text-[#18212f]">Cần nhìn trước</h2>
+                <h2 className="text-sm font-semibold text-[#3f3f46]">Việc cần chú ý</h2>
               </div>
               <span className="rounded-2xl border border-[#e4e4e7] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[#667985]">
                 {lastUpdatedAt ?? 'Chưa cập nhật'}
@@ -394,8 +342,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
                 <div className="grid min-h-[188px] place-items-center rounded-[20px] border border-[#e4e4e7] bg-white px-4 text-center">
                   <span>
                     <CheckCircle2 className="mx-auto text-[#1b7a4c]" size={28} />
-                    <strong className="mt-3 block text-sm text-[#18212f]">Không có cảnh báo ưu tiên</strong>
-                    <span className="mt-1 block text-[13px] leading-5 text-[#71717a]">Các nhóm việc chính đang ở trạng thái ổn định.</span>
+                    <strong className="mt-3 block text-sm text-[#18212f]">Không có việc cần chú ý</strong>
                   </span>
                 </div>
               )}
@@ -409,8 +356,8 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
       <section className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-white p-5 shadow-[0_14px_34px_rgba(24,24,27,0.06)]">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
           <div>
-            <span className="text-[12px] font-semibold text-[#18181b]">Phòng điều hành kỹ thuật</span>
-            <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-[#1f1f1f]">Luồng việc, máy, khách hàng và dữ liệu nền</h2>
+            <span className="text-[12px] font-semibold text-[#18181b]">Danh mục hệ thống</span>
+            <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-[#1f1f1f]">Khách hàng, máy và dữ liệu</h2>
           </div>
           <Link
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[16px] border border-[#e4e4e7] bg-[#fafafa] px-3 text-sm font-bold text-[#333333] transition hover:border-[#18181b]/35 hover:bg-white"
@@ -421,9 +368,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
           </Link>
         </div>
 
-        <ServiceFlowMap items={serviceFlow} loading={loading} />
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {departmentMetrics.map((item) => (
             <DepartmentMetric key={item.label} loading={loading} {...item} />
           ))}
@@ -436,27 +381,15 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
           <BoardPanel eyebrow="Khách hàng" title="Trạng thái chăm sóc">
             <DistributionBars items={customerRows} loading={loading} />
           </BoardPanel>
-          <BoardPanel eyebrow="Dữ liệu" title="Cần làm sạch">
+          <BoardPanel eyebrow="Dữ liệu" title="Xác minh và bổ sung">
             <DistributionBars items={dataRows} loading={loading} />
           </BoardPanel>
         </div>
       </section>
 
-      <section className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-[linear-gradient(145deg,#ffffff_0%,#fafafa_100%)] p-4 shadow-[0_18px_46px_rgba(24,24,27,0.07)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f4e2e4] pb-4">
-          <div>
-            <span className="text-[12px] font-semibold text-[#18181b]">{isAdmin ? 'Toàn hệ thống' : 'Của bạn'}</span>
-            <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-[#1f1f1f]">Nhìn nhanh vận hành</h2>
-          </div>
-          <span className="rounded-2xl border border-[#e4e4e7] bg-white/82 px-3 py-2 text-right text-xs font-semibold text-[#667985] shadow-[0_8px_18px_rgba(24,24,27,0.05)]">
-            {lastUpdatedAt ?? 'Chưa cập nhật'}
-          </span>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {visualCards.map((item) => (
-            <VisualSummaryCard key={item.label} loading={loading} {...item} />
-          ))}
+      <section className="grid gap-4 rounded-[22px] border border-[#e4e4e7] bg-[#f7f7f6] p-4">
+        <div className="border-b border-[#e4e4e7] pb-4">
+          <h2 className="text-xl font-black tracking-[-0.02em] text-[#1f1f1f]">Công việc và tình trạng máy</h2>
         </div>
 
         <div className="grid grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] gap-4 max-[1180px]:grid-cols-1">
@@ -464,7 +397,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             <QueueBars items={workQueues} loading={loading} />
           </BoardPanel>
 
-          <BoardPanel eyebrow="Thiết bị" title="Sức khỏe đội máy">
+          <BoardPanel eyebrow="Thiết bị" title="Tình trạng máy">
             <DonutMachineChart activeRate={availabilityRate} items={machineQueues} loading={loading} total={totalMachines} />
           </BoardPanel>
         </div>
@@ -472,7 +405,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
         <div className="grid gap-2 border-t border-[#f4e2e4] pt-4 sm:grid-cols-3">
           <ActionLink icon={<Wrench size={17} />} label="Tổng hợp phiếu" to="/service-tickets" />
           <ActionLink icon={<ClipboardCheck size={17} />} label="Lịch công việc" to="/daily-work" />
-          <ActionLink icon={<PackageSearch size={17} />} label={`${installedMachineTotal || summary?.totalMachines || 0} máy đã giao`} to="/technical-machines?installState=INSTALLED" />
+          <ActionLink icon={<PackageSearch size={17} />} label={`${loading ? '…' : installedMachineTotal} máy theo lọc lắp đặt`} to="/technical-machines?installState=INSTALLED" />
         </div>
       </section>
 
@@ -480,9 +413,9 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eeeeee] pb-4">
           <div>
             <span className="text-[12px] font-semibold text-[#18181b]">Máy phòng kỹ thuật đang quản lý</span>
-            <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-[#1f1f1f]">Máy đã giao cho khách theo ngành hàng</h2>
+            <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-[#1f1f1f]">Danh sách lắp đặt theo ngành hàng</h2>
             <p className="mt-1 text-sm font-medium text-[#666666]">
-              Chỉ tính các máy đã lắp/giao cho khách trong phạm vi dữ liệu của tài khoản.
+              Theo bộ lọc lắp đặt hiện tại trong phạm vi dữ liệu của tài khoản.
             </p>
           </div>
           <Link
@@ -529,8 +462,7 @@ function InstalledIndustryPanel({
     return (
       <div className="grid min-h-36 place-items-center rounded-[22px] border border-dashed border-[#d7d7d7] bg-[#fafafa] px-4 text-center">
         <span>
-          <strong className="block text-sm text-[#1f1f1f]">Chưa có máy đã giao cho khách</strong>
-          <span className="mt-1 block text-sm text-[#666666]">Khi máy có trạng thái đã lắp, hệ thống sẽ tự nhóm theo ngành hàng.</span>
+                  <strong className="block text-sm text-[#1f1f1f]">Chưa có máy trong danh sách lắp đặt</strong>
         </span>
       </div>
     );
@@ -561,7 +493,7 @@ function InstalledIndustryPanel({
               <div className="h-2 overflow-hidden rounded-full bg-[#e4e4e7]">
                 <span className="block h-full rounded-full bg-[#177245]" style={{ width: `${width}%` }} />
               </div>
-              <span className="mt-2 block text-xs font-bold text-[#666666]">{percent}% tổng máy đã giao</span>
+              <span className="mt-2 block text-xs font-bold text-[#666666]">{percent}% trong danh sách</span>
             </div>
           </Link>
         );
@@ -589,9 +521,8 @@ function PulseTile({
   const content = (
     <>
       <span className="block text-[12px] font-semibold text-[#777777]">{label}</span>
-      <strong className="mt-2 block text-[30px] leading-none text-[#1f1f1f]">{loading ? '-' : value}</strong>
+      <strong className={`mt-2 block text-[30px] leading-none tabular-nums ${style.text}`}>{loading ? '-' : value}</strong>
       <span className="mt-2 block min-h-8 text-[12px] leading-4 text-[#666666]">{loading ? 'Đang tải dữ liệu' : detail}</span>
-      <span className={`mt-3 block h-1.5 rounded-full ${style.bar}`} />
     </>
   );
 
@@ -600,53 +531,7 @@ function PulseTile({
   }
 
   return (
-    <Link className="rounded-2xl border border-[#e4e4e7] bg-white/82 p-3.5 shadow-[0_10px_24px_rgba(24,24,27,0.08)] backdrop-blur-md transition hover:-translate-y-px hover:border-[#18181b] hover:bg-white" rel="noreferrer" target="_blank" to={href}>
-      {content}
-    </Link>
-  );
-}
-
-function VisualSummaryCard({
-  label,
-  value,
-  hint,
-  href,
-  percent,
-  tone,
-  loading,
-}: {
-  label: string;
-  value: number | string;
-  hint: string;
-  href: string;
-  percent: number;
-  tone: Tone;
-  loading: boolean;
-}) {
-  const style = toneClass(tone);
-  const content = (
-    <>
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-[13px] font-black uppercase tracking-[0.08em] text-[#7a6367]">{label}</span>
-        {tone === 'danger' || tone === 'warn' ? <AlertTriangle className={style.icon} size={18} /> : <CheckCircle2 className={style.icon} size={18} />}
-      </div>
-      <strong className={`mt-5 block text-[clamp(34px,4vw,52px)] font-black leading-none tracking-[-0.04em] ${style.text}`}>
-        {loading ? '-' : value}
-      </strong>
-      <span className="mt-2 block min-h-5 text-sm font-semibold text-[#667985]">{loading ? 'Đang tải' : hint}</span>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#e4e4e7]">
-        <span className={`block h-full rounded-full ${style.bar}`} style={{ width: `${loading ? 0 : Math.min(100, Math.max(0, percent))}%` }} />
-      </div>
-    </>
-  );
-
-  return (
-    <Link
-      className="group rounded-[24px] border border-[#e4e4e7] bg-white/88 p-4 shadow-[0_14px_34px_rgba(24,24,27,0.07)] transition hover:-translate-y-px hover:border-[#18181b]/35 hover:bg-white hover:shadow-[0_12px_30px_rgba(24,24,27,0.08)]"
-      rel={href.startsWith('/reports') ? 'noreferrer' : undefined}
-      target={href.startsWith('/reports') ? '_blank' : undefined}
-      to={href}
-    >
+    <Link className="rounded-xl border border-[#e4e4e7] bg-white p-3.5 transition hover:-translate-y-px hover:border-[#18181b] hover:bg-white" to={href}>
       {content}
     </Link>
   );
@@ -661,49 +546,6 @@ function BoardPanel({ eyebrow, title, children }: { eyebrow: string; title: stri
       </div>
       {children}
     </section>
-  );
-}
-
-function ServiceFlowMap({
-  items,
-  loading,
-}: {
-  items: Array<{ label: string; value: number; tone: Tone }>;
-  loading: boolean;
-}) {
-  const total = Math.max(1, items.reduce((sum, item) => sum + item.value, 0));
-
-  return (
-    <div className="rounded-[24px] border border-[#e4e4e7] bg-[#fafafa] p-4">
-      <div className="grid grid-cols-[repeat(5,minmax(128px,1fr))] gap-3 overflow-x-auto pb-1">
-        {items.map((item, index) => {
-          const style = toneClass(item.tone);
-          const width = loading ? 0 : Math.max(10, Math.round((item.value / total) * 100));
-
-          return (
-            <div className="relative min-w-[128px]" key={item.label}>
-              {index < items.length - 1 ? (
-                <span className="absolute left-[calc(100%-8px)] top-9 hidden h-px w-6 bg-[#d4d4d8] md:block" />
-              ) : null}
-              <div className={`grid min-h-[118px] content-between rounded-[22px] border p-3 ${style.panel}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="grid h-9 w-9 place-items-center rounded-2xl bg-white/84 shadow-[0_1px_2px_rgba(24,24,27,0.05)]">
-                    <Route className={style.icon} size={17} />
-                  </span>
-                  <strong className={`text-3xl leading-none ${style.text}`}>{loading ? '-' : item.value}</strong>
-                </div>
-                <div>
-                  <span className="block text-sm font-black text-[#27272a]">{item.label}</span>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/80">
-                    <span className={`block h-full rounded-full ${style.bar}`} style={{ width: `${width}%` }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 

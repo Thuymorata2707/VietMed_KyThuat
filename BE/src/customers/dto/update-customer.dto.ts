@@ -1,5 +1,13 @@
 import { CustomerStatus, CustomerType } from '@prisma/client';
-import { IsEmail, IsEnum, IsOptional, IsString, IsUrl } from 'class-validator';
+import {
+  ArrayUnique,
+  IsArray,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUrl,
+} from 'class-validator';
 
 export class UpdateCustomerDto {
   @IsOptional()
@@ -64,6 +72,10 @@ export class UpdateCustomerDto {
 
   @IsOptional()
   @IsString()
+  provinceId?: string | null;
+
+  @IsOptional()
+  @IsString()
   district?: string | null;
 
   @IsOptional()
@@ -84,9 +96,15 @@ export class UpdateCustomerDto {
 
   @IsOptional()
   @IsString()
-  regionId?: string;
+  regionId?: string | null;
 
   @IsOptional()
   @IsString()
   primaryEngineerId?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  engineerIds?: string[];
 }

@@ -1,9 +1,10 @@
 import { Boxes, ClipboardCheck, History, Loader2, PackageCheck, RotateCcw, Search, ShoppingCart, Split, Wrench, X } from 'lucide-react';
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Paginated, apiFetch } from '../../api';
+import { apiFetch, apiFetchAllPages } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
+import { EquipmentAreaNav } from '../../components/EquipmentAreaNav';
 import { RoleName } from '../../auth/roles';
 import { displayLabel } from '../../utils/displayLabels';
 import { formatValue } from '../../utils/format';
@@ -149,15 +150,15 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
     setError('');
 
     try {
-      const [machinesResult, movementsResult, customersResult] = await Promise.all([
-        apiFetch<Paginated<Machine>>('/machines?limit=100'),
-        apiFetch<InventoryMovement[]>('/inventory-movements'),
-        apiFetch<Paginated<Customer>>('/customers?limit=100'),
+      const [machines, movementsResult, customers] = await Promise.all([
+        apiFetchAllPages<Machine>('/machines'),
+        apiFetchAllPages<InventoryMovement>('/inventory-movements'),
+        apiFetchAllPages<Customer>('/customers'),
       ]);
 
-      setMachines(machinesResult.data);
+      setMachines(machines);
       setMovements(movementsResult);
-      setCustomers(customersResult.data);
+      setCustomers(customers);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được dữ liệu kho máy.');
     } finally {
@@ -218,6 +219,7 @@ export function InventoryMovementsPage({ currentRole }: { currentRole: RoleName 
 
   return (
     <PageFrame>
+      <EquipmentAreaNav active="inventory" />
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
 
@@ -722,7 +724,6 @@ function MachinePreviewModal({ machine, onClose, returnTo }: { machine: Machine;
 
               <section className="rounded-[18px] border border-[#e4e4e7] bg-[#f4f4f5] p-4">
                 <h3 className="font-semibold text-[#182033]">Gợi ý thao tác</h3>
-                <p className="mt-2 text-sm leading-6 text-[#667085]">Kiểm tra trước khi tạo phiếu.</p>
               </section>
             </aside>
           </div>

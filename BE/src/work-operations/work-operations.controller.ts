@@ -27,7 +27,13 @@ export class WorkOperationsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.service.usedPartsSummary({ user, engineerId, weekStart, from, to });
+    return this.service.usedPartsSummary({
+      user,
+      engineerId,
+      weekStart,
+      from,
+      to,
+    });
   }
 
   @Get(':kind/:id')

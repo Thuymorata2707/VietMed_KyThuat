@@ -1,6 +1,8 @@
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
+  IsEnum,
   IsIn,
   IsNotEmpty,
   IsNumber,
@@ -10,8 +12,14 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { MachineProductCategory } from '@prisma/client';
+import { UpdateMachineAccessoryItemDto } from '../../machines/dto/update-machine.dto';
 
 export class InstallationDeviceItemDto {
+  @IsOptional()
+  @IsString()
+  sourceMachineId?: string;
+
   @IsString()
   @IsNotEmpty()
   itemName!: string;
@@ -35,6 +43,29 @@ export class InstallationDeviceItemDto {
   @IsOptional()
   @IsString()
   warrantyPeriod?: string;
+
+  @IsOptional()
+  @IsString()
+  manufacturer?: string;
+
+  @IsOptional()
+  @IsEnum(MachineProductCategory)
+  productCategory?: MachineProductCategory;
+
+  @IsOptional()
+  @IsBoolean()
+  isPrimary?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  engineerIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateMachineAccessoryItemDto)
+  accessories?: UpdateMachineAccessoryItemDto[];
 }
 
 export class CreateInstallationDto {
@@ -71,8 +102,13 @@ export class CreateInstallationDto {
   installedAt?: string;
 
   @IsString()
-  @IsNotEmpty()
-  installedById!: string;
+  @IsOptional()
+  installedById?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  engineerIds?: string[];
 
   @IsOptional()
   @IsString()

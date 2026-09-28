@@ -19,6 +19,7 @@ export type ApiUser = {
     workStartDate?: string | null;
     specialties?: string[];
     expertiseGroup?: 'IMAGING' | 'LAB_TESTING' | null;
+    expertiseGroups?: Array<'IMAGING' | 'LAB_TESTING'>;
     certificateNo?: string | null;
     photoUrl?: string | null;
     note?: string | null;
@@ -138,13 +139,26 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 export async function apiFetchAllPages<T>(path: string, pageSize = 100): Promise<T[]> {
   const safePageSize = Math.min(Math.max(pageSize, 1), 100);
   const firstPath = withPagination(path, 1, safePageSize);
-  const firstPage = await apiFetch<Paginated<T>>(firstPath);
-  const pages = [firstPage.data ?? []];
-  const totalPages = firstPage.meta.totalPages ?? 1;
+  const firstPage = await apiFetch<Paginated<T> | T[]>(firstPath);
+  const getRows = (result: Paginated<T> | T[]) =>
+    Array.isArray(result) ? result : result?.data ?? [];
+  const pages = [getRows(firstPage)];
+  const totalPages = Array.isArray(firstPage)
+    ? 1
+    : Math.max(1, firstPage?.meta?.totalPages ?? 1);
 
-  for (let page = 2; page <= totalPages; page += 1) {
-    const result = await apiFetch<Paginated<T>>(withPagination(path, page, safePageSize));
-    pages.push(result.data ?? []);
+  const maxParallelRequests = 5;
+  for (let firstPageNumber = 2; firstPageNumber <= totalPages; firstPageNumber += maxParallelRequests) {
+    const pageNumbers = Array.from(
+      { length: Math.min(maxParallelRequests, totalPages - firstPageNumber + 1) },
+      (_unused, index) => firstPageNumber + index,
+    );
+    const nextPages = await Promise.all(
+      pageNumbers.map((page) =>
+        apiFetch<Paginated<T> | T[]>(withPagination(path, page, safePageSize)),
+      ),
+    );
+    pages.push(...nextPages.map(getRows));
   }
 
   return pages.flat();
@@ -180,6 +194,12 @@ function isUnsafeMethod(method?: string) {
 function toVietnameseApiError(message: string, statusCode: number) {
   const normalized = message.toLowerCase();
 
+  if (statusCode === 429 && normalized.includes('failed login attempts')) {
+    return 'Đăng nhập đang tạm khóa do nhập sai nhiều lần. Vui lòng chờ khoảng 15 phút rồi thử lại.';
+  }
+  if (statusCode === 429) {
+    return 'Bạn thao tác quá nhanh. Vui lòng chờ một lúc rồi thử lại.';
+  }
   if (normalized.includes('email already exists')) return 'Email đã tồn tại trong hệ thống.';
   if (normalized.includes('username already exists')) return 'Tên đăng nhập đã tồn tại trong hệ thống.';
   if (normalized.includes('code already exists') || normalized.includes('already exists')) return 'Mã hoặc dữ liệu này đã tồn tại.';

@@ -4,12 +4,12 @@ export type VietnamProvinceOption = {
 };
 
 export const vietnamProvinceOptions: VietnamProvinceOption[] = [
-  { code: 'HN', name: 'Hà Nội' },
-  { code: 'HP', name: 'Hải Phòng' },
-  { code: 'HUE', name: 'Huế' },
-  { code: 'DN', name: 'Đà Nẵng' },
-  { code: 'CT', name: 'Cần Thơ' },
-  { code: 'HCM', name: 'Hồ Chí Minh' },
+  { code: 'HN', name: 'Thành phố Hà Nội' },
+  { code: 'HP', name: 'Thành phố Hải Phòng' },
+  { code: 'HUE', name: 'Thành phố Huế' },
+  { code: 'DN', name: 'Thành phố Đà Nẵng' },
+  { code: 'CT', name: 'Thành phố Cần Thơ' },
+  { code: 'HCM', name: 'Thành phố Hồ Chí Minh' },
   { code: 'CB', name: 'Cao Bằng' },
   { code: 'TQ', name: 'Tuyên Quang' },
   { code: 'LAOC', name: 'Lào Cai' },

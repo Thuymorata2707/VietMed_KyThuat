@@ -1,10 +1,10 @@
-export const workPanelClass = 'rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-xs sm:p-5';
-export const workSidePanelClass = 'rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-xs';
-export const workSectionHeaderClass = 'mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-border pb-4';
-export const workStepBadgeClass = 'flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-xs';
-export const workEyebrowClass = 'text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground';
-export const workSectionTitleClass = 'mt-1 text-lg font-semibold leading-tight text-foreground';
-export const workSectionDescriptionClass = 'mt-1 text-xs font-medium leading-5 text-muted-foreground';
+export const workPanelClass = 'rounded-2xl border border-[#e7e2dc] bg-card p-4 text-card-foreground sm:p-5';
+export const workSidePanelClass = 'rounded-2xl border border-[#e7e2dc] bg-[#faf9f7] p-4 text-card-foreground';
+export const workSectionHeaderClass = 'mb-4 flex items-start gap-3 border-b border-border pb-4';
+export const workStepBadgeClass = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#f7e9e9] text-xs font-semibold text-primary';
+export const workEyebrowClass = 'text-xs font-semibold text-muted-foreground';
+export const workSectionTitleClass = 'mt-0.5 text-base font-semibold leading-snug text-foreground';
+export const workSectionDescriptionClass = 'mt-1 text-sm leading-5 text-muted-foreground';
 export const workLabelClass = 'grid min-w-0 content-start gap-2 text-sm font-medium text-foreground';
 export const workFieldClass = 'h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3.5 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:bg-background focus:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_32%,transparent)] disabled:bg-muted disabled:text-muted-foreground';
 export const workTextareaClass = 'min-h-32 w-full min-w-0 resize-y rounded-xl border border-input bg-background px-3.5 py-3 text-sm font-medium leading-relaxed text-foreground outline-none transition focus:border-ring focus:bg-background focus:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_32%,transparent)]';

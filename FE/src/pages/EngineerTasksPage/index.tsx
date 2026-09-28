@@ -1,7 +1,7 @@
 import { CalendarDays, Clock3, FileText, Loader2, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
+import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { EngineerTaskDrawer } from './components/EngineerTaskDrawer';
@@ -204,15 +204,15 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
     try {
       const [repairs, maintenances, installations] = await Promise.all([
-        apiFetch<Paginated<RepairTask>>(`/repairs?engineerId=${user.id}&limit=100`),
-        apiFetch<Paginated<MaintenanceTask>>(`/maintenance?engineerId=${user.id}&limit=100`),
-        apiFetch<Paginated<InstallationTask>>(`/installations?installedById=${user.id}&limit=100`),
+        apiFetchAllPages<RepairTask>(`/repairs?engineerId=${encodeURIComponent(user.id)}`),
+        apiFetchAllPages<MaintenanceTask>(`/maintenance?engineerId=${encodeURIComponent(user.id)}`),
+        apiFetchAllPages<InstallationTask>(`/installations?installedById=${encodeURIComponent(user.id)}`),
       ]);
 
       setTasks([
-        ...(repairs?.data ?? []).map((task) => ({ ...task, kind: 'repair' as const })),
-        ...(maintenances?.data ?? []).map((task) => ({ ...task, kind: 'maintenance' as const })),
-        ...(installations?.data ?? []).map((task) => ({ ...task, kind: 'installation' as const })),
+        ...repairs.map((task) => ({ ...task, kind: 'repair' as const })),
+        ...maintenances.map((task) => ({ ...task, kind: 'maintenance' as const })),
+        ...installations.map((task) => ({ ...task, kind: 'installation' as const })),
       ].sort(compareTasks));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tải được việc được giao.');
@@ -515,7 +515,6 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
         <div className="engineer-task-hero__copy">
           <span>Kỹ sư hiện trường</span>
           <h1>Việc của tôi</h1>
-          <p>Mở màn là thấy việc cần xử lý, phiếu tự tạo khẩn và lịch hôm nay.</p>
         </div>
         <div className="engineer-task-hero__actions">
           <button className="secondary-button" onClick={() => void loadTasks()} type="button">

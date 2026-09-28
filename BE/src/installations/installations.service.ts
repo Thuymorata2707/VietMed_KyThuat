@@ -1,3 +1,4 @@
+import { sequenceCode } from '../common/sequence-code';
 import {
   BadRequestException,
   ForbiddenException,
@@ -33,6 +34,7 @@ import {
   installationAccessWhere,
   isAdmin,
   isEngineer,
+  isManager,
 } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { ReviewWorkTaskDto } from '../common/dto/review-work-task.dto';
@@ -40,12 +42,14 @@ import { normalizeCodeSegment, shortDateCode } from '../common/code-format';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
 import { validateInventoryMovement } from '../machines/machine-state.rules';
+import { MachinesService } from '../machines/machines.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInstallationDto } from './dto/create-installation.dto';
 import { ListInstallationsQueryDto } from './dto/list-installations-query.dto';
 import { UpdateInstallationDto } from './dto/update-installation.dto';
 import { UpdateInstallationStatusDto } from './dto/update-installation-status.dto';
+import { ensureInstallationStatusTransitionIsAllowed } from './installation-status.rules';
 
 @Injectable()
 export class InstallationsService {
@@ -53,15 +57,18 @@ export class InstallationsService {
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
     private readonly notificationsService: NotificationsService,
+    private readonly machinesService: MachinesService,
   ) {}
 
   async create(dto: CreateInstallationDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.INSTALLATION_CREATE);
+    if (!isAdmin(actor)) throw new ForbiddenException('Only administrators can dispatch installation tickets');
     this.validateCreate(dto);
 
-    const createdByEngineer = isEngineer(actor);
-    const installedById = isEngineer(actor) ? actor.id : dto.installedById;
+    const engineerIds = [...new Set(dto.engineerIds?.length ? dto.engineerIds : dto.installedById ? [dto.installedById] : [])];
+    const installedById = engineerIds[0];
 
+    await Promise.all(engineerIds.map((engineerId) => this.findEngineer(engineerId)));
     const [selectedMachine, customer, engineer, businessLine, machineModel] =
       await Promise.all([
         dto.machineId ? this.findMachine(dto.machineId) : Promise.resolve(null),
@@ -151,10 +158,16 @@ export class InstallationsService {
             deviceConditionNote: this.cleanOptionalString(
               dto.deviceConditionNote,
             ),
-            reviewStatus: createdByEngineer
-              ? WorkReviewStatus.PENDING
-              : WorkReviewStatus.NOT_REQUIRED,
+            reviewStatus: WorkReviewStatus.NOT_REQUIRED,
           },
+        });
+
+        await tx.installationAssignment.createMany({
+          data: engineerIds.map((engineerId, index) => ({
+            installationId: installation.id,
+            engineerId,
+            isLead: index === 0,
+          })),
         });
 
         await this.auditLogsService.create(
@@ -178,19 +191,18 @@ export class InstallationsService {
           tx,
         );
 
-        if (isEngineer(actor)) {
-          await this.notificationsService.createForAdmins(
-            {
-              title: 'Kỹ sư tạo phiếu lắp đặt mới',
-              message: `${actor.email} đã tạo phiếu lắp đặt ${installationCode}. Vui lòng kiểm tra và xác nhận đã lắp để ghi nhận máy.`,
-              href: '/installations',
-              entityType: 'MachineInstallation',
-              entityId: installation.id,
-              createdById: actor.id,
-            },
-            tx,
-          );
-        }
+        await Promise.all(engineerIds.map((engineerId) => this.notificationsService.create(
+          {
+            userId: engineerId,
+            title: 'Bạn có phiếu lắp đặt mới',
+            message: `${actor.email} đã giao phiếu lắp đặt ${installationCode}.`,
+            href: '/my-tasks',
+            entityType: 'MachineInstallation',
+            entityId: installation.id,
+            createdById: actor.id,
+          },
+          tx,
+        )));
 
         return tx.machineInstallation.findUnique({
           where: { id: installation.id },
@@ -501,6 +513,12 @@ export class InstallationsService {
   async update(id: string, dto: UpdateInstallationDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.INSTALLATION_UPDATE);
     const installation = await this.findOne(id, actor);
+    if (dto.status) {
+      ensureInstallationStatusTransitionIsAllowed(
+        installation.status,
+        dto.status,
+      );
+    }
     const installedBy = dto.installedById
       ? await this.findEngineer(dto.installedById)
       : null;
@@ -544,13 +562,19 @@ export class InstallationsService {
 
     const isAssignedEngineerCompleting =
       isEngineer(actor) &&
-      installation.installedById === actor.id &&
+      (installation.installedById === actor.id || installation.assignments?.some((assignment) => assignment.engineerId === actor.id)) &&
       installation.status === InstallationStatus.PENDING &&
       dto.status === InstallationStatus.INSTALLED;
     const isAdminApprovingInstallation =
-      isAdmin(actor) &&
-      installation.status === InstallationStatus.PENDING &&
+      (isAdmin(actor) || isManager(actor)) &&
+      (installation.status === InstallationStatus.PENDING ||
+        installation.reviewStatus === WorkReviewStatus.PENDING) &&
       dto.status === InstallationStatus.INSTALLED;
+    const primaryDeviceAccessories = dto.installedDeviceItems?.find(
+      (item) => item.isPrimary,
+    )?.accessories;
+    const requestedMachineAccessories =
+      dto.machineAccessories ?? primaryDeviceAccessories;
 
     if (
       !isAdmin(actor) &&
@@ -563,7 +587,7 @@ export class InstallationsService {
 
     const updatedInstallation = await this.prisma.$transaction(async (tx) => {
       let completedMachineId: string | undefined;
-      if (isAdminApprovingInstallation) {
+      if (isAdminApprovingInstallation || isAssignedEngineerCompleting) {
         const actualMachine = await this.resolveActualInstallationMachine(
           tx,
           installation,
@@ -583,12 +607,14 @@ export class InstallationsService {
           installation.warrantyCard?.endDate ??
           nextInstalledAt;
 
-        validateInventoryMovement(
-          InventoryMovementType.INSTALL,
-          actualMachine.inventoryStatus,
-          MachineInventoryStatus.INSTALLED,
-          installation.customerId,
-        );
+        if (actualMachine.inventoryStatus !== MachineInventoryStatus.INSTALLED) {
+          validateInventoryMovement(
+            InventoryMovementType.INSTALL,
+            actualMachine.inventoryStatus,
+            MachineInventoryStatus.INSTALLED,
+            installation.customerId,
+          );
+        }
 
         const machineUpdate = await tx.machine.updateMany({
           where: {
@@ -618,27 +644,30 @@ export class InstallationsService {
           );
         }
 
-        await tx.machineInventoryMovement.create({
-          data: {
-            code: await this.generateMovementCode(tx),
-            type: InventoryMovementType.INSTALL,
-            machineId: actualMachine.id,
-            fromStatus: actualMachine.inventoryStatus,
-            toStatus: MachineInventoryStatus.INSTALLED,
-            occurredAt: nextInstalledAt,
-            note: `Approved installation ${installation.code}`,
-            customerId: installation.customerId,
-            createdById: actor?.id || null,
-          },
-        });
-      } else if (isAssignedEngineerCompleting) {
-        const actualMachine = await this.resolveActualInstallationMachine(
+        await this.syncMachineEngineerAssignments(
           tx,
-          installation,
-          dto,
-          actor,
+          actualMachine.id,
+          installation.assignments?.map((assignment) => assignment.engineerId) ??
+            [installedBy?.id ?? installation.installedById].filter(
+              (id): id is string => Boolean(id),
+            ),
         );
-        completedMachineId = actualMachine.id;
+
+        if (actualMachine.inventoryStatus !== MachineInventoryStatus.INSTALLED) {
+          await tx.machineInventoryMovement.create({
+            data: {
+              code: await this.generateMovementCode(tx),
+              type: InventoryMovementType.INSTALL,
+              machineId: actualMachine.id,
+              fromStatus: actualMachine.inventoryStatus,
+              toStatus: MachineInventoryStatus.INSTALLED,
+              occurredAt: nextInstalledAt,
+              note: `Approved installation ${installation.code}`,
+              customerId: installation.customerId,
+              createdById: actor?.id || null,
+            },
+          });
+        }
       }
 
       if (
@@ -659,7 +688,7 @@ export class InstallationsService {
           installedAt: installedAt ?? undefined,
           installedById: installedBy?.id,
           reviewStatus: isAssignedEngineerCompleting
-            ? WorkReviewStatus.NOT_REQUIRED
+            ? WorkReviewStatus.PENDING
             : isAdminApprovingInstallation
               ? WorkReviewStatus.APPROVED
               : dto.status
@@ -812,6 +841,30 @@ export class InstallationsService {
         }
       }
 
+      if (requestedMachineAccessories !== undefined) {
+        const machineId = updated.machineId;
+        // A not-yet-registered primary machine keeps its accessories in the
+        // installation's primary device item. They are attached to the machine
+        // in this same transaction when the engineer completes the ticket.
+        if (machineId) {
+          const machine = await tx.machine.findUnique({
+            where: { id: machineId },
+            select: { machineModelId: true },
+          });
+          const accessoriesToSync =
+            !dto.machineId && !installation.machineId
+              ? requestedMachineAccessories.map(({ id: _id, ...item }) => item)
+              : requestedMachineAccessories;
+          await this.machinesService.syncMachineAccessories(
+            tx,
+            machineId,
+            machine?.machineModelId ?? null,
+            accessoriesToSync,
+          );
+          await this.machinesService.refreshMachineAccessoriesSnapshot(tx, machineId);
+        }
+      }
+
       if (isAdminApprovingInstallation || isAssignedEngineerCompleting) {
         const model = dto.machineModelId
           ? await tx.machineModel.findUnique({
@@ -825,6 +878,7 @@ export class InstallationsService {
           customerId: updated.customerId,
           engineerId:
             updated.installedById ?? installation.installedById ?? actor.id,
+          engineerIds: installation.assignments?.map((assignment) => assignment.engineerId) ?? [installation.installedById].filter((id): id is string => Boolean(id)),
           installedAt: updated.installedAt,
           warrantyStartDate:
             updated.warrantyStartDate ??
@@ -880,7 +934,7 @@ export class InstallationsService {
       await this.notificationsService
         .createForAdmins({
           title: 'Phiếu lắp đặt chờ xác nhận',
-          message: `${actor.email} đã báo hoàn tất phiếu ${updatedInstallation.code}. Vui lòng kiểm tra trước khi xác nhận lắp đặt.`,
+          message: `Phiếu ${updatedInstallation.code} đã hoàn tất, chờ xác nhận lắp đặt.`,
           href: '/my-tasks',
           entityType: 'MachineInstallation',
           entityId: updatedInstallation.id,
@@ -937,15 +991,28 @@ export class InstallationsService {
 
     assertPermission(actor, PERMISSIONS.INSTALLATION_STATUS_UPDATE);
     const installation = await this.findOne(id, actor);
+    ensureInstallationStatusTransitionIsAllowed(
+      installation.status,
+      dto.status,
+    );
     const installedAt = this.parseOptionalDate(dto.installedAt, 'installedAt');
     const isPendingDecision =
       installation.status === InstallationStatus.PENDING &&
       (dto.status === InstallationStatus.INSTALLED ||
         dto.status === InstallationStatus.CANCELLED);
+    const isInstallationApprover = isAdmin(actor) || isManager(actor);
+    const isInstallationReviewApproval =
+      isInstallationApprover &&
+      installation.reviewStatus === WorkReviewStatus.PENDING &&
+      dto.status === InstallationStatus.INSTALLED;
     const isAssignedEngineerDecision =
-      isEngineer(actor) && installation.installedById === actor.id;
+      isEngineer(actor) && (installation.installedById === actor.id || installation.assignments?.some((assignment) => assignment.engineerId === actor.id));
 
-    if (isPendingDecision && !isAdmin(actor) && !isAssignedEngineerDecision) {
+    if (
+      isPendingDecision &&
+      !isInstallationApprover &&
+      !isAssignedEngineerDecision
+    ) {
       throw new ForbiddenException(
         'Only admin can approve installation requests',
       );
@@ -953,10 +1020,7 @@ export class InstallationsService {
 
     return this.prisma.$transaction(
       async (tx) => {
-        if (
-          installation.status === InstallationStatus.PENDING &&
-          dto.status === InstallationStatus.INSTALLED
-        ) {
+        if (isInstallationReviewApproval) {
           if (!installation.machine) {
             throw new BadRequestException(
               'Machine serial number must be updated before approving installation',
@@ -1004,6 +1068,8 @@ export class InstallationsService {
               'Machine has already been installed or changed status',
             );
           }
+
+          await this.syncMachineEngineerAssignments(tx, installation.machineId, installation.assignments?.map((assignment) => assignment.engineerId) ?? [installation.installedById].filter((id): id is string => Boolean(id)));
 
           await tx.machineInventoryMovement.create({
             data: {
@@ -1053,6 +1119,7 @@ export class InstallationsService {
             actor,
             customerId: installation.customerId,
             engineerId: installation.installedById ?? actor.id,
+            engineerIds: installation.assignments?.map((assignment) => assignment.engineerId) ?? [installation.installedById].filter((id): id is string => Boolean(id)),
             installedAt: nextInstalledAt,
             warrantyStartDate,
             warrantyEndDate,
@@ -1083,18 +1150,20 @@ export class InstallationsService {
             note: dto.note?.trim(),
             reviewStatus:
               dto.status === InstallationStatus.INSTALLED
-                ? isAdmin(actor)
+                ? isInstallationApprover
                   ? WorkReviewStatus.APPROVED
-                  : WorkReviewStatus.NOT_REQUIRED
+                  : WorkReviewStatus.PENDING
                 : dto.status
                   ? WorkReviewStatus.NOT_REQUIRED
                   : undefined,
             reviewedAt:
-              dto.status === InstallationStatus.INSTALLED && isAdmin(actor)
+              dto.status === InstallationStatus.INSTALLED &&
+              isInstallationApprover
                 ? new Date()
                 : undefined,
             reviewerId:
-              dto.status === InstallationStatus.INSTALLED && isAdmin(actor)
+              dto.status === InstallationStatus.INSTALLED &&
+              isInstallationApprover
                 ? actor.id
                 : undefined,
             reviewNote:
@@ -1195,7 +1264,7 @@ export class InstallationsService {
             const reviewed = await tx.machineInstallation.update({
               where: { id },
               data: {
-                reviewStatus: WorkReviewStatus.NEEDS_REVISION,
+                reviewStatus: dto.status,
                 reviewNote,
                 reviewedAt: new Date(),
                 reviewerId: actor.id,
@@ -1317,16 +1386,10 @@ export class InstallationsService {
   }
 
   private validateCreate(dto: CreateInstallationDto) {
-    if (
-      !dto.customerId ||
-      !dto.installedById ||
-      (!dto.machineId &&
-        !dto.machineSerialNumber?.trim() &&
-        !dto.machineModelId &&
-        !dto.plannedModelName?.trim())
-    ) {
+    const engineerIds = dto.engineerIds?.length ? dto.engineerIds : dto.installedById ? [dto.installedById] : [];
+    if (!dto.customerId || !engineerIds.length) {
       throw new BadRequestException(
-        'customerId, installedById and machineId, machine serial number or planned model are required',
+        'customerId and at least one assigned engineer are required',
       );
     }
 
@@ -1352,10 +1415,11 @@ export class InstallationsService {
     },
   ) {
     const primaryDeviceItem = (
-      this.normalizeDeviceItems(input.dto.installedDeviceItems) as Array<{
+      this.normalizeDeviceItems(input.dto.installedDeviceItems) as unknown as Array<{
         itemName?: string | null;
         model?: string | null;
         serialNumber?: string | null;
+        engineerIds?: string[];
       }>
     ).find((item) => item.serialNumber?.trim());
     const serialNumber = (
@@ -1535,13 +1599,31 @@ export class InstallationsService {
           include: { businessLine: true },
         })
       : null;
+    const primaryItem = dto.installedDeviceItems?.find((item) => item.isPrimary);
     const fallbackModelName =
+      dto.modelName?.trim() ||
       dto.installedDeviceItems
         ?.find((item) => item.model?.trim())
         ?.model?.trim() ||
       installation.plannedModelName ||
+      primaryItem?.itemName?.trim() ||
       dto.machineName?.trim() ||
       'Máy lắp đặt';
+    const manufacturer =
+      dto.manufacturer?.trim() ||
+      machineModel?.manufacturer?.trim() ||
+      primaryItem?.manufacturer?.trim();
+    const machineName =
+      dto.machineName?.trim() ||
+      primaryItem?.itemName?.trim() ||
+      machineModel?.displayName ||
+      machineModel?.name;
+
+    if (!machineName || !fallbackModelName || !manufacturer) {
+      throw new BadRequestException(
+        'Machine name, model, and manufacturer are required when registering a new machine',
+      );
+    }
 
     const machine = await tx.machine.create({
       data: {
@@ -1552,14 +1634,10 @@ export class InstallationsService {
             machineModel?.code || machineModel?.name || fallbackModelName,
           )),
         serialNumber: serialNumber.toUpperCase(),
-        name:
-          dto.machineName?.trim() ||
-          machineModel?.displayName ||
-          machineModel?.name ||
-          fallbackModelName,
-        modelName: machineModel?.name || fallbackModelName,
-        manufacturer: machineModel?.manufacturer || '',
-        productCategory: machineModel?.productCategory || 'OTHER',
+        name: machineName,
+        modelName: dto.modelName?.trim() || machineModel?.name || fallbackModelName,
+        manufacturer,
+        productCategory: dto.productCategory || machineModel?.productCategory || 'OTHER',
         productLine: machineModel?.productLine || null,
         machineModelId: machineModel?.id || null,
         businessLineId:
@@ -1574,42 +1652,6 @@ export class InstallationsService {
       },
     });
 
-    const accessoryInputs:
-      | Array<{
-          code?: string | null;
-          name?: string | null;
-          serialNumber?: string | null;
-          description?: string | null;
-          note?: string | null;
-        }>
-      | undefined = dto.machineAccessories?.length
-      ? dto.machineAccessories
-      : dto.installedDeviceItems
-          ?.filter(
-            (item, index) => index > 0 && (item.itemName || item.serialNumber),
-          )
-          .map((item) => ({
-            name: item.itemName,
-            serialNumber: item.serialNumber,
-            description: item.model,
-          }));
-
-    if (accessoryInputs?.length) {
-      await tx.machineAccessory.createMany({
-        data: accessoryInputs
-          .filter((accessory) => accessory.name?.trim())
-          .map((accessory) => ({
-            machineId: machine.id,
-            code: accessory.code?.trim() || null,
-            name: accessory.name.trim(),
-            serialNumber: accessory.serialNumber?.trim()?.toUpperCase() || null,
-            description: accessory.description?.trim() || null,
-            note: accessory.note?.trim() || null,
-          })),
-        skipDuplicates: true,
-      });
-    }
-
     return machine;
   }
 
@@ -1619,6 +1661,7 @@ export class InstallationsService {
       actor: RequestUser;
       customerId: string;
       engineerId: string;
+      engineerIds: string[];
       installedAt: Date;
       warrantyStartDate: Date;
       warrantyEndDate: Date | null;
@@ -1629,13 +1672,36 @@ export class InstallationsService {
       installedDeviceItems?: CreateInstallationDto['installedDeviceItems'];
     },
   ) {
-    const items = (
-      this.normalizeDeviceItems(input.installedDeviceItems) as Array<{
+    const normalizedItems = this.normalizeDeviceItems(
+      input.installedDeviceItems,
+    ) as unknown as Array<{
+        sourceMachineId?: string | null;
         itemName?: string | null;
         model?: string | null;
         serialNumber?: string | null;
-      }>
-    ).filter((item) => item.serialNumber?.trim());
+        quantity?: number;
+        engineerIds?: string[];
+        accessories?: import('../machines/dto/update-machine.dto').UpdateMachineAccessoryItemDto[];
+      }>;
+    const items = normalizedItems.flatMap((item) => {
+        const serialNumbers = (item.serialNumber || '')
+          .split(/[\n,;]+/)
+          .map((serialNumber) => serialNumber.trim())
+          .filter(Boolean);
+        const hasDevice = Boolean(item.itemName?.trim() || item.model?.trim());
+        const expectedQuantity = Math.max(1, Number(item.quantity) || 1);
+        if (hasDevice && serialNumbers.length !== expectedQuantity) {
+          throw new BadRequestException(
+            `Vui lòng nhập đủ ${expectedQuantity} S/N cho thiết bị ${item.itemName || item.model || ''}`.trim(),
+          );
+        }
+        return serialNumbers.map((serialNumber) => ({
+          ...item,
+          serialNumber,
+          sourceMachineId: serialNumbers.length === 1 ? item.sourceMachineId : null,
+        }));
+      })
+      .filter((item) => item.serialNumber?.trim());
     if (!items.length) return;
 
     const mainMachine = input.mainMachineId
@@ -1667,9 +1733,14 @@ export class InstallationsService {
       const businessLineId =
         input.businessLineId ?? itemMachineModel?.businessLineId ?? null;
 
-      const existing = await tx.machine.findUnique({
-        where: { serialNumber },
-      });
+      const existing = item.sourceMachineId
+        ? await tx.machine.findUnique({ where: { id: item.sourceMachineId } })
+        : await tx.machine.findUnique({ where: { serialNumber } });
+      if (existing && existing.serialNumber.trim().toUpperCase() !== serialNumber) {
+        throw new BadRequestException(
+          `Serial number on linked machine ${existing.machineCode || existing.id} does not match the handover item`,
+        );
+      }
 
       if (existing) {
         if (existing.inventoryStatus !== MachineInventoryStatus.INSTALLED) {
@@ -1732,6 +1803,16 @@ export class InstallationsService {
             },
           });
         }
+        await this.syncMachineEngineerAssignments(tx, existing.id, item.engineerIds?.length ? item.engineerIds : input.engineerIds);
+        if (item.accessories) {
+          await this.machinesService.syncMachineAccessories(
+            tx,
+            existing.id,
+            existing.machineModelId,
+            item.accessories,
+          );
+          await this.machinesService.refreshMachineAccessoriesSnapshot(tx, existing.id);
+        }
         continue;
       }
 
@@ -1763,6 +1844,17 @@ export class InstallationsService {
         },
       });
 
+      await this.syncMachineEngineerAssignments(tx, createdMachine.id, item.engineerIds?.length ? item.engineerIds : input.engineerIds);
+      if (item.accessories) {
+        await this.machinesService.syncMachineAccessories(
+          tx,
+          createdMachine.id,
+          createdMachine.machineModelId,
+          item.accessories,
+        );
+        await this.machinesService.refreshMachineAccessoriesSnapshot(tx, createdMachine.id);
+      }
+
       await tx.machineInventoryMovement.create({
         data: {
           code: await this.generateMovementCode(tx),
@@ -1777,6 +1869,23 @@ export class InstallationsService {
         },
       });
     }
+  }
+
+  private async syncMachineEngineerAssignments(
+    tx: Prisma.TransactionClient,
+    machineId: string,
+    engineerIds: string[],
+  ) {
+    const uniqueIds = [...new Set(engineerIds.filter(Boolean))];
+    if (!uniqueIds.length) return;
+    await tx.machineEngineerAssignment.createMany({
+      data: uniqueIds.map((engineerId, index) => ({
+        machineId,
+        engineerId,
+        isPrimary: index === 0,
+      })),
+      skipDuplicates: true,
+    });
   }
 
   private async findMachineModelForDeviceItem(
@@ -1871,9 +1980,28 @@ export class InstallationsService {
         itemName: item.itemName?.trim(),
         model: item.model?.trim() || null,
         serialNumber: item.serialNumber?.trim() || null,
+        sourceMachineId: item.sourceMachineId?.trim() || null,
         manufactureDate: item.manufactureDate || null,
         quantity: Number(item.quantity) || 1,
         warrantyPeriod: item.warrantyPeriod?.trim() || null,
+        manufacturer: item.manufacturer?.trim() || null,
+        productCategory: item.productCategory || null,
+        isPrimary: item.isPrimary === true,
+        engineerIds: [...new Set(item.engineerIds ?? [])],
+        ...(item.accessories !== undefined
+          ? {
+              accessories: item.accessories.map((accessory) => ({
+                id: accessory.id ?? null,
+                componentAccessoryId: accessory.componentAccessoryId ?? null,
+                code: accessory.code ?? null,
+                name: accessory.name ?? null,
+                quantity: accessory.quantity ?? null,
+                serialNumber: accessory.serialNumber ?? null,
+                description: accessory.description ?? null,
+                note: accessory.note ?? null,
+              })),
+            }
+          : {}),
       }))
       .filter((item) => item.itemName);
   }
@@ -1912,7 +2040,10 @@ export class InstallationsService {
       customerId: query.customerId,
       machineId: query.machineId,
       businessLineId: query.businessLineId,
-      installedById: query.installedById,
+      installedById: undefined,
+      AND: query.installedById
+        ? [{ OR: [{ installedById: query.installedById }, { assignments: { some: { engineerId: query.installedById } } }] }]
+        : undefined,
       installedAt:
         query.installedFrom || query.installedTo
           ? {
@@ -2005,25 +2136,7 @@ export class InstallationsService {
     date: Date,
   ): Promise<string> {
     const prefix = `LD-${shortDateCode(date)}`;
-    const latest = await tx.machineInstallation.findFirst({
-      where: {
-        code: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        code: 'desc',
-      },
-      select: {
-        code: true,
-      },
-    });
-    const latestNumber = latest?.code
-      ? Number(latest.code.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+    return sequenceCode(tx, 'installation', prefix, 3, tx === this.prisma);
   }
 
   private normalizeCodeSegment(value: string) {
@@ -2045,25 +2158,7 @@ export class InstallationsService {
     source: string,
   ) {
     const prefix = normalizeCodeSegment(source, 'MAY');
-    const latest = await tx.machine.findFirst({
-      where: {
-        machineCode: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        machineCode: 'desc',
-      },
-      select: {
-        machineCode: true,
-      },
-    });
-    const latestNumber = latest?.machineCode
-      ? Number(latest.machineCode.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+    return sequenceCode(tx, 'machine', prefix, 3, tx === this.prisma);
   }
 
   private getExpertiseGroupCode(
@@ -2094,50 +2189,14 @@ export class InstallationsService {
     tx: Prisma.TransactionClient,
   ): Promise<string> {
     const prefix = this.getDailyCodePrefix('WAR');
-    const latest = await tx.warrantyCard.findFirst({
-      where: {
-        code: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        code: 'desc',
-      },
-      select: {
-        code: true,
-      },
-    });
-    const latestNumber = latest?.code
-      ? Number(latest.code.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
+    return sequenceCode(tx, 'warranty', prefix, 4, false);
   }
 
   private async generateMovementCode(
     tx: Prisma.TransactionClient,
   ): Promise<string> {
     const prefix = this.getDailyCodePrefix('INV');
-    const latest = await tx.machineInventoryMovement.findFirst({
-      where: {
-        code: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        code: 'desc',
-      },
-      select: {
-        code: true,
-      },
-    });
-    const latestNumber = latest?.code
-      ? Number(latest.code.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
+    return sequenceCode(tx, 'inventory', prefix, 4, false);
   }
 
   private getDailyCodePrefix(prefix: string) {
@@ -2217,6 +2276,10 @@ export class InstallationsService {
           region: true,
           engineerProfile: true,
         },
+      },
+      assignments: {
+        include: { engineer: { select: { id: true, email: true, fullName: true, engineerProfile: true } } },
+        orderBy: [{ isLead: 'desc' as const }, { assignedAt: 'asc' as const }],
       },
       reviewer: {
         select: {

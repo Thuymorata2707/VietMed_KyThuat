@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { ApplicationSupportWorkType, Prisma } from '@prisma/client';
 import {
   customerAccessWhere,
   demoLoanAccessWhere,
@@ -9,6 +9,7 @@ import {
   repairAccessWhere,
 } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
+import { startOfVietnamDay } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
 
 type InstallationGroupRow = {
@@ -62,6 +63,7 @@ type WorkReportRow = {
     | 'repair'
     | 'maintenance'
     | 'demo'
+    | 'deviceService'
     | 'applicationSupport';
   title: string;
   status: string;
@@ -88,6 +90,7 @@ type TechnicalReportGroupRow = {
   repair: number;
   maintenance: number;
   demo: number;
+  deviceService: number;
   applicationSupport: number;
   customers: number;
   machines: number;
@@ -117,6 +120,7 @@ type TechnicalMachineGroupRow = {
   repair: number;
   maintenance: number;
   demo: number;
+  deviceService: number;
   applicationSupport: number;
   lastWorkedAt: Date | null;
 };
@@ -273,8 +277,11 @@ export class ReportsService {
         applicationSupport: rows.filter(
           (row) => row.kind === 'applicationSupport',
         ).length,
+        deviceServiceTickets: rows.filter(
+          (row) => row.kind === 'deviceService',
+        ).length,
         customers: new Set(
-          rows.map((row) => row.customerId || row.customer).filter(Boolean),
+          rows.map((row) => this.customerKey(row)).filter(Boolean),
         ).size,
         machines: new Set(
           rows.map((row) => this.machineKey(row)).filter(Boolean),
@@ -290,7 +297,7 @@ export class ReportsService {
             )
             .filter(Boolean),
         ).size,
-        provinces: new Set(rows.map((row) => row.province).filter(Boolean))
+        provinces: new Set(rows.map((row) => this.provinceKey(row)).filter(Boolean))
           .size,
       },
       byEngineer: this.groupTechnicalRows(
@@ -483,15 +490,15 @@ export class ReportsService {
       installations.map((item) => item.customerId).filter(Boolean),
     );
     const uniqueMachines = new Set(
-      installations.map((item) => item.machineId || item.id).filter(Boolean),
+      installations.map((item) => item.machineId).filter(Boolean),
     );
     const uniqueEngineers = new Set(
       installations
-        .map((item) => item.installedById || 'unassigned')
+        .map((item) => item.installedById)
         .filter(Boolean),
     );
     const uniqueProvinces = new Set(
-      installations.map((item) => item.customer?.province || 'Chưa có tỉnh'),
+      installations.map((item) => item.customer?.province).filter(Boolean),
     );
 
     return {
@@ -598,7 +605,15 @@ export class ReportsService {
         }),
         this.prisma.customer.findMany({
           where: {
-            AND: [customerAccessWhere(user), { primaryEngineerId: engineerId }],
+            AND: [
+              customerAccessWhere(user),
+              {
+                OR: [
+                  { primaryEngineerId: engineerId },
+                  { engineers: { some: { id: engineerId } } },
+                ],
+              },
+            ],
           },
           orderBy: { name: 'asc' },
           select: {
@@ -624,8 +639,19 @@ export class ReportsService {
       ...repairs.map((item) => this.repairToWorkRow(item)),
       ...maintenances.map((item) => this.maintenanceToWorkRow(item)),
     ].sort((first, second) => second.date.getTime() - first.date.getTime());
-    const customers = this.groupWorkByCustomer(workRows, assignedCustomers);
+    const customers = this.groupWorkByCustomer(workRows, []);
+    const assignedCustomerRows = assignedCustomers.map((customer) => ({
+      id: customer.id,
+      label: customer.shortName || customer.name,
+      province: customer.province || customer.region?.name || 'Chưa có tỉnh',
+    }));
     const machines = this.groupWorkByMachine(workRows);
+    const customerCount = new Set(
+      workRows.map((row) => this.customerKey(row)).filter(Boolean),
+    ).size;
+    const machineCount = new Set(
+      workRows.map((row) => this.machineKey(row)).filter(Boolean),
+    ).size;
 
     return {
       filters: {
@@ -651,11 +677,12 @@ export class ReportsService {
         installations: installations.length,
         repairs: repairs.length,
         maintenances: maintenances.length,
-        customers: customers.length,
-        machines: machines.length,
+        customers: customerCount,
+        machines: machineCount,
         assignedCustomers: assignedCustomers.length,
       },
       customers,
+      assignedCustomers: assignedCustomerRows,
       machines,
       workRows,
     };
@@ -855,10 +882,10 @@ export class ReportsService {
       };
 
       current.count += 1;
-      current.customers.add(item.customerId || 'unknown-customer');
-      current.machines.add(item.machineId || item.id);
-      current.engineers.add(item.installedById || 'unassigned');
-      current.provinces.add(item.customer?.province || 'Chưa có tỉnh');
+      if (item.customerId) current.customers.add(item.customerId);
+      if (item.machineId) current.machines.add(item.machineId);
+      if (item.installedById) current.engineers.add(item.installedById);
+      if (item.customer?.province) current.provinces.add(item.customer.province);
       current.lastInstalledAt =
         !current.lastInstalledAt || item.installedAt > current.lastInstalledAt
           ? item.installedAt
@@ -886,8 +913,13 @@ export class ReportsService {
 
   private resolvePeriod(query: Record<string, string | undefined>) {
     const now = new Date();
-    const defaultStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const defaultEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const today = startOfVietnamDay(now);
+    const defaultStart = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
+    );
+    const defaultEnd = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1),
+    );
     const start = query.from
       ? this.parseDate(query.from, 'from')
       : defaultStart;
@@ -1211,6 +1243,7 @@ export class ReportsService {
       id: true,
       title: true,
       status: true,
+      workType: true,
       supportedAt: true,
       resolution: true,
       issueDescription: true,
@@ -1328,7 +1361,7 @@ export class ReportsService {
     return {
       id: item.id,
       code: item.returnCode || item.receiveCode,
-      kind: 'repair',
+      kind: 'deviceService',
       title:
         item.status === 'RETURNED'
           ? 'Trả thiết bị sau sửa'
@@ -1445,7 +1478,7 @@ export class ReportsService {
       id: item.id,
       code: `APP-${item.id.slice(-6).toUpperCase()}`,
       kind: 'applicationSupport',
-      title: item.title || 'Hỗ trợ app',
+      title: `${applicationSupportWorkTypeLabel(item.workType)}${item.title ? `: ${item.title}` : ''}`,
       status: item.status,
       date: item.supportedAt,
       completedAt: item.supportedAt,
@@ -1490,6 +1523,7 @@ export class ReportsService {
         repair: number;
         maintenance: number;
         demo: number;
+        deviceService: number;
         applicationSupport: number;
         customers: Set<string>;
         machines: Set<string>;
@@ -1507,6 +1541,7 @@ export class ReportsService {
         repair: 0,
         maintenance: 0,
         demo: 0,
+        deviceService: 0,
         applicationSupport: 0,
         customers: new Set<string>(),
         machines: new Set<string>(),
@@ -1517,11 +1552,12 @@ export class ReportsService {
       if (row.kind === 'repair') current.repair += 1;
       if (row.kind === 'maintenance') current.maintenance += 1;
       if (row.kind === 'demo') current.demo += 1;
+      if (row.kind === 'deviceService') current.deviceService += 1;
       if (row.kind === 'applicationSupport') current.applicationSupport += 1;
-      current.customers.add(row.customerId || row.customer);
-      current.machines.add(
-        row.machineId || row.serialNumber || row.machineCode || row.code,
-      );
+      const customerKey = this.customerKey(row);
+      const machineKey = this.machineKey(row);
+      if (customerKey) current.customers.add(customerKey);
+      if (machineKey) current.machines.add(machineKey);
       current.lastWorkedAt =
         !current.lastWorkedAt || row.date > current.lastWorkedAt
           ? row.date
@@ -1538,6 +1574,7 @@ export class ReportsService {
         repair: item.repair,
         maintenance: item.maintenance,
         demo: item.demo,
+        deviceService: item.deviceService,
         applicationSupport: item.applicationSupport,
         customers: item.customers.size,
         machines: item.machines.size,
@@ -1568,17 +1605,19 @@ export class ReportsService {
         repair: number;
         maintenance: number;
         demo: number;
+        deviceService: number;
         applicationSupport: number;
         lastWorkedAt: Date | null;
       }
     >();
 
     for (const row of rows) {
-      const id =
-        row.machineId || row.serialNumber || row.machineCode || row.code;
+      const id = this.machineKey(row) || '__no_machine__';
       const current = groups.get(id) ?? {
         id,
-        machineCode: this.machineGroupLabel(row),
+        machineCode: this.machineKey(row)
+          ? this.machineGroupLabel(row)
+          : 'Chưa có máy liên kết',
         serialNumber: row.serialNumber,
         model: row.model,
         customer: row.customer,
@@ -1589,6 +1628,7 @@ export class ReportsService {
         repair: 0,
         maintenance: 0,
         demo: 0,
+        deviceService: 0,
         applicationSupport: 0,
         lastWorkedAt: null,
       };
@@ -1597,6 +1637,7 @@ export class ReportsService {
       if (row.kind === 'repair') current.repair += 1;
       if (row.kind === 'maintenance') current.maintenance += 1;
       if (row.kind === 'demo') current.demo += 1;
+      if (row.kind === 'deviceService') current.deviceService += 1;
       if (row.kind === 'applicationSupport') current.applicationSupport += 1;
       current.lastWorkedAt =
         !current.lastWorkedAt || row.date > current.lastWorkedAt
@@ -1628,6 +1669,19 @@ export class ReportsService {
     return null;
   }
 
+  private customerKey(row: WorkReportRow) {
+    if (row.customerId) return row.customerId;
+    return row.customer && row.customer !== 'Chưa có khách hàng'
+      ? row.customer
+      : null;
+  }
+
+  private provinceKey(row: WorkReportRow) {
+    return row.province && row.province !== 'Chưa có tỉnh'
+      ? row.province
+      : null;
+  }
+
   private buildTechnicalEngineerDetails(
     rows: WorkReportRow[],
   ): TechnicalEngineerDetailRow[] {
@@ -1641,6 +1695,7 @@ export class ReportsService {
         repair: number;
         maintenance: number;
         demo: number;
+        deviceService: number;
         applicationSupport: number;
         customers: Set<string>;
         machines: Set<string>;
@@ -1661,6 +1716,7 @@ export class ReportsService {
           repair: number;
           maintenance: number;
           demo: number;
+          deviceService: number;
           applicationSupport: number;
           customers: Set<string>;
           machines: Set<string>;
@@ -1680,6 +1736,7 @@ export class ReportsService {
         repair: 0,
         maintenance: 0,
         demo: 0,
+        deviceService: 0,
         applicationSupport: 0,
         customers: new Set<string>(),
         machines: new Set<string>(),
@@ -1691,7 +1748,7 @@ export class ReportsService {
       engineer.allRows.push(row);
       engineerGroups.set(engineerKey, engineer);
 
-      const customerKey = row.customerId || row.customer || 'unknown-customer';
+      const customerKey = this.customerKey(row) || '__no_customer__';
       const customersForEngineer =
         customerGroupsByEngineer.get(engineerKey) ??
         new Map<
@@ -1705,6 +1762,7 @@ export class ReportsService {
             repair: number;
             maintenance: number;
             demo: number;
+            deviceService: number;
             applicationSupport: number;
             customers: Set<string>;
             machines: Set<string>;
@@ -1721,6 +1779,7 @@ export class ReportsService {
         repair: 0,
         maintenance: 0,
         demo: 0,
+        deviceService: 0,
         applicationSupport: 0,
         customers: new Set<string>(),
         machines: new Set<string>(),
@@ -1746,6 +1805,7 @@ export class ReportsService {
         repair: engineer.repair,
         maintenance: engineer.maintenance,
         demo: engineer.demo,
+        deviceService: engineer.deviceService,
         applicationSupport: engineer.applicationSupport,
         customers: engineer.customers.size,
         machines: engineer.machines.size,
@@ -1762,6 +1822,7 @@ export class ReportsService {
             repair: customer.repair,
             maintenance: customer.maintenance,
             demo: customer.demo,
+            deviceService: customer.deviceService,
             applicationSupport: customer.applicationSupport,
             customers: customer.customers.size,
             machines: customer.machines.size,
@@ -1791,6 +1852,7 @@ export class ReportsService {
       repair: number;
       maintenance: number;
       demo: number;
+      deviceService: number;
       applicationSupport: number;
       customers: Set<string>;
       machines: Set<string>;
@@ -1803,11 +1865,12 @@ export class ReportsService {
     if (row.kind === 'repair') aggregate.repair += 1;
     if (row.kind === 'maintenance') aggregate.maintenance += 1;
     if (row.kind === 'demo') aggregate.demo += 1;
+    if (row.kind === 'deviceService') aggregate.deviceService += 1;
     if (row.kind === 'applicationSupport') aggregate.applicationSupport += 1;
-    aggregate.customers.add(row.customerId || row.customer);
-    aggregate.machines.add(
-      row.machineId || row.serialNumber || row.machineCode || row.code,
-    );
+    const customerKey = this.customerKey(row);
+    const machineKey = this.machineKey(row);
+    if (customerKey) aggregate.customers.add(customerKey);
+    if (machineKey) aggregate.machines.add(machineKey);
     aggregate.lastWorkedAt =
       !aggregate.lastWorkedAt || row.date > aggregate.lastWorkedAt
         ? row.date
@@ -1891,7 +1954,8 @@ export class ReportsService {
       if (row.kind === 'installation') current.installations += 1;
       if (row.kind === 'repair') current.repairs += 1;
       if (row.kind === 'maintenance') current.maintenances += 1;
-      current.machines.add(row.machineId || row.serialNumber || row.code);
+      const machineKey = this.machineKey(row);
+      if (machineKey) current.machines.add(machineKey);
       current.lastWorkedAt =
         !current.lastWorkedAt || row.date > current.lastWorkedAt
           ? row.date
@@ -1943,10 +2007,14 @@ export class ReportsService {
     >();
 
     for (const row of workRows) {
-      const id = row.machineId || row.serialNumber || row.code;
+      const id = this.machineKey(row) || '__no_machine__';
       const current = groups.get(id) ?? {
         id,
-        label: row.machineCode !== '-' ? row.machineCode : row.serialNumber,
+        label: this.machineKey(row)
+          ? row.machineCode !== '-'
+            ? row.machineCode
+            : row.serialNumber
+          : 'Chưa có máy liên kết',
         serialNumber: row.serialNumber,
         model: row.model,
         customerId: row.customerId,
@@ -1980,4 +2048,17 @@ export class ReportsService {
           (first.lastWorkedAt?.getTime() ?? 0),
       );
   }
+}
+
+function applicationSupportWorkTypeLabel(value: ApplicationSupportWorkType) {
+  const labels: Record<ApplicationSupportWorkType, string> = {
+    APP_SUPPORT: 'Ứng dụng xét nghiệm',
+    REAGENT_SETUP: 'Cài hóa chất',
+    QC_CALIBRATION: 'QC/Calib',
+    LIS_HIS: 'LIS/HIS',
+    TRAINING: 'Đào tạo',
+    FOLLOW_UP: 'Theo dõi ứng dụng',
+    OTHER: 'Hỗ trợ khác',
+  };
+  return labels[value] ?? value;
 }

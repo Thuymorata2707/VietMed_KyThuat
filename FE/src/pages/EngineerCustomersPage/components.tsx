@@ -60,7 +60,7 @@ export function CustomerDetailView({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#666666]">{customer.customerCode || customer.region?.name || 'Khách hàng'}</span>
-            <h2 className="mt-1 [overflow-wrap:anywhere] text-2xl font-extrabold leading-tight text-[#1f1f1f]">{customer.hospitalName || customer.name}</h2>
+            <h2 className="mt-1 [overflow-wrap:anywhere] text-2xl font-extrabold leading-tight text-[#1f1f1f]">{customer.name || customer.hospitalName}</h2>
             <p className="mt-2 max-w-[980px] [overflow-wrap:anywhere] text-sm font-semibold leading-6 text-[#666666]">
               {customer.fullAddress || [customer.address, customer.district, customer.province].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}
             </p>
@@ -110,7 +110,7 @@ export function CustomerDetailView({
       {activeSection === 'overview' ? (
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
           <section className={panelClass}>
-            <PanelTitle title="Việc cần xử lý" subtitle="Chỉ hiện các đầu việc chính" />
+            <PanelTitle title="Việc cần xử lý" />
             {detailLoading ? (
               <EmptyState title="Đang tải việc đang mở..." />
             ) : openTasks.length ? (
@@ -124,7 +124,7 @@ export function CustomerDetailView({
             )}
           </section>
           <section className={panelClass}>
-            <PanelTitle title="Thông tin nhanh" subtitle="Các dữ liệu cần nhận diện" />
+            <PanelTitle title="Thông tin khách hàng" />
             <div className="grid gap-3">
               <InfoTile icon={<ClipboardList size={17} />} label="Loại khách" value={categoryLabels[customer.customerType || ''] || customer.customerType || 'Chưa phân loại'} hint={displayStatus(customer.status)} />
               <InfoTile icon={<Stethoscope size={17} />} label="Máy gần nhất" value={machines[0] ? machineTitle(machines[0]) : 'Chưa có máy'} hint={machines[0]?.serialNumber ? `S/N ${machines[0].serialNumber}` : ''} />
@@ -136,7 +136,7 @@ export function CustomerDetailView({
 
       {activeSection === 'machines' ? (
         <section className={panelClass}>
-          <PanelTitle title="Máy đang quản lý" subtitle={`${machines.length} máy gắn với khách hàng này`} />
+          <PanelTitle title="Máy đang quản lý" subtitle={`${machines.length} máy`} />
           {detailLoading ? (
             <EmptyState title="Đang tải máy..." />
           ) : machines.length ? (
@@ -153,7 +153,7 @@ export function CustomerDetailView({
 
       {activeSection === 'work' ? (
         <section className={panelClass}>
-          <PanelTitle title="Lịch sử công việc" subtitle={`${timeline.length} phiếu và biến động liên quan đến khách hàng`} />
+          <PanelTitle title="Lịch sử công việc" subtitle={`${timeline.length} phiếu`} />
           <div className="grid gap-2 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3">
             <input
               className="h-11 rounded-xl border border-[#ded8d8] bg-white px-3 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#8a8a8a] focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.10)]"
@@ -223,7 +223,7 @@ export function CustomerDetailView({
 
       {activeSection === 'accessories' ? (
       <section className={panelClass}>
-        <PanelTitle title="Linh kiện và phụ kiện liên quan" subtitle="Theo máy" />
+        <PanelTitle title="Linh kiện và phụ kiện liên quan" />
         {detailLoading ? (
           <EmptyState title="Đang tải phụ kiện..." />
         ) : accessories.length || installationAccessories.length ? (
@@ -289,38 +289,30 @@ function WorkHistoryCard({
   ].filter((row) => row.value);
 
   return (
-    <article className="grid min-w-0 gap-3 rounded-2xl border border-[#ededf0] bg-[#fafafa] p-3">
-      <div className="grid min-w-0 grid-cols-[34px_minmax(0,1fr)] gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#18181b] shadow-[inset_0_0_0_1px_#eeeeee]">
+    <article className="grid min-w-0 gap-3 rounded-2xl border border-[#e4e4e7] bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="grid min-w-0 grid-cols-[36px_minmax(0,1fr)] gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f4f5] text-[#333333]">
           {item.kind === 'repair' ? <Wrench size={16} /> : item.kind === 'maintenance' ? <CalendarClock size={16} /> : item.kind === 'inventory' ? <ClipboardList size={16} /> : <Stethoscope size={16} />}
         </div>
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <strong className="min-w-0 [overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{item.title}</strong>
-            <span className="rounded-lg border border-[#ededf0] bg-white px-2 py-1 text-[11px] font-bold text-[#555555]">{displayStatus(item.status)}</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <strong className="min-w-0 [overflow-wrap:anywhere] text-sm font-extrabold text-[#1f1f1f]">{item.code || item.title}</strong>
+            <span className="rounded-md bg-[#f4f4f5] px-2 py-1 text-[11px] font-bold text-[#52525b]">{taskKindLabel(item.kind)}</span>
+            <span className="rounded-md border border-[#e4e4e7] px-2 py-1 text-[11px] font-bold text-[#555555]">{displayStatus(item.status)}</span>
           </div>
           <span className="mt-1 block [overflow-wrap:anywhere] text-xs text-[#666666]">
-            {[formatDate(item.date), machineLabel, item.person].filter(Boolean).join(' - ')}
+            {[formatDate(item.date), machineLabel, item.person].filter(Boolean).join(' · ') || item.title}
           </span>
-          {item.note ? (
-            <span className="mt-2 line-clamp-2 block [overflow-wrap:anywhere] text-xs leading-5 text-[#52525b]">{item.note}</span>
-          ) : null}
+          {item.note ? <span className="mt-2 line-clamp-2 block [overflow-wrap:anywhere] text-xs leading-5 text-[#52525b]">{item.note}</span> : null}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 pl-0 sm:pl-[46px]">
+      <div className="flex flex-wrap gap-2 pl-12 sm:pl-0">
         <Button onClick={onToggle} type="button" variant="secondary">
-          Chi tiết
+          {isExpanded ? 'Ẩn chi tiết' : 'Chi tiết'}
           <ChevronDown className={`transition ${isExpanded ? 'rotate-180' : ''}`} size={15} />
         </Button>
-        {href ? (
-          <Button asChild variant="secondary">
-            <Link to={href}>
-              Mở phiếu
-              <ArrowRight size={15} />
-            </Link>
-          </Button>
-        ) : null}
+        {href ? <Button asChild variant="secondary"><Link to={href}>Mở phiếu<ArrowRight size={15} /></Link></Button> : null}
       </div>
 
       {isExpanded ? (
@@ -515,10 +507,11 @@ function InfoTile({ icon, label, value, hint }: { icon: ReactNode; label: string
   );
 }
 
-function PanelTitle({ title }: { title: string; subtitle: string }) {
+function PanelTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div>
+    <div className="flex flex-wrap items-baseline justify-between gap-2">
       <h3 className="text-base font-extrabold text-[#1f1f1f]">{title}</h3>
+      {subtitle ? <span className="text-xs font-semibold text-[#666666]">{subtitle}</span> : null}
     </div>
   );
 }

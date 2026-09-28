@@ -627,7 +627,7 @@ function OpenUpdatePagePanel({ task }: { task: EngineerTask }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#1d4ed8]">Cập nhật phiếu</span>
-          <h3 className="mt-1 text-base font-bold text-[#172554]">Mở trang cập nhật riêng để xử lý đầy đủ thông tin phiếu.</h3>
+          <h3 className="mt-1 text-base font-bold text-[#172554]">Cập nhật phiếu</h3>
         </div>
         <Link className="task-action" to={taskUpdateHref(task)}>
           Mở trang cập nhật

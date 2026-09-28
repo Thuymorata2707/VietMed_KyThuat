@@ -2,11 +2,11 @@ import { Bell, ChevronDown, ChevronsLeft, ChevronsRight, LogOut, Plus } from 'lu
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { ApiUser, apiFetch, clearToken, getApiBaseUrl } from '../../api';
+import { ApiUser, Paginated, apiFetch, clearToken, getApiBaseUrl } from '../../api';
 import { getRoleName, roleLabel } from '../../auth/roles';
 import { Brand } from '../../components/Brand';
 import { RequireRole } from '../../components/RequireRole';
-import { navGroupsForRole, navItemsForRole, type NavItem } from '../../config/navigation';
+import { canAccessApplicationSupport, navGroupsForRole, navItemsForRole, type NavItem } from '../../config/navigation';
 import { resources } from '../../config/resources';
 import { adminCrudConfigs } from '../../config/adminCrud';
 import { queryClient } from '../../lib/queryClient';
@@ -69,51 +69,80 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   const mainRef = useRef<HTMLElement>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notificationPage, setNotificationPage] = useState(1);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const notificationsPageKey = [...queryKeys.notifications.list, notificationPage] as const;
   const notificationsQuery = useQuery({
-    queryKey: queryKeys.notifications.list,
-    queryFn: () => apiFetch<NotificationItem[]>('/notifications?limit=50'),
+    queryKey: notificationsPageKey,
+    queryFn: () =>
+      apiFetch<Paginated<NotificationItem>>(
+        `/notifications?page=${notificationPage}&limit=20`,
+      ),
     refetchInterval: 15_000,
   });
-  const notifications = notificationsQuery.data ?? [];
+  const unreadCountQuery = useQuery({
+    queryKey: queryKeys.notifications.unreadCount,
+    queryFn: () => apiFetch<{ count: number }>('/notifications/unread-count'),
+    refetchInterval: 15_000,
+  });
+  const notifications = notificationsQuery.data?.data ?? [];
   const markNotificationReadMutation = useMutation({
     mutationFn: (notificationId: string) => apiFetch(`/notifications/${notificationId}/read`, { method: 'PATCH' }),
     onMutate: async (notificationId) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.notifications.list });
-      const previous = queryClient.getQueryData<NotificationItem[]>(queryKeys.notifications.list);
-      queryClient.setQueryData<NotificationItem[]>(queryKeys.notifications.list, (current = []) =>
-        current.map((item) => (item.id === notificationId ? { ...item, readAt: item.readAt ?? new Date().toISOString() } : item)),
+      const previous = queryClient.getQueryData<Paginated<NotificationItem>>(notificationsPageKey);
+      queryClient.setQueryData<Paginated<NotificationItem>>(notificationsPageKey, (current) =>
+        current
+          ? {
+              ...current,
+              data: current.data.map((item) =>
+                item.id === notificationId
+                  ? { ...item, readAt: item.readAt ?? new Date().toISOString() }
+                  : item,
+              ),
+            }
+          : current,
       );
       return { previous };
     },
     onError: (_error, _notificationId, context) => {
-      queryClient.setQueryData(queryKeys.notifications.list, context?.previous);
+      queryClient.setQueryData(notificationsPageKey, context?.previous);
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount });
     },
   });
   const markAllNotificationsReadMutation = useMutation({
     mutationFn: () => apiFetch('/notifications/read-all', { method: 'PATCH' }),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: queryKeys.notifications.list });
-      const previous = queryClient.getQueryData<NotificationItem[]>(queryKeys.notifications.list);
+      const previous = queryClient.getQueryData<Paginated<NotificationItem>>(notificationsPageKey);
       const now = new Date().toISOString();
-      queryClient.setQueryData<NotificationItem[]>(queryKeys.notifications.list, (current = []) =>
-        current.map((item) => ({ ...item, readAt: item.readAt ?? now })),
+      queryClient.setQueryData<Paginated<NotificationItem>>(notificationsPageKey, (current) =>
+        current
+          ? {
+              ...current,
+              data: current.data.map((item) => ({
+                ...item,
+                readAt: item.readAt ?? now,
+              })),
+            }
+          : current,
       );
       return { previous };
     },
     onError: (_error, _variables, context) => {
-      queryClient.setQueryData(queryKeys.notifications.list, context?.previous);
+      queryClient.setQueryData(notificationsPageKey, context?.previous);
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount });
     },
   });
   const role = getRoleName(user);
-  const visibleNavItems = navItemsForRole(role);
-  const visibleNavGroups = navGroupsForRole(role).filter((group) => group.items.length > 0);
+  const visibleNavItems = navItemsForRole(role, user);
+  const visibleNavGroups = navGroupsForRole(role, user).filter((group) => group.items.length > 0);
   const activeNavItem = visibleNavItems.find((item) => navItemMatchesPath(item, location.pathname));
   const pageTitle = location.pathname.startsWith('/account-settings')
     ? 'Thiết lập tài khoản'
@@ -124,12 +153,10 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     : location.pathname.startsWith('/knowledge-base')
       ? 'Chia sẻ kinh nghiệm'
     : location.pathname.startsWith('/application-support')
-      ? 'Hỗ trợ app'
+      ? 'Hỗ trợ app xét nghiệm'
     : location.pathname.startsWith('/technical-statistics')
       ? 'Thống kê kỹ thuật'
     : location.pathname.startsWith('/accessory-inventory')
-      ? 'Phụ kiện'
-    : location.pathname.startsWith('/machine-components') || location.pathname.startsWith('/component-accessories')
       ? 'Phụ kiện'
     : location.pathname.startsWith('/daily-work') || location.pathname.startsWith('/daily-reports') || location.pathname.startsWith('/weekly-reports')
       ? 'Lịch & báo cáo'
@@ -140,7 +167,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     : location.pathname.startsWith('/my-customers')
       ? 'Khách hàng phụ trách'
     : activeNavItem?.label || 'Tổng quan';
-  const unreadCount = useMemo(() => notifications.filter((item) => !item.readAt).length, [notifications]);
+  const unreadCount = unreadCountQuery.data?.count ?? 0;
 
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
@@ -152,6 +179,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
 
     function refreshRealtimeQueries() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount });
       void queryClient.invalidateQueries({ queryKey: ['dashboard', 'overview'] });
       void queryClient.invalidateQueries({ queryKey: ['work-assignments', 'dashboard'] });
       void queryClient.invalidateQueries({ queryKey: ['daily-work', 'notes'] });
@@ -216,14 +244,14 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   }
 
   return (
-    <div className={`app-shell grid min-h-screen w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[76px_minmax(0,1fr)]' : 'grid-cols-[252px_minmax(0,1fr)]'}`}>
-      <aside className={`app-sidebar flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#e4e4e7] px-3.5 py-5 shadow-[1px_0_0_rgba(24,24,27,0.03)] max-[980px]:static max-[980px]:h-auto max-[980px]:overflow-visible max-[980px]:border-b max-[980px]:border-r-0 max-[980px]:p-4 ${isSidebarCollapsed ? 'items-center gap-5 px-3 max-[980px]:items-stretch max-[980px]:gap-4' : 'gap-5 max-[980px]:gap-4'}`}>
-        <div className={`min-w-0 items-center gap-2.5 ${isSidebarCollapsed ? 'grid justify-items-center' : 'grid grid-cols-[34px_minmax(0,1fr)_34px]'} max-[980px]:flex max-[980px]:justify-between`}>
-          {!isSidebarCollapsed ? <span aria-hidden="true" className="block h-[34px] w-[34px] max-[980px]:hidden" /> : null}
+    <div className={`app-shell grid min-h-screen min-h-dvh w-full overflow-x-hidden transition-[grid-template-columns] duration-200 max-[1180px]:grid-cols-1 min-[1181px]:h-screen min-[1181px]:overflow-hidden ${isSidebarCollapsed ? 'grid-cols-[76px_minmax(0,1fr)]' : 'grid-cols-[252px_minmax(0,1fr)]'}`}>
+      <aside className={`app-sidebar flex h-screen flex-col overflow-y-auto overscroll-contain border-r border-[#e4e4e7] px-3.5 py-5 shadow-[1px_0_0_rgba(24,24,27,0.03)] max-[1180px]:static max-[1180px]:h-auto max-[1180px]:overflow-visible max-[1180px]:border-b max-[1180px]:border-r-0 max-[1180px]:p-4 ${isSidebarCollapsed ? 'items-center gap-5 px-3 max-[1180px]:items-stretch max-[1180px]:gap-4' : 'gap-5 max-[1180px]:gap-4'}`}>
+        <div className={`min-w-0 items-center gap-2.5 ${isSidebarCollapsed ? 'grid justify-items-center' : 'grid grid-cols-[34px_minmax(0,1fr)_34px]'} max-[1180px]:flex max-[1180px]:justify-between`}>
+          {!isSidebarCollapsed ? <span aria-hidden="true" className="block h-[34px] w-[34px] max-[1180px]:hidden" /> : null}
           <Brand compact={isSidebarCollapsed} logoOnly />
           <button
             aria-label={isSidebarCollapsed ? 'Mở rộng thanh menu' : 'Thu gọn thanh menu'}
-            className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#333333] shadow-[0_1px_2px_rgba(24,24,27,0.05)] hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b] max-[980px]:hidden"
+            className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#333333] shadow-[0_1px_2px_rgba(24,24,27,0.05)] hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b] max-[1180px]:hidden"
             onClick={() => setIsSidebarCollapsed((current) => !current)}
             title={isSidebarCollapsed ? 'Mở rộng' : 'Thu gọn'}
             type="button"
@@ -232,24 +260,24 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           </button>
         </div>
 
-        <nav className={`${isSidebarCollapsed ? 'grid w-full justify-items-center gap-2' : 'grid gap-3'} max-[980px]:flex max-[980px]:justify-start max-[980px]:gap-2.5 max-[980px]:overflow-x-auto`}>
+        <nav className={`${isSidebarCollapsed ? 'grid w-full justify-items-center gap-2' : 'grid gap-3'} max-[1180px]:flex max-[1180px]:justify-start max-[1180px]:gap-2.5 max-[1180px]:overflow-x-auto`}>
           {visibleNavGroups.map((group) => {
             const groupIsActive = group.items.some((item) => navItemMatchesPath(item, location.pathname));
             const itemList = (
-              <div className={`${isSidebarCollapsed ? 'contents' : 'grid gap-1'} max-[980px]:flex max-[980px]:gap-2`}>
+              <div className={`${isSidebarCollapsed ? 'contents' : 'grid gap-1'} max-[1180px]:flex max-[1180px]:gap-2`}>
                 {group.items.map((item) => {
                   const isActive = navItemMatchesPath(item, location.pathname);
                   return (
                     <Link
-                      className={`relative flex min-h-[42px] items-center rounded-lg text-[14px] font-medium text-[#71717a] transition hover:bg-[#f4f4f5] hover:text-[#18181b] max-[980px]:shrink-0 max-[980px]:gap-2.5 max-[980px]:px-3 ${
+                      className={`relative flex min-h-[42px] items-center rounded-lg text-[14px] font-medium text-[#71717a] transition hover:bg-[#f4f4f5] hover:text-[#18181b] max-[1180px]:shrink-0 max-[1180px]:gap-2.5 max-[1180px]:px-3 ${
                         isActive ? 'bg-[#f4f4f5] text-[#18181b] shadow-[inset_0_0_0_1px_rgba(228,228,231,0.95),0_8px_22px_rgba(24,24,27,0.05)] before:absolute before:left-0 before:h-[18px] before:w-[3px] before:rounded-full before:bg-[#18181b]' : ''
-                      } ${isSidebarCollapsed ? 'h-[42px] w-[42px] justify-center gap-0 px-0 max-[980px]:w-auto max-[980px]:justify-start max-[980px]:px-3' : 'gap-2.5 px-3'}`}
+                      } ${isSidebarCollapsed ? 'h-[42px] w-[42px] justify-center gap-0 px-0 max-[1180px]:w-auto max-[1180px]:justify-start max-[1180px]:px-3' : 'gap-2.5 px-3'}`}
                       key={item.path}
                       title={item.label}
                       to={item.path}
                     >
                       {item.icon}
-                      <span className={`transition ${isSidebarCollapsed ? 'w-0 overflow-hidden opacity-0 max-[980px]:w-auto max-[980px]:opacity-100' : ''}`}>{item.label}</span>
+                      <span className={`transition ${isSidebarCollapsed ? 'w-0 overflow-hidden opacity-0 max-[1180px]:w-auto max-[1180px]:opacity-100' : ''}`}>{item.label}</span>
                     </Link>
                   );
                 })}
@@ -258,8 +286,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
 
             if (group.defaultCollapsed && !isSidebarCollapsed) {
               return (
-                <details className="group grid gap-1.5 max-[980px]:contents" key={group.label} open={groupIsActive ? true : undefined}>
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[#8a8a8a] transition hover:bg-[#f4f4f5] hover:text-[#333333] marker:hidden max-[980px]:hidden">
+                <details className="group grid gap-1.5 max-[1180px]:contents" key={group.label} open={groupIsActive ? true : undefined}>
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[#8a8a8a] transition hover:bg-[#f4f4f5] hover:text-[#333333] marker:hidden max-[1180px]:hidden">
                     <span>{group.label}</span>
                     <ChevronDown className="transition group-open:rotate-180" size={14} />
                   </summary>
@@ -269,15 +297,15 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             }
 
             return (
-              <div className={`${isSidebarCollapsed ? 'contents' : 'grid gap-1.5'} max-[980px]:contents`} key={group.label}>
-                <span className={`${isSidebarCollapsed ? 'hidden' : 'px-3 text-[12px] font-medium text-[#8a8a8a]'} max-[980px]:hidden`}>{group.label}</span>
+              <div className={`${isSidebarCollapsed ? 'contents' : 'grid gap-1.5'} max-[1180px]:contents`} key={group.label}>
+                <span className={`${isSidebarCollapsed ? 'hidden' : 'px-3 text-[12px] font-medium text-[#8a8a8a]'} max-[1180px]:hidden`}>{group.label}</span>
                 {itemList}
               </div>
             );
           })}
         </nav>
 
-        <div className={`mt-auto grid gap-2 border-t border-[#e5e5e5] pt-[18px] max-[980px]:hidden ${isSidebarCollapsed ? 'w-full justify-items-center' : ''}`}>
+        <div className={`mt-auto grid gap-2 border-t border-[#e5e5e5] pt-[18px] max-[1180px]:hidden ${isSidebarCollapsed ? 'w-full justify-items-center' : ''}`}>
           <Link className={`grid items-center gap-2.5 rounded-lg p-1.5 hover:bg-white ${isSidebarCollapsed ? 'flex h-[42px] w-[42px] justify-center p-0' : 'grid-cols-[40px_minmax(0,1fr)]'}`} title="Thiết lập tài khoản" to="/account-settings">
             <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-[#e5e5e5] bg-white text-[13px] font-medium text-[#1f1f1f]">
               {user.engineerProfile?.photoUrl ? (
@@ -298,7 +326,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
         </div>
       </aside>
 
-      <main ref={mainRef} id="main-content" className="min-w-0 overflow-x-hidden overscroll-contain bg-transparent [&>*]:min-w-0 min-[981px]:h-screen min-[981px]:overflow-y-auto">
+      <main ref={mainRef} id="main-content" className="min-w-0 overflow-x-hidden overscroll-contain bg-transparent [&>*]:min-w-0 min-[1181px]:h-screen min-[1181px]:overflow-y-auto">
         <header className="app-header sticky top-0 z-[2] flex min-h-[66px] items-center justify-between gap-4 border-b border-[#e4e4e7] px-6 backdrop-blur-md backdrop-saturate-150 [transform:translateZ(0)] [will-change:transform] max-[1366px]:px-4 max-[1180px]:flex-wrap max-sm:items-start max-sm:gap-3 max-sm:p-4">
           <div className="min-w-0">
             <span className="block text-[12px] font-medium text-[#666666]">VietMed Kỹ Thuật</span>
@@ -322,7 +350,10 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
               <button
                 aria-label="Thông báo"
                 className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#333333] shadow-[0_1px_2px_rgba(24,24,27,0.05)] hover:-translate-y-px hover:border-[#e4e4e7] hover:bg-[#f4f4f5] hover:text-[#18181b]"
-                onClick={() => setIsNotificationOpen((value) => !value)}
+                onClick={() => {
+                  setNotificationPage(1);
+                  setIsNotificationOpen((value) => !value);
+                }}
                 title="Thông báo"
                 type="button"
               >
@@ -360,6 +391,33 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                       </div>
                     ) : null}
                   </div>
+                  {(notificationsQuery.data?.meta?.totalPages ?? 0) > 1 ? (
+                    <div className="flex items-center justify-between border-t border-[#eeeeee] pt-2 text-xs text-[#666666]">
+                      <button
+                        className="rounded px-2 py-1 font-semibold disabled:opacity-40"
+                        disabled={notificationPage <= 1 || notificationsQuery.isFetching}
+                        onClick={() => setNotificationPage((current) => Math.max(1, current - 1))}
+                        type="button"
+                      >
+                        Mới hơn
+                      </button>
+                      <span>
+                        Trang {notificationsQuery.data?.meta?.page ?? notificationPage}/
+                        {notificationsQuery.data?.meta?.totalPages ?? 1}
+                      </span>
+                      <button
+                        className="rounded px-2 py-1 font-semibold disabled:opacity-40"
+                        disabled={
+                          notificationsQuery.isFetching ||
+                          notificationPage >= (notificationsQuery.data?.meta?.totalPages ?? 0)
+                        }
+                        onClick={() => setNotificationPage((current) => current + 1)}
+                        type="button"
+                      >
+                        Cũ hơn
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -376,6 +434,15 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 </span>
               )}
             </Link>
+            <button
+              aria-label="Đăng xuất"
+              className="hidden h-[38px] w-[38px] items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#333333] hover:bg-[#f4f4f5] max-[1180px]:inline-flex min-[1181px]:hidden"
+              onClick={logout}
+              title="Đăng xuất"
+              type="button"
+            >
+              <LogOut size={17} />
+            </button>
           </div>
         </header>
 
@@ -386,7 +453,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/technical-machines/:machineId/edit"
             element={
               <RequireRole
-                allowedRoles={['admin']}
+                allowedRoles={['admin', 'engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
@@ -435,7 +502,13 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/application-support"
             element={
               <RequireRole
-                allowedRoles={['engineer']}
+                allowedRoles={
+                  role === 'admin' || role === 'manager'
+                    ? ['admin', 'manager']
+                    : canAccessApplicationSupport(user, role)
+                      ? ['engineer']
+                      : []
+                }
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
@@ -713,52 +786,12 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             }
           />
           <Route
-            path="/machine-components/new"
-            element={
-              <RequireRole
-                allowedRoles={adminCrudConfigs['machine-components'].roles}
-                currentRole={role}
-                renderDenied={(message) => <AccessDeniedPage message={message} />}
-              >
-                <AdminCrudFormPage config={adminCrudConfigs['machine-components']} />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="/machine-components/:id/edit"
-            element={
-              <RequireRole
-                allowedRoles={adminCrudConfigs['machine-components'].roles}
-                currentRole={role}
-                renderDenied={(message) => <AccessDeniedPage message={message} />}
-              >
-                <AdminCrudFormPage config={adminCrudConfigs['machine-components']} />
-              </RequireRole>
-            }
-          />
-          <Route
             path="/component-accessories/new"
-            element={
-              <RequireRole
-                allowedRoles={adminCrudConfigs['component-accessories'].roles}
-                currentRole={role}
-                renderDenied={(message) => <AccessDeniedPage message={message} />}
-              >
-                <AdminCrudFormPage config={adminCrudConfigs['component-accessories']} />
-              </RequireRole>
-            }
+            element={<Navigate to="/accessory-inventory" replace />}
           />
           <Route
             path="/component-accessories/:id/edit"
-            element={
-              <RequireRole
-                allowedRoles={adminCrudConfigs['component-accessories'].roles}
-                currentRole={role}
-                renderDenied={(message) => <AccessDeniedPage message={message} />}
-              >
-                <AdminCrudFormPage config={adminCrudConfigs['component-accessories']} />
-              </RequireRole>
-            }
+            element={<Navigate to="/accessory-inventory" replace />}
           />
           <Route
             path="/product-catalog"
@@ -882,7 +915,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
           />
           <Route path="/repairs" element={<Navigate to="/service-tickets" replace />} />
           <Route path="/maintenance" element={<Navigate to="/service-tickets" replace />} />
-          <Route path="/machines" element={<Navigate to="/business-lines" replace />} />
+          <Route path="/machines" element={<Navigate to="/technical-machines" replace />} />
           <Route
             path="/inventory-movements"
             element={
@@ -923,10 +956,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                   ) : key === 'installations' ? (
                     <InstallationsPage user={user} />
                   ) : role === 'admin' && adminCrudConfigs[key] ? (
-                    <AdminCrudPage
-                      config={adminCrudConfigs[key]}
-                      headerControl={key === 'machine-components' || key === 'component-accessories' ? <ComponentAccessoryTabs activeKey={key} /> : undefined}
-                    />
+                    <AdminCrudPage config={adminCrudConfigs[key]} />
                   ) : (
                     <ResourcePage config={resources[key]} />
                   )}
@@ -938,16 +968,6 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
         </Routes>
         </Suspense>
       </main>
-    </div>
-  );
-}
-
-function ComponentAccessoryTabs({ activeKey }: { activeKey: string }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <Link className={activeKey === 'accessory-inventory' ? 'primary-button compact' : 'secondary-button compact'} to="/accessory-inventory">
-        Quay lại Phụ kiện
-      </Link>
     </div>
   );
 }

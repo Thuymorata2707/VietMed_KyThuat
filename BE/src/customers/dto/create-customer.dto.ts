@@ -1,10 +1,12 @@
 import { CustomerStatus, CustomerType } from '@prisma/client';
 import {
   IsEmail,
+  IsArray,
   IsEnum,
+  ArrayUnique,
+  IsString,
   IsNotEmpty,
   IsOptional,
-  IsString,
   IsUrl,
 } from 'class-validator';
 
@@ -71,6 +73,10 @@ export class CreateCustomerDto {
 
   @IsOptional()
   @IsString()
+  provinceId?: string;
+
+  @IsOptional()
+  @IsString()
   district?: string;
 
   @IsOptional()
@@ -89,11 +95,17 @@ export class CreateCustomerDto {
   @IsString()
   note?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  regionId!: string;
+  regionId?: string | null;
 
   @IsOptional()
   @IsString()
   primaryEngineerId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  engineerIds?: string[];
 }

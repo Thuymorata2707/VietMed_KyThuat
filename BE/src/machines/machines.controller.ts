@@ -81,7 +81,7 @@ export class MachinesController {
     return this.machinesService.findAccessories(id, user);
   }
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Post(':id/accessories')
   createAccessory(
     @Param('id') id: string,
@@ -91,7 +91,7 @@ export class MachinesController {
     return this.machinesService.createAccessory(id, dto, user);
   }
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Patch(':id/accessories/:accessoryId')
   updateAccessory(
     @Param('id') id: string,
@@ -102,7 +102,7 @@ export class MachinesController {
     return this.machinesService.updateAccessory(id, accessoryId, dto, user);
   }
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Delete(':id/accessories/:accessoryId')
   removeAccessory(
     @Param('id') id: string,
@@ -112,7 +112,7 @@ export class MachinesController {
     return this.machinesService.removeAccessory(id, accessoryId, user);
   }
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -122,7 +122,7 @@ export class MachinesController {
     return this.machinesService.update(id, dto, user);
   }
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Patch(':id/status')
   setStatus(
     @Param('id') id: string,
@@ -132,7 +132,7 @@ export class MachinesController {
     return this.machinesService.setStatus(id, status, user);
   }
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.machinesService.remove(id, user);

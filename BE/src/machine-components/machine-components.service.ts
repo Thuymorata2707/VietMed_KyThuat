@@ -1,3 +1,4 @@
+import { sequenceCode } from '../common/sequence-code';
 import {
   BadRequestException,
   ConflictException,
@@ -165,7 +166,7 @@ export class MachineComponentsService {
   }
 
   previewAccessoryCode(machineModelId: string) {
-    return this.generateAccessoryCode(machineModelId);
+    return this.generateAccessoryCode(machineModelId, true);
   }
 
   async findAccessories(
@@ -368,32 +369,13 @@ export class MachineComponentsService {
     return code.toUpperCase().trim();
   }
 
-  private async generateAccessoryCode(machineModelId: string) {
+  private async generateAccessoryCode(machineModelId: string, preview = false) {
     const machineModel = await this.prisma.machineModel.findUnique({
       where: { id: machineModelId },
       select: { code: true, name: true },
     });
     const prefix = `${normalizeCodeSegment(machineModel?.code || machineModel?.name, 'PK')}-PK`;
-    const latest = await this.prisma.componentAccessory.findFirst({
-      where: {
-        machineModelId,
-        code: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        code: 'desc',
-      },
-      select: {
-        code: true,
-      },
-    });
-    const latestNumber = latest?.code
-      ? Number(latest.code.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+    return sequenceCode(this.prisma, 'accessory', prefix, 3, preview);
   }
 
   private normalizeOptionalId(id?: string | null) {

@@ -2,7 +2,7 @@ import { ArrowLeft, Loader2, Plus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
+import { ApiUser, apiFetch, apiFetchAllPages } from '../../api';
 import { DateInput } from '../../components/DateInput';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -38,9 +38,11 @@ type EngineerOption = {
   status?: string | null;
 };
 
-type RegionOption = {
+type ProvinceOption = {
   id: string;
   name: string;
+  code: string;
+  branch?: { name: string } | null;
 };
 
 type MachineOption = {
@@ -81,11 +83,10 @@ type QuickCustomerForm = {
   contactPerson: string;
   customerType: string;
   district: string;
-  hospitalName: string;
   name: string;
   phone: string;
   province: string;
-  regionId: string;
+  provinceId: string;
   ward: string;
 };
 
@@ -102,7 +103,7 @@ type DemoLoanOptions = {
   engineers: EngineerOption[];
   machineModels: MachineModelOption[];
   machines: MachineOption[];
-  regions: RegionOption[];
+  provinces: ProvinceOption[];
 };
 
 const panelClass = 'grid min-w-0 gap-5 rounded-[24px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]';
@@ -120,7 +121,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
   const [machineOptions, setMachineOptions] = useState<Array<PickerOption<MachineOption>>>([]);
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
   const [quickMachineOpen, setQuickMachineOpen] = useState(false);
-  const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(() => emptyQuickCustomerForm(user));
+  const [quickCustomerForm, setQuickCustomerForm] = useState<QuickCustomerForm>(emptyQuickCustomerForm);
   const [quickMachineForm, setQuickMachineForm] = useState<QuickMachineForm>(emptyQuickMachineForm());
   const [quickMachinePreviewCode, setQuickMachinePreviewCode] = useState('');
   const [currentStep, setCurrentStep] = useState<DemoCreateStep>('records');
@@ -132,21 +133,21 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
   const optionsQuery = useQuery({
     queryKey: ['demo-loans', 'create-options'],
     queryFn: async (): Promise<DemoLoanOptions> => {
-      const [customersResult, engineersResult, machineModels, inStockResult, returnedResult, regionsResult] = await Promise.all([
-        apiFetch<Paginated<CustomerOption>>('/customers?limit=50'),
-        apiFetch<Paginated<EngineerOption> | EngineerOption[]>('/users?limit=100&status=ACTIVE'),
+      const [customers, engineers, machineModels, inStockMachines, returnedMachines, provinces] = await Promise.all([
+        apiFetchAllPages<CustomerOption>('/customers'),
+        apiFetchAllPages<EngineerOption>('/users?status=ACTIVE'),
         apiFetchAllPages<MachineModelOption>('/machine-models'),
-        apiFetch<Paginated<MachineOption>>('/machines?limit=100&inventoryStatus=IN_STOCK'),
-        apiFetch<Paginated<MachineOption>>('/machines?limit=100&inventoryStatus=RETURNED'),
-        apiFetch<Paginated<RegionOption> | RegionOption[]>('/regions?limit=100'),
+        apiFetchAllPages<MachineOption>('/machines?inventoryStatus=IN_STOCK'),
+        apiFetchAllPages<MachineOption>('/machines?inventoryStatus=RETURNED'),
+        apiFetchAllPages<ProvinceOption>('/provinces'),
       ]);
 
       return {
-        customers: customersResult.data,
-        engineers: unpackList(engineersResult).filter(isTechnicalUser),
+        customers,
+        engineers: engineers.filter(isTechnicalUser),
         machineModels,
-        machines: mergeMachines([...inStockResult.data, ...returnedResult.data]),
-        regions: unpackList(regionsResult),
+        machines: mergeMachines([...inStockMachines, ...returnedMachines]),
+        provinces,
       };
     },
   });
@@ -174,7 +175,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
     };
   }, [selectedQuickMachineModel?.code, selectedQuickMachineModel?.name, quickMachineForm.name]);
   const machines = optionsQuery.data?.machines ?? [];
-  const regions = optionsQuery.data?.regions ?? [];
+  const provinces = optionsQuery.data?.provinces ?? [];
   const selectedCustomer = useMemo(
     () => customers.find((customer) => customer.id === form.customerId) || customerOptions.find((item) => item.value === form.customerId)?.row,
     [customerOptions, customers, form.customerId],
@@ -235,10 +236,10 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
   const createCustomerMutation = useMutation({
     mutationFn: async () => {
       const name = quickCustomerForm.name.trim();
-      const regionId = quickCustomerForm.regionId.trim();
-      const selectedRegion = regions.find((region) => region.id === regionId);
+      const provinceId = quickCustomerForm.provinceId.trim();
+      const selectedProvince = provinces.find((province) => province.id === provinceId);
       if (!name) throw new Error('Vui lòng nhập tên khách hàng.');
-      if (!regionId) throw new Error('Vui lòng chọn khu vực của khách hàng.');
+      if (!provinceId) throw new Error('Vui lòng chọn tỉnh/thành của khách hàng.');
 
       return apiFetch<CustomerOption>('/customers', {
         method: 'POST',
@@ -248,12 +249,11 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
           contactPhone: quickCustomerForm.phone.trim(),
           customerType: quickCustomerForm.customerType,
           district: quickCustomerForm.district.trim(),
-          hospitalName: quickCustomerForm.hospitalName.trim(),
           name,
           phone: quickCustomerForm.phone.trim(),
           primaryEngineerId: isEngineer ? user.id : form.engineerId || undefined,
-          province: quickCustomerForm.province.trim() || selectedRegion?.name || undefined,
-          regionId,
+          province: selectedProvince?.name,
+          provinceId,
           status: 'ACTIVE',
           ward: quickCustomerForm.ward.trim(),
         }),
@@ -262,7 +262,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
     onSuccess: (customer) => {
       rememberCustomerOption(customer);
       applyCustomer(customer);
-      setQuickCustomerForm(emptyQuickCustomerForm(user));
+      setQuickCustomerForm(emptyQuickCustomerForm());
       setQuickCustomerOpen(false);
       setSuccess('Đã tạo nhanh khách hàng.');
       void queryClient.invalidateQueries({ queryKey: ['demo-loans', 'create-options'] });
@@ -404,7 +404,6 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
             <div>
               <span className="text-xs font-bold uppercase text-[#3e8375]">Bước 1</span>
               <h2 className="mt-1 text-lg font-semibold text-[#202124]">Chọn hồ sơ khách hàng và máy</h2>
-              <p className="mt-1 text-sm font-medium leading-6 text-[#667085]">Nếu chưa có dữ liệu, tạo nhanh ngay tại phiếu.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -480,7 +479,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
                   loading={createCustomerMutation.isPending}
                   onChange={(patch) => setQuickCustomerForm((current) => ({ ...current, ...patch }))}
                   onSubmit={() => createCustomerMutation.mutate()}
-                  regions={regions}
+                  provinces={provinces}
                 />
               ) : null}
 
@@ -517,7 +516,6 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
             <div>
               <span className="text-xs font-bold uppercase text-[#3e8375]">Bước 2</span>
               <h2 className="mt-1 text-lg font-semibold text-[#202124]">Thông tin bàn giao</h2>
-              <p className="mt-1 text-sm font-medium leading-6 text-[#667085]">Nhập thời gian, người nhận và tình trạng máy khi bàn giao.</p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <DateInput label="Ngày bàn giao" onChange={(value) => updateForm({ plannedHandoverAt: value })} required value={form.plannedHandoverAt} />
@@ -575,7 +573,6 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
             <div>
               <span className="text-xs font-bold uppercase text-[#3e8375]">Bước 3</span>
               <h2 className="mt-1 text-lg font-semibold text-[#202124]">Kiểm tra trước khi tạo phiếu demo</h2>
-              <p className="mt-1 text-sm font-medium leading-6 text-[#667085]">Kiểm tra trước khi lưu.</p>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <SummaryField label="Máy demo" value={selectedMachine ? machineLabel(selectedMachine) : 'Chưa chọn'} />
@@ -610,10 +607,10 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
 }
 
 function DemoCreateStepper({ currentStep }: { currentStep: DemoCreateStep }) {
-  const steps: Array<{ key: DemoCreateStep; label: string; sub: string }> = [
-    { key: 'records', label: 'Hồ sơ', sub: 'Khách hàng & máy' },
-    { key: 'handover', label: 'Bàn giao', sub: 'Ngày, người nhận, tình trạng' },
-    { key: 'review', label: 'Xác nhận', sub: 'Kiểm tra trước khi lưu' },
+  const steps: Array<{ key: DemoCreateStep; label: string }> = [
+    { key: 'records', label: 'Hồ sơ' },
+    { key: 'handover', label: 'Bàn giao' },
+    { key: 'review', label: 'Xác nhận' },
   ];
   const currentIndex = steps.findIndex((step) => step.key === currentStep);
 
@@ -626,7 +623,6 @@ function DemoCreateStepper({ currentStep }: { currentStep: DemoCreateStep }) {
           <div className={`grid gap-1 rounded-[18px] px-4 py-3 ${active ? 'bg-white shadow-[0_10px_24px_rgba(24,24,27,0.08)]' : done ? 'bg-[#eefaf3]' : 'bg-transparent'}`} key={step.key}>
             <span className={`text-xs font-bold uppercase ${active || done ? 'text-[#2f6f63]' : 'text-[#8a94a6]'}`}>Bước {index + 1}</span>
             <strong className="text-sm text-[#202124]">{step.label}</strong>
-            <span className="text-xs font-medium text-[#667085]">{step.sub}</span>
           </div>
         );
       })}
@@ -648,13 +644,13 @@ function QuickCustomerPanel({
   loading,
   onChange,
   onSubmit,
-  regions,
+  provinces,
 }: {
   form: QuickCustomerForm;
   loading: boolean;
   onChange: (patch: Partial<QuickCustomerForm>) => void;
   onSubmit: () => void;
-  regions: RegionOption[];
+  provinces: ProvinceOption[];
 }) {
   return (
     <div className="grid gap-3 rounded-[22px] border border-[#dbeafe] bg-[#f8fbff] p-4 md:col-span-2">
@@ -666,10 +662,6 @@ function QuickCustomerPanel({
         <label className={labelClass}>
           Tên khách hàng
           <input className={fieldClass} onChange={(event) => onChange({ name: event.target.value })} value={form.name} />
-        </label>
-        <label className={labelClass}>
-          Tên bệnh viện/đơn vị
-          <input className={fieldClass} onChange={(event) => onChange({ hospitalName: event.target.value })} value={form.hospitalName} />
         </label>
         <label className={labelClass}>
           Loại khách hàng
@@ -691,26 +683,22 @@ function QuickCustomerPanel({
           <input className={fieldClass} onChange={(event) => onChange({ contactPerson: event.target.value })} value={form.contactPerson} />
         </label>
         <label className={labelClass}>
-          Khu vực
+          Tỉnh/Thành
           <select
             className={fieldClass}
             onChange={(event) => {
-              const region = regions.find((item) => item.id === event.target.value);
-              onChange({ province: region?.name || form.province, regionId: event.target.value });
+              const province = provinces.find((item) => item.id === event.target.value);
+              onChange({ province: province?.name || '', provinceId: event.target.value });
             }}
-            value={form.regionId}
+            value={form.provinceId}
           >
-            <option value="">Chọn khu vực</option>
-            {regions.map((region) => (
-              <option key={region.id} value={region.id}>
-                {region.name}
+            <option value="">Chọn tỉnh/thành</option>
+            {provinces.map((province) => (
+              <option key={province.id} value={province.id}>
+                {province.name}{province.branch?.name ? ` · ${province.branch.name}` : ''}
               </option>
             ))}
           </select>
-        </label>
-        <label className={labelClass}>
-          Tỉnh/Thành
-          <input className={fieldClass} onChange={(event) => onChange({ province: event.target.value })} value={form.province} />
         </label>
         <label className={labelClass}>
           Quận/Huyện
@@ -771,8 +759,9 @@ function QuickMachinePanel({
           <input className={fieldClass} onChange={(event) => onChange({ serialNumber: event.target.value })} value={form.serialNumber} />
         </label>
         <label className={labelClass}>
-          Mã máy
+          Mã máy (ước tính)
           <input className={fieldClass} disabled placeholder="Đang sinh mã..." value={form.machineCode || previewCode || 'Đang sinh mã...'} />
+          <span className="field-hint">Mã máy chính thức được cấp khi lưu.</span>
         </label>
         <label className={`${labelClass} md:col-span-3`}>
           Tên máy
@@ -811,17 +800,16 @@ function emptyDemoLoanForm(): DemoLoanForm {
   };
 }
 
-function emptyQuickCustomerForm(user?: ApiUser): QuickCustomerForm {
+function emptyQuickCustomerForm(): QuickCustomerForm {
   return {
     address: '',
     contactPerson: '',
     customerType: 'HOSPITAL',
     district: '',
-    hospitalName: '',
     name: '',
     phone: '',
-    province: user?.region?.name || '',
-    regionId: user?.regionId || user?.region?.id || '',
+    province: '',
+    provinceId: '',
     ward: '',
   };
 }
@@ -843,7 +831,7 @@ function machineLabel(machine: MachineOption) {
 }
 
 function customerLabel(customer: CustomerOption) {
-  return [customer.customerCode, customer.hospitalName || customer.name, customer.province, customer.phone].filter(Boolean).join(' - ');
+  return [customer.customerCode, customer.name || customer.hospitalName, customer.province, customer.phone].filter(Boolean).join(' - ');
 }
 
 function machineModelLabel(model: MachineModelOption) {
@@ -860,10 +848,6 @@ function mergePickerOptions<T>(options: Array<PickerOption<T>>) {
   const byValue = new Map<string, PickerOption<T>>();
   options.forEach((option) => byValue.set(option.value, option));
   return Array.from(byValue.values());
-}
-
-function unpackList<T>(result: Paginated<T> | T[]) {
-  return Array.isArray(result) ? result : result.data ?? [];
 }
 
 function formatDate(value: string) {

@@ -1,16 +1,16 @@
 import { RepairPriority } from '@prisma/client';
 import {
+  IsArray,
   IsDateString,
   IsEnum,
-  IsNotEmpty,
   IsOptional,
   IsString,
 } from 'class-validator';
 
 export class CreateRepairDto {
   @IsString()
-  @IsNotEmpty()
-  title!: string;
+  @IsOptional()
+  title?: string;
 
   @IsOptional()
   @IsString()
@@ -27,6 +27,11 @@ export class CreateRepairDto {
   @IsOptional()
   @IsString()
   engineerId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  engineerIds?: string[];
 
   @IsOptional()
   @IsEnum(RepairPriority)

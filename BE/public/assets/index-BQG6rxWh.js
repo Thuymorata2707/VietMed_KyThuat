@@ -1,1 +1,0 @@
-import{j as e}from"./index-CPcuEiqx.js";function l({eyebrow:a,title:s}){return e.jsxs("div",{className:"page-title-card",children:[e.jsx("div",{className:"page-title-card__glow"}),e.jsxs("div",{className:"relative",children:[e.jsx("span",{className:"page-kicker inline-block",children:a}),e.jsx("h1",{className:"page-heading mt-2",children:s})]})]})}export{l as P};

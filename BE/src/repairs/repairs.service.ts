@@ -1,3 +1,4 @@
+import { sequenceCode } from '../common/sequence-code';
 import {
   BadRequestException,
   ForbiddenException,
@@ -5,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  MachineInventoryStatus,
   MachineStatus,
   Prisma,
   RepairPriority,
@@ -23,11 +25,16 @@ import {
   isApprovedDeleteReview,
   isDeleteRequest,
 } from '../common/work-delete-request';
+import { assertNoPendingDeleteRequest } from '../common/pending-delete-request';
+import { reconcileMachineStatusFromOpenWork } from '../common/machine-work-status';
 import { replaceWorkUsedParts } from '../common/work-used-parts';
 import { shortDateCode } from '../common/code-format';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
-import { validateMachineState } from '../machines/machine-state.rules';
+import {
+  getMachineStatusAfterWork,
+  validateMachineState,
+} from '../machines/machine-state.rules';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignRepairDto } from './dto/assign-repair.dto';
@@ -63,6 +70,7 @@ export class RepairsService {
 
   async create(dto: CreateRepairDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.REPAIR_CREATE);
+    if (!isAdmin(actor)) throw new ForbiddenException('Only administrators can dispatch repair tickets');
     this.validateCreateRepair(dto);
 
     const machine = dto.machineId
@@ -72,12 +80,10 @@ export class RepairsService {
       await this.assertEngineerCanUseMachine(actor, machine);
     }
 
-    const createdByEngineer = isEngineer(actor);
-    const engineerId = createdByEngineer ? actor.id : dto.engineerId;
-
-    if (engineerId) {
-      await this.ensureEngineerExists(engineerId);
-    }
+    const engineerIds = [...new Set(dto.engineerIds?.length ? dto.engineerIds : dto.engineerId ? [dto.engineerId] : [])];
+    if (!engineerIds.length) throw new BadRequestException('At least one engineer must be assigned');
+    await Promise.all(engineerIds.map((engineerId) => this.ensureEngineerExists(engineerId)));
+    const engineerId = engineerIds[0];
     const customerId = await this.resolveTicketCustomerId(
       machine,
       dto.customerId,
@@ -91,18 +97,14 @@ export class RepairsService {
               tx,
               this.parseOptionalDate(dto.reportedAt) ?? new Date(),
             ),
-            title: dto.title.trim(),
+            title: dto.title?.trim() || 'Phiếu sửa chữa',
             description: dto.description?.trim() || null,
             machineId: machine?.id ?? null,
             customerId,
             engineerId: engineerId || null,
             createdById: actor.id,
             priority: dto.priority ?? RepairPriority.NORMAL,
-            status: createdByEngineer
-              ? RepairStatus.ASSIGNED
-              : engineerId
-                ? RepairStatus.ASSIGNED
-                : RepairStatus.PENDING,
+            status: RepairStatus.ASSIGNED,
             reportedAt: this.parseOptionalDate(dto.reportedAt) ?? new Date(),
             assignedAt: engineerId ? new Date() : null,
             usingDepartment: this.cleanOptionalString(dto.usingDepartment),
@@ -132,6 +134,14 @@ export class RepairsService {
           include: this.defaultInclude(),
         });
 
+        await tx.repairAssignment.createMany({
+          data: engineerIds.map((assignedEngineerId, index) => ({
+            repairId: repair.id,
+            engineerId: assignedEngineerId,
+            isLead: index === 0,
+          })),
+        });
+
         await this.auditLogsService.create(
           {
             action: AUDIT_ACTIONS.CREATE,
@@ -150,36 +160,20 @@ export class RepairsService {
           tx,
         );
 
-        if (repair.engineerId && repair.engineerId !== actor.id) {
-          await this.notificationsService.create(
-            {
-              userId: repair.engineerId,
-              title: 'Bạn có phiếu sửa chữa mới',
-              message: `${actor.email} đã phân công phiếu ${repair.code}: ${repair.title}`,
-              href: '/my-tasks',
-              entityType: 'Repair',
-              entityId: repair.id,
-              createdById: actor.id,
-            },
-            tx,
-          );
-        }
+        await Promise.all(engineerIds.map((assignedEngineerId) => this.notificationsService.create(
+          {
+            userId: assignedEngineerId,
+            title: 'Bạn có phiếu sửa chữa mới',
+            message: `${actor.email} đã phân công phiếu ${repair.code}: ${repair.title}`,
+            href: '/my-tasks',
+            entityType: 'Repair',
+            entityId: repair.id,
+            createdById: actor.id,
+          },
+          tx,
+        )));
 
-        if (isEngineer(actor)) {
-          await this.notificationsService.createForAdmins(
-            {
-              title: 'Kỹ sư tạo phiếu sửa chữa mới',
-              message: `${actor.email} đã tạo phiếu sửa chữa khẩn ${repair.code}: ${repair.title}. Phiếu đã được gán cho kỹ sư để xử lý ngay, admin hậu kiểm dữ liệu khi cần.`,
-              href: '/service-tickets',
-              entityType: 'Repair',
-              entityId: repair.id,
-              createdById: actor.id,
-            },
-            tx,
-          );
-        }
-
-        return repair;
+        return tx.repair.findUnique({ where: { id: repair.id }, include: this.defaultInclude() });
       },
       { timeout: 20_000 },
     );
@@ -227,6 +221,7 @@ export class RepairsService {
   async update(id: string, dto: UpdateRepairDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.REPAIR_UPDATE);
     const repair = await this.findOne(id, actor);
+    assertNoPendingDeleteRequest(repair);
     const nextEngineerId =
       dto.engineerId === undefined ? repair.engineerId : dto.engineerId || null;
     const nextStatus = dto.status ?? repair.status;
@@ -313,7 +308,6 @@ export class RepairsService {
                 : dto.status
                   ? null
                   : undefined,
-            reviewNote: dto.status ? null : undefined,
             resultNote:
               dto.resultNote === undefined
                 ? undefined
@@ -359,20 +353,32 @@ export class RepairsService {
           include: this.defaultInclude(),
         });
 
-        const machineStatus = this.getMachineStatusForRepairStatus(nextStatus);
+        let machineStatus = this.getMachineStatusForRepairStatus(
+          nextStatus,
+          nextMachine?.inventoryStatus,
+        );
 
         if (machineStatus && nextMachine) {
-          validateMachineState(
-            machineStatus,
-            nextMachine.inventoryStatus,
-            nextMachine.customerId,
-          );
-          await tx.machine.update({
-            where: { id: nextMachine.id },
-            data: {
-              status: machineStatus,
-            },
-          });
+          if (
+            nextStatus === RepairStatus.COMPLETED ||
+            nextStatus === RepairStatus.CANCELLED
+          ) {
+            machineStatus = await reconcileMachineStatusFromOpenWork(
+              tx,
+              nextMachine.id,
+              nextMachine.inventoryStatus,
+            );
+          } else {
+            validateMachineState(
+              machineStatus,
+              nextMachine.inventoryStatus,
+              nextMachine.customerId,
+            );
+            await tx.machine.update({
+              where: { id: nextMachine.id },
+              data: { status: machineStatus },
+            });
+          }
         }
 
         if (dto.usedParts !== undefined) {
@@ -446,11 +452,9 @@ export class RepairsService {
   }
 
   async remove(id: string, actor: RequestUser, dto?: DeleteWorkTaskDto) {
+    void dto;
     const repair = await this.findOne(id, actor);
-
-    if (!isAdmin(actor)) {
-      return this.requestDelete(id, repair, actor, dto?.reason);
-    }
+    if (!isAdmin(actor)) throw new ForbiddenException('Only administrators can delete repair tickets');
 
     assertPermission(actor, PERMISSIONS.REPAIR_DELETE);
     return this.deleteRepair(id, repair, actor);
@@ -462,7 +466,10 @@ export class RepairsService {
     actor: RequestUser,
     reason?: string | null,
   ) {
-    if (repair.reviewStatus === WorkReviewStatus.PENDING && isDeleteRequest(repair.reviewNote)) {
+    if (
+      repair.reviewStatus === WorkReviewStatus.PENDING &&
+      isDeleteRequest(repair.reviewNote)
+    ) {
       throw new BadRequestException('Delete request is already pending review');
     }
 
@@ -519,6 +526,14 @@ export class RepairsService {
       await tx.repair.delete({
         where: { id },
       });
+
+      if (repair.machine) {
+        await reconcileMachineStatusFromOpenWork(
+          tx,
+          repair.machine.id,
+          repair.machine.inventoryStatus,
+        );
+      }
 
       await this.auditLogsService.create(
         {
@@ -620,6 +635,7 @@ export class RepairsService {
 
     assertPermission(actor, PERMISSIONS.REPAIR_STATUS_UPDATE);
     const repair = await this.findOne(id, actor);
+    assertNoPendingDeleteRequest(repair);
     const now = new Date();
 
     this.ensureStatusTransitionIsAllowed(repair.status, dto.status);
@@ -651,27 +667,38 @@ export class RepairsService {
               dto.status === RepairStatus.COMPLETED && isAdmin(actor)
                 ? actor.id
                 : null,
-            reviewNote: null,
             resultNote: dto.resultNote?.trim(),
             customerFeedback: dto.customerFeedback?.trim(),
           },
           include: this.defaultInclude(),
         });
 
-        const machineStatus = this.getMachineStatusForRepairStatus(dto.status);
+        let machineStatus = this.getMachineStatusForRepairStatus(
+          dto.status,
+          repair.machine?.inventoryStatus,
+        );
 
         if (machineStatus && repair.machine) {
-          validateMachineState(
-            machineStatus,
-            repair.machine.inventoryStatus,
-            repair.machine.customerId,
-          );
-          await tx.machine.update({
-            where: { id: repair.machine.id },
-            data: {
-              status: machineStatus,
-            },
-          });
+          if (
+            dto.status === RepairStatus.COMPLETED ||
+            dto.status === RepairStatus.CANCELLED
+          ) {
+            machineStatus = await reconcileMachineStatusFromOpenWork(
+              tx,
+              repair.machine.id,
+              repair.machine.inventoryStatus,
+            );
+          } else {
+            validateMachineState(
+              machineStatus,
+              repair.machine.inventoryStatus,
+              repair.machine.customerId,
+            );
+            await tx.machine.update({
+              where: { id: repair.machine.id },
+              data: { status: machineStatus },
+            });
+          }
         }
 
         await this.auditLogsService.create(
@@ -710,7 +737,7 @@ export class RepairsService {
       await this.notificationsService
         .createForAdmins({
           title: 'Phiếu sửa chữa chờ xác nhận',
-          message: `${actor.email} đã hoàn tất phiếu ${updatedRepair.code}: ${updatedRepair.title}. Vui lòng kiểm tra kết quả.`,
+          message: `Phiếu ${updatedRepair.code} đã hoàn tất.`,
           href: '/service-tickets',
           entityType: 'Repair',
           entityId: updatedRepair.id,
@@ -887,9 +914,7 @@ export class RepairsService {
   }
 
   private validateCreateRepair(dto: CreateRepairDto) {
-    if (!dto.title?.trim()) {
-      throw new BadRequestException('title is required');
-    }
+    void dto;
   }
 
   private cleanOptionalString(value?: string | null) {
@@ -1014,25 +1039,7 @@ export class RepairsService {
   ): Promise<string> {
     const prefix = `SC-${shortDateCode(date)}`;
 
-    const latest = await tx.repair.findFirst({
-      where: {
-        code: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        code: 'desc',
-      },
-      select: {
-        code: true,
-      },
-    });
-    const latestNumber = latest?.code
-      ? Number(latest.code.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+    return sequenceCode(tx, 'repair', prefix, 3, tx === this.prisma);
   }
 
   private async getEngineerCode(
@@ -1134,8 +1141,10 @@ export class RepairsService {
       status: query.status,
       priority: query.priority,
       machineId: query.machineId,
-      engineerId: query.engineerId,
-      AND: and.length ? and : undefined,
+      engineerId: undefined,
+      AND: query.engineerId
+        ? [...and, { OR: [{ engineerId: query.engineerId }, { assignments: { some: { engineerId: query.engineerId } } }] }]
+        : and.length ? and : undefined,
       OR: search
         ? [
             { code: { contains: search } },
@@ -1196,6 +1205,7 @@ export class RepairsService {
 
   private getMachineStatusForRepairStatus(
     status: RepairStatus,
+    inventoryStatus?: MachineInventoryStatus | null,
   ): MachineStatus | null {
     if (
       status === RepairStatus.IN_PROGRESS ||
@@ -1205,10 +1215,11 @@ export class RepairsService {
     }
 
     if (
-      status === RepairStatus.COMPLETED ||
-      status === RepairStatus.CANCELLED
+      (status === RepairStatus.COMPLETED ||
+        status === RepairStatus.CANCELLED) &&
+      inventoryStatus
     ) {
-      return MachineStatus.ACTIVE;
+      return getMachineStatusAfterWork(inventoryStatus);
     }
 
     return null;
@@ -1363,7 +1374,10 @@ export class RepairsService {
           fullName: true,
         },
       },
+      assignments: {
+        include: { engineer: { select: { id: true, email: true, fullName: true, engineerProfile: true } } },
+        orderBy: [{ isLead: 'desc' as const }, { assignedAt: 'asc' as const }],
+      },
     };
   }
-
 }

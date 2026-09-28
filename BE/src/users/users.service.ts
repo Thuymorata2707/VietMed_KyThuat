@@ -27,7 +27,7 @@ type UserWithoutPassword = Omit<User, 'password'> & {
     name: string;
     code: string;
   };
-  engineerProfile: EngineerProfile | null;
+  engineerProfile: (EngineerProfile & { expertiseGroups?: Array<'IMAGING' | 'LAB_TESTING'> }) | null;
 };
 
 @Injectable()
@@ -541,6 +541,11 @@ export class UsersService {
       engineerProfile: EngineerProfile | null;
     },
   >(user: T): UserWithoutPassword {
+    const profile = user.engineerProfile;
+    const groups = profile
+      ? [profile.expertiseImaging ? 'IMAGING' : null, profile.expertiseLabTesting ? 'LAB_TESTING' : null]
+          .filter((group): group is 'IMAGING' | 'LAB_TESTING' => Boolean(group))
+      : [];
     return {
       id: user.id,
       email: user.email,
@@ -552,7 +557,16 @@ export class UsersService {
       role: user.role,
       regionId: user.regionId,
       region: user.region,
-      engineerProfile: user.engineerProfile,
+      engineerProfile: profile
+        ? {
+            ...profile,
+            expertiseGroups: groups.length
+              ? groups
+              : profile.expertiseGroup === 'IMAGING' || profile.expertiseGroup === 'LAB_TESTING'
+                ? [profile.expertiseGroup]
+                : [],
+          }
+        : null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

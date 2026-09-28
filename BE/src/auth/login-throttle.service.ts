@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
@@ -14,25 +14,24 @@ type LoginAttempt = {
 export class LoginThrottleService {
   private readonly attempts = new Map<string, LoginAttempt>();
 
-  assertCanAttempt(email: string | undefined, ip: string | undefined) {
+  isLocked(email: string | undefined, ip: string | undefined): boolean {
     const key = this.keyFor(email, ip);
     const current = this.attempts.get(key);
     const now = Date.now();
 
     if (!current) {
-      return;
+      return false;
     }
 
     if (current.lockedUntil && current.lockedUntil > now) {
-      throw new HttpException(
-        'Too many failed login attempts. Please try again later.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
+      return true;
     }
 
     if (now - current.firstAttemptAt > WINDOW_MS) {
       this.attempts.delete(key);
     }
+
+    return false;
   }
 
   recordFailure(email: string | undefined, ip: string | undefined) {

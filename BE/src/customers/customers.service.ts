@@ -1,3 +1,4 @@
+import { sequenceCode } from '../common/sequence-code';
 import {
   BadRequestException,
   ConflictException,
@@ -26,9 +27,14 @@ export class CustomersService {
   async create(dto: CreateCustomerDto, actor?: RequestUser) {
     assertPermission(actor, PERMISSIONS.CUSTOMER_CREATE);
     this.validateCreateCustomer(dto);
-    await this.ensureRegionExists(dto.regionId);
+    if (dto.regionId) await this.ensureRegionExists(dto.regionId);
     await this.ensureCustomerCodeIsAvailable(dto.customerCode);
-    await this.ensureEngineerExists(dto.primaryEngineerId);
+    const province = await this.ensureProvinceExists(dto.provinceId);
+    const engineerIds = this.normalizeEngineerIds([
+      ...(dto.engineerIds ?? []),
+      ...(dto.primaryEngineerId ? [dto.primaryEngineerId] : []),
+    ]);
+    await this.ensureEngineersExist(engineerIds);
 
     return this.prisma.$transaction(async (tx) => {
       const customerCode =
@@ -49,14 +55,20 @@ export class CustomersService {
           contactPosition: dto.contactPosition?.trim() || null,
           contactPhone: dto.contactPhone?.trim() || null,
           contactEmail: this.normalizeOptionalEmail(dto.contactEmail),
-          province: dto.province?.trim() || null,
+          province: province?.name || dto.province?.trim() || null,
+          provinceId: province?.id || null,
           district: dto.district?.trim() || null,
           ward: dto.ward?.trim() || null,
           address: dto.address?.trim() || null,
-          fullAddress: this.buildFullAddress(dto),
+          fullAddress: this.buildFullAddress(dto, province?.name),
           note: dto.note?.trim() || null,
-          regionId: dto.regionId,
-          primaryEngineerId: dto.primaryEngineerId?.trim() || null,
+          // Keep quick-created customers visible to the creating branch's
+          // scoped admin/manager even when the quick form omits regionId.
+          regionId: dto.regionId || actor?.regionId || null,
+          primaryEngineerId: engineerIds[0] || null,
+          engineers: engineerIds.length
+            ? { connect: engineerIds.map((id) => ({ id })) }
+            : undefined,
         },
         include: this.customerListInclude(),
       });
@@ -73,6 +85,7 @@ export class CustomersService {
             regionId: created.regionId,
             status: created.status,
             primaryEngineerId: created.primaryEngineerId,
+            engineerIds: engineerIds,
           },
         },
         tx,
@@ -314,9 +327,19 @@ export class CustomersService {
       await this.ensureCustomerCodeIsAvailable(dto.customerCode, id);
     }
 
-    if (dto.primaryEngineerId !== undefined) {
-      await this.ensureEngineerExists(dto.primaryEngineerId);
-    }
+    const province = dto.provinceId === undefined
+      ? undefined
+      : await this.ensureProvinceExists(dto.provinceId);
+
+    const shouldReplaceEngineers =
+      dto.engineerIds !== undefined || dto.primaryEngineerId !== undefined;
+    const engineerIds = shouldReplaceEngineers
+      ? this.normalizeEngineerIds([
+          ...(dto.engineerIds ?? []),
+          ...(dto.primaryEngineerId ? [dto.primaryEngineerId] : []),
+        ])
+      : undefined;
+    if (engineerIds) await this.ensureEngineersExist(engineerIds);
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.customer.update({
@@ -364,9 +387,11 @@ export class CustomersService {
               ? undefined
               : this.normalizeOptionalEmail(dto.contactEmail),
           province:
-            dto.province === undefined
-              ? undefined
-              : dto.province?.trim() || null,
+            province === undefined
+              ? dto.province === undefined ? undefined : dto.province?.trim() || null
+              : province?.name || null,
+          provinceId:
+            province === undefined ? undefined : province?.id || null,
           district:
             dto.district === undefined
               ? undefined
@@ -379,11 +404,15 @@ export class CustomersService {
               ? undefined
               : dto.fullAddress?.trim() || null,
           note: dto.note === undefined ? undefined : dto.note?.trim() || null,
-          regionId: dto.regionId,
+          regionId: dto.regionId === undefined ? undefined : dto.regionId || null,
           primaryEngineerId:
-            dto.primaryEngineerId === undefined
+            engineerIds === undefined
               ? undefined
-              : dto.primaryEngineerId?.trim() || null,
+              : engineerIds[0] || null,
+          engineers:
+            engineerIds === undefined
+              ? undefined
+              : { set: engineerIds.map((engineerId) => ({ id: engineerId })) },
         },
         include: this.customerListInclude(),
       });
@@ -417,6 +446,7 @@ export class CustomersService {
             'note',
             'regionId',
             'primaryEngineerId',
+            'engineers',
           ]),
         },
         tx,
@@ -434,6 +464,15 @@ export class CustomersService {
         _count: {
           select: {
             machines: true,
+            inventoryMovements: true,
+            machineInstallations: true,
+            demoLoans: true,
+            warrantyCards: true,
+            repairs: true,
+            maintenances: true,
+            deviceServiceTickets: true,
+            applicationSupportCases: true,
+            accessoryStockMovements: true,
           },
         },
       },
@@ -443,8 +482,10 @@ export class CustomersService {
       throw new NotFoundException('Customer not found');
     }
 
-    if (customer._count.machines > 0) {
-      throw new BadRequestException('Cannot delete customer with machines');
+    if (Object.values(customer._count).some((count) => count > 0)) {
+      throw new BadRequestException(
+        'Cannot delete customer with linked machines or operational history',
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -480,8 +521,8 @@ export class CustomersService {
   }
 
   private validateCreateCustomer(dto: CreateCustomerDto) {
-    if (!dto.name?.trim() || !dto.regionId) {
-      throw new BadRequestException('name and regionId are required');
+    if (!dto.name?.trim()) {
+      throw new BadRequestException('name is required');
     }
   }
 
@@ -535,6 +576,14 @@ export class CustomersService {
     }
   }
 
+  private normalizeEngineerIds(values: Array<string | null | undefined>) {
+    return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])];
+  }
+
+  private async ensureEngineersExist(userIds: string[]) {
+    await Promise.all(userIds.map((userId) => this.ensureEngineerExists(userId)));
+  }
+
   private async ensureCustomerCodeIsAvailable(
     customerCode?: string | null,
     currentCustomerId?: string,
@@ -558,35 +607,17 @@ export class CustomersService {
     tx: Prisma.TransactionClient,
     dto: CreateCustomerDto,
   ) {
-    const region = await tx.region.findUnique({
-      where: { id: dto.regionId },
-      select: { code: true },
-    });
+    const region = dto.regionId
+      ? await tx.region.findUnique({
+          where: { id: dto.regionId },
+          select: { code: true },
+        })
+      : null;
     const prefix = [
       this.customerTypePrefix(dto.customerType),
       this.normalizeCodeSegment(region?.code || dto.province || 'KH'),
     ].join('-');
-    const latest = await tx.customer.findFirst({
-      where: {
-        customerCode: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        customerCode: 'desc',
-      },
-      select: {
-        customerCode: true,
-      },
-    });
-    const latestNumber = latest?.customerCode
-      ? Number(
-          latest.customerCode.slice(latest.customerCode.lastIndexOf('-') + 1),
-        )
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+    return sequenceCode(tx, 'customer', prefix, 3, false);
   }
 
   private customerTypePrefix(type?: CustomerType) {
@@ -621,24 +652,51 @@ export class CustomersService {
     query: ListCustomersQueryDto,
   ): Prisma.CustomerWhereInput {
     const search = query.search?.trim();
+    const filters: Prisma.CustomerWhereInput[] = [];
+
+    if (query.primaryEngineerId) {
+      filters.push({
+        OR: [
+          { primaryEngineerId: query.primaryEngineerId },
+          { engineers: { some: { id: query.primaryEngineerId } } },
+        ],
+      });
+    }
+
+    if (query.branchId) {
+      filters.push({ provinceRef: { is: { branchId: query.branchId } } });
+    }
+
+    if (query.provinceId || query.province?.trim()) {
+      filters.push({
+        OR: [
+          query.provinceId ? { provinceId: query.provinceId } : undefined,
+          query.province?.trim() ? { province: query.province.trim() } : undefined,
+        ].filter(Boolean) as Prisma.CustomerWhereInput[],
+      });
+    }
+
+    if (search) {
+      filters.push({
+        OR: [
+          { customerCode: { contains: search } },
+          { name: { contains: search } },
+          { shortName: { contains: search } },
+          { hospitalName: { contains: search } },
+          { phone: { contains: search } },
+          { taxCode: { contains: search } },
+          { contactPerson: { contains: search } },
+          { fullAddress: { contains: search } },
+        ],
+      });
+    }
 
     return {
       status: query.status,
       customerType: query.customerType,
       regionId: query.regionId,
-      primaryEngineerId: query.primaryEngineerId,
-      OR: search
-        ? [
-            { customerCode: { contains: search } },
-            { name: { contains: search } },
-            { shortName: { contains: search } },
-            { hospitalName: { contains: search } },
-            { phone: { contains: search } },
-            { taxCode: { contains: search } },
-            { contactPerson: { contains: search } },
-            { fullAddress: { contains: search } },
-          ]
-        : undefined,
+      provinceId: query.provinceId,
+      AND: filters.length ? filters : undefined,
     };
   }
 
@@ -659,12 +717,12 @@ export class CustomersService {
     };
   }
 
-  private buildFullAddress(dto: CreateCustomerDto): string | null {
+  private buildFullAddress(dto: CreateCustomerDto, provinceName?: string): string | null {
     if (dto.fullAddress?.trim()) {
       return dto.fullAddress.trim();
     }
 
-    const addressParts = [dto.address, dto.ward, dto.district, dto.province]
+    const addressParts = [dto.address, dto.ward, dto.district, provinceName || dto.province]
       .map((part) => part?.trim())
       .filter(Boolean);
 
@@ -683,8 +741,13 @@ export class CustomersService {
   private customerListInclude() {
     return {
       region: true,
+      provinceRef: { include: { branch: true } },
       primaryEngineer: {
         select: this.userSummarySelect(),
+      },
+      engineers: {
+        select: this.userSummarySelect(),
+        orderBy: { fullName: 'asc' },
       },
       _count: {
         select: {
@@ -693,5 +756,15 @@ export class CustomersService {
         },
       },
     } satisfies Prisma.CustomerInclude;
+  }
+
+  private async ensureProvinceExists(provinceId?: string | null) {
+    if (!provinceId?.trim()) return null;
+    const province = await this.prisma.province.findUnique({
+      where: { id: provinceId.trim() },
+      select: { id: true, name: true },
+    });
+    if (!province) throw new BadRequestException('Province does not exist');
+    return province;
   }
 }

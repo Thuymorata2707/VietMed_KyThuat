@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ReactNode } from 'react';
 import { RoleName } from '../auth/roles';
+import { ApiUser } from '../api';
 
 export type NavItem = {
   path: string;
@@ -36,20 +37,19 @@ export const navItems: NavItem[] = [
   { path: '/customers', label: 'Khách hàng', icon: <Building2 size={18} />, roles: ['admin', 'manager'] },
   { path: '/my-customers', label: 'Khách hàng phụ trách', icon: <Building2 size={18} />, roles: ['engineer'] },
   { path: '/service-tickets', label: 'Trung tâm phiếu kỹ thuật', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
+  { path: '/application-support', label: 'Hỗ trợ app xét nghiệm', icon: <Headphones size={18} />, roles: ['engineer'] },
   { path: '/daily-work', label: 'Lịch & báo cáo', icon: <CalendarDays size={18} />, matchPaths: ['/daily-work', '/daily-reports', '/weekly-reports'], roles: ['admin', 'engineer'] },
   { path: '/knowledge-base', label: 'Chia sẻ kinh nghiệm', icon: <BookOpenCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
+  { path: '/engineer-performance', label: 'Hiệu suất kỹ sư', icon: <TrendingUp size={18} />, roles: ['admin', 'engineer'] },
   { path: '/technical-statistics', label: 'Phân tích kỹ thuật', icon: <BarChart3 size={18} />, roles: ['admin', 'engineer'] },
   { path: '/reports', label: 'Báo cáo tổng hợp', icon: <FileBarChart2 size={18} />, roles: ['admin', 'manager'] },
-  { path: '/engineer-performance', label: 'Hiệu suất kỹ sư', icon: <TrendingUp size={18} />, roles: ['admin', 'engineer'] },
-  { path: '/inventory-movements', label: 'Kho máy', icon: <Boxes size={18} />, roles: ['admin', 'manager', 'engineer'] },
-  { path: '/accessory-inventory', label: 'Phụ kiện', icon: <Boxes size={18} />, matchPaths: ['/accessory-inventory', '/component-accessories', '/machine-components'], roles: ['admin', 'manager', 'engineer'] },
-  { path: '/product-catalog', label: 'Danh mục thiết bị', icon: <BriefcaseBusiness size={18} />, roles: ['admin', 'manager', 'engineer'] },
+  { path: '/accessory-inventory', label: 'Phụ kiện', icon: <Boxes size={18} />, matchPaths: ['/accessory-inventory'], roles: ['admin', 'manager', 'engineer'] },
+  { path: '/product-catalog', label: 'Danh mục thiết bị', icon: <BriefcaseBusiness size={18} />, matchPaths: ['/product-catalog', '/inventory-movements', '/technical-machines', '/business-lines/models', '/business-lines/add-product'], roles: ['admin', 'manager', 'engineer'] },
   { path: '/product-industries', label: 'Ngành hàng', icon: <BriefcaseBusiness size={18} />, roles: ['admin'] },
   { path: '/users', label: 'Nhân sự', icon: <Users size={18} />, roles: ['admin'] },
   { path: '/regions', label: 'Khu vực', icon: <MapPinned size={18} />, roles: ['admin'] },
   { path: '/my-tasks', label: 'Điều phối & duyệt', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
   { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
-  { path: '/application-support', label: 'Hỗ trợ app', icon: <Headphones size={18} />, roles: ['engineer'] },
 ];
 
 export const navGroups: NavGroup[] = [
@@ -61,7 +61,7 @@ export const navGroups: NavGroup[] = [
       { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
       { path: '/service-tickets', label: 'Trung tâm phiếu kỹ thuật', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
       { path: '/daily-work', label: 'Lịch & báo cáo', icon: <CalendarDays size={18} />, matchPaths: ['/daily-work', '/daily-reports', '/weekly-reports'], roles: ['admin', 'engineer'] },
-      { path: '/application-support', label: 'Hỗ trợ app', icon: <Headphones size={18} />, roles: ['engineer'] },
+      { path: '/application-support', label: 'Hỗ trợ app xét nghiệm', icon: <Headphones size={18} />, roles: ['engineer'] },
     ],
   },
   {
@@ -69,17 +69,16 @@ export const navGroups: NavGroup[] = [
     items: [
       { path: '/customers', label: 'Khách hàng', icon: <Building2 size={18} />, roles: ['admin', 'manager'] },
       { path: '/my-customers', label: 'Khách hàng phụ trách', icon: <Building2 size={18} />, roles: ['engineer'] },
-      { path: '/inventory-movements', label: 'Kho máy', icon: <Boxes size={18} />, roles: ['admin', 'manager', 'engineer'] },
-      { path: '/accessory-inventory', label: 'Phụ kiện', icon: <Boxes size={18} />, matchPaths: ['/accessory-inventory', '/component-accessories', '/machine-components'], roles: ['admin', 'manager', 'engineer'] },
-      { path: '/product-catalog', label: 'Danh mục thiết bị', icon: <BriefcaseBusiness size={18} />, roles: ['admin', 'manager', 'engineer'] },
+      { path: '/accessory-inventory', label: 'Phụ kiện', icon: <Boxes size={18} />, matchPaths: ['/accessory-inventory'], roles: ['admin', 'manager', 'engineer'] },
+      { path: '/product-catalog', label: 'Danh mục thiết bị', icon: <BriefcaseBusiness size={18} />, matchPaths: ['/product-catalog', '/inventory-movements', '/technical-machines', '/business-lines/models', '/business-lines/add-product'], roles: ['admin', 'manager', 'engineer'] },
     ],
   },
   {
     label: 'Phân tích',
     items: [
-      { path: '/reports', label: 'Báo cáo tổng hợp', icon: <FileBarChart2 size={18} />, roles: ['admin', 'manager'] },
-      { path: '/technical-statistics', label: 'Phân tích kỹ thuật', icon: <BarChart3 size={18} />, roles: ['admin', 'engineer'] },
       { path: '/engineer-performance', label: 'Hiệu suất kỹ sư', icon: <TrendingUp size={18} />, roles: ['admin', 'engineer'] },
+      { path: '/technical-statistics', label: 'Phân tích kỹ thuật', icon: <BarChart3 size={18} />, roles: ['admin', 'engineer'] },
+      { path: '/reports', label: 'Báo cáo tổng hợp', icon: <FileBarChart2 size={18} />, roles: ['admin', 'manager'] },
       { path: '/knowledge-base', label: 'Chia sẻ kinh nghiệm', icon: <BookOpenCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
     ],
   },
@@ -94,15 +93,21 @@ export const navGroups: NavGroup[] = [
   },
 ];
 
-export function navItemsForRole(role: RoleName) {
-  return navItems.filter((item) => item.roles.includes(role));
+export function canAccessApplicationSupport(user: ApiUser, role: RoleName) {
+  const isLabEngineer = user.engineerProfile?.expertiseGroups?.includes('LAB_TESTING')
+    ?? user.engineerProfile?.expertiseGroup === 'LAB_TESTING';
+  return role === 'engineer' && isLabEngineer;
 }
 
-export function navGroupsForRole(role: RoleName) {
+export function navItemsForRole(role: RoleName, user?: ApiUser) {
+  return navItems.filter((item) => item.roles.includes(role) && (item.path !== '/application-support' || (user && canAccessApplicationSupport(user, role))));
+}
+
+export function navGroupsForRole(role: RoleName, user?: ApiUser) {
   return navGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => item.roles.includes(role)),
+      items: group.items.filter((item) => item.roles.includes(role) && (item.path !== '/application-support' || (user && canAccessApplicationSupport(user, role)))),
     }))
     .filter((group) => group.items.length > 0);
 }

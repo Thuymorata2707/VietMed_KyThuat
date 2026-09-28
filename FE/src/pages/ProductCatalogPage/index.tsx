@@ -159,7 +159,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
   const [query, setQuery] = useState(searchParams.get('q') || '');
 
   const role = getRoleName(user);
-  const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
+  const userExpertise = getExpertiseGroups(user);
   const canAddProduct = role === 'admin' || role === 'engineer';
 
   const catalogQuery = useQuery({
@@ -186,8 +186,8 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
   const error = catalogQuery.error instanceof Error ? catalogQuery.error.message : '';
 
   const visibleIndustries = useMemo(() => {
-    if (role !== 'engineer' || !userExpertise) return industries;
-    return industries.filter((industry) => industry.expertiseGroup === userExpertise);
+    if (role !== 'engineer' || !userExpertise.length) return industries;
+    return industries.filter((industry) => userExpertise.includes(industry.expertiseGroup));
   }, [industries, role, userExpertise]);
 
   const visibleModels = useMemo(() => {
@@ -196,7 +196,8 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
     return models.filter((model) => {
       const industryId = model.businessLine?.productIndustry?.id;
       const matchesIndustry = selectedIndustryId === allIndustriesKey || industryId === selectedIndustryId;
-      const matchesExpertise = role !== 'engineer' || !userExpertise || model.businessLine?.productIndustry?.expertiseGroup === userExpertise;
+      const group = model.businessLine?.productIndustry?.expertiseGroup;
+      const matchesExpertise = role !== 'engineer' || !userExpertise.length || Boolean(group && userExpertise.includes(group));
       const matchesQuery =
         !normalizedQuery ||
         [model.code, model.name, model.displayName, model.manufacturer, model.productLine, model.businessLine?.name]
@@ -390,7 +391,7 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
   const [success, setSuccess] = useState('');
 
   const role = getRoleName(user);
-  const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
+  const userExpertise = getExpertiseGroups(user);
   const canAddProduct = role === 'admin' || role === 'engineer';
   const canEditModelImage = role === 'admin';
   const backIndustryId = searchParams.get('industry') || '';
@@ -404,7 +405,8 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
     queryKey: queryKeys.productCatalog.modelDetail(modelId),
     queryFn: async () => {
       const result = await apiFetch<MachineModelDetail>(`/machine-models/${modelId}`);
-      if (role === 'engineer' && userExpertise && result.businessLine?.productIndustry?.expertiseGroup !== userExpertise) {
+      const group = result.businessLine?.productIndustry?.expertiseGroup;
+      if (role === 'engineer' && userExpertise.length && (!group || !userExpertise.includes(group))) {
         throw new Error('Bạn không có quyền xem model của ngành hàng này.');
       }
       return result;
@@ -540,14 +542,17 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
   const [success, setSuccess] = useState('');
 
   const role = getRoleName(user);
-  const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
+  const userExpertise = getExpertiseGroups(user);
   const canAddProduct = role === 'admin' || role === 'engineer';
   const modelsQuery = useQuery({
     queryKey: queryKeys.productCatalog.addProductModels,
     queryFn: async () => {
       const allModels = await apiFetchAllPages<MachineModel>('/machine-models');
       return allModels.filter(
-        (model) => role !== 'engineer' || !userExpertise || model.businessLine?.productIndustry?.expertiseGroup === userExpertise,
+        (model) => {
+          const group = model.businessLine?.productIndustry?.expertiseGroup;
+          return role !== 'engineer' || !userExpertise.length || Boolean(group && userExpertise.includes(group));
+        },
       );
     },
   });
@@ -1822,6 +1827,12 @@ function ModelImage({ model, large = false }: { model?: MachineModel | null; lar
       <img alt={model?.name ?? ''} className="h-full w-full object-cover" onError={() => setHasError(true)} src={imageUrl} />
     </span>
   );
+}
+
+function getExpertiseGroups(user: ApiUser): ExpertiseGroup[] {
+  const profile = user.engineerProfile;
+  if (profile?.expertiseGroups?.length) return profile.expertiseGroups;
+  return profile?.expertiseGroup ? [profile.expertiseGroup] : [];
 }
 
 function expertiseLabel(value?: ExpertiseGroup | null) {

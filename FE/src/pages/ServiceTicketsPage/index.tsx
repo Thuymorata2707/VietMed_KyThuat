@@ -2,14 +2,16 @@ import { Archive, ArrowLeft, ArrowRight, BarChart3, ChevronDown, ClipboardCheck,
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch } from '../../api';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
+import { DeleteTicketDialog } from '../../components/DeleteTicketDialog';
 import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
 import { displayLabel } from '../../utils/displayLabels';
 import { isTechnicalUser, technicalUserName } from '../../utils/technicalUsers';
 import { hasDeleteRequestNote } from '../../utils/workDeleteRequests';
@@ -322,55 +324,43 @@ type TechnicalReport = {
 };
 
 type TicketPortalCard = {
-  actionLabel: string;
-  actionHref?: string;
   countKey: TicketScope;
-  disabled?: boolean;
   icon: ReactNode;
   label: string;
-  meta: string;
+  meta?: string;
   value: TicketScope;
 };
 
 const serviceTicketOptions: TicketPortalCard[] = [
   {
-    actionLabel: 'Xem sửa chữa',
     countKey: 'repairs',
     icon: <Wrench size={23} />,
     label: 'Sửa chữa',
-    meta: 'Sửa chữa',
     value: 'repairs',
   },
   {
-    actionLabel: 'Mở nhận/trả',
     countKey: 'device-service',
     icon: <Archive size={23} />,
     label: 'Nhận / trả thiết bị',
-    meta: 'PNTB, PTTB',
+    meta: 'PNTB · PTTB',
     value: 'device-service',
   },
   {
-    actionLabel: 'Xem bảo trì',
     countKey: 'maintenance',
     icon: <ClipboardCheck size={23} />,
     label: 'Bảo trì',
-    meta: 'Bảo trì',
     value: 'maintenance',
   },
   {
-    actionLabel: 'Xem lắp đặt',
     countKey: 'installations',
     icon: <Stethoscope size={23} />,
     label: 'Lắp đặt',
-    meta: 'Lắp đặt',
     value: 'installations',
   },
   {
-    actionLabel: 'Xem demo',
     countKey: 'demo',
     icon: <Archive size={23} />,
     label: 'Demo / dùng thử',
-    meta: 'Demo',
     value: 'demo',
   },
 ];
@@ -391,7 +381,14 @@ const groupOptions: Array<{ label: string; value: GroupByKey }> = [
 ];
 
 export function ServiceTicketsPage({ user }: { user: ApiUser }) {
-  const [selectedKind, setSelectedKind] = useState<TicketScope | ''>('');
+  const [searchParams] = useSearchParams();
+  const initialKind = searchParams.get('type');
+  const [selectedKind, setSelectedKind] = useState<TicketScope | ''>(
+    initialKind === 'demo' || initialKind === 'device-service' ? initialKind : '',
+  );
+  useEffect(() => {
+    if (initialKind === 'demo' || initialKind === 'device-service') setSelectedKind(initialKind);
+  }, [initialKind]);
   const role = getRoleName(user);
   const defaultRange = useMemo(() => currentMonthRange(), []);
   const [reportFrom, setReportFrom] = useState(defaultRange.from);
@@ -409,8 +406,7 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
       <PageFrame>
         <TicketPortalHero loading={loading} onRefresh={() => void overviewQuery.refetch()} />
         {error ? <Notice message={error} /> : null}
-        <TicketPortalSummary counts={overviewCounts} loading={loading} />
-        <TicketPortalFlowBoard counts={overviewCounts} onSelect={setSelectedKind} />
+        <TicketPortalFlowBoard counts={overviewCounts} loading={loading} onSelect={setSelectedKind} />
         {role !== 'engineer' ? (
           <TechnicalWorkRegister
             from={reportFrom}
@@ -429,7 +425,7 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
   if (selectedKind === 'demo') {
     return (
       <PageFrame>
-        <DemoLoansBoard onBack={() => setSelectedKind('')} user={user} />
+        <DemoLoansBoard initialDetailId={searchParams.get('detail') ?? ''} initialSearch={searchParams.get('search') ?? ''} onBack={() => setSelectedKind('')} user={user} />
       </PageFrame>
     );
   }
@@ -468,20 +464,20 @@ function useTicketPortalOverview() {
   return useQuery({
     queryKey: queryKeys.serviceTickets.board('portal', 'overview'),
     queryFn: async () => {
-      const [repairsResult, maintenanceResult, installationsResult, demoResult, deviceServiceResult] = await Promise.all([
-        apiFetch<Paginated<ServiceRow> | ServiceRow[]>('/repairs?limit=100'),
-        apiFetch<Paginated<ServiceRow> | ServiceRow[]>('/maintenance?limit=100'),
-        apiFetch<Paginated<InstallationRow> | InstallationRow[]>('/installations?limit=100'),
-        apiFetch<Paginated<DemoLoanRow> | DemoLoanRow[]>('/demo-loans?limit=100'),
-        apiFetch<Paginated<DeviceServiceRow> | DeviceServiceRow[]>('/device-service-tickets?limit=100'),
+      const [repairs, maintenances, installations, demos, deviceServices] = await Promise.all([
+        apiFetch<Paginated<ServiceRow>>('/repairs?limit=1'),
+        apiFetch<Paginated<ServiceRow>>('/maintenance?limit=1'),
+        apiFetch<Paginated<InstallationRow>>('/installations?limit=1'),
+        apiFetch<Paginated<DemoLoanRow>>('/demo-loans?limit=1'),
+        apiFetch<Paginated<DeviceServiceRow>>('/device-service-tickets?limit=1'),
       ]);
 
       return {
-        installations: listCount(installationsResult),
-        maintenance: listCount(maintenanceResult),
-        demo: listCount(demoResult),
-        repairs: listCount(repairsResult),
-        'device-service': listCount(deviceServiceResult),
+        installations: listCount(installations),
+        maintenance: listCount(maintenances),
+        demo: listCount(demos),
+        repairs: listCount(repairs),
+        'device-service': listCount(deviceServices),
       } satisfies Record<TicketScope, number>;
     },
   });
@@ -497,158 +493,59 @@ function useTechnicalWorkRegister(from: string, to: string, enabled: boolean) {
 
 function TicketPortalHero({ loading, onRefresh }: { loading: boolean; onRefresh: () => void }) {
   return (
-    <section className="relative overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white px-5 py-5 shadow-[0_14px_36px_rgba(24,24,27,0.06)] md:px-6">
-      <div className="relative grid gap-5 min-[980px]:grid-cols-[minmax(0,1fr)_auto] min-[980px]:items-end">
-        <div>
-          <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-[#eefaf3] px-3 text-xs font-semibold text-[#177245]">
-            Bàn điều phối
-          </span>
-          <h1 className="mt-3 max-w-[760px] text-[clamp(30px,3.4vw,48px)] font-semibold leading-[1.08] text-[#202124]">
-            Trung tâm phiếu kỹ thuật
-          </h1>
-        </div>
-        <button className="secondary-button bg-white/90 shadow-[0_8px_20px_rgba(24,24,27,0.06)]" disabled={loading} onClick={onRefresh} type="button">
+    <header className="ticket-portal-hero flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-white px-5 py-5 md:px-6">
+      <h1 className="text-[clamp(26px,3vw,36px)] font-semibold leading-tight tracking-[-0.04em] text-[#252c30]">Trung tâm phiếu kỹ thuật</h1>
+      <button className="secondary-button" disabled={loading} onClick={onRefresh} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-          Làm mới
-        </button>
-      </div>
-    </section>
+        Làm mới
+      </button>
+    </header>
   );
 }
 
-function TicketPortalSummary({ counts, loading }: { counts: Record<TicketScope, number>; loading: boolean }) {
-  const total = counts.repairs + counts.maintenance + counts.installations + counts.demo + counts['device-service'];
+function TicketPortalFlowBoard({ counts, loading, onSelect }: { counts: Record<TicketScope, number>; loading: boolean; onSelect: (value: TicketScope) => void }) {
   return (
-    <section className="grid gap-3 rounded-[20px] border border-[#e4e4e7] bg-[#fafafa] p-3 sm:grid-cols-4">
-      <PortalMetric label="Tổng phiếu" loading={loading} value={total} />
-      <PortalMetric label="Sửa chữa" loading={loading} value={counts.repairs + counts['device-service']} />
-      <PortalMetric label="Bảo trì" loading={loading} value={counts.maintenance} />
-      <PortalMetric label="Lắp đặt/demo" loading={loading} value={counts.installations + counts.demo} />
-    </section>
-  );
-}
-
-function TicketPortalFlowBoard({ counts, onSelect }: { counts: Record<TicketScope, number>; onSelect: (value: TicketScope) => void }) {
-  const primaryItems = serviceTicketOptions.filter((item) => item.value === 'repairs' || item.value === 'device-service');
-  const planningItems = serviceTicketOptions.filter((item) => item.value === 'maintenance' || item.value === 'installations' || item.value === 'demo');
-
-  return (
-    <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-      <div className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white p-4 shadow-[0_14px_34px_rgba(24,24,27,0.05)]">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <span className="text-xs font-bold text-[#667085]">Xử lý</span>
-            <h2 className="mt-1 text-lg font-semibold text-[#202124]">Nhận máy, sửa chữa, trả thiết bị</h2>
-          </div>
-        </div>
-        <div className="grid gap-2">
-          {primaryItems.map((item) => (
-            <TicketPortalListButton count={counts[item.countKey]} item={item} key={item.value} onSelect={onSelect} />
-          ))}
-        </div>
+    <section className="ticket-portal-work-panel overflow-hidden rounded-2xl border bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ebe5df] px-4 py-4 sm:px-5">
+        <h2 className="text-lg font-semibold tracking-[-0.02em] text-[#252c30]">Chọn loại phiếu</h2>
       </div>
-
-      <div className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-[#fafafa] p-4 shadow-[0_14px_34px_rgba(24,24,27,0.04)]">
-        <div>
-          <span className="text-xs font-bold text-[#667085]">Kế hoạch</span>
-          <h2 className="mt-1 text-lg font-semibold text-[#202124]">Bảo trì, lắp đặt, demo</h2>
-        </div>
-        <div className="grid gap-2">
-          {planningItems.map((item) => (
-            <TicketPortalListButton compact count={counts[item.countKey]} item={item} key={item.value} onSelect={onSelect} />
-          ))}
-        </div>
+      <div className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-3 sm:p-4">
+        {serviceTicketOptions.map((item) => (
+          <TicketPortalListButton count={counts[item.countKey]} item={item} key={item.value} loading={loading} onSelect={onSelect} />
+        ))}
       </div>
     </section>
   );
 }
 
 function TicketPortalListButton({
-  compact,
   count,
   item,
+  loading,
   onSelect,
 }: {
-  compact?: boolean;
   count: number;
   item: TicketPortalCard;
+  loading: boolean;
   onSelect: (value: TicketScope) => void;
 }) {
   const className = [
-    'group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[#e4e4e7] bg-white text-left transition hover:-translate-y-0.5 hover:border-[#3e8375]/35 hover:shadow-[0_14px_30px_rgba(24,24,27,0.08)]',
-    compact ? 'p-3' : 'p-4',
+    'group grid min-h-[76px] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-[#e8e3de] bg-white p-3 text-left transition hover:border-[#bd8a8e] hover:bg-[#fffdfc] hover:shadow-[0_6px_18px_rgba(75,34,37,0.07)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#861b27] active:translate-y-px sm:p-4',
   ].join(' ');
 
   return (
     <button className={className} onClick={() => onSelect(item.value)} type="button">
-      <span className={`${ticketPortalIconClass(item.value)} flex h-11 w-11 items-center justify-center rounded-2xl`}>
+      <span className={`${ticketPortalIconClass(item.value)} flex h-10 w-10 items-center justify-center rounded-xl`}>
         {item.icon}
       </span>
       <span className="grid min-w-0 gap-1">
-        <span className="flex flex-wrap items-center gap-2">
-          <strong className="text-base font-semibold text-[#202124]">{item.label}</strong>
-          <span className="rounded-lg bg-[#f4f4f5] px-2 py-0.5 text-xs font-bold text-[#667085]">{item.meta}</span>
-        </span>
+        <strong className="truncate text-base font-semibold text-[#202124]">{item.label}</strong>
+        {item.meta ? <span className="text-xs text-[#737b80]">{item.meta}</span> : null}
       </span>
       <span className="grid justify-items-end gap-1">
-        <strong className="text-2xl leading-none text-[#202124]">{count}</strong>
-        <span className="inline-flex items-center gap-1 text-xs font-bold text-[#3e8375]">
-          Mở <ArrowRight className="transition group-hover:translate-x-0.5" size={14} />
-        </span>
+        <strong className="text-xl leading-none tabular-nums text-[#252c30]">{loading ? '—' : count}</strong>
+        <ArrowRight className="text-[#861b27] transition group-hover:translate-x-0.5" size={15} />
       </span>
-    </button>
-  );
-}
-
-function PortalMetric({ label, loading, value }: { label: string; loading: boolean; value: number }) {
-  return (
-    <div className="rounded-2xl bg-white px-4 py-3 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)]">
-      <span className="text-xs font-semibold text-[#667085]">{label}</span>
-      <strong className="mt-1 block text-2xl leading-none text-[#202124]">{loading ? '-' : value}</strong>
-    </div>
-  );
-}
-
-function TicketPortalCardButton({ count, item, onSelect }: { count: number; item: TicketPortalCard; onSelect: (value: TicketScope) => void }) {
-  const isDisabled = Boolean(item.disabled);
-  const className = [
-    'group grid min-h-[156px] content-between gap-4 rounded-[18px] border border-[#e4e4e7] bg-white p-4 text-left shadow-[0_10px_28px_rgba(24,24,27,0.05)] transition',
-    isDisabled ? 'cursor-pointer opacity-80' : 'hover:-translate-y-0.5 hover:border-[#3e8375]/35 hover:shadow-[0_18px_38px_rgba(24,24,27,0.08)]',
-  ].join(' ');
-  const content = (
-    <>
-      <span className="flex items-start justify-between gap-3">
-        <span className={`${ticketPortalIconClass(item.value)} flex h-11 w-11 items-center justify-center rounded-2xl`}>
-          {item.icon}
-        </span>
-        <strong className="text-[26px] leading-none text-[#202124]">{count}</strong>
-      </span>
-      <span className="grid min-w-0 gap-1.5">
-        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7a8699]">{item.meta}</span>
-        <strong className="text-[20px] font-semibold leading-tight text-[#202124]">{item.label}</strong>
-      </span>
-      <span className="inline-flex items-center justify-between gap-2 border-t border-[#eef0f3] pt-3 text-sm font-semibold text-[#3e8375]">
-        <span>{item.actionLabel}</span>
-        <ArrowRight className={isDisabled ? '' : 'transition group-hover:translate-x-1'} size={16} />
-      </span>
-    </>
-  );
-
-  if (item.actionHref) {
-    return (
-      <Link className={className} to={item.actionHref}>
-        {content}
-      </Link>
-    );
-  }
-
-  return (
-    <button
-      className={className}
-      onClick={() => onSelect(item.value)}
-      type="button"
-    >
-      {content}
     </button>
   );
 }
@@ -670,8 +567,8 @@ function TechnicalWorkRegister({
   report?: TechnicalReport;
   to: string;
 }) {
+  const navigate = useNavigate();
   const rows = report?.rows ?? [];
-  const summary = report?.summary;
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -687,14 +584,11 @@ function TechnicalWorkRegister({
   }, [totalPages]);
 
   return (
-    <section className="grid gap-4 rounded-[28px] border border-[#e4e4e7] bg-white p-4 shadow-[0_18px_46px_rgba(24,24,27,0.06)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section className="grid gap-4 rounded-2xl border border-[#e7e1db] bg-white p-4 shadow-[0_8px_24px_rgba(45,35,26,0.045)] sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#3e8375]">Bảng tổng hợp</span>
-          <h2 className="mt-1 text-xl font-semibold text-[#202124]">Tất cả công việc trong kỳ</h2>
-          <p className="mt-1 text-sm font-medium text-[#667085]">
-            Lọc theo kỳ, xuất Excel.
-          </p>
+          <h2 className="text-xl font-semibold tracking-[-0.025em] text-[#252c30]">Công việc trong kỳ</h2>
+          <span className="mt-1 block text-sm text-[#737b80]">{loading ? 'Đang tải' : `${rows.length} phiếu`}</span>
         </div>
         <div className="flex flex-wrap gap-2">
           <button className="secondary-button" disabled={loading} onClick={onRefresh} type="button">
@@ -708,38 +602,50 @@ function TechnicalWorkRegister({
         </div>
       </div>
 
-      <div className="grid gap-3 rounded-[24px] bg-[#fafafa] p-3 min-[980px]:grid-cols-[170px_170px_minmax(0,1fr)] min-[980px]:items-end">
+      <div className="grid gap-3 rounded-xl bg-[#f7f5f2] p-3 sm:grid-cols-2 sm:items-end sm:p-4">
         <DateInput className="operation-filter-field" label="Từ ngày" onChange={onFromChange} value={from} />
         <DateInput className="operation-filter-field" label="Đến ngày" onChange={onToChange} value={to} />
-        <div className="grid gap-2 sm:grid-cols-4">
-          <RegisterMetric label="Tổng phiếu" value={summary?.total ?? rows.length} />
-          <RegisterMetric label="Khách hàng" value={summary?.customers ?? 0} />
-          <RegisterMetric label="Máy/model" value={summary?.machines ?? 0} />
-          <RegisterMetric label="Kỹ sư" value={summary?.engineers ?? 0} />
-        </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-5">
-        <RegisterMetric label="Lắp đặt" value={summary?.installations ?? 0} />
-        <RegisterMetric label="Sửa chữa" value={summary?.repairs ?? 0} />
-        <RegisterMetric label="Bảo trì" value={summary?.maintenances ?? 0} />
-        <RegisterMetric label="Demo" value={summary?.demos ?? 0} />
-        <RegisterMetric label="Hỗ trợ app" value={summary?.applicationSupport ?? 0} />
+      <div className="grid gap-2 min-[1600px]:hidden">
+        {loading ? <div className="grid min-h-24 place-items-center rounded-xl bg-[#f7f5f2] text-sm text-[#667085]"><Loader2 className="spin-icon" size={19} />Đang tổng hợp dữ liệu</div> : null}
+        {!loading && pagedRows.map((row) => (
+          <Link className="group grid gap-2 rounded-xl border border-[#e8e3de] p-3 transition hover:border-[#bd8a8e] hover:bg-[#fffdfc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#861b27] sm:p-4" key={`${row.kind}-${row.id}`} to={technicalWorkHref(row)}>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="grid gap-1"><span className="text-xs text-[#737b80]">{formatDate(row.date)}</span><strong className="text-sm text-[#252c30]">{row.code} · {workKindLabel(row.kind)}</strong></div>
+              <span className="rounded-md bg-[#f7f5f2] px-2 py-1 text-xs font-semibold text-[#4d565b]">{displayLabel(row.status)}</span>
+            </div>
+            <div className="border-t border-[#f0ece8] pt-2">
+              <strong className="block truncate text-sm text-[#252c30]">{row.machineCode || row.model || 'Chưa gắn thiết bị'}</strong>
+              <span className="block truncate text-xs text-[#737b80]">{[row.model, row.serialNumber ? `S/N ${row.serialNumber}` : ''].filter(Boolean).join(' · ') || 'Không có thông tin model/serial'}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <span className="min-w-0 truncate text-[#4d565b]">{row.customer || 'Chưa có khách hàng'}</span>
+              <span className="truncate text-right text-[#737b80]">{row.province || 'Chưa rõ địa điểm'}</span>
+            </div>
+            <span className="truncate text-xs text-[#737b80]">Kỹ sư: {row.engineer || 'Chưa phân công'}</span>
+            <span className="flex items-center justify-end gap-1 text-xs font-semibold text-[#861b27]">Mở phiếu <ArrowRight size={14} className="transition group-hover:translate-x-0.5" /></span>
+          </Link>
+        ))}
+        {!loading && rows.length === 0 ? <p className="rounded-xl bg-[#f7f5f2] px-4 py-8 text-center text-sm text-[#667085]">Không có phiếu trong khoảng thời gian này.</p> : null}
       </div>
 
-      <div className="overflow-hidden rounded-[22px] border border-[#eef0f3]">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1120px] text-left text-sm">
+      <div className="hidden overflow-hidden rounded-xl border border-[#e8e3de] min-[1600px]:block">
+          <table className="w-full min-w-full table-fixed text-left text-sm">
+            <colgroup>
+              <col className="w-[9%]" /><col className="w-[11%]" /><col className="w-[11%]" /><col className="w-[22%]" />
+              <col className="w-[10%]" /><col className="w-[16%]" /><col className="w-[12%]" /><col className="w-[9%]" />
+            </colgroup>
             <thead className="bg-[#fafafa] text-xs uppercase text-[#667085]">
               <tr>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Ngày</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Loại</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Mã phiếu</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Máy / Model / S/N</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Địa điểm</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Khách hàng</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Kỹ sư</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Trạng thái</th>
+                <th className="border-b border-[#eef0f3] px-3 py-3">Ngày</th>
+                <th className="border-b border-[#eef0f3] px-3 py-3">Loại</th>
+                <th className="border-b border-[#eef0f3] px-3 py-3">Mã phiếu</th>
+                <th className="border-b border-[#eef0f3] px-3 py-3">Máy / Model / S/N</th>
+                <th className="border-b border-[#eef0f3] px-3 py-3">Địa điểm</th>
+                <th className="border-b border-[#eef0f3] px-3 py-3">Khách hàng</th>
+                <th className="border-b border-[#eef0f3] px-3 py-3">Kỹ sư</th>
+                <th className="border-b border-[#eef0f3] px-3 py-3">Trạng thái</th>
               </tr>
             </thead>
             <tbody>
@@ -751,7 +657,21 @@ function TechnicalWorkRegister({
                 </tr>
               ) : null}
               {!loading && pagedRows.map((row) => (
-                <tr className="hover:bg-[#fafafa]" key={`${row.kind}-${row.id}`}>
+                <tr
+                  aria-label={`Mở phiếu ${row.code}, ${workKindLabel(row.kind)}`}
+                  className="cursor-pointer outline-none transition hover:bg-[#fff8f7] focus-within:bg-[#fff8f7] focus-visible:bg-[#fff8f7]"
+                  key={`${row.kind}-${row.id}`}
+                  onClick={() => navigate(technicalWorkHref(row))}
+                  role="link"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(technicalWorkHref(row));
+                    }
+                  }}
+                  tabIndex={0}
+                  title={`Mở phiếu ${row.code}`}
+                >
                   <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.date)}</td>
                   <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{workKindLabel(row.kind)}</td>
                   <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{row.code}</td>
@@ -762,7 +682,7 @@ function TechnicalWorkRegister({
                   <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{row.province || '-'}</td>
                   <td className="border-b border-[#f1f2f4] px-4 py-3">{row.customer || '-'}</td>
                   <td className="border-b border-[#f1f2f4] px-4 py-3">{row.engineer || '-'}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3">{displayLabel(row.status)}</td>
+                  <td className="border-b border-[#f1f2f4] px-4 py-3"><span className="flex items-center justify-between gap-2">{displayLabel(row.status)}<ArrowRight aria-hidden="true" className="shrink-0 text-[#861b27]" size={15} /></span></td>
                 </tr>
               ))}
               {!loading && rows.length === 0 ? (
@@ -774,16 +694,15 @@ function TechnicalWorkRegister({
               ) : null}
             </tbody>
           </table>
-        </div>
-        <RegisterTablePager
-          disabled={loading}
-          page={currentPage}
-          pageSize={pageSize}
-          total={rows.length}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
       </div>
+      <RegisterTablePager
+        disabled={loading}
+        page={currentPage}
+        pageSize={pageSize}
+        total={rows.length}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
     </section>
   );
 }
@@ -822,54 +741,47 @@ function RegisterTablePager({
   );
 }
 
-function RegisterMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-2xl bg-white px-3 py-2 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)]">
-      <span className="block text-xs font-semibold text-[#667085]">{label}</span>
-      <strong className="mt-1 block text-lg text-[#202124]">{value}</strong>
-    </div>
-  );
+function ticketPortalIconClass(_value: TicketScope) {
+  return 'bg-[#f7e9e9] text-[#861b27]';
 }
 
-function ticketPortalIconClass(value: TicketScope) {
-  if (value === 'maintenance') return 'bg-[#eefaf3] text-[#177245]';
-  if (value === 'installations') return 'bg-[#eef2ff] text-[#4f46e5]';
-  if (value === 'demo') return 'bg-[#fff7ed] text-[#b45309]';
-  return 'bg-[#f4f4f5] text-[#3f3f46]';
-}
-
-function DemoLoansBoard({ onBack, user }: { onBack: () => void; user: ApiUser }) {
+function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user }: { initialDetailId?: string; initialSearch?: string; onBack: () => void; user: ApiUser }) {
   const role = getRoleName(user);
   const canManage = role === 'admin' || role === 'manager';
   const canCreateDemo = canManage || role === 'engineer';
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch);
+  const debouncedSearch = useDebouncedValue(search);
   const [status, setStatus] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const [returnDraft, setReturnDraft] = useState<DemoReturnDraft | null>(null);
+  const [selectedLoan, setSelectedLoan] = useState<DemoLoanRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DemoLoanRow | null>(null);
 
   const listParams = useMemo(() => {
     const params = new URLSearchParams({ limit: '100' });
-    if (search.trim()) params.set('search', search.trim());
+    if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
     if (status) params.set('status', status);
     if (dateFrom) params.set('from', dateFrom);
     if (dateTo) params.set('to', dateTo);
     return params.toString();
-  }, [dateFrom, dateTo, search, status]);
+  }, [dateFrom, dateTo, debouncedSearch, status]);
 
   const loansQuery = useQuery({
     queryKey: ['demo-loans', listParams],
-    queryFn: async () => {
-      const result = await apiFetch<Paginated<DemoLoanRow> | DemoLoanRow[]>(`/demo-loans?${listParams}`);
-      return Array.isArray(result) ? result : result.data ?? [];
-    },
+    queryFn: () => apiFetchAllPages<DemoLoanRow>(`/demo-loans?${listParams}`),
   });
 
   const loans = loansQuery.data ?? [];
   const summary = demoLoanSummary(loans);
+
+  useEffect(() => {
+    if (!initialDetailId || !loans.length) return;
+    setSelectedLoan(loans.find((loan) => loan.id === initialDetailId) ?? null);
+  }, [initialDetailId, loans]);
 
   const actionMutation = useMutation({
     mutationFn: ({ action, id, payload }: { action: 'handover' | 'return'; id: string; payload?: Record<string, unknown> }) =>
@@ -884,6 +796,18 @@ function DemoLoansBoard({ onBack, user }: { onBack: () => void; user: ApiUser })
       void queryClient.invalidateQueries({ queryKey: ['service-tickets'] });
     },
     onError: (err) => setFormError(err instanceof Error ? err.message : 'Không cập nhật được phiếu demo.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (loan: DemoLoanRow) => apiFetch(`/demo-loans/${loan.id}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      setSelectedLoan(null);
+      setDeleteTarget(null);
+      setSuccess('Đã xóa phiếu demo.');
+      await queryClient.invalidateQueries({ queryKey: ['demo-loans'] });
+      await queryClient.invalidateQueries({ queryKey: ['service-tickets'] });
+    },
+    onError: (err) => setFormError(err instanceof Error ? err.message : 'Không xóa được phiếu demo.'),
   });
 
   function openReturnDraft(loan: DemoLoanRow) {
@@ -992,10 +916,13 @@ function DemoLoansBoard({ onBack, user }: { onBack: () => void; user: ApiUser })
           <div className="grid gap-2">
             {loans.map((loan) => (
               <DemoLoanCard
-                actionLoading={actionMutation.isPending}
+                actionLoading={actionMutation.isPending || deleteMutation.isPending}
                 canUpdate={canManage || loan.engineer?.id === user.id}
+                isAdmin={role === 'admin'}
                 key={loan.id}
                 loan={loan}
+                onDelete={() => setDeleteTarget(loan)}
+                onView={() => setSelectedLoan(loan)}
                 onHandOver={() => actionMutation.mutate({ action: 'handover', id: loan.id })}
                 onReturn={() => openReturnDraft(loan)}
               />
@@ -1011,6 +938,23 @@ function DemoLoansBoard({ onBack, user }: { onBack: () => void; user: ApiUser })
           onChange={(patch) => setReturnDraft((current) => (current ? { ...current, ...patch } : current))}
           onClose={() => setReturnDraft(null)}
           onSubmit={submitReturnDraft}
+        />
+      ) : null}
+      {selectedLoan ? <DemoLoanDetailModal loan={selectedLoan} onClose={() => setSelectedLoan(null)} /> : null}
+      {deleteTarget ? (
+        <DeleteTicketDialog
+          details={[
+            { label: 'Mã phiếu', value: deleteTarget.code },
+            { label: 'Khách hàng', value: deleteTarget.customer?.name },
+            { label: 'Thiết bị', value: demoMachineLabel(deleteTarget.machine) },
+            { label: 'Kỹ sư', value: deleteTarget.engineer ? technicalUserName(deleteTarget.engineer) : 'Chưa phân công' },
+            { label: 'Trạng thái', value: demoStatusLabel(deleteTarget.status) },
+          ]}
+          loading={deleteMutation.isPending}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => deleteMutation.mutate(deleteTarget)}
+          title="Bạn sắp xóa phiếu demo này"
+          warning="Máy giữ chỗ sẽ về kho. Phiếu và lịch sử liên quan sẽ bị xóa."
         />
       ) : null}
     </div>
@@ -1030,15 +974,21 @@ function DemoMetric({ label, tone, value }: { label: string; tone: 'good' | 'war
 function DemoLoanCard({
   actionLoading,
   canUpdate,
+  isAdmin,
   loan,
+  onDelete,
   onHandOver,
   onReturn,
+  onView,
 }: {
   actionLoading: boolean;
   canUpdate: boolean;
+  isAdmin: boolean;
   loan: DemoLoanRow;
+  onDelete: () => void;
   onHandOver: () => void;
   onReturn: () => void;
+  onView: () => void;
 }) {
   return (
     <article className="grid gap-3 rounded-[20px] bg-[#fafafa] p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)] min-[980px]:grid-cols-[minmax(0,1fr)_220px_180px] min-[980px]:items-center">
@@ -1061,6 +1011,8 @@ function DemoLoanCard({
         <span>Kỹ sư: <strong className="text-[#202124]">{loan.engineer ? technicalUserName(loan.engineer) : 'Chưa phân'}</strong></span>
       </div>
       <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
+        <button className="secondary-button rounded-2xl" onClick={onView} type="button">Chi tiết</button>
+        {isAdmin ? <button className="secondary-button danger rounded-2xl" disabled={actionLoading} onClick={onDelete} type="button"><Trash2 size={15} /> Xóa</button> : null}
         {canUpdate && loan.status === 'PLANNED' ? (
           <button className="primary-button rounded-2xl" disabled={actionLoading} onClick={onHandOver} type="button">
             {actionLoading ? <Loader2 className="spin-icon" size={15} /> : null}
@@ -1076,6 +1028,57 @@ function DemoLoanCard({
       </div>
     </article>
   );
+}
+
+function DemoLoanDetailModal({ loan, onClose }: { loan: DemoLoanRow; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
+      <section aria-labelledby="demo-ticket-detail-title" aria-modal="true" className="grid max-h-[90vh] w-full max-w-3xl gap-5 overflow-y-auto rounded-2xl border border-[#e7e2dc] bg-white p-5 shadow-[0_24px_72px_rgba(24,24,27,0.2)] sm:p-6" onClick={(event) => event.stopPropagation()} role="dialog">
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eee9e4] pb-4">
+          <div>
+            <span className="text-sm font-medium text-[#737b80]">Phiếu demo · {demoStatusLabel(loan.status)}</span>
+            <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-[#252c30]" id="demo-ticket-detail-title">{loan.code}</h2>
+          </div>
+          <button aria-label="Đóng chi tiết" className="secondary-button compact" onClick={onClose} type="button">Đóng</button>
+        </header>
+        <div className="grid gap-5 md:grid-cols-2">
+          <section className="grid content-start gap-3">
+            <h3 className="font-semibold text-[#252c30]">Thiết bị và khách hàng</h3>
+            <RegisterDetailRow label="Thiết bị" value={demoMachineLabel(loan.machine)} />
+            <RegisterDetailRow label="Khách hàng" value={loan.customer ? demoCustomerLabel(loan.customer) : 'Chưa có khách hàng'} />
+            <RegisterDetailRow label="Địa chỉ bàn giao" value={loan.handoverAddress || loan.customer?.fullAddress || loan.customer?.address} />
+            <RegisterDetailRow label="Kỹ sư phụ trách" value={loan.engineer ? technicalUserName(loan.engineer) : 'Chưa phân công'} />
+            <RegisterDetailRow label="Mục đích" value={loan.purpose} />
+          </section>
+          <section className="grid content-start gap-3">
+            <h3 className="font-semibold text-[#252c30]">Bàn giao và thu hồi</h3>
+            <RegisterDetailRow label="Dự kiến bàn giao" value={formatTicketDate(loan.plannedHandoverAt)} />
+            <RegisterDetailRow label="Ngày bàn giao" value={formatTicketDate(loan.handedOverAt)} />
+            <RegisterDetailRow label="Hạn thu hồi" value={formatTicketDate(loan.expectedReturnAt)} />
+            <RegisterDetailRow label="Ngày thu hồi" value={formatTicketDate(loan.returnedAt)} />
+            <RegisterDetailRow label="Người nhận" value={[loan.receiverName, loan.receiverPosition, loan.receiverPhone].filter(Boolean).join(' · ')} />
+          </section>
+          <section className="grid content-start gap-3 md:col-span-2">
+            <h3 className="font-semibold text-[#252c30]">Ghi nhận tình trạng</h3>
+            <RegisterDetailRow label="Tình trạng lúc bàn giao" value={loan.handoverCondition} />
+            <RegisterDetailRow label="Phụ kiện bàn giao" value={loan.handoverAccessories?.join(', ')} />
+            <RegisterDetailRow label="Ghi chú bàn giao" value={loan.handoverNote} />
+            <RegisterDetailRow label="Tình trạng khi thu hồi" value={loan.returnCondition} />
+            <RegisterDetailRow label="Phụ kiện thu hồi" value={loan.returnAccessories?.join(', ')} />
+            <RegisterDetailRow label="Ghi chú thu hồi" value={loan.returnNote} />
+          </section>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RegisterDetailRow({ label, value }: { label: string; value?: string | null }) {
+  return <div className="grid gap-1 border-b border-[#f0ece8] pb-2 text-sm sm:grid-cols-[150px_minmax(0,1fr)]"><span className="text-[#737b80]">{label}</span><strong className="break-words font-medium text-[#252c30]">{value || '—'}</strong></div>;
+}
+
+function formatTicketDate(value?: string | null) {
+  return value ? formatDate(value) : '—';
 }
 
 function DemoReturnModal({
@@ -1186,40 +1189,43 @@ function demoMachineLabel(machine?: MachineSummary | null) {
 }
 
 function demoCustomerLabel(customer: CustomerOption) {
-  return [customer.hospitalName || customer.name, customer.province].filter(Boolean).join(' - ');
+  return [customer.name || customer.hospitalName, customer.province].filter(Boolean).join(' - ');
 }
 
 function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUser }) {
   const queryClient = useQueryClient();
   const role = getRoleName(user);
+  const isAdmin = role === 'admin';
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search);
   const [status, setStatus] = useState('');
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [returnForm, setReturnForm] = useState<DeviceReturnForm | null>(null);
+  const [selectedDeviceTicket, setSelectedDeviceTicket] = useState<DeviceServiceRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeviceServiceRow | null>(null);
   const [receiveForm, setReceiveForm] = useState<DeviceReceiveForm>(() => emptyDeviceReceiveForm(user));
 
   const ticketsQuery = useQuery({
-    queryKey: queryKeys.serviceTickets.board('device-service', `${search}:${status}`),
+    queryKey: queryKeys.serviceTickets.board('device-service', `${debouncedSearch}:${status}`),
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: '100' });
-      if (search.trim()) params.set('search', search.trim());
+      const params = new URLSearchParams();
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
       if (status) params.set('status', status);
-      const result = await apiFetch<Paginated<DeviceServiceRow> | DeviceServiceRow[]>(`/device-service-tickets?${params.toString()}`);
-      return Array.isArray(result) ? result : result.data ?? [];
+      return apiFetchAllPages<DeviceServiceRow>(`/device-service-tickets?${params.toString()}`);
     },
   });
 
   const optionsQuery = useQuery({
-    queryKey: queryKeys.serviceTickets.createOptions,
+    queryKey: queryKeys.serviceTickets.deviceServiceOptions,
     queryFn: async () => {
-      const [customersResult, machinesResult, engineersResult] = await Promise.all([
-        apiFetch<Paginated<CustomerOption>>('/customers?limit=100'),
-        apiFetch<Paginated<MachineSummary>>('/machines?limit=100'),
+      const [customers, machines, engineersResult] = await Promise.all([
+        apiFetchAllPages<CustomerOption>('/customers'),
+        apiFetchAllPages<MachineSummary>('/machines'),
         apiFetch<Paginated<EngineerOption>>('/users?limit=100&status=ACTIVE'),
       ]);
       return {
-        customers: customersResult.data,
-        machines: machinesResult.data,
+        customers,
+        machines,
         engineers: engineersResult.data.filter(isTechnicalUser),
       };
     },
@@ -1255,6 +1261,15 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
       }),
     onSuccess: async () => {
       setReturnForm(null);
+      await queryClient.invalidateQueries({ queryKey: ['service-tickets'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (ticket: DeviceServiceRow) => apiFetch(`/device-service-tickets/${ticket.id}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      setSelectedDeviceTicket(null);
+      setDeleteTarget(null);
       await queryClient.invalidateQueries({ queryKey: ['service-tickets'] });
     },
   });
@@ -1406,7 +1421,10 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
           {tickets.map((ticket) => (
             <DeviceServiceCard
               key={ticket.id}
-              loading={returnMutation.isPending}
+              isAdmin={isAdmin}
+              loading={returnMutation.isPending || deleteMutation.isPending}
+              onDelete={() => setDeleteTarget(ticket)}
+              onView={() => setSelectedDeviceTicket(ticket)}
               onReturn={() => setReturnForm(emptyDeviceReturnForm(ticket))}
               ticket={ticket}
             />
@@ -1421,6 +1439,24 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
           onChange={(patch) => setReturnForm((current) => (current ? { ...current, ...patch } : current))}
           onClose={() => setReturnForm(null)}
           onSubmit={() => returnMutation.mutate(returnForm)}
+        />
+      ) : null}
+      {selectedDeviceTicket ? <DeviceServiceDetailModal onClose={() => setSelectedDeviceTicket(null)} ticket={selectedDeviceTicket} /> : null}
+      {deleteTarget ? (
+        <DeleteTicketDialog
+          details={[
+            { label: 'Mã phiếu nhận', value: deleteTarget.receiveCode },
+            { label: 'Mã phiếu trả', value: deleteTarget.returnCode },
+            { label: 'Khách hàng', value: deleteTarget.customer?.name || deleteTarget.usingDepartment },
+            { label: 'Thiết bị', value: deleteTarget.deviceName || deleteTarget.machine?.name || deleteTarget.modelName },
+            { label: 'Serial', value: deleteTarget.serialNumber },
+            { label: 'Trạng thái', value: deviceStatusLabel(deleteTarget.status) },
+          ]}
+          loading={deleteMutation.isPending}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => deleteMutation.mutate(deleteTarget)}
+          title="Bạn sắp xóa phiếu nhận/trả thiết bị này"
+          warning="Phiếu và lịch sử phụ kiện liên quan sẽ bị xóa. Trạng thái máy sẽ được cập nhật lại."
         />
       ) : null}
     </div>
@@ -1484,8 +1520,9 @@ function OperationsBoard({
       const responses = await Promise.all(
         scopes.map(async (scope) => {
           const endpoint = scope === 'installations' ? '/installations' : scope === 'maintenance' ? '/maintenance' : '/repairs';
-          const result = await apiFetch<Paginated<ServiceRow | InstallationRow> | Array<ServiceRow | InstallationRow>>(`${endpoint}?${paramsForScope(boardParams, scope, engineerId)}`);
-          const rows = Array.isArray(result) ? result : result.data ?? [];
+          const rows = await apiFetchAllPages<ServiceRow | InstallationRow>(
+            `${endpoint}?${paramsForScope(boardParams, scope, engineerId)}`,
+          );
           return rows.map((row) => normalizeBoardItem(row, scope));
         }),
       );
@@ -2085,6 +2122,18 @@ function editHref(item: BoardItem) {
   return `/repairs/${item.id}/update?returnTo=/service-tickets`;
 }
 
+function technicalWorkHref(row: TechnicalReportRow) {
+  const returnTo = encodeURIComponent('/service-tickets');
+  if (row.kind === 'installation') return `/installations/${row.id}/update?returnTo=${returnTo}`;
+  if (row.kind === 'maintenance') return `/maintenance/${row.id}/update?returnTo=${returnTo}`;
+  if (row.kind === 'repair') return `/repairs/${row.id}/update?returnTo=${returnTo}`;
+  if (row.kind === 'demo') {
+    return `/service-tickets?type=demo&search=${encodeURIComponent(row.code)}&detail=${encodeURIComponent(row.id)}`;
+  }
+  const supportParams = new URLSearchParams({ search: row.title || row.code, case: row.id });
+  return `/application-support?${supportParams.toString()}`;
+}
+
 function createTicketLink(kind: BoardKind) {
   if (kind === 'installations') return { label: 'Tạo phiếu lắp đặt', to: '/installations/create?returnTo=/service-tickets' };
   if (kind === 'maintenance') return { label: 'Tạo phiếu bảo trì', to: '/service-tickets/create?kind=maintenance&returnTo=/service-tickets' };
@@ -2160,7 +2209,7 @@ function reviewLabel(status: string) {
 }
 
 function customerText(item: BoardItem) {
-  return [item.customer?.hospitalName || item.customer?.name, item.customer?.province].filter(Boolean).join(' - ') || 'Chưa có khách hàng';
+  return [item.customer?.name || item.customer?.hospitalName, item.customer?.province].filter(Boolean).join(' - ') || 'Chưa có khách hàng';
 }
 
 function machineText(item: BoardItem) {
@@ -2217,7 +2266,7 @@ function DeviceTextarea({ label, onChange, value }: { label: string; onChange: (
   );
 }
 
-function DeviceServiceCard({ loading, onReturn, ticket }: { loading: boolean; onReturn: () => void; ticket: DeviceServiceRow }) {
+function DeviceServiceCard({ isAdmin, loading, onDelete, onReturn, onView, ticket }: { isAdmin: boolean; loading: boolean; onDelete: () => void; onReturn: () => void; onView: () => void; ticket: DeviceServiceRow }) {
   const usedParts = ticket.usedParts ?? [];
   const partsTotal = usedParts.reduce((sum, part) => sum + Number(part.totalPrice ?? Number(part.quantity || 0) * Number(part.unitPrice || 0)), 0);
   return (
@@ -2252,6 +2301,8 @@ function DeviceServiceCard({ loading, onReturn, ticket }: { loading: boolean; on
         <span>Phụ kiện: <strong className="text-[#202124]">{usedParts.length ? `${usedParts.length} dòng - ${formatMoney(partsTotal)}` : 'Chưa có'}</strong></span>
       </div>
       <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
+        <button className="secondary-button rounded-2xl" onClick={onView} type="button">Chi tiết</button>
+        {isAdmin ? <button className="secondary-button danger rounded-2xl" disabled={loading} onClick={onDelete} type="button"><Trash2 size={15} /> Xóa</button> : null}
         {ticket.status === 'RECEIVED' ? (
           <button className="primary-button rounded-2xl" disabled={loading} onClick={onReturn} type="button">
             {loading ? <Loader2 className="spin-icon" size={15} /> : null}
@@ -2265,6 +2316,55 @@ function DeviceServiceCard({ loading, onReturn, ticket }: { loading: boolean; on
         )}
       </div>
     </article>
+  );
+}
+
+function DeviceServiceDetailModal({ onClose, ticket }: { onClose: () => void; ticket: DeviceServiceRow }) {
+  const usedParts = ticket.usedParts ?? [];
+  const partsTotal = usedParts.reduce((sum, part) => sum + Number(part.totalPrice ?? Number(part.quantity || 0) * Number(part.unitPrice || 0)), 0);
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
+      <section aria-labelledby="device-ticket-detail-title" aria-modal="true" className="grid max-h-[90vh] w-full max-w-4xl gap-5 overflow-y-auto rounded-2xl border border-[#e7e2dc] bg-white p-5 shadow-[0_24px_72px_rgba(24,24,27,0.2)] sm:p-6" onClick={(event) => event.stopPropagation()} role="dialog">
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eee9e4] pb-4">
+          <div>
+            <span className="text-sm font-medium text-[#737b80]">Nhận / trả thiết bị · {deviceStatusLabel(ticket.status)}</span>
+            <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-[#252c30]" id="device-ticket-detail-title">{ticket.receiveCode}{ticket.returnCode ? ` · ${ticket.returnCode}` : ''}</h2>
+          </div>
+          <button aria-label="Đóng chi tiết" className="secondary-button compact" onClick={onClose} type="button">Đóng</button>
+        </header>
+        <div className="grid gap-5 md:grid-cols-2">
+          <section className="grid content-start gap-3">
+            <h3 className="font-semibold text-[#252c30]">Thiết bị và nơi tiếp nhận</h3>
+            <RegisterDetailRow label="Thiết bị" value={[ticket.deviceName || ticket.machine?.name || ticket.machine?.modelName, ticket.modelName].filter(Boolean).join(' · ')} />
+            <RegisterDetailRow label="Mã máy / S/N" value={[ticket.machine?.machineCode, ticket.serialNumber || ticket.machine?.serialNumber].filter(Boolean).join(' · ')} />
+            <RegisterDetailRow label="Khách hàng" value={ticket.customer ? demoCustomerLabel(ticket.customer) : ticket.usingDepartment} />
+            <RegisterDetailRow label="Đơn vị sử dụng" value={ticket.usingDepartment} />
+            <RegisterDetailRow label="Người liên hệ" value={[ticket.representative, ticket.representativePosition, ticket.contactPhone].filter(Boolean).join(' · ')} />
+            <RegisterDetailRow label="Địa chỉ" value={ticket.address} />
+            <RegisterDetailRow label="Kỹ sư" value={ticket.engineer ? technicalUserName(ticket.engineer) : 'Chưa phân công'} />
+          </section>
+          <section className="grid content-start gap-3">
+            <h3 className="font-semibold text-[#252c30]">Tiếp nhận và xử lý</h3>
+            <RegisterDetailRow label="Ngày nhận" value={formatTicketDate(ticket.receivedAt)} />
+            <RegisterDetailRow label="Ngày trả" value={formatTicketDate(ticket.returnedAt)} />
+            <RegisterDetailRow label="Bảo hành" value={[ticket.warrantyStatus, ticket.warrantyTerm].filter(Boolean).join(' · ')} />
+            <RegisterDetailRow label="Tình trạng khi nhận" value={ticket.receivedCondition} />
+            <RegisterDetailRow label="Phụ kiện nhận kèm" value={ticket.receivedAccessories} />
+            <RegisterDetailRow label="Nguyên nhân ban đầu" value={ticket.preliminaryCause} />
+            <RegisterDetailRow label="Cách xử lý" value={ticket.repairMethod} />
+          </section>
+          <section className="grid content-start gap-3 md:col-span-2">
+            <h3 className="font-semibold text-[#252c30]">Kết quả và chi phí</h3>
+            <RegisterDetailRow label="Kết quả xử lý" value={ticket.resultNote} />
+            <RegisterDetailRow label="Tình trạng khi trả" value={ticket.returnCondition} />
+            <RegisterDetailRow label="Hư hỏng / chi phí" value={ticket.repairCostItems} />
+            <RegisterDetailRow label="Tổng chi phí" value={ticket.totalRepairCost ? `${formatMoney(Number(ticket.totalRepairCost))}${ticket.repairCostInWords ? ` · ${ticket.repairCostInWords}` : ''}` : ticket.repairCostInWords} />
+            <RegisterDetailRow label="Ghi chú" value={ticket.note} />
+            {usedParts.length ? <div className="overflow-x-auto rounded-xl border border-[#eee9e4]"><table className="w-full min-w-[520px] text-left text-sm"><thead className="bg-[#faf9f7] text-xs text-[#737b80]"><tr><th className="p-3">Phụ tùng</th><th className="p-3">Số lượng</th><th className="p-3">Đơn giá</th><th className="p-3">Thành tiền</th></tr></thead><tbody>{usedParts.map((part, index) => <tr className="border-t border-[#eee9e4]" key={part.id || `${part.name}-${index}`}><td className="p-3">{part.name || '—'}{part.serialNumber ? ` · S/N ${part.serialNumber}` : ''}</td><td className="p-3">{part.quantity ?? 0} {part.unit || ''}</td><td className="p-3">{formatMoney(Number(part.unitPrice || 0))}</td><td className="p-3">{formatMoney(Number(part.totalPrice ?? Number(part.quantity || 0) * Number(part.unitPrice || 0)))}</td></tr>)}</tbody><tfoot><tr className="border-t border-[#eee9e4] font-semibold"><td className="p-3" colSpan={3}>Tổng phụ tùng</td><td className="p-3">{formatMoney(partsTotal)}</td></tr></tfoot></table></div> : <p className="text-sm text-[#737b80]">Phiếu chưa ghi nhận phụ tùng đã sử dụng.</p>}
+          </section>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -2498,7 +2598,7 @@ function workKindLabel(kind: WorkKind) {
   if (kind === 'repair') return 'Sửa chữa';
   if (kind === 'maintenance') return 'Bảo trì';
   if (kind === 'demo') return 'Demo';
-  return 'Hỗ trợ app';
+  return 'Ứng dụng xét nghiệm';
 }
 
 function exportTechnicalWorkExcel(rows: TechnicalReportRow[], from: string, to: string) {

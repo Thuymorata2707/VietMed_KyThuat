@@ -104,11 +104,8 @@ export function EngineerCustomersPage({ currentRole, user }: EngineerCustomersPa
           <div className="min-w-0">
             <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#18181b]">Chăm sóc khách hàng</span>
             <h1 className="mt-1 text-2xl font-extrabold tracking-normal text-[#1f1f1f]">
-              {isDetailPage ? (selectedCustomer?.hospitalName || selectedCustomer?.name || 'Hồ sơ khách hàng') : isAdminProfile ? 'Hồ sơ khách hàng' : 'Khách hàng phụ trách'}
+              {isDetailPage ? (selectedCustomer?.name || selectedCustomer?.hospitalName || 'Hồ sơ khách hàng') : isAdminProfile ? 'Hồ sơ khách hàng' : 'Khách hàng phụ trách'}
             </h1>
-            <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-[#666666]">
-              {isDetailPage ? 'Thông tin máy, việc mở và lịch sử được tách riêng để dễ đọc.' : isAdminProfile ? 'Tra cứu khách hàng, mở hồ sơ khi cần xem chi tiết.' : 'Danh sách khách đang phụ trách, mở hồ sơ để xem máy và phiếu liên quan.'}
-            </p>
           </div>
           <Button asChild variant="secondary">
             <Link to={isDetailPage ? listHref : '/'}>
@@ -230,7 +227,7 @@ function CustomerListCard({ customer, href }: { customer: CustomerSummary; href:
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <span className="text-xs font-bold text-[#71717a]">{customer.customerCode || customer.province || 'Khách hàng'}</span>
-          <h2 className="mt-1 line-clamp-2 text-lg font-extrabold leading-tight text-[#18181b] [overflow-wrap:anywhere]">{customer.hospitalName || customer.name}</h2>
+          <h2 className="mt-1 line-clamp-2 text-lg font-extrabold leading-tight text-[#18181b] [overflow-wrap:anywhere]">{customer.name || customer.hospitalName}</h2>
         </div>
         <span className="shrink-0 rounded-lg border border-[#e4e4e7] bg-[#fafafa] px-2.5 py-1 text-xs font-bold text-[#333333]">{customer._count?.machines ?? 0} máy</span>
       </div>

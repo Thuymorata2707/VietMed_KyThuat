@@ -100,10 +100,6 @@ export function WorkMachineModelFields({
         </select>
       </label>
       <label className={labelClassName}>
-        S/N máy
-        <input className={fieldClassName} onChange={(event) => onChange({ serialNumber: event.target.value })} value={serialNumber} />
-      </label>
-      <label className={labelClassName}>
         {lockedByMachine ? 'Model máy' : 'Model / tên thiết bị'}
         <select
           className={fieldClassName}
@@ -125,6 +121,10 @@ export function WorkMachineModelFields({
             </option>
           ))}
         </select>
+      </label>
+      <label className={labelClassName}>
+        S/N máy
+        <input className={fieldClassName} onChange={(event) => onChange({ serialNumber: event.target.value })} value={serialNumber} />
       </label>
       <ModelInfoFields className="md:col-span-2" model={selectedModel} />
     </>

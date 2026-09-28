@@ -34,6 +34,7 @@ export class JwtAuthGuard implements CanActivate {
         status: true,
         roleId: true,
         regionId: true,
+        engineerProfile: { select: { expertiseGroup: true, expertiseImaging: true, expertiseLabTesting: true } },
         role: {
           select: {
             name: true,
@@ -46,12 +47,22 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('User is inactive or no longer exists');
     }
 
+    const expertiseGroups = user.engineerProfile
+      ? [user.engineerProfile.expertiseImaging ? 'IMAGING' : null, user.engineerProfile.expertiseLabTesting ? 'LAB_TESTING' : null]
+          .filter((group): group is string => Boolean(group))
+      : [];
+    if (!expertiseGroups.length && (user.engineerProfile?.expertiseGroup === 'IMAGING' || user.engineerProfile?.expertiseGroup === 'LAB_TESTING')) {
+      expertiseGroups.push(user.engineerProfile.expertiseGroup);
+    }
+
     request.user = {
       id: user.id,
       email: user.email,
       roleId: user.roleId,
       roleName: user.role.name,
       regionId: user.regionId,
+      expertiseGroup: user.engineerProfile?.expertiseGroup ?? null,
+      expertiseGroups,
     };
 
     return true;

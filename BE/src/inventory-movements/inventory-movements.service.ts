@@ -1,20 +1,23 @@
+import { sequenceCode } from '../common/sequence-code';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InventoryMovementType, MachineInventoryStatus } from '@prisma/client';
+import { InventoryMovementType, MachineInventoryStatus, Prisma } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AUDIT_ACTIONS } from '../audit-logs/audit-actions';
 import { inventoryMovementAccessWhere } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { RequestUser } from '../common/request-user.type';
+import { PaginatedResult } from '../common/paginated-result.type';
 import {
   getMachineStatusForInventoryStatus,
   validateInventoryMovement,
 } from '../machines/machine-state.rules';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInventoryMovementDto } from './dto/create-inventory-movement.dto';
+import { ListInventoryMovementsQueryDto } from './dto/list-inventory-movements-query.dto';
 
 @Injectable()
 export class InventoryMovementsService {
@@ -52,7 +55,7 @@ export class InventoryMovementsService {
       async (tx) => {
         const movement = await tx.machineInventoryMovement.create({
           data: {
-            code: await this.generateMovementCode(),
+            code: await this.generateMovementCode(tx),
             type: dto.type,
             machineId: dto.machineId,
             fromStatus: machine.inventoryStatus,
@@ -114,15 +117,49 @@ export class InventoryMovementsService {
     );
   }
 
-  findAll(user?: RequestUser) {
+  async findAll(
+    query: ListInventoryMovementsQueryDto,
+    user?: RequestUser,
+  ): Promise<PaginatedResult<unknown>> {
     assertPermission(user, PERMISSIONS.INVENTORY_READ);
-    return this.prisma.machineInventoryMovement.findMany({
-      where: inventoryMovementAccessWhere(user),
-      include: this.defaultInclude(),
-      orderBy: {
-        occurredAt: 'desc',
-      },
-    });
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const where: Prisma.MachineInventoryMovementWhereInput = {
+      AND: [
+        inventoryMovementAccessWhere(user),
+        query.type ? { type: query.type } : {},
+        query.search
+          ? {
+              OR: [
+                { code: { contains: query.search } },
+                { note: { contains: query.search } },
+                { machine: { machineCode: { contains: query.search } } },
+                { machine: { serialNumber: { contains: query.search } } },
+                { machine: { modelName: { contains: query.search } } },
+                { customer: { name: { contains: query.search } } },
+                { createdBy: { fullName: { contains: query.search } } },
+                { createdBy: { email: { contains: query.search } } },
+              ],
+            }
+          : {},
+      ],
+    };
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.machineInventoryMovement.findMany({
+        where,
+        include: this.defaultInclude(),
+        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.machineInventoryMovement.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findOne(id: string, user?: RequestUser) {
@@ -221,32 +258,14 @@ export class InventoryMovementsService {
     }
   }
 
-  private async generateMovementCode(): Promise<string> {
+  private async generateMovementCode(tx: Prisma.TransactionClient): Promise<string> {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     const prefix = `INV-${year}${month}${day}`;
 
-    const latest = await this.prisma.machineInventoryMovement.findFirst({
-      where: {
-        code: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        code: 'desc',
-      },
-      select: {
-        code: true,
-      },
-    });
-    const latestNumber = latest?.code
-      ? Number(latest.code.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
+    return sequenceCode(tx, 'inventory', prefix, 4, false);
   }
 
   private parseOptionalDate(value?: string): Date | undefined {

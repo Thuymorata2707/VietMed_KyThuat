@@ -8,5 +8,6 @@ import { MachinesService } from './machines.service';
   imports: [AuthModule, AuditLogsModule],
   controllers: [MachinesController],
   providers: [MachinesService],
+  exports: [MachinesService],
 })
 export class MachinesModule {}

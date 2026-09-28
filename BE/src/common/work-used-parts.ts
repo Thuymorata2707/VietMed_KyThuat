@@ -53,8 +53,7 @@ export async function replaceWorkUsedParts({
       unit: part.unit,
       serialNumber: part.serialNumber,
       unitCost: part.unitCost,
-      totalCost:
-        part.unitCost === null ? null : part.quantity * part.unitCost,
+      totalCost: part.unitCost === null ? null : part.quantity * part.unitCost,
       unitPrice: part.unitPrice,
       totalPrice:
         part.unitPrice === null ? null : part.quantity * part.unitPrice,
@@ -88,18 +87,28 @@ async function normalizeWorkUsedParts(
       quantity: Number(part.quantity || 0),
       unit: part.unit?.trim() || null,
       serialNumber: part.serialNumber?.trim() || null,
-      unitCost: part.unitCost === undefined || part.unitCost === null ? null : Number(part.unitCost),
-      unitPrice: part.unitPrice === undefined || part.unitPrice === null ? null : Number(part.unitPrice),
+      unitCost:
+        part.unitCost === undefined || part.unitCost === null
+          ? null
+          : Number(part.unitCost),
+      unitPrice:
+        part.unitPrice === undefined || part.unitPrice === null
+          ? null
+          : Number(part.unitPrice),
       note: part.note?.trim() || null,
     }))
-    .filter((part) => part.quantity > 0 && (part.componentAccessoryId || part.name));
+    .filter(
+      (part) => part.quantity > 0 && (part.componentAccessoryId || part.name),
+    );
 
   if (!cleanedParts.length) {
     return [];
   }
 
   if (!machineId && cleanedParts.some((part) => part.componentAccessoryId)) {
-    throw new BadRequestException('Machine is required when using model accessories');
+    throw new BadRequestException(
+      'Machine is required when using model accessories',
+    );
   }
 
   const machine = machineId
@@ -120,14 +129,20 @@ async function normalizeWorkUsedParts(
         },
       })
     : [];
-  const accessoryMap = new Map(accessories.map((accessory) => [accessory.id, accessory]));
+  const accessoryMap = new Map(
+    accessories.map((accessory) => [accessory.id, accessory]),
+  );
 
   if (accessoryIds.some((id) => !accessoryMap.has(id))) {
-    throw new BadRequestException('Selected accessory does not belong to this machine model');
+    throw new BadRequestException(
+      'Selected accessory does not belong to this machine model',
+    );
   }
 
   return cleanedParts.map((part) => {
-    const accessory = part.componentAccessoryId ? accessoryMap.get(part.componentAccessoryId) : null;
+    const accessory = part.componentAccessoryId
+      ? accessoryMap.get(part.componentAccessoryId)
+      : null;
     const defaultUnitCost =
       accessory?.unitCost === undefined || accessory?.unitCost === null
         ? null

@@ -1,3 +1,4 @@
+import { sequenceCode } from '../common/sequence-code';
 import {
   BadRequestException,
   ConflictException,
@@ -266,6 +267,22 @@ export class MachinesService {
             receivedAt: 'desc',
           },
         },
+        applicationSupportCases: {
+          include: {
+            customer: true,
+            engineer: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+          orderBy: {
+            supportedAt: 'desc',
+          },
+        },
         installations: {
           include: {
             customer: true,
@@ -381,6 +398,22 @@ export class MachinesService {
           },
           orderBy: {
             receivedAt: 'desc',
+          },
+        },
+        applicationSupportCases: {
+          include: {
+            customer: true,
+            engineer: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+          orderBy: {
+            supportedAt: 'desc',
           },
         },
         installations: {
@@ -835,6 +868,15 @@ export class MachinesService {
         _count: {
           select: {
             repairs: true,
+            maintenances: true,
+            deviceServiceTickets: true,
+            inventoryMovements: true,
+            installations: true,
+            demoLoans: true,
+            warrantyCards: true,
+            accessories: true,
+            applicationSupportCases: true,
+            accessoryStockMovements: true,
           },
         },
       },
@@ -844,8 +886,10 @@ export class MachinesService {
       throw new NotFoundException('Machine not found');
     }
 
-    if (machine._count.repairs > 0) {
-      throw new BadRequestException('Cannot delete machine with repairs');
+    if (Object.values(machine._count).some((count) => count > 0)) {
+      throw new BadRequestException(
+        'Cannot delete machine with linked accessories or operational history',
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -884,7 +928,7 @@ export class MachinesService {
   }
 
   previewCode(source?: string) {
-    return this.generateMachineCode(source || 'MAY');
+    return this.generateMachineCode(source || 'MAY', true);
   }
 
   private validateCreateMachine(dto: CreateMachineDto) {
@@ -946,27 +990,9 @@ export class MachinesService {
     }
   }
 
-  private async generateMachineCode(source: string) {
+  private async generateMachineCode(source: string, preview = false) {
     const prefix = this.normalizeMachineCodePrefix(source);
-    const latest = await this.prisma.machine.findFirst({
-      where: {
-        machineCode: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        machineCode: 'desc',
-      },
-      select: {
-        machineCode: true,
-      },
-    });
-    const latestNumber = latest?.machineCode
-      ? Number(latest.machineCode.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+    return sequenceCode(this.prisma, 'machine', prefix, 3, preview);
   }
 
   private normalizeMachineCodePrefix(value: string) {
@@ -1079,7 +1105,10 @@ export class MachinesService {
         componentAccessoryId: componentAccessory?.id ?? null,
         code: accessory.code?.trim() || componentAccessory?.code || null,
         name,
-        quantity: Math.max(1, Number(accessory.quantity ?? componentAccessory?.quantity ?? 1) || 1),
+        quantity: Math.max(
+          1,
+          Number(accessory.quantity ?? componentAccessory?.quantity ?? 1) || 1,
+        ),
         serialNumber,
         description: accessory.description?.trim() || null,
         note: accessory.note?.trim() || null,
@@ -1089,7 +1118,7 @@ export class MachinesService {
     return prepared;
   }
 
-  private async syncMachineAccessories(
+  async syncMachineAccessories(
     tx: Prisma.TransactionClient,
     machineId: string,
     machineModelId: string | null,
@@ -1208,7 +1237,7 @@ export class MachinesService {
     }
   }
 
-  private async refreshMachineAccessoriesSnapshot(
+  async refreshMachineAccessoriesSnapshot(
     tx: Prisma.TransactionClient,
     machineId: string,
   ) {
@@ -1315,25 +1344,7 @@ export class MachinesService {
     tx: Prisma.TransactionClient,
   ): Promise<string> {
     const prefix = this.getDailyCodePrefix('WAR');
-    const latest = await tx.warrantyCard.findFirst({
-      where: {
-        code: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        code: 'desc',
-      },
-      select: {
-        code: true,
-      },
-    });
-    const latestNumber = latest?.code
-      ? Number(latest.code.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(4, '0')}`;
+    return sequenceCode(tx, 'warranty', prefix, 4, false);
   }
 
   private getDailyCodePrefix(prefix: string) {
@@ -1465,6 +1476,8 @@ export class MachinesService {
         OR: [
           { installedById: query.engineerId },
           { primaryEngineerId: query.engineerId },
+          { customer: { primaryEngineerId: query.engineerId } },
+          { customer: { engineers: { some: { id: query.engineerId } } } },
         ],
       });
     }
@@ -1561,6 +1574,10 @@ export class MachinesService {
           region: true,
           engineerProfile: true,
         },
+      },
+      engineerAssignments: {
+        include: { engineer: { select: { id: true, fullName: true, email: true } } },
+        orderBy: [{ isPrimary: 'desc' as const }, { assignedAt: 'asc' as const }],
       },
       _count: {
         select: {

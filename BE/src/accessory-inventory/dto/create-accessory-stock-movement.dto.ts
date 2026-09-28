@@ -19,13 +19,19 @@ export class CreateAccessoryStockMovementDto {
 
   @Type(() => Number)
   @IsNumber()
-  @ValidateIf((dto: CreateAccessoryStockMovementDto) => dto.type === AccessoryStockMovementType.ADJUSTMENT)
+  @ValidateIf(
+    (dto: CreateAccessoryStockMovementDto) =>
+      dto.type === AccessoryStockMovementType.ADJUSTMENT,
+  )
   quantityDelta?: number;
 
   @Type(() => Number)
   @IsNumber()
   @Min(0.01)
-  @ValidateIf((dto: CreateAccessoryStockMovementDto) => dto.type !== AccessoryStockMovementType.ADJUSTMENT)
+  @ValidateIf(
+    (dto: CreateAccessoryStockMovementDto) =>
+      dto.type !== AccessoryStockMovementType.ADJUSTMENT,
+  )
   quantity?: number;
 
   @IsOptional()

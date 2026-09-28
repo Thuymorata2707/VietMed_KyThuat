@@ -50,6 +50,7 @@ export type TaskMachine = {
   machineCode?: string | null;
   serialNumber?: string | null;
   modelName?: string | null;
+  manufacturer?: string | null;
   name?: string | null;
   productCategory?: string | null;
   customer?: {
@@ -70,6 +71,7 @@ export type TaskMachine = {
     name?: string | null;
     displayName?: string | null;
     manufacturer?: string | null;
+    productCategory?: string | null;
   } | null;
 };
 
@@ -177,12 +179,20 @@ export type QuickMachineModel = {
 };
 
 export type InstallationDeviceItem = {
+  sourceMachineId?: string;
   itemName: string;
   model: string;
+  manufacturer?: string;
+  productCategory?: string;
+  isPrimary?: boolean;
   serialNumber: string;
   manufactureDate: string;
   quantity: number;
   warrantyPeriod: string;
+  engineerIds?: string[];
+  accessoriesText?: string;
+  accessoriesConfigured?: boolean;
+  accessories?: unknown[];
 };
 
 export type InstallationTask = WorkReviewFields & {
@@ -198,6 +208,7 @@ export type InstallationTask = WorkReviewFields & {
     name?: string | null;
     displayName?: string | null;
     manufacturer?: string | null;
+    productCategory?: string | null;
   } | null;
   accessories?: string[];
   note?: string | null;
@@ -213,6 +224,7 @@ export type InstallationTask = WorkReviewFields & {
   receiverPosition?: string | null;
   receiverPhone?: string | null;
   installedDeviceItems?: InstallationDeviceItem[];
+  assignments?: Array<{ engineerId: string; isLead?: boolean; engineer?: { id: string; fullName?: string | null; email?: string | null } }>;
   deviceCondition?: string | null;
   deviceConditionNote?: string | null;
   installedBy?: {
@@ -298,6 +310,8 @@ export type CreateTicketForm = {
   contactPhone: string;
   deviceName: string;
   modelName: string;
+  manufacturer: string;
+  productCategory: string;
   serialNumber: string;
   warrantyStatus: string;
   conditionAssessment: string;

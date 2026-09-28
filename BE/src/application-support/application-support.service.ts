@@ -8,9 +8,11 @@ import {
   ApplicationSupportChannel,
   ApplicationSupportIssueCategory,
   ApplicationSupportStatus,
+  ApplicationSupportWorkType,
   Prisma,
 } from '@prisma/client';
 import { isAdmin, isEngineer, isManager } from '../auth/access-scope';
+import { assertPermission, PERMISSIONS } from '../auth/permissions';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApplicationSupportQueryDto } from './dto/application-support-query.dto';
@@ -85,8 +87,9 @@ export class ApplicationSupportService {
   }
 
   async remove(id: string, user: RequestUser) {
+    assertPermission(user, PERMISSIONS.APPLICATION_SUPPORT_DELETE);
     await this.findAccessible(id, user);
-    this.assertCanManageCase(user);
+    if (!isAdmin(user)) throw new ForbiddenException('Only administrators can delete application support cases');
     await this.prisma.applicationSupportCase.delete({ where: { id } });
     return { ok: true };
   }
@@ -140,7 +143,7 @@ export class ApplicationSupportService {
         workDate: item.supportedAt,
         customer: item.customer?.name || item.customerName || '',
         machine: this.machineLabel(item),
-        content: `Hỗ trợ app: ${item.title} (${issueCategoryLabel(item.issueCategory)}, ${channelLabel(item.channel)})`,
+        content: `${workTypeLabel(item.workType)}: ${item.title} (${issueCategoryLabel(item.issueCategory)}, ${channelLabel(item.channel)})`,
         result: item.resolution || statusLabel(item.status),
         pending:
           item.pending ||
@@ -156,17 +159,28 @@ export class ApplicationSupportService {
   }
 
   private assertCanUse(user: RequestUser) {
-    if (!isAdmin(user) && !isManager(user) && !isEngineer(user)) {
+    if (
+      !isAdmin(user) &&
+      !isManager(user) &&
+      !this.isLabApplicationUser(user)
+    ) {
       throw new ForbiddenException('Forbidden');
     }
   }
 
   private assertCanManageCase(user: RequestUser) {
-    if (!isEngineer(user)) {
+    if (!this.isLabApplicationUser(user)) {
       throw new ForbiddenException(
         'Only lab application engineers can manage application support cases',
       );
     }
+  }
+
+  private isLabApplicationUser(user: RequestUser) {
+    return (
+      (isEngineer(user) || isAdmin(user)) &&
+      (user.expertiseGroups?.includes('LAB_TESTING') ?? user.expertiseGroup === 'LAB_TESTING')
+    );
   }
 
   private accessWhere(
@@ -194,10 +208,12 @@ export class ApplicationSupportService {
     user: RequestUser,
   ): Prisma.ApplicationSupportCaseWhereInput {
     const where: Prisma.ApplicationSupportCaseWhereInput = {};
+    if (query.id) where.id = query.id;
     if (query.engineerId && (isAdmin(user) || isManager(user)))
       where.engineerId = query.engineerId;
     if (query.customerId) where.customerId = query.customerId;
     if (query.status) where.status = query.status;
+    if (query.workType) where.workType = query.workType;
     if (query.issueCategory) where.issueCategory = query.issueCategory;
     if (query.from || query.to) {
       where.supportedAt = {
@@ -215,6 +231,12 @@ export class ApplicationSupportService {
         { contactName: { contains: search } },
         { contactPhone: { contains: search } },
         { appModule: { contains: search } },
+        { reagentName: { contains: search } },
+        { reagentLot: { contains: search } },
+        { assayName: { contains: search } },
+        { qcResult: { contains: search } },
+        { calibrationResult: { contains: search } },
+        { lisHisStatus: { contains: search } },
         { issueDescription: { contains: search } },
         { resolution: { contains: search } },
         { customer: { name: { contains: search } } },
@@ -298,6 +320,7 @@ export class ApplicationSupportService {
       machineModelId: this.cleanId(dto.machineModelId),
       supportedAt: this.parseDate(dto.supportedAt, 'supportedAt'),
       channel: dto.channel ?? ApplicationSupportChannel.PHONE,
+      workType: dto.workType ?? ApplicationSupportWorkType.APP_SUPPORT,
       issueCategory:
         dto.issueCategory ?? ApplicationSupportIssueCategory.APP_ERROR,
       status: dto.status ?? ApplicationSupportStatus.RESOLVED,
@@ -307,6 +330,15 @@ export class ApplicationSupportService {
       appModule: this.cleanOptional(dto.appModule),
       machineText: this.cleanOptional(dto.machineText),
       impactLevel: this.cleanOptional(dto.impactLevel),
+      reagentName: this.cleanOptional(dto.reagentName),
+      reagentLot: this.cleanOptional(dto.reagentLot),
+      reagentExpiry: dto.reagentExpiry
+        ? this.parseDate(dto.reagentExpiry, 'reagentExpiry')
+        : null,
+      assayName: this.cleanOptional(dto.assayName),
+      qcResult: this.cleanOptional(dto.qcResult),
+      calibrationResult: this.cleanOptional(dto.calibrationResult),
+      lisHisStatus: this.cleanOptional(dto.lisHisStatus),
       title: this.required(dto.title, 'title'),
       issueDescription: this.required(dto.issueDescription, 'issueDescription'),
       resolution: this.required(dto.resolution, 'resolution'),
@@ -437,6 +469,19 @@ function issueCategoryLabel(value: ApplicationSupportIssueCategory) {
     DATA_EXPORT: 'xuất dữ liệu',
     TRAINING: 'đào tạo',
     OTHER: 'khác',
+  };
+  return labels[value] ?? value;
+}
+
+function workTypeLabel(value: ApplicationSupportWorkType) {
+  const labels: Record<ApplicationSupportWorkType, string> = {
+    APP_SUPPORT: 'Ứng dụng xét nghiệm',
+    REAGENT_SETUP: 'Cài hóa chất',
+    QC_CALIBRATION: 'QC/Calib',
+    LIS_HIS: 'LIS/HIS',
+    TRAINING: 'Đào tạo',
+    FOLLOW_UP: 'Theo dõi ứng dụng',
+    OTHER: 'Hỗ trợ khác',
   };
   return labels[value] ?? value;
 }

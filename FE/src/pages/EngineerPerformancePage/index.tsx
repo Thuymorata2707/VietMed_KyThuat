@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, Download, FileText, Loader2, RefreshCw, Wrench } from 'lucide-react';
+import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, Download, FileText, Headphones, Loader2, RefreshCw, Wrench } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -32,6 +32,7 @@ type EngineerWorkSummary = {
     installations: number;
     repairs: number;
     maintenances: number;
+    applicationSupport: number;
     activities: number;
     customers: number;
     machines: number;
@@ -46,11 +47,12 @@ type EngineerWorkSummary = {
     installationCount: number;
     repairCount: number;
     maintenanceCount: number;
+    applicationSupportCount: number;
     machineCount: number;
   }>;
   activities: Array<{
     id: string;
-    kind: 'installation' | 'repair' | 'maintenance';
+    kind: 'installation' | 'repair' | 'maintenance' | 'applicationSupport';
     code: string;
     date: string;
     status: string;
@@ -145,6 +147,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
   const selectedEngineer = engineers.find((engineer) => engineer.id === engineerId);
   const workMix = [
+    { label: 'Ứng dụng xét nghiệm', value: summary?.totals.applicationSupport ?? 0, tone: 'app' as const },
     { label: 'Lắp đặt', value: summary?.totals.installations ?? 0, tone: 'good' as const },
     { label: 'Sửa chữa', value: summary?.totals.repairs ?? 0, tone: 'warn' as const },
     { label: 'Bảo trì', value: summary?.totals.maintenances ?? 0, tone: 'neutral' as const },
@@ -171,8 +174,8 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
     () =>
       [...(summary?.customers ?? [])]
         .sort((left, right) => {
-          const leftTotal = left.installationCount + left.repairCount + left.maintenanceCount;
-          const rightTotal = right.installationCount + right.repairCount + right.maintenanceCount;
+          const leftTotal = customerWorkTotal(left);
+          const rightTotal = customerWorkTotal(right);
           return rightTotal - leftTotal || left.name.localeCompare(right.name);
         })
         .slice(0, 8),
@@ -209,7 +212,6 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       <PageTitle
         eyebrow={isAdmin ? 'Báo cáo vận hành' : 'Báo cáo cá nhân'}
         title={isAdmin ? 'Hiệu suất kỹ sư' : 'Báo cáo của tôi'}
-        description={isAdmin ? 'Đào sâu một kỹ sư: tải việc, báo cáo tuần & chất lượng.' : 'Việc làm trong kỳ.'}
       />
 
       {error ? <Notice message={error} /> : null}
@@ -266,7 +268,8 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-4">
+              <MiniMetric icon={<Headphones size={16} />} label="Ứng dụng xét nghiệm" value={summary?.totals.applicationSupport ?? 0} />
               <MiniMetric icon={<CalendarDays size={16} />} label="Lắp đặt" value={summary?.totals.installations ?? 0} />
               <MiniMetric icon={<Wrench size={16} />} label="Sửa chữa" value={summary?.totals.repairs ?? 0} />
               <MiniMetric icon={<BarChart3 size={16} />} label="Bảo trì" value={summary?.totals.maintenances ?? 0} />
@@ -288,7 +291,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
       <section className="grid grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-4 max-[1120px]:grid-cols-1">
         <div className="rounded-[22px] border border-[#e5e5e5] bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.045)]">
-          <PanelHeader eyebrow="Cơ cấu công việc" title="Tỷ trọng theo loại việc" subtitle="Nhìn nhanh loại việc chiếm nhiều thời gian nhất." />
+          <PanelHeader eyebrow="Cơ cấu công việc" title="Tỷ trọng theo loại việc" />
           <div className="mt-4 grid gap-3">
             {workMix.map((item) => (
               <div className="grid gap-1.5" key={item.label}>
@@ -307,10 +310,10 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
         <div className="grid gap-4">
           <div className="rounded-[22px] border border-[#e5e5e5] bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.045)]">
-            <PanelHeader eyebrow="Điểm nổi bật" title="Tóm tắt kỳ đang xem" subtitle="Chỉ giữ các tín hiệu giúp kỹ sư đọc nhanh tình hình." />
+            <PanelHeader eyebrow="Điểm nổi bật" title="Tóm tắt kỳ đang xem" />
             <div className="mt-4 grid gap-2">
               <InsightRow label="Loại việc nhiều nhất" value={busiestWorkType?.value ? `${busiestWorkType.label} (${busiestWorkType.value})` : 'Chưa có dữ liệu'} />
-              <InsightRow label="Khách hàng phát sinh nhiều nhất" value={topCustomers[0] ? `${topCustomers[0].name} (${topCustomers[0].installationCount + topCustomers[0].repairCount + topCustomers[0].maintenanceCount} việc)` : 'Chưa có dữ liệu'} />
+              <InsightRow label="Khách hàng phát sinh nhiều nhất" value={topCustomers[0] ? `${topCustomers[0].name} (${customerWorkTotal(topCustomers[0])} việc)` : 'Chưa có dữ liệu'} />
               <InsightRow label="Báo cáo đã duyệt trong kỳ" value={`${weeklyApproved} báo cáo`} />
             </div>
           </div>
@@ -319,8 +322,8 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
             <PanelHeader eyebrow="Khách hàng nổi bật" title="Nơi phát sinh nhiều việc" subtitle={`${summary?.totals.customers ?? 0} khách hàng trong khoảng này`} />
             <div className="mt-4 grid gap-2">
               {topCustomers.length ? topCustomers.slice(0, 5).map((customer) => {
-                const total = customer.installationCount + customer.repairCount + customer.maintenanceCount;
-                const maxCustomer = Math.max(1, ...topCustomers.map((item) => item.installationCount + item.repairCount + item.maintenanceCount));
+                const total = customerWorkTotal(customer);
+                const maxCustomer = Math.max(1, ...topCustomers.map(customerWorkTotal));
 
                 return (
                   <div className="grid gap-2 rounded-[14px] bg-[#fafafa] p-3" key={customer.id || customer.name}>
@@ -440,7 +443,7 @@ function InsightRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function WorkDonut({ items }: { items: Array<{ label: string; value: number; tone: 'good' | 'warn' | 'neutral' }> }) {
+function WorkDonut({ items }: { items: Array<{ label: string; value: number; tone: 'app' | 'good' | 'warn' | 'neutral' }> }) {
   const total = Math.max(0, items.reduce((sum, item) => sum + item.value, 0));
   const radius = 46;
   const circumference = Math.PI * 2 * radius;
@@ -514,6 +517,7 @@ function EmptyState({ text }: { text: string }) {
 }
 
 function activityKindLabel(kind: EngineerWorkSummary['activities'][number]['kind']) {
+  if (kind === 'applicationSupport') return 'Ứng dụng xét nghiệm';
   if (kind === 'installation') return 'Lắp đặt';
   if (kind === 'repair') return 'Sửa chữa';
   return 'Bảo trì';
@@ -533,6 +537,10 @@ function displayCustomerStatus(value?: string | null) {
   return value ? labels[value] ?? value : 'Chưa rõ';
 }
 
+function customerWorkTotal(customer: EngineerWorkSummary['customers'][number]) {
+  return customer.installationCount + customer.repairCount + customer.maintenanceCount + customer.applicationSupportCount;
+}
+
 function buildTechnicalReportHref(from: string, to: string, engineerId: string, includeEngineerId: boolean, returnBasePath: string) {
   if (!from || !to || !engineerId) return '';
   const params = new URLSearchParams({ from, to, returnTo: `${returnBasePath}?from=${from}&to=${to}` });
@@ -543,19 +551,22 @@ function buildTechnicalReportHref(from: string, to: string, engineerId: string, 
   return `/technical-statistics?${params.toString()}`;
 }
 
-function toneText(tone: 'good' | 'warn' | 'neutral') {
+function toneText(tone: 'app' | 'good' | 'warn' | 'neutral') {
+  if (tone === 'app') return 'text-[#176b87]';
   if (tone === 'good') return 'text-[#177245]';
   if (tone === 'warn') return 'text-[#9b5a17]';
   return 'text-[#18181b]';
 }
 
-function toneBar(tone: 'good' | 'warn' | 'neutral') {
+function toneBar(tone: 'app' | 'good' | 'warn' | 'neutral') {
+  if (tone === 'app') return 'bg-[#176b87]';
   if (tone === 'good') return 'bg-[#177245]';
   if (tone === 'warn') return 'bg-[#9b5a17]';
   return 'bg-[#18181b]';
 }
 
-function toneHex(tone: 'good' | 'warn' | 'neutral') {
+function toneHex(tone: 'app' | 'good' | 'warn' | 'neutral') {
+  if (tone === 'app') return '#176b87';
   if (tone === 'good') return '#177245';
   if (tone === 'warn') return '#9b5a17';
   return '#18181b';

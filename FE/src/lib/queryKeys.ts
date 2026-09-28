@@ -13,6 +13,7 @@ export const queryKeys = {
   },
   notifications: {
     list: ['notifications', 'list'] as const,
+    unreadCount: ['notifications', 'unread-count'] as const,
   },
   accessoryInventory: {
     stock: (params: string) => ['accessory-inventory', 'stock', params] as const,
@@ -76,6 +77,7 @@ export const queryKeys = {
     industries: ['service-tickets', 'industries'] as const,
     board: (kind: string, params: string) => ['service-tickets', 'board', kind, params] as const,
     createOptions: ['service-tickets', 'create-options'] as const,
+    deviceServiceOptions: ['service-tickets', 'device-service-options'] as const,
     machines: (kind: string) => ['service-tickets', 'machines', kind] as const,
   },
 };

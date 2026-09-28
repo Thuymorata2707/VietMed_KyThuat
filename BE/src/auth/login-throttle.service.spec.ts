@@ -1,4 +1,3 @@
-import { HttpException } from '@nestjs/common';
 import { LoginThrottleService } from './login-throttle.service';
 
 describe('LoginThrottleService', () => {
@@ -9,9 +8,7 @@ describe('LoginThrottleService', () => {
       throttle.recordFailure('user@example.com', '127.0.0.1');
     }
 
-    expect(() =>
-      throttle.assertCanAttempt('user@example.com', '127.0.0.1'),
-    ).toThrow(HttpException);
+    expect(throttle.isLocked('user@example.com', '127.0.0.1')).toBe(true);
   });
 
   it('resets failures after a successful login', () => {
@@ -21,8 +18,6 @@ describe('LoginThrottleService', () => {
     throttle.recordFailure('user@example.com', '127.0.0.1');
     throttle.recordSuccess('user@example.com', '127.0.0.1');
 
-    expect(() =>
-      throttle.assertCanAttempt('user@example.com', '127.0.0.1'),
-    ).not.toThrow();
+    expect(throttle.isLocked('user@example.com', '127.0.0.1')).toBe(false);
   });
 });

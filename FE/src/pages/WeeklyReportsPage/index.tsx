@@ -287,19 +287,19 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   function importDailyWorkRows() {
     if (!dailyWorkRows?.rows.length) return;
     mergeImportedRows(dailyWorkRows.rows);
-    setSuccess('Đã đưa lịch trong tuần vào báo cáo nháp và giữ nguyên đủ các ngày trong tuần.');
+    setSuccess('Đã thêm lịch vào báo cáo nháp.');
   }
 
   function importTicketRows() {
     if (!ticketRows?.rows.length) return;
     mergeImportedRows(ticketRows.rows);
-    setSuccess('Đã đưa phiếu hoàn thành trong tuần vào báo cáo nháp.');
+    setSuccess('Đã thêm phiếu hoàn thành.');
   }
 
   function importApplicationSupportRows() {
     if (!applicationSupportRows?.rows.length) return;
     mergeImportedRows(applicationSupportRows.rows);
-    setSuccess('Đã đưa ca hỗ trợ app trong tuần vào báo cáo nháp.');
+    setSuccess('Đã thêm ca hỗ trợ xét nghiệm.');
   }
 
   function mergeImportedRows(imported: WeeklyReportRow[]) {
@@ -535,7 +535,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               {loadingTicketRows ? 'Đang tải phiếu...' : `${ticketRows?.counts.total ?? 0} phiếu hoàn thành`}
             </span>
             <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 font-medium text-[#333333]">
-              {loadingApplicationSupportRows ? 'Đang tải hỗ trợ app...' : `${applicationSupportRows?.counts.total ?? 0} hỗ trợ app`}
+              {loadingApplicationSupportRows ? 'Đang tải ứng dụng xét nghiệm...' : `${applicationSupportRows?.counts.total ?? 0} ca ứng dụng xét nghiệm`}
             </span>
             <span className="rounded-lg border border-[#b9e8ca] bg-[#eefaf3] px-3 py-2 font-medium text-[#177245]">
               Đã duyệt: {dailyWorkRows?.counts.byStatus.APPROVED ?? 0}
@@ -553,10 +553,10 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               Bảo trì: {ticketRows?.counts.maintenances ?? 0}
             </span>
             <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
-              App đã xử lý: {applicationSupportRows?.counts.resolved ?? 0}
+              Đã xử lý xét nghiệm: {applicationSupportRows?.counts.resolved ?? 0}
             </span>
             <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
-              App follow-up: {applicationSupportRows?.counts.followUp ?? 0}
+              Theo dõi xét nghiệm: {applicationSupportRows?.counts.followUp ?? 0}
             </span>
             {Object.entries(dailyWorkRows?.counts.byType ?? {}).slice(0, 4).map(([type, count]) => (
               <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]" key={type}>
@@ -578,7 +578,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             </button>
             <button className="secondary-button justify-center" disabled={saving || !canEdit || !applicationSupportRows?.rows.length} onClick={importApplicationSupportRows} type="button">
               <Sparkles size={16} />
-              Lấy hỗ trợ app
+              Lấy ứng dụng xét nghiệm
             </button>
           </div>
         ) : null}

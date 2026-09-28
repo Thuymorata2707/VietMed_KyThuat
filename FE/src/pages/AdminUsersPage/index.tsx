@@ -38,6 +38,7 @@ type AdminUser = {
   engineerProfile?: {
     employeeCode?: string | null;
     expertiseGroup?: ExpertiseGroup | null;
+    expertiseGroups?: ExpertiseGroup[];
     dateOfBirth?: string | null;
     position?: string | null;
     department?: string | null;
@@ -86,7 +87,7 @@ type UserFormState = {
   certificateNo: string;
   photoUrl: string;
   profileNote: string;
-  expertiseGroup: '' | ExpertiseGroup;
+  expertiseGroups: ExpertiseGroup[];
   isTechnicalStaff: boolean;
   roleId: string;
   regionId: string;
@@ -108,7 +109,7 @@ const emptyForm: UserFormState = {
   certificateNo: '',
   photoUrl: '',
   profileNote: '',
-  expertiseGroup: '',
+  expertiseGroups: [],
   isTechnicalStaff: false,
   roleId: '',
   regionId: '',
@@ -581,7 +582,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
             <div>
               <span className="confirm-eyebrow">Xóa</span>
               <h2>{deletingUser.fullName || deletingUser.email}</h2>
-              <p>Xóa nhân sự này nếu hệ thống cho phép.</p>
+              <p>Xác nhận xóa nhân sự?</p>
             </div>
             <div className="modal-actions">
               <button className="secondary-button" onClick={() => setDeletingUser(null)} type="button">
@@ -612,6 +613,7 @@ function buildPayload(form: UserFormState, isEditing: boolean) {
       | 'photoUrl'
       | 'profileNote'
       | 'expertiseGroup'
+      | 'expertiseGroups'
       | 'isTechnicalStaff'
     >
   > = {
@@ -770,17 +772,27 @@ function UserForm({
             </div>
 
             <div className="form-grid compact-grid">
-              <label>
-                Nhóm chuyên môn
-                <select onChange={(event) => onChange((current) => ({ ...current, expertiseGroup: event.target.value as UserFormState['expertiseGroup'] }))} value={form.expertiseGroup}>
-                  <option value="">Chưa chọn</option>
+              <fieldset className="grid gap-2 rounded-xl border border-[#e5e7eb] bg-white p-3">
+                <legend className="px-1 text-sm font-medium">Nhóm chuyên môn</legend>
+                <div className="flex flex-wrap gap-3">
                   {expertiseGroupOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <label className="!flex !items-center !gap-2 text-sm" key={option.value}>
+                      <input
+                        className="!h-4 !min-h-4 !w-4 !p-0 accent-[#177245]"
+                        checked={form.expertiseGroups.includes(option.value)}
+                        onChange={(event) => onChange((current) => ({
+                          ...current,
+                          expertiseGroups: event.target.checked
+                            ? [...new Set([...current.expertiseGroups, option.value])]
+                            : current.expertiseGroups.filter((group) => group !== option.value),
+                        }))}
+                        type="checkbox"
+                      />
                       {option.label}
-                    </option>
+                    </label>
                   ))}
-                </select>
-              </label>
+                </div>
+              </fieldset>
 
               <label>
                 Mã nhân viên
@@ -878,7 +890,9 @@ function formFromUser(user: AdminUser, roles: Role[], regions: Region[]): UserFo
     certificateNo: profile?.certificateNo || '',
     photoUrl: profile?.photoUrl || '',
     profileNote: profile?.note || '',
-    expertiseGroup: profile?.expertiseGroup ?? '',
+    expertiseGroups: profile?.expertiseGroups?.length
+      ? profile.expertiseGroups
+      : profile?.expertiseGroup ? [profile.expertiseGroup] : [],
     isTechnicalStaff: Boolean(profile) || isEngineerRole(user.role?.name),
     roleId: user.role?.id ?? roles[0]?.id ?? '',
     regionId: user.region?.id ?? regions[0]?.id ?? '',
@@ -903,7 +917,7 @@ function buildEngineerProfilePayload(form: UserFormState) {
       .filter(Boolean),
     certificateNo: form.certificateNo.trim() || null,
     photoUrl: form.photoUrl.trim() || null,
-    expertiseGroup: form.expertiseGroup || null,
+    expertiseGroups: form.expertiseGroups,
     note: form.profileNote.trim() || null,
   };
 }
@@ -947,8 +961,11 @@ function isTechnicalUser(user: AdminUser) {
   return Boolean(user.engineerProfile) || isEngineerRole(user.role?.name);
 }
 
-function expertiseGroupLabel(value?: ExpertiseGroup | null) {
-  return expertiseGroupOptions.find((option) => option.value === value)?.label ?? 'Chưa chọn nhóm';
+function expertiseGroupLabel(values?: ExpertiseGroup[] | ExpertiseGroup | null) {
+  const groups = Array.isArray(values) ? values : values ? [values] : [];
+  return groups.length
+    ? groups.map((value) => expertiseGroupOptions.find((option) => option.value === value)?.label).filter(Boolean).join(' · ')
+    : 'Chưa chọn nhóm';
 }
 
 function roleTone(roleName?: string | null) {
@@ -1126,7 +1143,7 @@ function UserCard({ onDelete, onToggleStatus, user }: { onDelete: () => void; on
         </div>
         <div>
           <dt>Chuyên môn</dt>
-          <dd>{isTechnical ? expertiseGroupLabel(profile?.expertiseGroup) : '-'}</dd>
+          <dd>{isTechnical ? expertiseGroupLabel(profile?.expertiseGroups?.length ? profile.expertiseGroups : profile?.expertiseGroup) : '-'}</dd>
         </div>
         <div>
           <dt>Phòng ban</dt>

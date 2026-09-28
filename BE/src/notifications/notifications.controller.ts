@@ -11,6 +11,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequestUser } from '../common/request-user.type';
+import { ListNotificationsQueryDto } from './dto/list-notifications-query.dto';
 import { NotificationsService } from './notifications.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -18,9 +19,21 @@ import { NotificationsService } from './notifications.service';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
+  @Get('unread-count')
+  unreadCount(@CurrentUser() user: RequestUser) {
+    return this.notificationsService.unreadCount(user.id);
+  }
+
   @Get()
-  findMine(@CurrentUser() user: RequestUser, @Query('limit') limit?: string) {
-    return this.notificationsService.findForUser(user.id, Number(limit) || 10);
+  findMine(
+    @CurrentUser() user: RequestUser,
+    @Query() query: ListNotificationsQueryDto,
+  ) {
+    return this.notificationsService.findForUser(
+      user.id,
+      query.page,
+      query.limit,
+    );
   }
 
   @Sse('stream')

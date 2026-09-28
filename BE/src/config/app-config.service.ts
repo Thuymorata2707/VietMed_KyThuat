@@ -7,7 +7,8 @@ export class AppConfigService {
   readonly nodeEnv = process.env.NODE_ENV ?? 'development';
   readonly authCookieName =
     process.env.AUTH_COOKIE_NAME?.trim() || 'vietmed_access_token';
-  readonly authCookieDomain = process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined;
+  readonly authCookieDomain =
+    process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined;
   readonly authCookieSecure = this.readBoolean(
     process.env.AUTH_COOKIE_SECURE,
     this.isProduction(),
@@ -22,8 +23,7 @@ export class AppConfigService {
     28_800,
     'JWT_EXPIRES_IN',
   );
-  readonly jwtIssuer =
-    process.env.JWT_ISSUER?.trim() || 'vietmed-ky-thuat-api';
+  readonly jwtIssuer = process.env.JWT_ISSUER?.trim() || 'vietmed-ky-thuat-api';
   readonly jwtAudience =
     process.env.JWT_AUDIENCE?.trim() || 'vietmed-ky-thuat-web';
   readonly rateLimitWindowMs = this.parsePositiveInteger(
@@ -67,7 +67,9 @@ export class AppConfigService {
     }
 
     if (this.isProduction() && this.jwtExpiresInSeconds > 43_200) {
-      throw new Error('JWT_EXPIRES_IN must be 43200 seconds or less in production');
+      throw new Error(
+        'JWT_EXPIRES_IN must be 43200 seconds or less in production',
+      );
     }
 
     if (this.isProduction() && !process.env.CORS_ORIGINS?.trim()) {
@@ -139,7 +141,11 @@ export class AppConfigService {
   private readCookieSameSite(value?: string): 'lax' | 'strict' | 'none' {
     const normalized = value?.trim().toLowerCase();
 
-    if (normalized === 'lax' || normalized === 'strict' || normalized === 'none') {
+    if (
+      normalized === 'lax' ||
+      normalized === 'strict' ||
+      normalized === 'none'
+    ) {
       return normalized;
     }
 

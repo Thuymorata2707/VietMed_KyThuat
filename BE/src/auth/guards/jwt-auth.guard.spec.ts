@@ -76,6 +76,7 @@ describe('JwtAuthGuard', () => {
       status: 'ACTIVE',
       roleId: 'role-1',
       regionId: 'region-1',
+      engineerProfile: { expertiseGroup: 'IMAGING' },
       role: { name: 'admin' },
     });
     request.headers.authorization = 'Bearer valid-token';
@@ -92,6 +93,8 @@ describe('JwtAuthGuard', () => {
       roleId: 'role-1',
       roleName: 'admin',
       regionId: 'region-1',
+      expertiseGroup: 'IMAGING',
+      expertiseGroups: ['IMAGING'],
     });
   });
 

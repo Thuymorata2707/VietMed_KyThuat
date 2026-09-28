@@ -1,6 +1,7 @@
 import { Injectable, MessageEvent, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Observable, Subject } from 'rxjs';
+import { PaginatedResult } from '../common/paginated-result.type';
 import { PrismaService } from '../prisma/prisma.service';
 
 type CreateNotificationInput = {
@@ -19,25 +20,49 @@ export class NotificationsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  findForUser(userId: string, limit = 10) {
-    const take = Math.min(Math.max(limit, 1), 50);
+  async findForUser(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResult<unknown>> {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(Math.max(limit, 1), 100);
 
-    return this.prisma.notification.findMany({
-      where: { userId },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
+    const [data, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where: { userId },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+            },
           },
         },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (safePage - 1) * safeLimit,
+        take: safeLimit,
+      }),
+      this.prisma.notification.count({ where: { userId } }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit),
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take,
+    };
+  }
+
+  async unreadCount(userId: string) {
+    const count = await this.prisma.notification.count({
+      where: { userId, readAt: null },
     });
+    return { count };
   }
 
   async markRead(id: string, userId: string) {

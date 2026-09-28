@@ -2,6 +2,7 @@ import { ClipboardCheck, PackageCheck, Wrench } from 'lucide-react';
 import type { ApiUser } from '../../api';
 import { checklistForCategory } from '../../config/medicalDeviceChecklists';
 import { displayLabel } from '../../utils/displayLabels';
+import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
 import type {
   AttachmentType,
   BusinessTab,
@@ -86,7 +87,11 @@ export function emptyInstallationDeviceItem(): InstallationDeviceItem {
     serialNumber: '',
     manufactureDate: '',
     quantity: 1,
+    sourceMachineId: '',
     warrantyPeriod: '',
+    engineerIds: [],
+    accessoriesText: '',
+    accessoriesConfigured: false,
   };
 }
 
@@ -109,8 +114,10 @@ export const emptyCreateTicketForm = (kind: TaskKind = 'repair'): CreateTicketFo
   representative: '',
   address: '',
   contactPhone: '',
-  deviceName: '',
-  modelName: '',
+    deviceName: '',
+    modelName: '',
+    manufacturer: '',
+    productCategory: 'OTHER',
   serialNumber: '',
   warrantyStatus: 'IN_WARRANTY',
   conditionAssessment: '',
@@ -486,11 +493,19 @@ export function normalizeInstallationDeviceItems(items: InstallationDeviceItem[]
   return items
     .map((item) => ({
       itemName: item.itemName.trim(),
+      sourceMachineId: item.sourceMachineId || undefined,
       model: item.model.trim() || undefined,
+      ...(item.manufacturer?.trim() ? { manufacturer: item.manufacturer.trim() } : {}),
+      ...(item.productCategory ? { productCategory: item.productCategory } : {}),
+      ...(item.isPrimary ? { isPrimary: true } : {}),
       serialNumber: item.serialNumber.trim() || undefined,
       manufactureDate: item.manufactureDate || undefined,
       quantity: Number(item.quantity) || 1,
       warrantyPeriod: item.warrantyPeriod.trim() || undefined,
+      ...(item.engineerIds?.length ? { engineerIds: item.engineerIds } : {}),
+      ...(item.accessoriesConfigured
+        ? { accessories: parseMachineAccessoriesInput(item.accessoriesText || '') }
+        : {}),
     }))
     .filter((item) => item.itemName);
 }

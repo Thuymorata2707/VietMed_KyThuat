@@ -50,7 +50,12 @@ export function createRateLimitMiddleware(config: AppConfigService) {
     }
 
     current.count += 1;
-    setRateLimitHeaders(response, max, Math.max(0, max - current.count), current.resetAt);
+    setRateLimitHeaders(
+      response,
+      max,
+      Math.max(0, max - current.count),
+      current.resetAt,
+    );
     next();
   };
 }

@@ -5,6 +5,7 @@ import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
 import { CustomerSiteFields } from '../../components/CustomerSiteFields';
 import { DeleteRequestReviewPanel } from '../../components/DeleteRequestReviewPanel';
+import { DeleteTicketDialog } from '../../components/DeleteTicketDialog';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -99,6 +100,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
   const isAdmin = getRoleName(user) === 'admin';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [detail, setDetail] = useState<RepairTask | null>(null);
@@ -117,7 +119,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
     onSuccess: setSuccess,
     uploadSuccessMessage: (count) => `Đã tải ${count} ảnh/tài liệu lên phiếu sửa chữa.`,
   });
-  const repairChecklist = checklistForCategory(detail?.machine?.productCategory || detail?.modelName || detail?.deviceName, 'repair');
+  const repairChecklist = checklistForCategory(form.modelName || form.deviceName || detail?.machine?.productCategory, 'repair');
   const detailMachineModelId = form.machineId === (detail?.machine?.id || '') ? detail?.machine?.machineModel?.id || '' : '';
   const selectedMachineModelId = form.machineModelId || modelIdByName(machineModels, form.modelName) || detailMachineModelId;
   const selectedAccessoryModel = machineModels.find((model) => model.id === selectedMachineModelId);
@@ -128,6 +130,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
     detail?.machine?.id && !installedMachines.some((machine) => machine.id === detail.machine?.id)
       ? [detail.machine as StockMachine, ...installedMachines]
       : installedMachines;
+  const selectedRepairMachine = installedMachineOptions.find((machine) => machine.id === form.machineId);
   const pendingDeleteRequest = isDeleteRequest(detail);
 
   useEffect(() => {
@@ -194,8 +197,8 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
 
   async function loadInstalledMachines() {
     try {
-      const result = await apiFetch<Paginated<StockMachine>>('/machines?limit=200&inventoryStatus=INSTALLED');
-      setInstalledMachines(result.data);
+      const result = await apiFetchAllPages<StockMachine>('/machines?inventoryStatus=INSTALLED');
+      setInstalledMachines(result);
     } catch {
       setInstalledMachines([]);
     }
@@ -277,28 +280,23 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
   }
 
   async function deleteTicket() {
-    const reason = isAdmin ? '' : window.prompt('Nhập lý do yêu cầu xóa phiếu sửa chữa:')?.trim();
-    if (!isAdmin && !reason) return;
-
-    const message = isAdmin
-      ? 'Xóa vĩnh viễn phiếu sửa chữa này?'
-      : 'Gửi yêu cầu xóa phiếu sửa chữa để admin duyệt?';
-    if (!window.confirm(message)) return;
+    if (!isAdmin) return;
 
     setSaving(true);
     setError('');
     setSuccess('');
 
     try {
-      const response = await deleteWorkTicket(`/repairs/${id}`, reason);
+      const response = await deleteWorkTicket(`/repairs/${id}`, '');
 
       if (response.deleted) {
+        setShowDeleteConfirm(false);
         navigate(returnTo);
         return;
       }
 
       if (response.deleteRequested) {
-        setSuccess('Đã gửi yêu cầu xóa phiếu. Admin sẽ duyệt trước khi xóa.');
+        setSuccess('Đã gửi yêu cầu xóa, chờ admin duyệt.');
         await loadDetail();
       }
     } catch (err) {
@@ -339,7 +337,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Sửa chữa"
           title="Cập nhật phiếu sửa chữa"
-          description="Tình trạng & kết quả."
+          description={detail?.code ? `Mã phiếu ${detail.code} · ${statusLabel(detail.status || '')}` : 'Thông tin thiết bị và kết quả xử lý'}
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
@@ -362,14 +360,13 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
               <div className={sectionHeaderClass}>
                 <span className={stepBadgeClass}>1</span>
                 <div>
-                  <span className={eyebrowClass}>Thông tin phiếu</span>
-                  <h2 className={sectionTitleClass}>{detail?.title || 'Phiếu sửa chữa'}</h2>
-                  <p className={sectionDescriptionClass}>{detail?.code} - {statusLabel(detail?.status || '')}</p>
+                  <span className={eyebrowClass}>Điều phối</span>
+                  <h2 className={sectionTitleClass}>Tiến độ phiếu</h2>
                 </div>
               </div>
 
-              <div className="grid min-w-0 gap-5 md:grid-cols-2">
-                <div className={labelClass}>
+              <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <label className={labelClass}>
                   Trạng thái xử lý
                   <select className={fieldClass} onChange={(event) => updateForm({ status: event.target.value })} required value={form.status}>
                     {statusOptionsForCurrent(form.status).map((option) => (
@@ -378,15 +375,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                       </option>
                     ))}
                   </select>
-                  <button
-                    className="secondary-button w-full justify-center border-[#e4e4e7] bg-[#f4f4f5] text-[#b5121b]"
-                    disabled={form.status === 'COMPLETED' || form.status === 'CANCELLED'}
-                    onClick={() => updateForm({ status: 'COMPLETED' })}
-                    type="button"
-                  >
-                    Hoàn thành phiếu
-                  </button>
-                </div>
+                </label>
                 {isAdmin ? (
                   <label className={labelClass}>
                     Mức ưu tiên
@@ -411,6 +400,26 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                     </select>
                   </label>
                 ) : null}
+                <button
+                  className="secondary-button h-11 self-end justify-center border-[#e4e4e7] bg-[#faf9f7] text-primary"
+                  disabled={form.status === 'COMPLETED' || form.status === 'CANCELLED'}
+                  onClick={() => updateForm({ status: 'COMPLETED' })}
+                  type="button"
+                >
+                  Hoàn thành
+                </button>
+              </div>
+            </div>
+
+            <div className={panelClass}>
+              <div className={sectionHeaderClass}>
+                <span className={stepBadgeClass}>2</span>
+                <div>
+                  <span className={eyebrowClass}>Tiếp nhận</span>
+                  <h2 className={sectionTitleClass}>Thiết bị sửa chữa</h2>
+                </div>
+              </div>
+              <div className="grid min-w-0 gap-4 md:grid-cols-2">
                 <WorkMachineModelFields
                   deviceName={form.deviceName}
                   fieldClassName={fieldClass}
@@ -424,20 +433,35 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                   selectedMachineId={form.machineId}
                   serialNumber={form.serialNumber}
                 />
+                <div className="md:col-span-2 mt-1 border-t border-[#eee9e5] pt-4">
+                  <span className="text-sm font-semibold text-[#292524]">Thông tin tiếp nhận</span>
+                </div>
                 <label className={labelClass}>
                   Thời hạn bảo hành
                   <input className={fieldClass} onChange={(event) => updateForm({ warrantyTerm: event.target.value })} value={form.warrantyTerm} />
                 </label>
-                <label className={`${labelClass} md:col-span-2`}>
-                  Tình trạng thiết bị lúc nhận
-                  <textarea className={textareaClass} onChange={(event) => updateForm({ conditionAssessment: event.target.value })} value={form.conditionAssessment} />
+                <label className={labelClass}>
+                  Tình trạng lúc nhận
+                  <textarea className={`${textareaClass} !min-h-24`} onChange={(event) => updateForm({ conditionAssessment: event.target.value })} value={form.conditionAssessment} />
                 </label>
                 <label className={`${labelClass} md:col-span-2`}>
                   Phụ kiện nhận kèm
-                  <textarea className={textareaClass} onChange={(event) => updateForm({ receivedAccessories: event.target.value })} value={form.receivedAccessories} />
+                  <textarea className={`${textareaClass} !min-h-24`} onChange={(event) => updateForm({ receivedAccessories: event.target.value })} value={form.receivedAccessories} />
                 </label>
+              </div>
+            </div>
+
+            <div className={panelClass}>
+              <div className={sectionHeaderClass}>
+                <span className={stepBadgeClass}>3</span>
+                <div>
+                  <span className={eyebrowClass}>Xử lý</span>
+                  <h2 className={sectionTitleClass}>Chẩn đoán & chi phí</h2>
+                </div>
+              </div>
+              <div className="grid min-w-0 gap-4 md:grid-cols-2">
                 <label className={`${labelClass} md:col-span-2`}>
-                  Sơ bộ xác định nguyên nhân
+                  Nguyên nhân
                   <textarea className={textareaClass} onChange={(event) => updateForm({ preliminaryCause: event.target.value })} value={form.preliminaryCause} />
                 </label>
                 <label className={`${labelClass} md:col-span-2`}>
@@ -445,11 +469,11 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                   <textarea className={textareaClass} onChange={(event) => updateForm({ repairMethod: event.target.value })} value={form.repairMethod} />
                 </label>
                 <label className={`${labelClass} md:col-span-2`}>
-                  Hư hỏng / biện pháp / chi phí
+                  Hư hỏng, biện pháp và chi phí
                   <textarea className={textareaClass} onChange={(event) => updateForm({ repairCostItems: event.target.value })} value={form.repairCostItems} />
                 </label>
                 <label className={labelClass}>
-                  Tổng chi phí sửa chữa
+                  Tổng chi phí
                   <input className={fieldClass} onChange={(event) => updateForm({ totalRepairCost: event.target.value })} value={form.totalRepairCost} />
                 </label>
                 <label className={labelClass}>
@@ -470,7 +494,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
 
             <div className={panelClass}>
               <div className={sectionHeaderClass}>
-                <span className={stepBadgeClass}>2</span>
+                <span className={stepBadgeClass}>4</span>
                 <div>
                   <span className={eyebrowClass}>Khách hàng</span>
                   <h2 className={sectionTitleClass}>Thông tin tại điểm sửa chữa</h2>
@@ -495,7 +519,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
 
             <div className={panelClass}>
               <div className={sectionHeaderClass}>
-                <span className={stepBadgeClass}>3</span>
+                <span className={stepBadgeClass}>5</span>
                 <div>
                   <span className={eyebrowClass}>Kết quả</span>
                   <h2 className={sectionTitleClass}>Ghi nhận sau xử lý</h2>
@@ -513,6 +537,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 </label>
               </div>
             </div>
+
           </section>
 
           <aside className="grid min-w-0 gap-4 self-start min-[1320px]:sticky min-[1320px]:top-5">
@@ -528,10 +553,10 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
             <div className={sidePanelClass}>
               <span className={eyebrowClass}>Tóm tắt máy</span>
               <div className="mt-3 grid gap-3 text-sm text-[#333333]">
-                <SummaryRow label="Mã máy" value={detail?.machine?.machineCode || '-'} />
-                <SummaryRow label="S/N hệ thống" value={detail?.machine?.serialNumber || '-'} />
-                <SummaryRow label="Model hệ thống" value={detail?.machine?.modelName || '-'} />
-                <SummaryRow label="Khách hàng hệ thống" value={detail?.machine?.customer?.name || '-'} />
+                <SummaryRow label="Mã máy" value={selectedRepairMachine?.machineCode || '-'} />
+                <SummaryRow label="S/N máy" value={form.serialNumber || '-'} />
+                <SummaryRow label="Model" value={form.modelName || form.deviceName || '-'} />
+                <SummaryRow label="Khách hàng" value={form.usingDepartment || detail?.machine?.customer?.name || '-'} />
               </div>
             </div>
 
@@ -541,7 +566,6 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 repairMethod: appendTextBlock(form.repairMethod, 'Linh kiện/phụ kiện:\n- Đã thay:\n- Cần chờ:\n- Mã/Số lượng:'),
               })}
             />
-
             <WorkAttachmentsPanel
               {...attachmentsPanel}
               descriptionClassName={textareaClass}
@@ -560,15 +584,17 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
               uploading={attachmentsPanel.uploadingAttachment}
             />
 
-            <div className="rounded-[22px] border border-[#e4e4e7] bg-[#f4f4f5] p-3 shadow-[0_16px_40px_rgba(24,24,27,0.08)]">
+            <div className="rounded-2xl border border-[#e7e2dc] bg-white p-3">
               <div className="grid gap-2 sm:grid-cols-2 min-[1320px]:grid-cols-1">
                 <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
                   Hủy
                 </button>
-                <button className="secondary-button justify-center text-[#b5121b]" disabled={saving} onClick={() => void deleteTicket()} type="button">
+                {isAdmin ? (
+                  <button className="secondary-button justify-center text-[#b5121b]" disabled={saving} onClick={() => setShowDeleteConfirm(true)} type="button">
                   <Trash2 size={17} />
-                  {isAdmin ? 'Xóa phiếu' : 'Yêu cầu xóa'}
-                </button>
+                  Xóa phiếu
+                  </button>
+                ) : null}
                 <button className="primary-button" disabled={saving} type="submit">
                   {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
                   {saving ? 'Đang lưu' : 'Lưu phiếu'}
@@ -578,6 +604,22 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
           </aside>
         </form>
       )}
+      {showDeleteConfirm && detail ? (
+        <DeleteTicketDialog
+          details={[
+            { label: 'Mã phiếu', value: detail.code },
+            { label: 'Khách hàng', value: detail.customer?.name || detail.usingDepartment },
+            { label: 'Thiết bị', value: detail.deviceName || detail.machine?.name || detail.modelName },
+            { label: 'Serial', value: detail.serialNumber || detail.machine?.serialNumber },
+            { label: 'Trạng thái', value: statusLabel(detail.status) },
+          ]}
+          loading={saving}
+          onCancel={() => setShowDeleteConfirm(false)}
+          onConfirm={() => void deleteTicket()}
+          title="Bạn sắp xóa phiếu sửa chữa này"
+          warning="Phiếu và dữ liệu liên kết sẽ bị xóa vĩnh viễn. Kỹ sư có thể tạo lại phiếu sau đó."
+        />
+      ) : null}
     </PageFrame>
   );
 }
@@ -676,9 +718,9 @@ function statusOptionsForCurrent(status: string) {
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid min-w-0 gap-1 rounded-lg border border-[#eeeeee] bg-[#fafafa] p-3">
-      <span className="text-xs font-medium text-[#666666]">{label}</span>
-      <strong className="break-words text-[#1f1f1f]">{value}</strong>
+    <div className="grid min-w-0 gap-1 border-b border-[#eee9e5] pb-2 last:border-b-0 last:pb-0">
+      <span className="text-xs font-medium text-[#78716c]">{label}</span>
+      <strong className="break-words text-sm font-semibold text-[#292524]">{value}</strong>
     </div>
   );
 }
@@ -693,17 +735,13 @@ function StandardRepairChecklist({
   return (
     <section className={panelClass}>
       <div className="mb-4 border-b border-[#eeeeee] pb-4">
-        <span className="text-xs font-medium text-[#18181b]">Chuẩn kỹ thuật</span>
         <h2 className="mt-1 text-lg font-medium text-[#1f1f1f]">Checklist sửa chữa</h2>
-        <p className="mt-1 text-sm leading-6 text-[#666666]">Dùng khi duyệt phiếu.</p>
       </div>
-      <div className="grid gap-2">
+      <ul className="divide-y divide-[#eee9e5]">
         {items.map((item) => (
-          <div className="rounded-lg border border-[#eeeeee] bg-[#fafafa] px-3 py-2 text-sm leading-5 text-[#333333]" key={item}>
-            {item}
-          </div>
+          <li className="py-2.5 text-sm leading-5 text-[#44403c] first:pt-0 last:pb-0" key={item}>{item}</li>
         ))}
-      </div>
+      </ul>
       <button className="secondary-button mt-4 w-full justify-center" onClick={onApplyPartsTemplate} type="button">
         Thêm mẫu linh kiện
       </button>

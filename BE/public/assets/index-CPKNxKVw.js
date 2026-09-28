@@ -1,1 +1,0 @@
-import{j as e}from"./index-CPcuEiqx.js";import{T as s}from"./triangle-alert-CrMhY3_v.js";function n({message:r}){return e.jsxs("div",{className:"flex min-h-11 items-center gap-2.5 rounded-lg border border-[#efd8a8] bg-[#fff8ed] px-3.5 text-[#9b5a17]",children:[e.jsx(s,{size:18}),e.jsx("span",{children:r})]})}export{n as N};

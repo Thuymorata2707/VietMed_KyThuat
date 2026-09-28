@@ -28,7 +28,7 @@ import { InstallationsService } from './installations.service';
 export class InstallationsController {
   constructor(private readonly installationsService: InstallationsService) {}
 
-  @Roles('admin', 'engineer')
+  @Roles('admin')
   @Post()
   create(@Body() dto: CreateInstallationDto, @CurrentUser() user: RequestUser) {
     return this.installationsService.create(dto, user);

@@ -7,6 +7,7 @@ import {
 import {
   DailyWorkStatus,
   DailyWorkType,
+  ApplicationSupportWorkType,
   WeeklyReportStatus,
 } from '@prisma/client';
 import { isAdmin, isEngineer, userAccessWhere } from '../auth/access-scope';
@@ -26,6 +27,19 @@ const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
   INSTALLATION: 'Lắp đặt',
   MAINTENANCE: 'Bảo trì/Bảo dưỡng',
   OTHER: 'Khác',
+};
+
+const applicationSupportWorkTypeLabels: Record<
+  ApplicationSupportWorkType,
+  string
+> = {
+  APP_SUPPORT: 'Ứng dụng xét nghiệm',
+  REAGENT_SETUP: 'Cài hóa chất',
+  QC_CALIBRATION: 'QC/Calib',
+  LIS_HIS: 'LIS/HIS',
+  TRAINING: 'Đào tạo',
+  FOLLOW_UP: 'Theo dõi ứng dụng',
+  OTHER: 'Hỗ trợ khác',
 };
 
 @Injectable()
@@ -58,110 +72,127 @@ export class WeeklyReportsService {
       throw new BadRequestException('to must be after from');
     }
 
-    const [engineer, installations, repairs, maintenances, weeklyReports] =
-      await Promise.all([
-        this.prisma.user.findUnique({
-          where: { id: targetUserId },
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
-            engineerProfile: {
-              select: {
-                employeeCode: true,
-                position: true,
-                department: true,
-                expertiseGroup: true,
-              },
+    const [
+      engineer,
+      installations,
+      repairs,
+      maintenances,
+      applicationSupportCases,
+      weeklyReports,
+    ] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          engineerProfile: {
+            select: {
+              employeeCode: true,
+              position: true,
+              department: true,
+              expertiseGroup: true,
             },
           },
-        }),
-        this.prisma.machineInstallation.findMany({
-          where: {
-            installedById: targetUserId,
-            status: 'INSTALLED',
-            installedAt: { gte: startDate, lte: endDate },
-          },
-          include: {
-            customer: true,
-            machine: true,
-            businessLine: true,
-            plannedMachineModel: true,
-          },
-          orderBy: { installedAt: 'asc' },
-        }),
-        this.prisma.repair.findMany({
-          where: {
-            engineerId: targetUserId,
-            completedAt: { gte: startDate, lte: endDate },
-          },
-          include: {
-            machine: {
-              include: {
-                customer: true,
-                businessLine: true,
-              },
+        },
+      }),
+      this.prisma.machineInstallation.findMany({
+        where: {
+          installedById: targetUserId,
+          status: 'INSTALLED',
+          installedAt: { gte: startDate, lte: endDate },
+        },
+        include: {
+          customer: true,
+          machine: true,
+          businessLine: true,
+          plannedMachineModel: true,
+        },
+        orderBy: { installedAt: 'asc' },
+      }),
+      this.prisma.repair.findMany({
+        where: {
+          engineerId: targetUserId,
+          completedAt: { gte: startDate, lte: endDate },
+        },
+        include: {
+          machine: {
+            include: {
+              customer: true,
+              businessLine: true,
             },
           },
-          orderBy: { completedAt: 'asc' },
-        }),
-        this.prisma.maintenance.findMany({
-          where: {
-            engineerId: targetUserId,
-            completedAt: { gte: startDate, lte: endDate },
-          },
-          include: {
-            machine: {
-              include: {
-                customer: true,
-                businessLine: true,
-              },
+        },
+        orderBy: { completedAt: 'asc' },
+      }),
+      this.prisma.maintenance.findMany({
+        where: {
+          engineerId: targetUserId,
+          completedAt: { gte: startDate, lte: endDate },
+        },
+        include: {
+          machine: {
+            include: {
+              customer: true,
+              businessLine: true,
             },
           },
-          orderBy: { completedAt: 'asc' },
-        }),
-        this.prisma.weeklyReport.findMany({
-          where: {
-            userId: targetUserId,
-            rows: {
-              some: {
-                workDate: { gte: startDate, lte: endDate },
-              },
+        },
+        orderBy: { completedAt: 'asc' },
+      }),
+      this.prisma.applicationSupportCase.findMany({
+        where: {
+          engineerId: targetUserId,
+          supportedAt: { gte: startDate, lte: endDate },
+        },
+        include: {
+          customer: true,
+          machine: { include: { customer: true, businessLine: true } },
+        },
+        orderBy: { supportedAt: 'asc' },
+      }),
+      this.prisma.weeklyReport.findMany({
+        where: {
+          userId: targetUserId,
+          rows: {
+            some: {
+              workDate: { gte: startDate, lte: endDate },
             },
           },
-          select: {
-            id: true,
-            weekStart: true,
-            status: true,
-            note: true,
-            submittedAt: true,
-            rows: {
-              where: {
-                workDate: { gte: startDate, lte: endDate },
-              },
-              orderBy: [{ workDate: 'asc' }, { sortOrder: 'asc' }],
-              select: {
-                id: true,
-                workDate: true,
-                customer: true,
-                machine: true,
-                content: true,
-                result: true,
-                pending: true,
-                proposal: true,
-                sortOrder: true,
-              },
+        },
+        select: {
+          id: true,
+          weekStart: true,
+          status: true,
+          note: true,
+          submittedAt: true,
+          rows: {
+            where: {
+              workDate: { gte: startDate, lte: endDate },
+            },
+            orderBy: [{ workDate: 'asc' }, { sortOrder: 'asc' }],
+            select: {
+              id: true,
+              workDate: true,
+              customer: true,
+              machine: true,
+              content: true,
+              result: true,
+              pending: true,
+              proposal: true,
+              sortOrder: true,
             },
           },
-          orderBy: { weekStart: 'asc' },
-        }),
-      ]);
+        },
+        orderBy: { weekStart: 'asc' },
+      }),
+    ]);
 
     const activities = [
       ...installations.map((item) => ({
         id: item.id,
         kind: 'installation' as const,
-        code: item.code,
+        code: item.id,
         date: item.installedAt,
         status: item.status,
         customer: this.customerSummary(item.customer),
@@ -217,6 +248,22 @@ export class WeeklyReportsService {
         title: item.title,
         result: item.resultNote,
       })),
+      ...applicationSupportCases.map((item) => ({
+        id: item.id,
+        kind: 'applicationSupport' as const,
+        code: `APP-${item.id.slice(-8).toUpperCase()}`,
+        date: item.supportedAt,
+        status: item.status,
+        customer: this.customerSummary(item.customer, {
+          name: item.customerName,
+        }),
+        machine: this.machineSummary(item.machine, {
+          modelName: item.machine?.modelName ?? item.machineText,
+          serialNumber: item.machine?.serialNumber,
+        }),
+        title: `${applicationSupportWorkTypeLabel(item.workType)}: ${item.title}`,
+        result: item.resolution,
+      })),
     ].sort((left, right) => left.date.getTime() - right.date.getTime());
 
     const customerMap = new Map<
@@ -231,6 +278,7 @@ export class WeeklyReportsService {
         installationCount: number;
         repairCount: number;
         maintenanceCount: number;
+        applicationSupportCount: number;
         machineIds: Set<string>;
       }
     >();
@@ -247,12 +295,15 @@ export class WeeklyReportsService {
         installationCount: 0,
         repairCount: 0,
         maintenanceCount: 0,
+        applicationSupportCount: 0,
         machineIds: new Set<string>(),
       };
 
       if (activity.kind === 'installation') current.installationCount += 1;
       if (activity.kind === 'repair') current.repairCount += 1;
       if (activity.kind === 'maintenance') current.maintenanceCount += 1;
+      if (activity.kind === 'applicationSupport')
+        current.applicationSupportCount += 1;
       if (activity.machine.id) current.machineIds.add(activity.machine.id);
       customerMap.set(key, current);
     }
@@ -277,6 +328,7 @@ export class WeeklyReportsService {
         installations: installations.length,
         repairs: repairs.length,
         maintenances: maintenances.length,
+        applicationSupport: applicationSupportCases.length,
         activities: activities.length,
         customers: customerSummaries.length,
         machines: uniqueMachineIds.size,
@@ -970,4 +1022,8 @@ export class WeeklyReportsService {
       },
     };
   }
+}
+
+function applicationSupportWorkTypeLabel(value: ApplicationSupportWorkType) {
+  return applicationSupportWorkTypeLabels[value] ?? value;
 }

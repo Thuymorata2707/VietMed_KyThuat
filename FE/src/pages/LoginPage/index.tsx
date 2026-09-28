@@ -101,7 +101,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   <ShieldCheck size={16} />
                   Dành cho nhân sự được phân quyền
                 </span>
-                <span>Dữ liệu bảo vệ theo vai trò.</span>
             </div>
           </div>
 

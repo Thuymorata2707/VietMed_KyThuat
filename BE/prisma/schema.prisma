@@ -8,6 +8,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model CodeSequence {
+  scope String @id @db.VarChar(191)
+  value BigInt @default(0)
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -285,6 +290,16 @@ enum ApplicationSupportIssueCategory {
   OTHER
 }
 
+enum ApplicationSupportWorkType {
+  APP_SUPPORT
+  REAGENT_SETUP
+  QC_CALIBRATION
+  LIS_HIS
+  TRAINING
+  FOLLOW_UP
+  OTHER
+}
+
 enum ApplicationSupportStatus {
   RESOLVED
   WAITING_CUSTOMER
@@ -306,6 +321,32 @@ model Region {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Branch {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String @unique
+  provinces Province[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Province {
+  id String @id @default(cuid())
+
+  code String @unique
+  name String @unique
+  branchId String?
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  customers Customer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([branchId])
 }
 
 model Role {
@@ -338,16 +379,20 @@ model User {
   region   Region @relation(fields: [regionId], references: [id])
 
   assignedRepairs             Repair[]                   @relation("RepairEngineer")
+  repairAssignments           RepairAssignment[]
   createdRepairs              Repair[]                   @relation("RepairCreatedBy")
   reviewedRepairs             Repair[]                   @relation("RepairReviewer")
   maintenances                Maintenance[]
+  maintenanceAssignments      MaintenanceAssignment[]
   reviewedMaintenances        Maintenance[]              @relation("MaintenanceReviewer")
   installedMachines           Machine[]                  @relation("MachineInstalledBy")
   machineInstallations        MachineInstallation[]      @relation("MachineInstallationEngineer")
+  installationAssignments    InstallationAssignment[]
   reviewedInstallations       MachineInstallation[]      @relation("InstallationReviewer")
   demoLoans                   DemoLoan[]                 @relation("DemoLoanEngineer")
   issuedWarrantyCards         WarrantyCard[]             @relation("WarrantyCardIssuedBy")
   responsibleMachines         Machine[]                  @relation("MachinePrimaryEngineer")
+  machineAssignments          MachineEngineerAssignment[]
   inventoryMovements          MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
   receivedNotifications       Notification[]             @relation("NotificationRecipient")
   sentNotifications           Notification[]             @relation("NotificationSender")
@@ -362,6 +407,7 @@ model User {
   weeklyReports               WeeklyReport[]             @relation("WeeklyReportUser")
   reviewedWeeklyReports       WeeklyReport[]             @relation("WeeklyReportReviewer")
   primaryCustomers            Customer[]                 @relation("CustomerPrimaryEngineer")
+  managedCustomers            Customer[]                 @relation("CustomerEngineers")
   createdKnowledgeArticles    KnowledgeArticle[]         @relation("KnowledgeArticleCreatedBy")
   updatedKnowledgeArticles    KnowledgeArticle[]         @relation("KnowledgeArticleUpdatedBy")
   createdWorkLogs             WorkLog[]                  @relation("WorkLogCreatedBy")
@@ -582,6 +628,8 @@ model EngineerProfile {
   workStartDate  DateTime?
   specialties    Json            @default("[]")
   expertiseGroup ExpertiseGroup?
+  expertiseImaging   Boolean         @default(false)
+  expertiseLabTesting Boolean         @default(false)
   certificateNo  String?
   photoUrl       String?         @db.Text
   note           String?
@@ -614,6 +662,8 @@ model Customer {
   contactEmail    String?
 
   province    String?
+  provinceId  String?
+  provinceRef Province? @relation(fields: [provinceId], references: [id], onDelete: SetNull)
   district    String?
   ward        String?
   address     String?
@@ -621,11 +671,12 @@ model Customer {
 
   note String? @db.Text
 
-  regionId String
-  region   Region @relation(fields: [regionId], references: [id])
+  regionId String?
+  region   Region? @relation(fields: [regionId], references: [id], onDelete: SetNull)
 
   primaryEngineerId String?
   primaryEngineer   User?   @relation("CustomerPrimaryEngineer", fields: [primaryEngineerId], references: [id], onDelete: SetNull)
+  engineers         User[]  @relation("CustomerEngineers")
 
   machines                Machine[]
   inventoryMovements      MachineInventoryMovement[]
@@ -753,7 +804,7 @@ model ComponentAccessory {
   component   MachineComponent? @relation(fields: [componentId], references: [id], onDelete: SetNull)
 
   machineAccessories MachineAccessory[]
-  stockMovements      AccessoryStockMovement[]
+  stockMovements     AccessoryStockMovement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -767,7 +818,7 @@ model ComponentAccessory {
 model AccessoryStockMovement {
   id String @id @default(cuid())
 
-  code String @unique
+  code String                     @unique
   type AccessoryStockMovementType
 
   componentAccessoryId String
@@ -800,7 +851,7 @@ model AccessoryStockMovement {
   deviceServiceTicket   DeviceServiceTicket? @relation(fields: [deviceServiceTicketId], references: [id], onDelete: Cascade)
 
   createdById String?
-  createdBy   User? @relation("AccessoryStockMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy   User?   @relation("AccessoryStockMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -857,6 +908,7 @@ model Machine {
 
   primaryEngineerId String?
   primaryEngineer   User?   @relation("MachinePrimaryEngineer", fields: [primaryEngineerId], references: [id])
+  engineerAssignments MachineEngineerAssignment[]
 
   repairs                 Repair[]
   maintenances            Maintenance[]
@@ -871,6 +923,18 @@ model Machine {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model MachineEngineerAssignment {
+  machineId  String
+  engineerId String
+  isPrimary  Boolean  @default(false)
+  assignedAt DateTime @default(now())
+  machine    Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  engineer   User     @relation(fields: [engineerId], references: [id], onDelete: Cascade)
+
+  @@id([machineId, engineerId])
+  @@index([engineerId, assignedAt])
 }
 
 model DemoLoan {
@@ -1015,15 +1079,23 @@ model ApplicationSupportCase {
 
   supportedAt   DateTime
   channel       ApplicationSupportChannel       @default(PHONE)
+  workType      ApplicationSupportWorkType      @default(APP_SUPPORT)
   issueCategory ApplicationSupportIssueCategory @default(APP_ERROR)
   status        ApplicationSupportStatus        @default(RESOLVED)
 
-  customerName String?
-  contactName  String?
-  contactPhone String?
-  appModule    String?
-  machineText  String?
-  impactLevel  String?
+  customerName      String?
+  contactName       String?
+  contactPhone      String?
+  appModule         String?
+  machineText       String?
+  impactLevel       String?
+  reagentName       String?
+  reagentLot        String?
+  reagentExpiry     DateTime?
+  assayName         String?
+  qcResult          String?
+  calibrationResult String?
+  lisHisStatus      String?
 
   title            String
   issueDescription String  @db.Text
@@ -1045,6 +1117,7 @@ model ApplicationSupportCase {
   @@index([machineId])
   @@index([machineModelId])
   @@index([status])
+  @@index([workType])
   @@index([issueCategory])
 }
 
@@ -1097,9 +1170,10 @@ model MachineInstallation {
   reviewer     User?            @relation("InstallationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
 
   warrantyCard   WarrantyCard?
-  workLogs                WorkLog[]
-  usedParts               UsedPart[]
-  checklistItems          TaskChecklistItem[]
+  workLogs       WorkLog[]
+  usedParts      UsedPart[]
+  checklistItems TaskChecklistItem[]
+  assignments    InstallationAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1113,6 +1187,18 @@ model MachineInstallation {
   @@index([status])
   @@index([reviewStatus])
   @@index([reviewerId])
+}
+
+model InstallationAssignment {
+  installationId String
+  installation   MachineInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  engineerId     String
+  engineer       User                 @relation(fields: [engineerId], references: [id], onDelete: Cascade)
+  isLead         Boolean              @default(false)
+  assignedAt     DateTime             @default(now())
+
+  @@id([installationId, engineerId])
+  @@index([engineerId, assignedAt])
 }
 
 model WarrantyCard {
@@ -1220,6 +1306,7 @@ model Maintenance {
   usedParts               UsedPart[]
   accessoryStockMovements AccessoryStockMovement[]
   checklistItems          TaskChecklistItem[]
+  assignments             MaintenanceAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1227,6 +1314,18 @@ model Maintenance {
   @@index([reviewStatus])
   @@index([reviewerId])
   @@index([customerId])
+}
+
+model MaintenanceAssignment {
+  maintenanceId String
+  maintenance   Maintenance @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+  engineerId    String
+  engineer      User        @relation(fields: [engineerId], references: [id], onDelete: Cascade)
+  isLead        Boolean     @default(false)
+  assignedAt    DateTime    @default(now())
+
+  @@id([maintenanceId, engineerId])
+  @@index([engineerId, assignedAt])
 }
 
 model Repair {
@@ -1288,6 +1387,7 @@ model Repair {
   usedParts               UsedPart[]
   accessoryStockMovements AccessoryStockMovement[]
   checklistItems          TaskChecklistItem[]
+  assignments             RepairAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1296,6 +1396,18 @@ model Repair {
   @@index([reviewStatus])
   @@index([reviewerId])
   @@index([customerId])
+}
+
+model RepairAssignment {
+  repairId   String
+  repair     Repair   @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  engineerId String
+  engineer   User     @relation(fields: [engineerId], references: [id], onDelete: Cascade)
+  isLead     Boolean  @default(false)
+  assignedAt DateTime @default(now())
+
+  @@id([repairId, engineerId])
+  @@index([engineerId, assignedAt])
 }
 
 model WorkLog {

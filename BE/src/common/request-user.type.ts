@@ -4,4 +4,6 @@ export type RequestUser = {
   roleId: string;
   roleName: string;
   regionId: string;
+  expertiseGroup?: string | null;
+  expertiseGroups?: string[];
 };

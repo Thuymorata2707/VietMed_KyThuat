@@ -17,5 +17,17 @@ export class ListCustomersQueryDto extends PaginationQueryDto {
 
   @IsOptional()
   @IsString()
+  provinceId?: string;
+
+  @IsOptional()
+  @IsString()
+  province?: string;
+
+  @IsOptional()
+  @IsString()
+  branchId?: string;
+
+  @IsOptional()
+  @IsString()
   primaryEngineerId?: string;
 }

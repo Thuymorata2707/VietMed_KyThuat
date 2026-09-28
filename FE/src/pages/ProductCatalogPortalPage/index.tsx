@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Boxes, ImageOff, Loader2, PackagePlus, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeft, Boxes, ImageOff, Loader2, PackagePlus, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
@@ -8,9 +8,8 @@ import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
-import { Badge } from '../../components/ui/badge';
+import { EquipmentAreaNav } from '../../components/EquipmentAreaNav';
 import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
 import { queryKeys } from '../../lib/queryKeys';
 
 type ExpertiseGroup = 'IMAGING' | 'LAB_TESTING' | 'PHYSIOTHERAPY' | 'ICU';
@@ -99,83 +98,69 @@ const productCategoryOptions = [
 ];
 
 export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
+  const navigate = useNavigate();
   const catalogQuery = useCatalogOverview();
   const role = getRoleName(user);
-  const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
+  const userExpertise = getUserExpertiseGroups(user);
   const canAddProduct = role === 'admin' || role === 'engineer';
-  const [industryQuery, setIndustryQuery] = useState('');
+  const [query, setQuery] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'empty'>('all');
+  const [selectedIndustryId, setSelectedIndustryId] = useState('');
   const industries = catalogQuery.data?.industries ?? [];
   const models = catalogQuery.data?.models ?? [];
   const stockByModel = catalogQuery.data?.stockByModel ?? {};
   const loading = catalogQuery.isLoading || catalogQuery.isFetching;
   const error = catalogQuery.error instanceof Error ? catalogQuery.error.message : '';
 
-  const visibleIndustries = useMemo(() => {
-    if (role !== 'engineer' || !userExpertise) return industries;
-    return industries.filter((industry) => industry.expertiseGroup === userExpertise);
-  }, [industries, role, userExpertise]);
-
-  const visibleModels = useMemo(
-    () => models.filter((model) => role !== 'engineer' || !userExpertise || model.businessLine?.productIndustry?.expertiseGroup === userExpertise),
-    [models, role, userExpertise],
-  );
-
-  const stockByIndustry = useMemo(() => buildStockByIndustry(models, stockByModel), [models, stockByModel]);
+  const visibleIndustries = useMemo(() => industries.filter((industry) => role !== 'engineer' || !userExpertise.length || userExpertise.includes(industry.expertiseGroup)), [industries, role, userExpertise]);
+  const visibleModels = useMemo(() => models.filter((model) => {
+    const group = model.businessLine?.productIndustry?.expertiseGroup;
+    return role !== 'engineer' || !userExpertise.length || Boolean(group && userExpertise.includes(group));
+  }), [models, role, userExpertise]);
+  const stockByIndustry = useMemo(() => buildStockByIndustry(visibleModels, stockByModel), [visibleModels, stockByModel]);
   const industryCards = useMemo(() => buildIndustryCards(visibleIndustries, visibleModels, stockByIndustry), [stockByIndustry, visibleIndustries, visibleModels]);
-  const businessLineCounts = useMemo(() => buildBusinessLineCountsByIndustry(visibleModels), [visibleModels]);
-  const filteredIndustryCards = useMemo(
-    () =>
-      industryCards.filter((item) => {
-        const keyword = industryQuery.trim().toLowerCase();
-        const matchesKeyword = !keyword || `${item.name} ${item.expertise}`.toLowerCase().includes(keyword);
-        const matchesStock =
-          stockFilter === 'all' ||
-          (stockFilter === 'in-stock' && item.stock.inStock > 0) ||
-          (stockFilter === 'empty' && item.stock.inStock === 0);
-        return matchesKeyword && matchesStock;
-      }),
-    [industryCards, industryQuery, stockFilter],
-  );
-  const totals = useMemo(() => {
-    const productIds = new Set(visibleModels.map((model) => model.businessLine?.id).filter(Boolean));
-    const machineTotals = industryCards.reduce(
-      (total, item) => ({
-        inStock: total.inStock + item.stock.inStock,
-        total: total.total + item.stock.total,
-      }),
-      { inStock: 0, total: 0 },
-    );
-
-    return {
-      businessLines: productIds.size,
-      industries: visibleIndustries.length,
-      inStock: machineTotals.inStock,
-      machines: machineTotals.total,
-      models: visibleModels.length,
-    };
-  }, [industryCards, visibleIndustries.length, visibleModels]);
-
+  const keyword = query.trim().toLocaleLowerCase('vi');
+  const matchingIndustries = industryCards.filter((item) => {
+    const namedMatch = !keyword || item.name.toLocaleLowerCase('vi').includes(keyword);
+    const hasMatchingModels = visibleModels.some((model) => model.businessLine?.productIndustry?.id === item.id && (!keyword || [model.code, model.name, model.displayName, model.manufacturer].filter(Boolean).some((value) => String(value).toLocaleLowerCase('vi').includes(keyword))));
+    const hasStock = stockFilter === 'all' || (stockFilter === 'in-stock' ? item.stock.inStock > 0 : item.stock.inStock === 0);
+    return hasStock && (namedMatch || hasMatchingModels);
+  });
+  const selectedIndustry = matchingIndustries.find((item) => item.id === selectedIndustryId) ?? matchingIndustries[0] ?? null;
+  const filteredModels = useMemo(() => visibleModels.filter((model) => {
+    if (model.businessLine?.productIndustry?.id !== selectedIndustry?.id) return false;
+    const matchesQuery = !keyword || [model.code, model.name, model.displayName, model.manufacturer, model.productLine, model.businessLine?.name, model.businessLine?.productIndustry?.name]
+      .filter(Boolean).some((value) => String(value).toLocaleLowerCase('vi').includes(keyword));
+    const stock = stockByModel[model.id] ?? { inStock: 0, total: 0 };
+    const matchesStock = stockFilter === 'all' || (stockFilter === 'in-stock' ? stock.inStock > 0 : stock.inStock === 0);
+    return matchesQuery && matchesStock;
+  }), [keyword, selectedIndustry?.id, stockByModel, stockFilter, visibleModels]);
   return (
     <PageFrame>
-      <CatalogPortalHero canAddProduct={canAddProduct} loading={loading} onRefresh={() => void catalogQuery.refetch()} totals={totals} />
+      <EquipmentAreaNav active="catalog" />
+      <CatalogPortalHero canAddProduct={canAddProduct} loading={loading} onRefresh={() => void catalogQuery.refetch()} />
       {error ? <Notice message={error} /> : null}
 
       {loading ? <CatalogLoading label="Đang tải ngành hàng" /> : null}
 
       {!loading ? (
-        <CatalogIndustryTable
-          businessLineCounts={businessLineCounts}
-          industries={filteredIndustryCards}
-          query={industryQuery}
+        <CatalogBrowser
+          industries={matchingIndustries}
+          models={filteredModels}
+          query={query}
+          selectedIndustry={selectedIndustry}
+          selectedIndustryId={selectedIndustry?.id ?? ''}
+          stockByModel={stockByModel}
           stockFilter={stockFilter}
-          total={industryCards.length}
-          onQueryChange={setIndustryQuery}
+          canAddProduct={canAddProduct}
+          onIndustryChange={setSelectedIndustryId}
+          onQueryChange={setQuery}
           onStockFilterChange={setStockFilter}
+          onOpenModel={(modelId) => navigate(`/business-lines/models/${modelId}`)}
         />
       ) : null}
 
-      {!loading && industryCards.length === 0 ? <CatalogEmpty label="Chưa có ngành hàng phù hợp với tài khoản này." /> : null}
+      {!loading && matchingIndustries.length === 0 ? <CatalogEmpty label="Chưa có thiết bị phù hợp với lựa chọn này." /> : null}
     </PageFrame>
   );
 }
@@ -191,7 +176,7 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
   const [modelModalOpen, setModelModalOpen] = useState(false);
   const catalogQuery = useCatalogOverview();
   const role = getRoleName(user);
-  const userExpertise = user.engineerProfile?.expertiseGroup ?? null;
+  const userExpertise = getUserExpertiseGroups(user);
   const canAddProduct = role === 'admin' || role === 'engineer';
   const canAddModel = role === 'admin';
   const industries = catalogQuery.data?.industries ?? [];
@@ -209,7 +194,7 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
     return models.filter((model) => {
       const industry = model.businessLine?.productIndustry;
       const matchesIndustry = industry?.id === industryId;
-      const matchesExpertise = role !== 'engineer' || !userExpertise || industry?.expertiseGroup === userExpertise;
+      const matchesExpertise = role !== 'engineer' || !userExpertise.length || Boolean(industry?.expertiseGroup && userExpertise.includes(industry.expertiseGroup));
       const matchesQuery =
         !normalizedQuery ||
         [model.code, model.name, model.displayName, model.manufacturer, model.productLine, model.businessLine?.name]
@@ -321,6 +306,7 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
 
   return (
     <PageFrame>
+      <EquipmentAreaNav active="catalog" />
       <section className="relative overflow-hidden rounded-[28px] border border-[#e4e4e7] bg-[#fafafa] p-5 shadow-[0_12px_30px_rgba(24,24,27,0.05)] md:p-7">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(24,24,27,0.06)_1px,transparent_1px),linear-gradient(180deg,rgba(24,24,27,0.05)_1px,transparent_1px)] bg-[size:72px_72px]" />
         <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#e4e4e7]/35 blur-3xl" />
@@ -425,44 +411,20 @@ function CatalogPortalHero({
   canAddProduct,
   loading,
   onRefresh,
-  totals,
 }: {
   canAddProduct: boolean;
   loading: boolean;
   onRefresh: () => void;
-  totals: { businessLines: number; industries: number; inStock: number; machines: number; models: number };
 }) {
-  const metrics = [
-    { label: 'Máy', value: totals.machines },
-    { label: 'Còn kho', value: totals.inStock },
-    { label: 'Model', value: totals.models },
-    { label: 'Ngành', value: totals.industries },
-  ];
-
   return (
-    <section className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_16px_36px_rgba(24,24,27,0.06)]">
-      <div className="grid gap-4 border-b border-[#eeeeee] bg-[#fbfbfc] p-4 min-[1080px]:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)_auto] min-[1080px]:items-center">
+    <section className="relative overflow-hidden rounded-[26px] border border-[#e4e4e7] bg-white shadow-[0_12px_30px_rgba(24,24,27,0.045)]">
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-[#177245]" />
+      <div className="grid gap-5 p-5 pl-6 sm:p-6 sm:pl-7 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
         <div className="min-w-0">
-          <span className="text-xs font-black text-[#667085]">Hồ sơ thiết bị</span>
-          <h1 className="mt-1 truncate text-2xl font-black tracking-[-0.03em] text-[#18181b]">
-            Danh mục thiết bị
-          </h1>
+          <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">Thiết bị y tế</span>
+          <h1 className="mt-1 text-2xl font-bold tracking-[-0.035em] text-[#18181b] sm:text-[30px]">Danh mục thiết bị</h1>
         </div>
-
-        <div className="grid gap-2 sm:grid-cols-4">
-          {metrics.map((item) => (
-            <div className="rounded-[16px] border border-[#e8ecef] bg-white px-3 py-2.5" key={item.label}>
-              <span className="block text-xs font-bold text-[#667085]">{item.label}</span>
-              <strong className="mt-1 block text-2xl leading-none tracking-[-0.04em] text-[#18181b]">{item.value}</strong>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap gap-2 min-[1080px]:justify-end">
-          <Link className="secondary-button bg-white" to="/technical-machines">
-            <Boxes size={17} />
-            Máy quản lý
-          </Link>
+        <div className="flex flex-wrap gap-2 md:justify-end">
           {canAddProduct ? (
             <Link className="primary-button" to="/business-lines/add-product">
               <Plus size={17} />
@@ -479,59 +441,56 @@ function CatalogPortalHero({
   );
 }
 
-function CatalogIndustryTable({
-  businessLineCounts,
+function CatalogBrowser({
+  canAddProduct,
   industries,
+  models,
+  onIndustryChange,
+  onOpenModel,
   onQueryChange,
   onStockFilterChange,
   query,
+  selectedIndustry,
+  selectedIndustryId,
+  stockByModel,
   stockFilter,
-  total,
 }: {
-  businessLineCounts: Record<string, number>;
+  canAddProduct: boolean;
   industries: Array<{ id: string; name: string; expertise: string; modelCount: number; stock: ModelStock }>;
+  models: MachineModel[];
+  onIndustryChange: (id: string) => void;
+  onOpenModel: (id: string) => void;
   onQueryChange: (value: string) => void;
   onStockFilterChange: (value: 'all' | 'in-stock' | 'empty') => void;
   query: string;
+  selectedIndustry: { id: string; name: string; expertise: string; modelCount: number; stock: ModelStock } | null;
+  selectedIndustryId: string;
+  stockByModel: Record<string, ModelStock>;
   stockFilter: 'all' | 'in-stock' | 'empty';
-  total: number;
 }) {
   const filters: Array<{ label: string; value: 'all' | 'in-stock' | 'empty' }> = [
     { label: 'Tất cả', value: 'all' },
     { label: 'Còn kho', value: 'in-stock' },
     { label: 'Hết kho', value: 'empty' },
   ];
-  const maxModels = Math.max(1, ...industries.map((item) => item.modelCount));
-
   return (
-    <section className="overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_16px_36px_rgba(24,24,27,0.06)]">
-      <div className="grid gap-3 border-b border-[#eeeeee] bg-[#fbfbfc] p-3 min-[980px]:grid-cols-[minmax(300px,1fr)_auto] min-[980px]:items-center">
-        <div className="grid gap-3 min-[720px]:grid-cols-[minmax(240px,0.8fr)_minmax(0,1.2fr)] min-[720px]:items-center">
-          <div>
-            <span className="text-xs font-black text-[#667085]">Ngành hàng</span>
-            <strong className="mt-1 block text-xl tracking-[-0.02em] text-[#18181b]">{industries.length}/{total}</strong>
-          </div>
-          <label className="relative block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#667085]" size={16} />
-            <Input
-              className="h-11 rounded-[14px] border-[#dfe3e8] bg-white pl-9 font-semibold"
-              onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Tìm ngành hàng"
-              value={query}
-            />
-          </label>
-        </div>
-        <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
+    <section className="overflow-hidden rounded-[22px] border border-[#e4e4e7] bg-white shadow-[0_8px_24px_rgba(24,24,27,0.045)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e9ecef] bg-[#fafbfa] p-3 sm:p-4">
+        <label className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#667085]" size={16} />
+          <input className="h-11 w-full rounded-xl border border-[#e1e5e9] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#177245] focus:ring-2 focus:ring-[#177245]/10" onChange={(event) => onQueryChange(event.target.value)} placeholder="Tìm tên thiết bị, model hoặc hãng" value={query} />
+        </label>
+        <div aria-label="Lọc theo tình trạng kho" className="flex flex-wrap gap-1 rounded-xl border border-[#e4e4e7] bg-white p-1">
           {filters.map((item) => {
             const active = stockFilter === item.value;
             return (
               <Button
-                className={active ? 'shadow-[0_8px_18px_rgba(24,24,27,0.14)]' : 'bg-white'}
+                className={active ? 'bg-[#202124] text-white shadow-none' : 'border-0 bg-transparent text-[#667085] hover:bg-[#f5f6f7]'}
                 key={item.value}
                 onClick={() => onStockFilterChange(item.value)}
                 size="sm"
                 type="button"
-                variant={active ? 'default' : 'outline'}
+                variant={active ? 'default' : 'ghost'}
               >
                 {item.label}
               </Button>
@@ -540,77 +499,28 @@ function CatalogIndustryTable({
         </div>
       </div>
 
-      <div className="grid divide-y divide-[#eeeeee]">
-        {industries.map((item, index) => {
-          const stockPercent = item.stock.total > 0 ? Math.round((item.stock.inStock / item.stock.total) * 100) : 0;
-          const modelWidth = Math.max(8, Math.round((item.modelCount / maxModels) * 100));
-
-          return (
-          <Link
-            className="group grid gap-4 bg-white p-4 text-left transition hover:bg-[#f8fafc] min-[960px]:grid-cols-[48px_minmax(260px,1fr)_minmax(220px,0.78fr)_minmax(190px,0.64fr)_auto] min-[960px]:items-center"
-            key={item.id}
-            to={`/product-catalog/industries/${item.id}`}
-          >
-            <span className="grid h-12 w-12 place-items-center rounded-[16px] bg-[#eef5f1] text-sm font-black text-[#177245]">
-              {String(index + 1).padStart(2, '0')}
-            </span>
-            <span className="min-w-0">
-              <strong className="block truncate text-lg font-black tracking-[-0.02em] text-[#18181b]">{item.name}</strong>
-              <span className="mt-2 flex flex-wrap gap-2">
-                <Badge variant="outline">{item.expertise}</Badge>
-                <Badge variant="secondary">{businessLineCounts[item.id] ?? 0} nhóm</Badge>
-              </span>
-            </span>
-            <span className="grid gap-2">
-              <span className="flex items-center justify-between gap-3 text-sm font-bold text-[#3f3f46]">
-                <span>{item.modelCount} model</span>
-                <span className="text-xs text-[#667085]">{item.stock.total} máy</span>
-              </span>
-              <span className="h-2 overflow-hidden rounded-full bg-[#e8ecef]">
-                <span className="block h-full rounded-full bg-[#18181b]" style={{ width: `${modelWidth}%` }} />
-              </span>
-            </span>
-            <span className="grid gap-2">
-              <span className="flex items-center justify-between gap-3 text-sm font-bold text-[#3f3f46]">
-                <span>{item.stock.inStock} kho</span>
-                <span className={item.stock.inStock > 0 ? 'text-xs text-[#177245]' : 'text-xs text-[#9b5a17]'}>{stockPercent}%</span>
-              </span>
-              <span className="h-2 overflow-hidden rounded-full bg-[#e8ecef]">
-                <span className={item.stock.inStock > 0 ? 'block h-full rounded-full bg-[#177245]' : 'block h-full rounded-full bg-[#9b5a17]'} style={{ width: `${Math.max(item.stock.inStock > 0 ? 8 : 0, stockPercent)}%` }} />
-              </span>
-            </span>
-            <Button asChild className="justify-self-start min-[960px]:justify-self-end" size="sm" variant="ghost">
-              <span>
-                Mở model
-                <ArrowRight className="transition group-hover:translate-x-0.5" size={15} />
-              </span>
-            </Button>
-          </Link>
-          );
-        })}
-        {industries.length === 0 ? (
-          <div className="m-4 rounded-[18px] border border-dashed border-[#d8dee8] bg-[#f8fafc] p-8 text-center text-sm font-semibold text-[#667085]">
-            Không có ngành hàng phù hợp.
-          </div>
-        ) : null}
+      <div className="grid min-h-[480px] min-[1800px]:grid-cols-[minmax(210px,0.72fr)_minmax(0,2fr)]">
+        <nav aria-label="Ngành hàng thiết bị" className="flex flex-wrap gap-2 border-b border-[#e9ecef] bg-[#f8faf9] p-3 min-[1800px]:block min-[1800px]:space-y-1 min-[1800px]:border-b-0 min-[1800px]:border-r min-[1800px]:p-3">
+          <p className="hidden px-2 pb-2 pt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7a8580] min-[1800px]:block">Ngành hàng</p>
+          {industries.map((item) => {
+            const active = selectedIndustryId === item.id;
+            return <button aria-pressed={active} className={`flex min-w-max items-center justify-between gap-3 rounded-xl px-3 py-3 text-left text-sm transition min-[1800px]:w-full ${active ? 'bg-white font-semibold text-[#155c38] shadow-[0_2px_8px_rgba(24,24,27,0.08)] ring-1 ring-[#cfe2d6]' : 'text-[#475467] hover:bg-white'}`} key={item.id} onClick={() => onIndustryChange(item.id)} type="button">
+              <span className="truncate">{item.name}</span><span className="text-xs tabular-nums text-[#77827d]">{item.modelCount}</span>
+            </button>;
+          })}
+        </nav>
+        <div className="min-w-0 p-3 sm:p-5">
+          {selectedIndustry ? <>
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-[#edf0ed] pb-4">
+              <div><span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#7a8580]">{selectedIndustry.expertise}</span><h2 className="mt-1 text-xl font-semibold tracking-[-0.025em] text-[#202124]">{selectedIndustry.name}</h2></div>
+              <div className="text-sm text-[#667085]">{models.length} model · {selectedIndustry.stock.inStock} máy còn kho</div>
+            </div>
+            {models.length ? <CatalogModelTable canAddProduct={canAddProduct} catalogSearch={`${selectedIndustryId}:${query}:${stockFilter}`} models={models} onOpenModel={onOpenModel} stockByModel={stockByModel} /> : <p className="rounded-xl bg-[#f8faf9] px-4 py-8 text-center text-sm text-[#667085]">Không có model phù hợp trong ngành hàng này.</p>}
+          </> : <p className="py-16 text-center text-sm text-[#667085]">Không có ngành hàng phù hợp.</p>}
+        </div>
       </div>
     </section>
   );
-}
-
-function buildBusinessLineCountsByIndustry(models: MachineModel[]) {
-  const seen = new Set<string>();
-  return models.reduce<Record<string, number>>((counts, model) => {
-    const industryId = model.businessLine?.productIndustry?.id;
-    const businessLineId = model.businessLine?.id;
-    if (!industryId || !businessLineId) return counts;
-
-    const key = `${industryId}:${businessLineId}`;
-    if (seen.has(key)) return counts;
-    seen.add(key);
-    counts[industryId] = (counts[industryId] ?? 0) + 1;
-    return counts;
-  }, {});
 }
 
 function CatalogModelTable({
@@ -651,13 +561,40 @@ function CatalogModelTable({
           {models.length} model
         </span>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] border-collapse text-left">
+      <div className="grid gap-2 p-3 min-[1400px]:hidden">
+        {pagedModels.map((model) => {
+          const stock = stockByModel[model.id] ?? { inStock: 0, total: 0 };
+          return <article className="grid gap-3 rounded-xl border border-[#e7e9ec] bg-white p-3 transition hover:bg-[#fafafa]" key={model.id}>
+            <button className="flex min-w-0 items-center gap-3 text-left" onClick={() => onOpenModel(model.id)} type="button">
+              <ModelImage model={model} />
+              <span className="min-w-0"><strong className="block truncate text-sm text-[#202124]">{modelShortLabel(model)}</strong><span className="mt-1 block truncate text-sm text-[#475467]">{modelProductName(model)}</span></span>
+            </button>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[#eef0f2] pt-2 text-xs text-[#667085]">
+              <span className="max-w-full truncate font-medium text-[#344054]">{model.businessLine?.name || 'Chưa có dòng'}</span>
+              <span>{model.manufacturer || 'Chưa có hãng'}</span>
+              <span>{modelOrigin(model) || 'Chưa rõ xuất xứ'}</span>
+              <span className="rounded-full bg-[#eefaf3] px-2 py-1 font-semibold text-[#177245]">{stock.inStock}/{stock.total} kho</span>
+            </div>
+            {canAddProduct ? <Link aria-label={`Thêm máy ${modelShortLabel(model)}`} className="primary-button compact justify-center" onClick={(event) => event.stopPropagation()} to={`/business-lines/add-product?modelId=${model.id}`}><PackagePlus size={15} />Thêm máy</Link> : null}
+          </article>;
+        })}
+      </div>
+      <div className="hidden w-full overflow-hidden min-[1400px]:block">
+        <table className="w-full min-w-full table-fixed border-collapse text-left">
+          <colgroup>
+            <col className="w-[13%]" />
+            <col className="w-[30%]" />
+            <col className="w-[15%]" />
+            <col className="w-[12%]" />
+            <col className="w-[9%]" />
+            <col className="w-[8%]" />
+            <col className="w-[13%]" />
+          </colgroup>
           <thead className="bg-white text-xs font-black uppercase tracking-[0.08em] text-[#667985]">
             <tr className="border-b border-[#e4e4e7]">
               <th className="px-4 py-3">Model</th>
               <th className="px-4 py-3">Tên sản phẩm</th>
-              <th className="px-4 py-3">Dòng sản phẩm</th>
+              <th className="whitespace-nowrap px-4 py-3">Dòng sản phẩm</th>
               <th className="px-4 py-3">Hãng</th>
               <th className="px-4 py-3">Xuất xứ</th>
               <th className="px-4 py-3">Kho</th>
@@ -765,11 +702,11 @@ function CatalogModelRow({
         <span className="mt-1 block max-w-[360px] truncate text-xs font-medium text-[#667985]">{modelDetailLabel(model)}</span>
       </td>
       <td className="px-4 py-4 text-sm">
-        <span className="block font-semibold text-[#333333]">{model.businessLine?.name || 'Chưa có dòng'}</span>
-        <span className="mt-1 block text-xs font-medium text-[#667985]">{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</span>
+        <span className="block truncate font-semibold text-[#333333]" title={model.businessLine?.name || 'Chưa có dòng'}>{model.businessLine?.name || 'Chưa có dòng'}</span>
+        <span className="mt-1 block truncate text-xs font-medium text-[#667985]" title={productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}>{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</span>
       </td>
-      <td className="px-4 py-4 text-sm font-semibold text-[#333333]">{model.manufacturer || 'Chưa có hãng'}</td>
-      <td className="px-4 py-4 text-sm font-semibold text-[#333333]">{modelOrigin(model) || '-'}</td>
+      <td className="px-4 py-4 text-sm font-semibold text-[#333333]"><span className="block truncate" title={model.manufacturer || 'Chưa có hãng'}>{model.manufacturer || 'Chưa có hãng'}</span></td>
+      <td className="px-4 py-4 text-sm font-semibold text-[#333333]"><span className="block truncate" title={modelOrigin(model) || '-'}>{modelOrigin(model) || '-'}</span></td>
       <td className="px-4 py-4">
         <div className="flex flex-wrap gap-2 text-xs font-bold">
           <span className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{inStock}/{total} kho</span>
@@ -778,9 +715,9 @@ function CatalogModelRow({
       <td className="px-4 py-4">
         <div className="flex justify-end gap-2">
           {canAddProduct ? (
-            <Link className="primary-button compact" onClick={(event) => event.stopPropagation()} to={`/business-lines/add-product?modelId=${model.id}`}>
+            <Link aria-label={`Thêm máy ${modelShortLabel(model)}`} className="primary-button compact !min-w-0 !px-2" onClick={(event) => event.stopPropagation()} title="Thêm máy" to={`/business-lines/add-product?modelId=${model.id}`}>
               <PackagePlus size={15} />
-              Thêm máy
+              <span className="sr-only">Thêm máy</span>
             </Link>
           ) : null}
         </div>
@@ -813,7 +750,6 @@ function AddModelModal({
           <div>
             <span className="text-xs font-black uppercase tracking-[0.14em] text-[#667985]">Danh mục model</span>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.03em] text-[#1f1f1f]">Thêm model theo ngành hàng</h2>
-            <p className="mt-1 text-sm font-semibold text-[#667985]">Model ghim vào dòng sản phẩm dùng chung.</p>
           </div>
           <button className="secondary-button compact bg-white" onClick={onClose} type="button" aria-label="Đóng">
             <X size={16} />
@@ -943,6 +879,12 @@ function buildStockByIndustry(models: MachineModel[], stockByModel: Record<strin
   });
 
   return next;
+}
+
+function getUserExpertiseGroups(user: ApiUser): ExpertiseGroup[] {
+  const profile = user.engineerProfile;
+  if (profile?.expertiseGroups?.length) return profile.expertiseGroups;
+  return profile?.expertiseGroup ? [profile.expertiseGroup] : [];
 }
 
 function buildIndustryCards(industries: ProductIndustry[], models: MachineModel[], stockByIndustry: Record<string, ModelStock>) {

@@ -15,7 +15,6 @@ import {
   installationAccessWhere,
   maintenanceAccessWhere,
   repairAccessWhere,
-  userAccessWhere,
 } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { PrismaService } from '../prisma/prisma.service';
@@ -154,29 +153,70 @@ export class WorkOperationsService {
   }) {
     if (!isAdmin(user))
       throw new ForbiddenException('Only admin can view used parts summary');
-    const start = this.parseDate(from || weekStart || this.currentWeekStart(), from ? 'from' : 'weekStart');
-    const end = this.endOfDay(to ? this.parseDate(to, 'to') : this.addDays(start, 6));
+    const start = this.parseDate(
+      from || weekStart || this.currentWeekStart(),
+      from ? 'from' : 'weekStart',
+    );
+    const end = this.endOfDay(
+      to ? this.parseDate(to, 'to') : this.addDays(start, 6),
+    );
 
     const parts = await this.prisma.usedPart.findMany({
       where: {
         usedAt: { gte: start, lte: end },
-        createdById: engineerId || undefined,
-        createdBy: userAccessWhere(user),
+        OR: engineerId
+          ? [
+              { repair: { engineerId } },
+              { maintenance: { engineerId } },
+              { installation: { installedById: engineerId } },
+              { deviceServiceTicket: { engineerId } },
+              {
+                repairId: null,
+                maintenanceId: null,
+                installationId: null,
+                deviceServiceTicketId: null,
+                createdById: engineerId,
+              },
+            ]
+          : undefined,
       },
       include: {
         createdBy: { select: { id: true, fullName: true, email: true } },
         repair: {
-          select: { id: true, code: true, title: true, engineerId: true },
+          select: {
+            id: true,
+            code: true,
+            title: true,
+            engineerId: true,
+            engineer: { select: { id: true, fullName: true, email: true } },
+          },
         },
         maintenance: {
-          select: { id: true, code: true, title: true, engineerId: true },
+          select: {
+            id: true,
+            code: true,
+            title: true,
+            engineerId: true,
+            engineer: { select: { id: true, fullName: true, email: true } },
+          },
         },
         installation: {
           select: {
             id: true,
             code: true,
             installedById: true,
+            installedBy: { select: { id: true, fullName: true, email: true } },
             customer: { select: { name: true } },
+          },
+        },
+        deviceServiceTicket: {
+          select: {
+            id: true,
+            receiveCode: true,
+            returnCode: true,
+            deviceName: true,
+            engineerId: true,
+            engineer: { select: { id: true, fullName: true, email: true } },
           },
         },
       },
@@ -202,11 +242,11 @@ export class WorkOperationsService {
     let used = 0;
 
     for (const part of parts) {
-      const engineerKey = part.createdBy?.id || 'unknown';
+      const responsibleEngineer = this.partResponsibleEngineer(part);
+      const engineerKey = responsibleEngineer.id;
       const current = byEngineer.get(engineerKey) ?? {
         engineerId: engineerKey,
-        engineerName:
-          part.createdBy?.fullName || part.createdBy?.email || 'Không rõ kỹ sư',
+        engineerName: responsibleEngineer.name,
         quantity: 0,
         totalCost: 0,
         totalRevenue: 0,
@@ -352,6 +392,12 @@ export class WorkOperationsService {
       code: string;
       customer?: { name: string } | null;
     } | null;
+    deviceServiceTicket?: {
+      id: string;
+      receiveCode: string;
+      returnCode?: string | null;
+      deviceName?: string | null;
+    } | null;
   }) {
     if (part.kind === WorkTaskKind.REPAIR && part.repair)
       return {
@@ -374,7 +420,63 @@ export class WorkOperationsService {
         code: part.installation.code,
         title: part.installation.customer?.name || 'Lắp đặt',
       };
+    if (part.kind === WorkTaskKind.DEVICE_SERVICE && part.deviceServiceTicket)
+      return {
+        kind: 'device-service',
+        id: part.deviceServiceTicket.id,
+        code:
+          part.deviceServiceTicket.returnCode ||
+          part.deviceServiceTicket.receiveCode,
+        title: part.deviceServiceTicket.deviceName || 'Nhận/trả thiết bị',
+      };
     return null;
+  }
+
+  private partResponsibleEngineer(part: {
+    createdBy?: {
+      id: string;
+      fullName?: string | null;
+      email?: string | null;
+    } | null;
+    repair?: {
+      engineer?: {
+        id: string;
+        fullName?: string | null;
+        email?: string | null;
+      } | null;
+    } | null;
+    maintenance?: {
+      engineer?: {
+        id: string;
+        fullName?: string | null;
+        email?: string | null;
+      } | null;
+    } | null;
+    installation?: {
+      installedBy?: {
+        id: string;
+        fullName?: string | null;
+        email?: string | null;
+      } | null;
+    } | null;
+    deviceServiceTicket?: {
+      engineer?: {
+        id: string;
+        fullName?: string | null;
+        email?: string | null;
+      } | null;
+    } | null;
+  }) {
+    const engineer =
+      part.repair?.engineer ??
+      part.maintenance?.engineer ??
+      part.installation?.installedBy ??
+      part.deviceServiceTicket?.engineer ??
+      part.createdBy;
+    return {
+      id: engineer?.id || 'unknown',
+      name: engineer?.fullName || engineer?.email || 'Không rõ kỹ sư',
+    };
   }
 
   private cleanRequired(value: string, field: string) {

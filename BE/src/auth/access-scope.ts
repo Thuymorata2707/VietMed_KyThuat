@@ -44,6 +44,7 @@ export function machineAccessWhere(
         { installedById: user.id },
         { primaryEngineerId: user.id },
         { customer: { primaryEngineerId: user.id } },
+        { customer: { engineers: { some: { id: user.id } } } },
         { repairs: { some: { engineerId: user.id } } },
         { maintenances: { some: { engineerId: user.id } } },
         { installations: { some: { installedById: user.id } } },
@@ -63,13 +64,46 @@ export function customerAccessWhere(
   }
 
   if (isAdmin(user) || isManager(user)) {
-    return { regionId: user.regionId };
+    return {
+      OR: [
+        { regionId: user.regionId },
+        // Older quick-created customers may predate region assignment. Keep
+        // them visible to the branch already working on their tickets/assets.
+        {
+          regionId: null,
+          OR: [
+            { machines: { some: machineAccessWhere(user) } },
+            {
+              machineInstallations: {
+                some: {
+                  OR: [
+                    { installedBy: { regionId: user.regionId } },
+                    {
+                      assignments: {
+                        some: { engineer: { regionId: user.regionId } },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            { repairs: { some: { engineer: { regionId: user.regionId } } } },
+            {
+              maintenances: {
+                some: { engineer: { regionId: user.regionId } },
+              },
+            },
+          ],
+        },
+      ],
+    };
   }
 
   if (isEngineer(user)) {
     return {
       OR: [
         { primaryEngineerId: user.id },
+        { engineers: { some: { id: user.id } } },
         { demoLoans: { some: { engineerId: user.id } } },
         {
           machines: {
@@ -92,6 +126,7 @@ export function repairAccessWhere(user?: RequestUser): Prisma.RepairWhereInput {
     return {
       OR: [
         { engineer: { regionId: user.regionId } },
+        { assignments: { some: { engineer: { regionId: user.regionId } } } },
         { createdBy: { regionId: user.regionId } },
         {
           customer: {
@@ -113,8 +148,11 @@ export function repairAccessWhere(user?: RequestUser): Prisma.RepairWhereInput {
     return {
       OR: [
         { engineerId: user.id },
+        { assignments: { some: { engineerId: user.id } } },
         { customer: { primaryEngineerId: user.id } },
+        { customer: { engineers: { some: { id: user.id } } } },
         { machine: { customer: { primaryEngineerId: user.id } } },
+        { machine: { customer: { engineers: { some: { id: user.id } } } } },
       ],
     };
   }
@@ -133,6 +171,7 @@ export function maintenanceAccessWhere(
     return {
       OR: [
         { engineer: { regionId: user.regionId } },
+        { assignments: { some: { engineer: { regionId: user.regionId } } } },
         {
           customer: {
             regionId: user.regionId,
@@ -153,8 +192,11 @@ export function maintenanceAccessWhere(
     return {
       OR: [
         { engineerId: user.id },
+        { assignments: { some: { engineerId: user.id } } },
         { customer: { primaryEngineerId: user.id } },
+        { customer: { engineers: { some: { id: user.id } } } },
         { machine: { customer: { primaryEngineerId: user.id } } },
+        { machine: { customer: { engineers: { some: { id: user.id } } } } },
       ],
     };
   }
@@ -174,6 +216,7 @@ export function installationAccessWhere(
       OR: [
         { customer: { regionId: user.regionId } },
         { installedBy: { regionId: user.regionId } },
+        { assignments: { some: { engineer: { regionId: user.regionId } } } },
         { machine: { customer: { regionId: user.regionId } } },
       ],
     };
@@ -183,7 +226,9 @@ export function installationAccessWhere(
     return {
       OR: [
         { installedById: user.id },
+        { assignments: { some: { engineerId: user.id } } },
         { customer: { primaryEngineerId: user.id } },
+        { customer: { engineers: { some: { id: user.id } } } },
       ],
     };
   }
@@ -213,6 +258,7 @@ export function demoLoanAccessWhere(
       OR: [
         { engineerId: user.id },
         { customer: { primaryEngineerId: user.id } },
+        { customer: { engineers: { some: { id: user.id } } } },
       ],
     };
   }
@@ -244,7 +290,9 @@ export function deviceServiceTicketAccessWhere(
         { engineerId: user.id },
         { createdById: user.id },
         { customer: { primaryEngineerId: user.id } },
+        { customer: { engineers: { some: { id: user.id } } } },
         { machine: { customer: { primaryEngineerId: user.id } } },
+        { machine: { customer: { engineers: { some: { id: user.id } } } } },
       ],
     };
   }

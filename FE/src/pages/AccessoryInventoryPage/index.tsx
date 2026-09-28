@@ -7,7 +7,12 @@ import { DateInput } from '../../components/DateInput';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Card } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
 import { queryKeys } from '../../lib/queryKeys';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
 
 type AccessoryStockRow = {
   id: string;
@@ -30,7 +35,7 @@ type AccessoryStockRow = {
     displayName?: string | null;
     businessLine?: { name?: string | null } | null;
   } | null;
-  component?: { id: string; name?: string | null } | null;
+  component?: { id: string; code?: string | null; name?: string | null } | null;
 };
 
 type StockMovementType = 'IMPORT' | 'EXPORT' | 'ADJUSTMENT';
@@ -84,18 +89,9 @@ type MachineModelOption = {
   displayName?: string | null;
 };
 
-type ComponentOption = {
-  id: string;
-  code?: string | null;
-  name?: string | null;
-  machineModelId?: string | null;
-  machineModel?: MachineModelOption | null;
-};
-
 type CatalogAccessoryForm = {
   id?: string;
   machineModelId: string;
-  componentId: string;
   code: string;
   name: string;
   description: string;
@@ -124,22 +120,50 @@ type MovementForm = {
   unitPrice: number;
 };
 
+type UsedPartsSummary = {
+  totals: {
+    parts: number;
+    totalCost: number;
+    totalRevenue: number;
+    grossProfit: number;
+    waiting: number;
+    used: number;
+  };
+  byEngineer: Array<{
+    engineerId: string;
+    engineerName: string;
+    quantity: number;
+    totalCost: number;
+    totalRevenue: number;
+    grossProfit: number;
+    waiting: number;
+    used: number;
+  }>;
+};
+
 const movementTypes: StockMovementType[] = ['IMPORT', 'EXPORT', 'ADJUSTMENT'];
+const accessoryUnits = ['cái', 'bộ', 'chiếc', 'cặp', 'sợi', 'dây', 'ống', 'lọ', 'hộp', 'gói', 'kit', 'test', 'cuộn', 'mét'];
 
 export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
   const queryClient = useQueryClient();
   const role = getRoleName(user);
   const canManageAccessories = role === 'admin';
-  const [activeTab, setActiveTab] = useState<'stock' | 'catalog' | 'history'>('stock');
+  const [activeTab, setActiveTab] = useState<'stock' | 'catalog' | 'history'>('catalog');
   const [search, setSearch] = useState('');
   const [movementSearch, setMovementSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search);
+  const debouncedMovementSearch = useDebouncedValue(movementSearch);
+  const [revenueFrom, setRevenueFrom] = useState(() => toDateInput(startOfMonth(new Date())));
+  const [revenueTo, setRevenueTo] = useState(() => toDateInput(new Date()));
   const [showForm, setShowForm] = useState(false);
+  const [showSalesSummary, setShowSalesSummary] = useState(false);
   const [form, setForm] = useState<MovementForm>(() => emptyMovementForm());
   const [catalogForm, setCatalogForm] = useState<CatalogAccessoryForm | null>(null);
   const params = new URLSearchParams({ limit: '100' });
-  if (search.trim()) params.set('search', search.trim());
+  if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
   const movementParams = new URLSearchParams({ limit: '100' });
-  if (movementSearch.trim()) movementParams.set('search', movementSearch.trim());
+  if (debouncedMovementSearch.trim()) movementParams.set('search', debouncedMovementSearch.trim());
+  const revenueParams = new URLSearchParams({ from: revenueFrom, to: revenueTo });
 
   const stockQuery = useQuery({
     queryKey: queryKeys.accessoryInventory.stock(params.toString()),
@@ -154,21 +178,25 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
   const optionsQuery = useQuery({
     queryKey: queryKeys.accessoryInventory.options,
     queryFn: async () => {
-      const [accessories, machinesResult, customersResult, machineModels, machineComponents] = await Promise.all([
+      const [accessories, machines, customers, machineModels] = await Promise.all([
         apiFetchAllPages<AccessoryStockRow>('/component-accessories'),
-        apiFetch<Paginated<MachineOption>>('/machines?limit=100'),
-        apiFetch<Paginated<CustomerOption>>('/customers?limit=100'),
+        apiFetchAllPages<MachineOption>('/machines'),
+        apiFetchAllPages<CustomerOption>('/customers'),
         apiFetchAllPages<MachineModelOption>('/machine-models'),
-        apiFetchAllPages<ComponentOption>('/machine-components'),
       ]);
       return {
         accessories,
-        machines: machinesResult.data ?? [],
-        customers: customersResult.data ?? [],
-        machineComponents,
+        machines,
+        customers,
         machineModels,
       };
     },
+  });
+
+  const usedPartsSummaryQuery = useQuery({
+    enabled: canManageAccessories && activeTab === 'stock' && showSalesSummary,
+    queryKey: ['work-operations', 'used-parts-summary', revenueParams.toString()],
+    queryFn: async () => apiFetch<UsedPartsSummary>(`/work-operations/used-parts/summary?${revenueParams.toString()}`),
   });
 
   const createMovementMutation = useMutation({
@@ -228,11 +256,11 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
   const machines = optionsQuery.data?.machines ?? [];
   const customers = optionsQuery.data?.customers ?? [];
   const machineModels = optionsQuery.data?.machineModels ?? [];
-  const machineComponents = optionsQuery.data?.machineComponents ?? [];
-  const filteredComponents = catalogForm?.machineModelId
-    ? machineComponents.filter((component) => component.machineModelId === catalogForm.machineModelId || component.machineModel?.id === catalogForm.machineModelId)
-    : machineComponents;
-  const catalogError = createAccessoryMutation.error || updateAccessoryMutation.error || deleteAccessoryMutation.error;
+  const usedPartsSummary = usedPartsSummaryQuery.data ?? null;
+  const catalogError =
+    createAccessoryMutation.error ||
+    updateAccessoryMutation.error ||
+    deleteAccessoryMutation.error;
   const isSavingCatalog = createAccessoryMutation.isPending || updateAccessoryMutation.isPending;
   const totals = useMemo(
     () => ({
@@ -300,54 +328,115 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
     <PageFrame>
       <section className="grid gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <PageTitle eyebrow="Phụ kiện" title="Danh mục, tồn kho & lịch sử thay thế" />
+          <PageTitle eyebrow="Phụ kiện" title="Quản lý linh kiện thay thế" />
           <div className="flex flex-wrap gap-2">
-            <button className="secondary-button" disabled={stockQuery.isFetching || movementsQuery.isFetching} onClick={() => void Promise.all([stockQuery.refetch(), movementsQuery.refetch()])} type="button">
+            <Button disabled={stockQuery.isFetching || movementsQuery.isFetching} onClick={() => void Promise.all([stockQuery.refetch(), movementsQuery.refetch()])} type="button" variant="outline">
               {stockQuery.isFetching || movementsQuery.isFetching ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
               Làm mới
-            </button>
-            {activeTab === 'catalog' && canManageAccessories ? (
-              <button className="primary-button" onClick={openCreateAccessory} type="button">
-                <Plus size={16} />
-                Thêm phụ kiện
-              </button>
-            ) : null}
+            </Button>
             {activeTab === 'stock' ? (
-              <button className="primary-button" onClick={() => setShowForm((value) => !value)} type="button">
+              <Button onClick={() => setShowForm((value) => !value)} type="button">
                 <Plus size={16} />
                 Tạo phiếu kho
-              </button>
+              </Button>
             ) : null}
             {activeTab === 'history' ? (
-              <button className="secondary-button" disabled={!movementRows.length} onClick={() => exportMovementsCsv(movementRows)} type="button">
+              <Button disabled={!movementRows.length} onClick={() => exportMovementsCsv(movementRows)} type="button" variant="outline">
                 <Download size={16} />
                 Xuất lịch sử
-              </button>
+              </Button>
             ) : null}
           </div>
         </div>
 
-        <div className="grid gap-2 rounded-[18px] border border-[#e5ebf3] bg-white p-1.5 md:grid-cols-3">
-          <TabButton active={activeTab === 'stock'} description="Nhập, xuất, điều chỉnh tồn" label="Tồn kho" onClick={() => setActiveTab('stock')} />
-          <TabButton active={activeTab === 'catalog'} description="Thêm, sửa, xóa phụ kiện" label="Danh mục" onClick={() => setActiveTab('catalog')} />
-          <TabButton active={activeTab === 'history'} description="Máy, khách, phiếu thay thế" label="Lịch sử" onClick={() => setActiveTab('history')} />
-        </div>
+        <Card className="p-1.5">
+          <div className="grid gap-2 md:grid-cols-3">
+            <TabButton active={activeTab === 'catalog'} label="Danh mục phụ kiện" onClick={() => setActiveTab('catalog')} />
+            <TabButton active={activeTab === 'stock'} label="Tồn kho" onClick={() => setActiveTab('stock')} />
+            <TabButton active={activeTab === 'history'} label="Lịch sử phát sinh" onClick={() => setActiveTab('history')} />
+          </div>
+        </Card>
 
         {!canManageAccessories && activeTab === 'catalog' ? (
           <Notice message="Tài khoản của bạn được xem danh mục phụ kiện. Thao tác thêm, sửa, xóa chỉ dành cho admin." />
         ) : null}
 
-        <div className="grid gap-3 md:grid-cols-4">
-          <InventoryMetric label="Mã phụ kiện" value={totals.accessories} />
-          <InventoryMetric label="Tổng tồn" value={formatQuantity(totals.stock)} />
-          <InventoryMetric label="Giá trị tồn" value={formatMoney(totals.value)} />
-          <InventoryMetric label="Hết tồn" tone="warn" value={totals.low} />
-        </div>
+        {activeTab === 'stock' ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <InventoryMetric label="Mặt hàng" value={totals.accessories} />
+            <InventoryMetric label="Tổng số lượng" value={formatQuantity(totals.stock)} />
+            <InventoryMetric label="Giá trị tồn kho" value={formatMoney(totals.value)} />
+            <InventoryMetric label="Đang hết hàng" tone="warn" value={totals.low} />
+          </div>
+        ) : null}
 
         {createMovementMutation.error instanceof Error ? <Notice message={createMovementMutation.error.message} /> : null}
         {catalogError instanceof Error ? <Notice message={catalogError.message} /> : null}
         {stockQuery.error instanceof Error ? <Notice message={stockQuery.error.message} /> : null}
         {movementsQuery.error instanceof Error ? <Notice message={movementsQuery.error.message} /> : null}
+        {usedPartsSummaryQuery.error instanceof Error ? <Notice message={usedPartsSummaryQuery.error.message} /> : null}
+
+        {canManageAccessories && activeTab === 'stock' ? (
+          <div className="grid gap-3">
+            <Button className="justify-self-start" onClick={() => setShowSalesSummary((value) => !value)} type="button" variant="outline">
+              {showSalesSummary ? 'Ẩn báo cáo linh kiện thay thế' : 'Xem báo cáo linh kiện thay thế'}
+            </Button>
+            {showSalesSummary ? (
+          <Card className="grid gap-4 p-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <Badge variant="outline">Theo dõi</Badge>
+                <h2 className="mt-2 text-lg font-semibold text-[#202124]">Doanh số thay thế linh kiện</h2>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[160px_160px_auto]">
+                <DateInput label="Từ ngày" onChange={setRevenueFrom} value={revenueFrom} />
+                <DateInput label="Đến ngày" onChange={setRevenueTo} value={revenueTo} />
+                <Button className="self-end" disabled={usedPartsSummaryQuery.isFetching} onClick={() => void usedPartsSummaryQuery.refetch()} type="button" variant="outline">
+                  {usedPartsSummaryQuery.isFetching ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
+                  Cập nhật
+                </Button>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-4">
+              <InventoryMetric label="Linh kiện đã thay" value={formatQuantity(usedPartsSummary?.totals.parts ?? 0)} />
+              <InventoryMetric label="Doanh thu" value={formatMoney(usedPartsSummary?.totals.totalRevenue ?? 0)} />
+              <InventoryMetric label="Giá vốn" value={formatMoney(usedPartsSummary?.totals.totalCost ?? 0)} />
+              <InventoryMetric label="Lãi gộp" tone={(usedPartsSummary?.totals.grossProfit ?? 0) < 0 ? 'warn' : 'neutral'} value={formatMoney(usedPartsSummary?.totals.grossProfit ?? 0)} />
+            </div>
+            {usedPartsSummary?.byEngineer?.length ? (
+              <div className="overflow-hidden rounded-[18px] border border-[#eef0f3]">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-left text-sm">
+                    <thead className="bg-[#fafafa] text-xs uppercase text-[#667085]">
+                      <tr>
+                        <th className="border-b border-[#eef0f3] px-4 py-3">Kỹ sư</th>
+                        <th className="border-b border-[#eef0f3] px-4 py-3">Số lượng</th>
+                        <th className="border-b border-[#eef0f3] px-4 py-3">Doanh thu</th>
+                        <th className="border-b border-[#eef0f3] px-4 py-3">Giá vốn</th>
+                        <th className="border-b border-[#eef0f3] px-4 py-3">Lãi gộp</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usedPartsSummary.byEngineer.slice(0, 5).map((engineer) => (
+                        <tr className="hover:bg-[#fafafa]" key={engineer.engineerId}>
+                          <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{engineer.engineerName}</td>
+                          <td className="border-b border-[#f1f2f4] px-4 py-3">{formatQuantity(engineer.quantity)}</td>
+                          <td className="border-b border-[#f1f2f4] px-4 py-3">{formatMoney(engineer.totalRevenue)}</td>
+                          <td className="border-b border-[#f1f2f4] px-4 py-3">{formatMoney(engineer.totalCost)}</td>
+                          <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{formatMoney(engineer.grossProfit)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl bg-[#fafafa] p-4 text-sm font-semibold text-[#667085]">Chưa có linh kiện thay thế trong khoảng này.</div>
+            )}
+          </Card>
+            ) : null}
+          </div>
+        ) : null}
 
         {activeTab === 'stock' && showForm ? (
           <form className="grid gap-4 rounded-[24px] border border-[#dbe6f3] bg-[#fbfdff] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)]" onSubmit={submitMovement}>
@@ -427,10 +516,10 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
               <span>Tìm tồn kho</span>
               <input onChange={(event) => setSearch(event.target.value)} placeholder="Mã phụ kiện, tên, model..." value={search} />
             </label>
-            <button className="secondary-button" disabled={!stockRows.length} onClick={() => exportStockCsv(stockRows)} type="button">
+            <Button disabled={!stockRows.length} onClick={() => exportStockCsv(stockRows)} type="button" variant="outline">
               <Download size={16} />
               Xuất CSV
-            </button>
+            </Button>
           </div>
           <div className="overflow-hidden rounded-[20px] border border-[#eef0f3]">
             <div className="overflow-x-auto">
@@ -439,7 +528,6 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
                   <tr>
                     <th className="border-b border-[#eef0f3] px-4 py-3">Phụ kiện</th>
                     <th className="border-b border-[#eef0f3] px-4 py-3">Model</th>
-                    <th className="border-b border-[#eef0f3] px-4 py-3">Nhóm</th>
                     <th className="border-b border-[#eef0f3] px-4 py-3">Tồn</th>
                     <th className="border-b border-[#eef0f3] px-4 py-3">Giá vốn</th>
                     <th className="border-b border-[#eef0f3] px-4 py-3">Giá bán</th>
@@ -447,8 +535,8 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {stockQuery.isLoading ? <TableMessage colSpan={7} text="Đang tải tồn kho" /> : null}
-                  {!stockQuery.isLoading && !stockRows.length ? <TableMessage colSpan={7} text="Chưa có phụ kiện phù hợp." /> : null}
+                  {stockQuery.isLoading ? <TableMessage colSpan={6} text="Đang tải tồn kho" /> : null}
+                  {!stockQuery.isLoading && !stockRows.length ? <TableMessage colSpan={6} text="Chưa có phụ kiện phù hợp." /> : null}
                   {stockRows.map((row) => (
                     <tr className="hover:bg-[#fafafa]" key={row.id}>
                       <td className="border-b border-[#f1f2f4] px-4 py-3">
@@ -456,7 +544,6 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
                         <span className="text-xs font-semibold text-[#667085]">{row.code}</span>
                       </td>
                       <td className="border-b border-[#f1f2f4] px-4 py-3">{row.machineModel?.displayName || row.machineModel?.name || '-'}</td>
-                      <td className="border-b border-[#f1f2f4] px-4 py-3">{row.component?.name || '-'}</td>
                       <td className="border-b border-[#f1f2f4] px-4 py-3">
                         <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${Number(row.currentStock || 0) > 0 ? 'bg-[#eefaf3] text-[#177245]' : 'bg-[#fff5f5] text-[#b5121b]'}`}>
                           {formatQuantity(row.currentStock || 0)} {row.unit || 'cái'}
@@ -477,6 +564,7 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
         {activeTab === 'catalog' ? (
         <CatalogSection
           canManageAccessories={canManageAccessories}
+          onCreate={openCreateAccessory}
           onDelete={deleteAccessory}
           onEdit={openEditAccessory}
           rows={stockRows}
@@ -507,7 +595,6 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
 
         {catalogForm ? (
           <CatalogAccessoryModal
-            components={filteredComponents}
             form={catalogForm}
             isSaving={isSavingCatalog}
             machineModels={machineModels}
@@ -521,21 +608,21 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
   );
 }
 
-function TabButton({ active, description, label, onClick }: { active: boolean; description: string; label: string; onClick: () => void }) {
+function TabButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button
-      className={`rounded-[14px] px-4 py-3 text-left transition ${active ? 'bg-[#202124] text-white shadow-[0_10px_24px_rgba(24,24,27,0.18)]' : 'bg-transparent text-[#344054] hover:bg-[#f6f8fb]'}`}
+      className={`min-h-11 rounded-md px-4 py-3 text-center text-sm font-semibold outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring/35 ${active ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-transparent text-[#344054] hover:bg-accent'}`}
       onClick={onClick}
       type="button"
     >
-      <strong className="block text-sm">{label}</strong>
-      <span className={`mt-1 block text-xs font-medium ${active ? 'text-white/75' : 'text-[#667085]'}`}>{description}</span>
+      {label}
     </button>
   );
 }
 
 function CatalogSection({
   canManageAccessories,
+  onCreate,
   onDelete,
   onEdit,
   rows,
@@ -544,6 +631,7 @@ function CatalogSection({
   stockQueryLoading,
 }: {
   canManageAccessories: boolean;
+  onCreate: () => void;
   onDelete: (row: AccessoryStockRow) => void;
   onEdit: (row: AccessoryStockRow) => void;
   rows: AccessoryStockRow[];
@@ -552,69 +640,68 @@ function CatalogSection({
   stockQueryLoading: boolean;
 }) {
   return (
-    <section className="grid gap-3 rounded-[24px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]">
-      <label className="operation-filter-field">
-        <span>Tìm phụ kiện</span>
-        <input onChange={(event) => setSearch(event.target.value)} placeholder="Mã phụ kiện, tên, model, nhóm..." value={search} />
-      </label>
-      <div className="overflow-hidden rounded-[20px] border border-[#eef0f3]">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1080px] text-left text-sm">
-            <thead className="bg-[#fafafa] text-xs uppercase text-[#667085]">
-              <tr>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Phụ kiện</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Model</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Nhóm</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Đơn vị</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Giá vốn</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Giá bán</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Serial</th>
-                <th className="border-b border-[#eef0f3] px-4 py-3">Tồn</th>
-                {canManageAccessories ? <th className="border-b border-[#eef0f3] px-4 py-3">Thao tác</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {stockQueryLoading ? <TableMessage colSpan={canManageAccessories ? 9 : 8} text="Đang tải danh mục phụ kiện" /> : null}
-              {!stockQueryLoading && !rows.length ? <TableMessage colSpan={canManageAccessories ? 9 : 8} text="Chưa có phụ kiện phù hợp." /> : null}
-              {rows.map((row) => (
-                <tr className="hover:bg-[#fafafa]" key={row.id}>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3">
-                    <strong className="block text-[#202124]">{row.name}</strong>
-                    <span className="text-xs font-semibold text-[#667085]">{row.code}</span>
-                  </td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3">{row.machineModel?.displayName || row.machineModel?.name || '-'}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3">{row.component?.name || '-'}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3">{row.unit || 'cái'}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3">{formatMoney(Number(row.unitCost || 0))}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3">{formatMoney(Number(row.salePrice || 0))}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3">{row.requiresSerial ? 'Có' : 'Không'}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{formatQuantity(row.currentStock || 0)} {row.unit || 'cái'}</td>
-                  {canManageAccessories ? (
-                    <td className="border-b border-[#f1f2f4] px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button className="secondary-button compact" onClick={() => onEdit(row)} type="button">
-                          <PenLine size={14} />
-                          Sửa
-                        </button>
-                        <button className="danger-button compact" onClick={() => onDelete(row)} type="button">
-                          <Trash2 size={14} />
-                          Xóa
-                        </button>
-                      </div>
-                    </td>
-                  ) : null}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <section className="grid gap-4 rounded-[24px] border border-[#e8ebef] bg-white p-4 shadow-[0_12px_30px_rgba(24,24,27,0.035)] sm:p-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-[#202124]">Danh mục phụ kiện</h2>
         </div>
+        {canManageAccessories ? (
+          <Button onClick={onCreate} type="button"><Plus size={16} />Thêm phụ kiện</Button>
+        ) : null}
       </div>
+      <label className="relative block w-full max-w-xl">
+        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8f99]" size={17} />
+        <Input aria-label="Tìm phụ kiện" className="pl-10" onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo mã, tên hoặc model" value={search} />
+      </label>
+      {stockQueryLoading ? (
+        <div className="rounded-2xl border border-dashed border-[#d9dee5] px-4 py-12 text-center text-sm text-[#667085]">Đang tải danh mục…</div>
+      ) : !rows.length ? (
+        <div className="rounded-2xl border border-dashed border-[#d9dee5] px-4 py-12 text-center">
+          <p className="font-semibold text-[#344054]">{search ? 'Không tìm thấy phụ kiện phù hợp' : 'Danh mục chưa có phụ kiện'}</p>
+          {canManageAccessories && !search ? <Button className="mt-4" onClick={onCreate} type="button" variant="outline"><Plus size={16} />Thêm phụ kiện đầu tiên</Button> : null}
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+          {rows.map((row) => {
+            const stock = Number(row.currentStock || 0);
+            return (
+              <article className="grid min-w-0 gap-4 rounded-2xl border border-[#e8ebef] bg-[#fff] p-4 transition-colors hover:border-[#cad5df]" key={row.id}>
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="break-words font-semibold leading-5 text-[#202124]">{row.name}</h3>
+                    <p className="mt-1 truncate text-xs font-medium tracking-wide text-[#667085]">{row.code}</p>
+                  </div>
+                  <Badge className="shrink-0" variant={row.status === 'INACTIVE' ? 'secondary' : 'outline'}>{row.status === 'INACTIVE' ? 'Ngừng dùng' : 'Đang dùng'}</Badge>
+                </div>
+                <div className="grid gap-1 border-t border-[#f0f1f3] pt-3 text-sm">
+                  <span className="text-xs font-medium uppercase tracking-wide text-[#8a8f99]">Model máy</span>
+                  <span className="break-words font-medium text-[#344054]">{modelLabel(row.machineModel)}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 rounded-xl bg-[#f7f8fa] p-3">
+                  <div><span className="block text-xs text-[#667085]">Tồn kho</span><strong className={`mt-1 block ${stock > 0 ? 'text-[#177245]' : 'text-[#b5121b]'}`}>{formatQuantity(stock)} {row.unit || 'cái'}</strong></div>
+                  <div><span className="block text-xs text-[#667085]">Đơn vị chuẩn</span><strong className="mt-1 block text-[#344054]">{formatQuantity(Number(row.quantity || 1))} {row.unit || 'cái'}</strong></div>
+                </div>
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div className="text-xs leading-5 text-[#667085]">Giá vốn {formatMoney(Number(row.unitCost || 0))}<br />Giá bán {formatMoney(Number(row.salePrice || 0))}</div>
+                  {canManageAccessories ? <div className="flex gap-2">
+                    <Button aria-label={`Sửa ${row.name}`} onClick={() => onEdit(row)} size="sm" type="button" variant="outline"><PenLine size={14} />Sửa</Button>
+                    <Button aria-label={`Xóa ${row.name}`} onClick={() => onDelete(row)} size="sm" type="button" variant="destructive"><Trash2 size={14} />Xóa</Button>
+                  </div> : null}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
 
+function modelLabel(model?: MachineModelOption | null) {
+  return [model?.code, model?.displayName || model?.name].filter(Boolean).join(' - ') || 'Chưa chọn model';
+}
+
 function CatalogAccessoryModal({
-  components,
   form,
   isSaving,
   machineModels,
@@ -622,7 +709,6 @@ function CatalogAccessoryModal({
   onSubmit,
   setForm,
 }: {
-  components: ComponentOption[];
   form: CatalogAccessoryForm;
   isSaving: boolean;
   machineModels: MachineModelOption[];
@@ -632,42 +718,32 @@ function CatalogAccessoryModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#111827]/35 px-4 py-6" onClick={onClose}>
-      <form className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[24px] bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.24)]" onClick={(event) => event.stopPropagation()} onSubmit={onSubmit}>
+      <form className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-lg border border-border bg-card p-5 text-card-foreground shadow-[0_24px_80px_rgba(15,23,42,0.24)]" onClick={(event) => event.stopPropagation()} onSubmit={onSubmit}>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold text-[#202124]">{form.id ? 'Sửa phụ kiện' : 'Thêm phụ kiện'}</h2>
           </div>
-          <button className="secondary-button compact" onClick={onClose} type="button" title="Đóng">
+          <Button onClick={onClose} type="button" title="Đóng" variant="outline">
             <X size={16} />
             Đóng
-          </button>
+          </Button>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className={`${fieldLabelClass} xl:col-span-2`}>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className={fieldLabelClass}>
             Model máy
-            <select className={fieldClass} onChange={(event) => setForm((current) => current ? { ...current, componentId: '', machineModelId: event.target.value } : current)} required value={form.machineModelId}>
+            <select className={fieldClass} onChange={(event) => setForm((current) => current ? { ...current, machineModelId: event.target.value } : current)} required value={form.machineModelId}>
               <option value="">Chọn model</option>
               {machineModels.map((model) => (
                 <option key={model.id} value={model.id}>{[model.code, model.displayName || model.name].filter(Boolean).join(' - ')}</option>
               ))}
             </select>
           </label>
-          <label className={`${fieldLabelClass} xl:col-span-2`}>
-            Nhóm phụ kiện
-            <select className={fieldClass} onChange={(event) => setForm((current) => current ? { ...current, componentId: event.target.value } : current)} value={form.componentId}>
-              <option value="">Không chọn nhóm</option>
-              {components.map((component) => (
-                <option key={component.id} value={component.id}>{[component.code, component.name].filter(Boolean).join(' - ')}</option>
-              ))}
-            </select>
-          </label>
           <TextInput label="Mã phụ kiện" onChange={(value) => setForm((current) => current ? { ...current, code: value } : current)} value={form.code} />
-          <TextInput label="Tên phụ kiện" onChange={(value) => setForm((current) => current ? { ...current, name: value } : current)} value={form.name} />
-          <TextInput label="Đơn vị tính" onChange={(value) => setForm((current) => current ? { ...current, unit: value } : current)} value={form.unit} />
+          <TextInput label="Tên phụ kiện" onChange={(value) => setForm((current) => current ? { ...current, name: value } : current)} required value={form.name} />
+          <UnitSelect label="Đơn vị tính" onChange={(value) => setForm((current) => current ? { ...current, unit: value } : current)} value={form.unit} />
           <NumberInput label="Số lượng chuẩn" min={1} onChange={(value) => setForm((current) => current ? { ...current, quantity: value } : current)} value={form.quantity} />
           <NumberInput label="Giá vốn" min={0} onChange={(value) => setForm((current) => current ? { ...current, unitCost: value } : current)} value={form.unitCost} />
           <NumberInput label="Giá bán" min={0} onChange={(value) => setForm((current) => current ? { ...current, salePrice: value } : current)} value={form.salePrice} />
-          <NumberInput label="Thứ tự" min={0} onChange={(value) => setForm((current) => current ? { ...current, sortOrder: value } : current)} value={form.sortOrder} />
           <label className={fieldLabelClass}>
             Trạng thái
             <select className={fieldClass} onChange={(event) => setForm((current) => current ? { ...current, status: event.target.value as CatalogAccessoryForm['status'] } : current)} value={form.status}>
@@ -679,14 +755,14 @@ function CatalogAccessoryModal({
             <input checked={form.requiresSerial} className="h-4 w-4 accent-[#3e8375]" onChange={(event) => setForm((current) => current ? { ...current, requiresSerial: event.target.checked } : current)} type="checkbox" />
             Cần serial khi thay thế
           </label>
-          <TextInput label="Mô tả / ghi chú" onChange={(value) => setForm((current) => current ? { ...current, description: value } : current)} value={form.description} wide />
+          <TextInput label="Ghi chú" onChange={(value) => setForm((current) => current ? { ...current, description: value } : current)} value={form.description} wide />
         </div>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button className="secondary-button" onClick={onClose} type="button">Hủy</button>
-          <button className="primary-button" disabled={isSaving} type="submit">
+          <Button onClick={onClose} type="button" variant="outline">Hủy</Button>
+          <Button disabled={isSaving} type="submit">
             {isSaving ? <Loader2 className="spin-icon" size={16} /> : null}
             Lưu phụ kiện
-          </button>
+          </Button>
         </div>
       </form>
     </div>
@@ -731,11 +807,11 @@ function InventoryMetric({ label, tone = 'neutral', value }: { label: string; to
   );
 }
 
-function TextInput({ label, onChange, value, wide }: { label: string; onChange: (value: string) => void; value: string; wide?: boolean }) {
+function TextInput({ label, onChange, required, value, wide }: { label: string; onChange: (value: string) => void; required?: boolean; value: string; wide?: boolean }) {
   return (
-    <label className={`${fieldLabelClass} ${wide ? 'xl:col-span-2' : ''}`}>
+    <label className={`${fieldLabelClass} ${wide ? 'md:col-span-2' : ''}`}>
       {label}
-      <input className={fieldClass} onChange={(event) => onChange(event.target.value)} value={value} />
+      <Input onChange={(event) => onChange(event.target.value)} required={required} value={value} />
     </label>
   );
 }
@@ -744,7 +820,20 @@ function NumberInput({ label, min, onChange, value }: { label: string; min?: num
   return (
     <label className={fieldLabelClass}>
       {label}
-      <input className={fieldClass} min={min} onChange={(event) => onChange(Number(event.target.value))} step={0.01} type="number" value={value} />
+      <Input min={min} onChange={(event) => onChange(Number(event.target.value))} step={0.01} type="number" value={value} />
+    </label>
+  );
+}
+
+function UnitSelect({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
+  return (
+    <label className={fieldLabelClass}>
+      {label}
+      <select className={fieldClass} onChange={(event) => onChange(event.target.value)} value={value || 'cái'}>
+        {accessoryUnits.map((unit) => (
+          <option key={unit} value={unit}>{unit}</option>
+        ))}
+      </select>
     </label>
   );
 }
@@ -800,7 +889,6 @@ function normalizeMovementPayload(form: MovementForm) {
 function emptyCatalogForm(): CatalogAccessoryForm {
   return {
     code: '',
-    componentId: '',
     description: '',
     machineModelId: '',
     name: '',
@@ -818,7 +906,6 @@ function catalogFormFromRow(row: AccessoryStockRow): CatalogAccessoryForm {
   return {
     id: row.id,
     code: row.code || '',
-    componentId: row.component?.id || '',
     description: row.description || '',
     machineModelId: row.machineModel?.id || '',
     name: row.name || '',
@@ -836,7 +923,7 @@ function normalizeCatalogPayload(form: CatalogAccessoryForm) {
   return Object.fromEntries(
     Object.entries({
       code: form.code.trim() || undefined,
-      componentId: form.componentId || null,
+      componentId: null,
       description: form.description.trim() || null,
       machineModelId: form.machineModelId,
       name: form.name.trim(),
@@ -883,7 +970,7 @@ function machineLabel(machine: MachineOption | NonNullable<StockMovementRow['mac
 }
 
 function customerLabel(customer: CustomerOption | NonNullable<StockMovementRow['customer']>) {
-  return customer.hospitalName || customer.name || 'Khách hàng';
+  return customer.name || customer.hospitalName || 'Khách hàng';
 }
 
 function formatMoney(value: number) {
@@ -903,6 +990,10 @@ function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('vi-VN');
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
 function toDateInput(date: Date) {

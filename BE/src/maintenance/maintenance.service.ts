@@ -1,3 +1,4 @@
+import { sequenceCode } from '../common/sequence-code';
 import {
   BadRequestException,
   ForbiddenException,
@@ -5,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  MachineInventoryStatus,
   MachineStatus,
   MaintenanceStatus,
   MaintenanceType,
@@ -27,11 +29,16 @@ import {
   isApprovedDeleteReview,
   isDeleteRequest,
 } from '../common/work-delete-request';
+import { assertNoPendingDeleteRequest } from '../common/pending-delete-request';
+import { reconcileMachineStatusFromOpenWork } from '../common/machine-work-status';
 import { replaceWorkUsedParts } from '../common/work-used-parts';
 import { shortDateCode } from '../common/code-format';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
-import { validateMachineState } from '../machines/machine-state.rules';
+import {
+  getMachineStatusAfterWork,
+  validateMachineState,
+} from '../machines/machine-state.rules';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignMaintenanceDto } from './dto/assign-maintenance.dto';
@@ -67,6 +74,7 @@ export class MaintenanceService {
 
   async create(dto: CreateMaintenanceDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.MAINTENANCE_CREATE);
+    if (!isAdmin(actor)) throw new ForbiddenException('Only administrators can dispatch maintenance tickets');
     this.validateCreateMaintenance(dto);
     const machine = dto.machineId
       ? await this.ensureMachineExists(dto.machineId)
@@ -75,12 +83,11 @@ export class MaintenanceService {
       await this.assertEngineerCanUseMachine(actor, machine);
     }
 
-    const createdByEngineer = isEngineer(actor);
-    const engineerId = createdByEngineer ? actor.id : dto.engineerId;
-
-    if (engineerId) {
-      await this.ensureEngineerExists(engineerId);
-    }
+    const engineerIds = [...new Set(dto.engineerIds?.length ? dto.engineerIds : dto.engineerId ? [dto.engineerId] : [])];
+    if (!engineerIds.length) throw new BadRequestException('At least one engineer must be assigned');
+    await Promise.all(engineerIds.map((engineerId) => this.ensureEngineerExists(engineerId)));
+    const engineerId = engineerIds[0];
+    const scheduledDate = this.parseOptionalDate(dto.scheduledDate, 'scheduledDate') ?? new Date();
     const customerId = await this.resolveTicketCustomerId(
       machine,
       dto.customerId,
@@ -92,24 +99,17 @@ export class MaintenanceService {
           data: {
             code: await this.generateMaintenanceCode(
               tx,
-              this.parseRequiredDate(dto.scheduledDate, 'scheduledDate'),
+              scheduledDate,
             ),
-            title: dto.title.trim(),
+            title: dto.title?.trim() || 'Phiếu bảo trì',
             description: dto.description?.trim() || null,
             type: dto.type ?? MaintenanceType.PERIODIC,
-            status: createdByEngineer
-              ? MaintenanceStatus.ASSIGNED
-              : engineerId
-                ? MaintenanceStatus.ASSIGNED
-                : MaintenanceStatus.SCHEDULED,
+            status: MaintenanceStatus.ASSIGNED,
             machineId: machine?.id ?? null,
             customerId,
             engineerId: engineerId || null,
-            scheduledDate: this.parseRequiredDate(
-              dto.scheduledDate,
-              'scheduledDate',
-            ),
-            assignedAt: engineerId ? new Date() : null,
+            scheduledDate,
+            assignedAt: new Date(),
             checklist: this.normalizeChecklist(dto.checklist),
             nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
             usingDepartment: this.cleanOptionalString(dto.usingDepartment),
@@ -121,6 +121,14 @@ export class MaintenanceService {
             serialNumber: this.cleanOptionalString(dto.serialNumber),
           },
           include: this.defaultInclude(),
+        });
+
+        await tx.maintenanceAssignment.createMany({
+          data: engineerIds.map((assignedEngineerId, index) => ({
+            maintenanceId: maintenance.id,
+            engineerId: assignedEngineerId,
+            isLead: index === 0,
+          })),
         });
 
         await this.auditLogsService.create(
@@ -140,36 +148,20 @@ export class MaintenanceService {
           tx,
         );
 
-        if (maintenance.engineerId && maintenance.engineerId !== actor.id) {
-          await this.notificationsService.create(
-            {
-              userId: maintenance.engineerId,
-              title: 'Bạn có phiếu bảo trì mới',
-              message: `${actor.email} đã phân công phiếu ${maintenance.code}: ${maintenance.title}`,
-              href: '/my-tasks',
-              entityType: 'Maintenance',
-              entityId: maintenance.id,
-              createdById: actor.id,
-            },
-            tx,
-          );
-        }
+        await Promise.all(engineerIds.map((assignedEngineerId) => this.notificationsService.create(
+          {
+            userId: assignedEngineerId,
+            title: 'Bạn có phiếu bảo trì mới',
+            message: `${actor.email} đã phân công phiếu ${maintenance.code}: ${maintenance.title}`,
+            href: '/my-tasks',
+            entityType: 'Maintenance',
+            entityId: maintenance.id,
+            createdById: actor.id,
+          },
+          tx,
+        )));
 
-        if (isEngineer(actor)) {
-          await this.notificationsService.createForAdmins(
-            {
-              title: 'Kỹ sư tạo phiếu bảo trì mới',
-              message: `${actor.email} đã tạo phiếu bảo trì khẩn ${maintenance.code}: ${maintenance.title}. Phiếu đã được gán cho kỹ sư để xử lý ngay, admin hậu kiểm dữ liệu khi cần.`,
-              href: '/service-tickets',
-              entityType: 'Maintenance',
-              entityId: maintenance.id,
-              createdById: actor.id,
-            },
-            tx,
-          );
-        }
-
-        return maintenance;
+        return tx.maintenance.findUnique({ where: { id: maintenance.id }, include: this.defaultInclude() });
       },
       { timeout: 20_000 },
     );
@@ -217,6 +209,7 @@ export class MaintenanceService {
   async update(id: string, dto: UpdateMaintenanceDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.MAINTENANCE_UPDATE);
     const maintenance = await this.findOne(id, actor);
+    assertNoPendingDeleteRequest(maintenance);
     const nextEngineerId =
       dto.engineerId === undefined
         ? maintenance.engineerId
@@ -308,7 +301,6 @@ export class MaintenanceService {
                 : dto.status
                   ? null
                   : undefined,
-            reviewNote: dto.status ? null : undefined,
             scheduledDate: dto.scheduledDate
               ? this.parseRequiredDate(dto.scheduledDate, 'scheduledDate')
               : undefined,
@@ -337,21 +329,32 @@ export class MaintenanceService {
           include: this.defaultInclude(),
         });
 
-        const machineStatus =
-          this.getMachineStatusForMaintenanceStatus(nextStatus);
+        let machineStatus = this.getMachineStatusForMaintenanceStatus(
+          nextStatus,
+          nextMachine?.inventoryStatus,
+        );
 
         if (machineStatus && nextMachine) {
-          validateMachineState(
-            machineStatus,
-            nextMachine.inventoryStatus,
-            nextMachine.customerId,
-          );
-          await tx.machine.update({
-            where: { id: nextMachine.id },
-            data: {
-              status: machineStatus,
-            },
-          });
+          if (
+            nextStatus === MaintenanceStatus.COMPLETED ||
+            nextStatus === MaintenanceStatus.CANCELLED
+          ) {
+            machineStatus = await reconcileMachineStatusFromOpenWork(
+              tx,
+              nextMachine.id,
+              nextMachine.inventoryStatus,
+            );
+          } else {
+            validateMachineState(
+              machineStatus,
+              nextMachine.inventoryStatus,
+              nextMachine.customerId,
+            );
+            await tx.machine.update({
+              where: { id: nextMachine.id },
+              data: { status: machineStatus },
+            });
+          }
         }
 
         if (dto.usedParts !== undefined) {
@@ -359,7 +362,11 @@ export class MaintenanceService {
             actor,
             customerId: updated.customerId,
             machineId: updated.machineId,
-            owner: { field: 'maintenanceId', id: updated.id, kind: 'MAINTENANCE' },
+            owner: {
+              field: 'maintenanceId',
+              id: updated.id,
+              kind: 'MAINTENANCE',
+            },
             parts: dto.usedParts,
             prisma: this.prisma,
             tx,
@@ -420,11 +427,9 @@ export class MaintenanceService {
   }
 
   async remove(id: string, actor: RequestUser, dto?: DeleteWorkTaskDto) {
+    void dto;
     const maintenance = await this.findOne(id, actor);
-
-    if (!isAdmin(actor)) {
-      return this.requestDelete(id, maintenance, actor, dto?.reason);
-    }
+    if (!isAdmin(actor)) throw new ForbiddenException('Only administrators can delete maintenance tickets');
 
     assertPermission(actor, PERMISSIONS.MAINTENANCE_DELETE);
     return this.deleteMaintenance(id, maintenance, actor);
@@ -436,7 +441,10 @@ export class MaintenanceService {
     actor: RequestUser,
     reason?: string | null,
   ) {
-    if (maintenance.reviewStatus === WorkReviewStatus.PENDING && isDeleteRequest(maintenance.reviewNote)) {
+    if (
+      maintenance.reviewStatus === WorkReviewStatus.PENDING &&
+      isDeleteRequest(maintenance.reviewNote)
+    ) {
       throw new BadRequestException('Delete request is already pending review');
     }
 
@@ -493,6 +501,14 @@ export class MaintenanceService {
       await tx.maintenance.delete({
         where: { id },
       });
+
+      if (maintenance.machine) {
+        await reconcileMachineStatusFromOpenWork(
+          tx,
+          maintenance.machine.id,
+          maintenance.machine.inventoryStatus,
+        );
+      }
 
       await this.auditLogsService.create(
         {
@@ -598,6 +614,7 @@ export class MaintenanceService {
 
     assertPermission(actor, PERMISSIONS.MAINTENANCE_STATUS_UPDATE);
     const maintenance = await this.findOne(id, actor);
+    assertNoPendingDeleteRequest(maintenance);
     const now = new Date();
 
     this.ensureStatusTransitionIsAllowed(maintenance.status, dto.status);
@@ -630,29 +647,41 @@ export class MaintenanceService {
               dto.status === MaintenanceStatus.COMPLETED && isAdmin(actor)
                 ? actor.id
                 : null,
-            reviewNote: null,
             resultNote: dto.resultNote?.trim(),
-            nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
+            nextDueDate:
+              dto.nextDueDate === undefined
+                ? undefined
+                : this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
           },
           include: this.defaultInclude(),
         });
 
-        const machineStatus = this.getMachineStatusForMaintenanceStatus(
+        let machineStatus = this.getMachineStatusForMaintenanceStatus(
           dto.status,
+          maintenance.machine?.inventoryStatus,
         );
 
         if (machineStatus && maintenance.machine) {
-          validateMachineState(
-            machineStatus,
-            maintenance.machine.inventoryStatus,
-            maintenance.machine.customerId,
-          );
-          await tx.machine.update({
-            where: { id: maintenance.machine.id },
-            data: {
-              status: machineStatus,
-            },
-          });
+          if (
+            dto.status === MaintenanceStatus.COMPLETED ||
+            dto.status === MaintenanceStatus.CANCELLED
+          ) {
+            machineStatus = await reconcileMachineStatusFromOpenWork(
+              tx,
+              maintenance.machine.id,
+              maintenance.machine.inventoryStatus,
+            );
+          } else {
+            validateMachineState(
+              machineStatus,
+              maintenance.machine.inventoryStatus,
+              maintenance.machine.customerId,
+            );
+            await tx.machine.update({
+              where: { id: maintenance.machine.id },
+              data: { status: machineStatus },
+            });
+          }
         }
 
         await this.auditLogsService.create(
@@ -694,7 +723,7 @@ export class MaintenanceService {
       await this.notificationsService
         .createForAdmins({
           title: 'Phiếu bảo trì chờ xác nhận',
-          message: `${actor.email} đã hoàn tất phiếu ${updatedMaintenance.code}: ${updatedMaintenance.title}. Vui lòng kiểm tra kết quả.`,
+          message: `Phiếu ${updatedMaintenance.code} đã hoàn tất.`,
           href: '/service-tickets',
           entityType: 'Maintenance',
           entityId: updatedMaintenance.id,
@@ -871,8 +900,8 @@ export class MaintenanceService {
   }
 
   private validateCreateMaintenance(dto: CreateMaintenanceDto) {
-    if (!dto.title?.trim() || !dto.scheduledDate) {
-      throw new BadRequestException('title and scheduledDate are required');
+    if (!dto.customerId && !dto.machineId) {
+      throw new BadRequestException('customerId or machineId is required');
     }
   }
 
@@ -998,25 +1027,7 @@ export class MaintenanceService {
   ): Promise<string> {
     const prefix = `BT-${shortDateCode(date)}`;
 
-    const latest = await tx.maintenance.findFirst({
-      where: {
-        code: {
-          startsWith: `${prefix}-`,
-        },
-      },
-      orderBy: {
-        code: 'desc',
-      },
-      select: {
-        code: true,
-      },
-    });
-    const latestNumber = latest?.code
-      ? Number(latest.code.slice(prefix.length + 1))
-      : 0;
-    const nextNumber = Number.isFinite(latestNumber) ? latestNumber + 1 : 1;
-
-    return `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+    return sequenceCode(tx, 'maintenance', prefix, 3, tx === this.prisma);
   }
 
   private async getEngineerCode(
@@ -1135,8 +1146,10 @@ export class MaintenanceService {
       status: query.status,
       type: query.type,
       machineId: query.machineId,
-      engineerId: query.engineerId,
-      AND: and.length ? and : undefined,
+      engineerId: undefined,
+      AND: query.engineerId
+        ? [...and, { OR: [{ engineerId: query.engineerId }, { assignments: { some: { engineerId: query.engineerId } } }] }]
+        : and.length ? and : undefined,
       scheduledDate:
         query.scheduledFrom || query.scheduledTo
           ? {
@@ -1228,16 +1241,18 @@ export class MaintenanceService {
 
   private getMachineStatusForMaintenanceStatus(
     status: MaintenanceStatus,
+    inventoryStatus?: MachineInventoryStatus | null,
   ): MachineStatus | null {
     if (status === MaintenanceStatus.IN_PROGRESS) {
       return MachineStatus.MAINTENANCE;
     }
 
     if (
-      status === MaintenanceStatus.COMPLETED ||
-      status === MaintenanceStatus.CANCELLED
+      (status === MaintenanceStatus.COMPLETED ||
+        status === MaintenanceStatus.CANCELLED) &&
+      inventoryStatus
     ) {
-      return MachineStatus.ACTIVE;
+      return getMachineStatusAfterWork(inventoryStatus);
     }
 
     return null;
@@ -1362,7 +1377,10 @@ export class MaintenanceService {
           fullName: true,
         },
       },
+      assignments: {
+        include: { engineer: { select: { id: true, email: true, fullName: true, engineerProfile: true } } },
+        orderBy: [{ isLead: 'desc' as const }, { assignedAt: 'asc' as const }],
+      },
     };
   }
-
 }

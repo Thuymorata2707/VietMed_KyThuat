@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -25,7 +27,6 @@ export class AuthService {
     const identifier = this.normalizeLoginIdentifier(
       dto.identifier || dto.email,
     );
-    this.loginThrottle.assertCanAttempt(identifier, ip);
 
     if (!identifier || !dto.password) {
       this.loginThrottle.recordFailure(identifier, ip);
@@ -43,19 +44,32 @@ export class AuthService {
       },
     });
 
-    if (!user || user.status !== 'ACTIVE') {
-      this.loginThrottle.recordFailure(identifier, ip);
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    const isPasswordValid =
+      user?.status === 'ACTIVE' &&
+      (await bcrypt.compare(dto.password, user.password));
 
-    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-
-    if (!isPasswordValid) {
+    if (!user || user.status !== 'ACTIVE' || !isPasswordValid) {
       this.loginThrottle.recordFailure(identifier, ip);
+
+      if (this.loginThrottle.isLocked(identifier, ip)) {
+        throw new HttpException(
+          'Too many failed login attempts. Please try again later.',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+
       throw new UnauthorizedException('Invalid credentials');
     }
 
     this.loginThrottle.recordSuccess(identifier, ip);
+
+    const expertiseGroups = user.engineerProfile
+      ? [user.engineerProfile.expertiseImaging ? 'IMAGING' : null, user.engineerProfile.expertiseLabTesting ? 'LAB_TESTING' : null]
+          .filter((group): group is string => Boolean(group))
+      : [];
+    if (!expertiseGroups.length && (user.engineerProfile?.expertiseGroup === 'IMAGING' || user.engineerProfile?.expertiseGroup === 'LAB_TESTING')) {
+      expertiseGroups.push(user.engineerProfile.expertiseGroup);
+    }
 
     const requestUser = {
       id: user.id,
@@ -63,6 +77,8 @@ export class AuthService {
       roleId: user.roleId,
       roleName: user.role.name,
       regionId: user.regionId,
+      expertiseGroup: user.engineerProfile?.expertiseGroup ?? null,
+      expertiseGroups,
     };
 
     return {
@@ -76,7 +92,7 @@ export class AuthService {
         status: user.status,
         role: user.role,
         region: user.region,
-        engineerProfile: user.engineerProfile,
+        engineerProfile: this.withExpertiseGroups(user.engineerProfile),
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
@@ -186,6 +202,7 @@ export class AuthService {
   }
 
   private buildEngineerProfileData(dto: UpdateMyEngineerProfileDto) {
+    const groups = dto.expertiseGroups ?? (dto.expertiseGroup ? [dto.expertiseGroup] : undefined);
     return {
       employeeCode:
         dto.employeeCode === undefined
@@ -209,8 +226,9 @@ export class AuthService {
         dto.specialties === undefined
           ? undefined
           : this.normalizeSpecialties(dto.specialties),
-      expertiseGroup:
-        dto.expertiseGroup === undefined ? undefined : dto.expertiseGroup,
+      expertiseGroup: groups === undefined ? undefined : groups.length === 1 ? groups[0] : null,
+      expertiseImaging: groups === undefined ? undefined : groups.includes('IMAGING'),
+      expertiseLabTesting: groups === undefined ? undefined : groups.includes('LAB_TESTING'),
       certificateNo:
         dto.certificateNo === undefined
           ? undefined
@@ -317,9 +335,28 @@ export class AuthService {
       role: user.role,
       regionId: user.regionId,
       region: user.region,
-      engineerProfile: user.engineerProfile,
+      engineerProfile: this.withExpertiseGroups(user.engineerProfile),
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+    };
+  }
+
+  private withExpertiseGroups(value: unknown) {
+    if (!value || typeof value !== 'object') return value;
+    const profile = value as {
+      expertiseGroup?: string | null;
+      expertiseImaging?: boolean;
+      expertiseLabTesting?: boolean;
+    };
+    const expertiseGroups = [profile.expertiseImaging ? 'IMAGING' : null, profile.expertiseLabTesting ? 'LAB_TESTING' : null]
+      .filter((group): group is 'IMAGING' | 'LAB_TESTING' => Boolean(group));
+    return {
+      ...profile,
+      expertiseGroups: expertiseGroups.length
+        ? expertiseGroups
+        : profile.expertiseGroup === 'IMAGING' || profile.expertiseGroup === 'LAB_TESTING'
+          ? [profile.expertiseGroup]
+          : [],
     };
   }
 }

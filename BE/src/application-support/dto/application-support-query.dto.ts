@@ -3,6 +3,7 @@ import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import {
   ApplicationSupportIssueCategory,
   ApplicationSupportStatus,
+  ApplicationSupportWorkType,
 } from '@prisma/client';
 
 export class ApplicationSupportQueryDto {
@@ -18,6 +19,10 @@ export class ApplicationSupportQueryDto {
   @Min(1)
   @Max(100)
   limit?: number = 20;
+
+  @IsOptional()
+  @IsString()
+  id?: string;
 
   @IsOptional()
   @IsString()
@@ -42,6 +47,10 @@ export class ApplicationSupportQueryDto {
   @IsOptional()
   @IsEnum(ApplicationSupportStatus)
   status?: ApplicationSupportStatus;
+
+  @IsOptional()
+  @IsEnum(ApplicationSupportWorkType)
+  workType?: ApplicationSupportWorkType;
 
   @IsOptional()
   @IsEnum(ApplicationSupportIssueCategory)
