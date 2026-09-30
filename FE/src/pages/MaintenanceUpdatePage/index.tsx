@@ -6,6 +6,7 @@ import { getRoleName } from '../../auth/roles';
 import { CustomerSiteFields } from '../../components/CustomerSiteFields';
 import { Notice } from '../../components/Notice';
 import { DateInput } from '../../components/DateInput';
+import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
 import { DeleteRequestReviewPanel } from '../../components/DeleteRequestReviewPanel';
 import { DeleteTicketDialog } from '../../components/DeleteTicketDialog';
 import { PageFrame } from '../../components/PageFrame';
@@ -57,6 +58,7 @@ type MaintenanceForm = {
   scheduledDate: string;
   nextDueDate: string;
   resultNote: string;
+  receivedAccessories: string;
   checklistText: string;
   usingDepartment: string;
   representative: string;
@@ -245,6 +247,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
           scheduledDate: form.scheduledDate || undefined,
           nextDueDate: form.nextDueDate || undefined,
           resultNote: form.resultNote.trim() || undefined,
+          receivedAccessories: form.receivedAccessories.trim() || undefined,
           checklist: splitLines(form.checklistText),
           usingDepartment: form.usingDepartment.trim() || undefined,
           representative: form.representative.trim() || undefined,
@@ -282,7 +285,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
       }
 
       if (response.deleteRequested) {
-        setSuccess('Đã gửi yêu cầu xóa, chờ admin duyệt.');
+        setSuccess('Đã gửi yêu cầu xóa phiếu, chờ quản trị viên phê duyệt.');
         await loadDetail();
       }
     } catch (err) {
@@ -308,7 +311,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
         return;
       }
 
-      setSuccess(approved ? 'Đã duyệt xóa phiếu bảo trì.' : 'Đã từ chối yêu cầu xóa phiếu bảo trì.');
+      setSuccess(approved ? 'Đã phê duyệt yêu cầu xóa phiếu bảo trì.' : 'Đã từ chối yêu cầu xóa phiếu bảo trì.');
       await loadDetail();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không duyệt được yêu cầu xóa phiếu.');
@@ -412,7 +415,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 />
                 <label className={`${labelClass} md:col-span-2`}>
                   Checklist
-                  <textarea className={textareaClass} onChange={(event) => updateForm({ checklistText: event.target.value })} placeholder="Hạng mục kiểm tra" value={form.checklistText} />
+                  <textarea className={textareaClass} onChange={(event) => updateForm({ checklistText: event.target.value })} value={form.checklistText} />
                 </label>
                 <div className="md:col-span-2">
                   <StandardChecklistPanel
@@ -420,6 +423,9 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                     onApply={() => updateForm({ checklistText: appendChecklistLines(form.checklistText, standardChecklist) })}
                     title="Checklist chuẩn theo ngành hàng"
                   />
+                </div>
+                <div className="md:col-span-2">
+                  <MachineAccessoryEditor mode="generic" onChange={(receivedAccessories) => updateForm({ receivedAccessories })} value={form.receivedAccessories} />
                 </div>
                 <label className={`${labelClass} md:col-span-2`}>
                   Kết quả/Ghi chú kỹ thuật
@@ -493,7 +499,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
               onUpload={attachmentsPanel.uploadAttachment}
               onView={attachmentsPanel.viewAttachment}
               options={attachmentOptionsByKind.maintenance}
-              titlePlaceholder="VD: Phiếu bảo trì có chữ ký"
+              titlePlaceholder=""
               uploading={attachmentsPanel.uploadingAttachment}
             />
 
@@ -529,7 +535,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
           loading={saving}
           onCancel={() => setShowDeleteConfirm(false)}
           onConfirm={() => void deleteTicket()}
-          title="Bạn sắp xóa phiếu bảo trì này"
+          title="Xác nhận xóa phiếu bảo trì"
           warning="Phiếu và dữ liệu liên kết sẽ bị xóa vĩnh viễn. Kỹ sư có thể tạo lại phiếu sau đó."
         />
       ) : null}
@@ -546,6 +552,7 @@ function emptyForm(): MaintenanceForm {
     scheduledDate: '',
     nextDueDate: '',
     resultNote: '',
+    receivedAccessories: '',
     checklistText: '',
     usingDepartment: '',
     representative: '',
@@ -568,6 +575,7 @@ function buildForm(maintenance: MaintenanceTask): MaintenanceForm {
     scheduledDate: dateInputValue(maintenance.scheduledDate),
     nextDueDate: dateInputValue(maintenance.nextDueDate),
     resultNote: maintenance.resultNote || '',
+    receivedAccessories: maintenance.receivedAccessories || '',
     checklistText: maintenance.checklist?.join('\n') || '',
     usingDepartment: maintenance.usingDepartment || c?.name || '',
     representative: maintenance.representative || (maintenance.customer ? (maintenance.customer.contactPerson || '') : ''),

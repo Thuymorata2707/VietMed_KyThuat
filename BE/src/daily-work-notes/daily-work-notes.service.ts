@@ -84,8 +84,8 @@ export class DailyWorkNotesService {
       await this.notificationsService
         .create({
           userId: targetUserId,
-          title: 'Bạn có lịch công việc mới',
-          message: `${user.email} đã thêm lịch ${note.title} vào ngày ${this.formatDate(note.workDate)}`,
+          title: 'Lịch công việc mới',
+          message: `Đã bổ sung lịch công việc ${note.title} vào ngày ${this.formatDate(note.workDate)}.`,
           href: '/daily-work',
           entityType: 'DailyWorkNote',
           entityId: note.id,
@@ -164,7 +164,7 @@ export class DailyWorkNotesService {
         reviewerId: user.id,
         rejectReason:
           dto.status === DailyWorkStatus.REJECTED
-            ? this.cleanOptional(dto.rejectReason) || 'Admin từ chối lịch này.'
+            ? this.cleanOptional(dto.rejectReason) || 'Quản trị viên từ chối lịch công việc.'
             : null,
       },
       include: this.defaultInclude(),

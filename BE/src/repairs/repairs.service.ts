@@ -70,7 +70,11 @@ export class RepairsService {
 
   async create(dto: CreateRepairDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.REPAIR_CREATE);
-    if (!isAdmin(actor)) throw new ForbiddenException('Only administrators can dispatch repair tickets');
+    const selfSubmission = isEngineer(actor);
+    if (!isAdmin(actor) && !selfSubmission)
+      throw new ForbiddenException(
+        'Only administrators or engineers can create repair tickets',
+      );
     this.validateCreateRepair(dto);
 
     const machine = dto.machineId
@@ -80,14 +84,34 @@ export class RepairsService {
       await this.assertEngineerCanUseMachine(actor, machine);
     }
 
-    const engineerIds = [...new Set(dto.engineerIds?.length ? dto.engineerIds : dto.engineerId ? [dto.engineerId] : [])];
-    if (!engineerIds.length) throw new BadRequestException('At least one engineer must be assigned');
-    await Promise.all(engineerIds.map((engineerId) => this.ensureEngineerExists(engineerId)));
+    const engineerIds = selfSubmission ? [actor.id] : [
+      ...new Set(
+        dto.engineerIds?.length
+          ? dto.engineerIds
+          : dto.engineerId
+            ? [dto.engineerId]
+            : [],
+      ),
+    ];
+    if (!engineerIds.length)
+      throw new BadRequestException('At least one engineer must be assigned');
+    await Promise.all(
+      engineerIds.map((engineerId) => this.ensureEngineerExists(engineerId)),
+    );
     const engineerId = engineerIds[0];
     const customerId = await this.resolveTicketCustomerId(
       machine,
       dto.customerId,
     );
+    if (
+      selfSubmission &&
+      (!machine || !customerId || !dto.description?.trim() ||
+        !dto.repairMethod?.trim() || !dto.resultNote?.trim())
+    ) {
+      throw new BadRequestException(
+        'Engineer-submitted repair reports require a customer, machine, problem description, repair method, and result',
+      );
+    }
 
     return this.prisma.$transaction(
       async (tx) => {
@@ -104,9 +128,13 @@ export class RepairsService {
             engineerId: engineerId || null,
             createdById: actor.id,
             priority: dto.priority ?? RepairPriority.NORMAL,
-            status: RepairStatus.ASSIGNED,
+            status: selfSubmission ? RepairStatus.COMPLETED : RepairStatus.ASSIGNED,
             reportedAt: this.parseOptionalDate(dto.reportedAt) ?? new Date(),
             assignedAt: engineerId ? new Date() : null,
+            completedAt: selfSubmission ? new Date() : null,
+            reviewStatus: selfSubmission ? WorkReviewStatus.PENDING : WorkReviewStatus.NOT_REQUIRED,
+            resultNote: this.cleanOptionalString(dto.resultNote),
+            customerFeedback: this.cleanOptionalString(dto.customerFeedback),
             usingDepartment: this.cleanOptionalString(dto.usingDepartment),
             representative: this.cleanOptionalString(dto.representative),
             representativePosition: this.cleanOptionalString(
@@ -160,20 +188,36 @@ export class RepairsService {
           tx,
         );
 
-        await Promise.all(engineerIds.map((assignedEngineerId) => this.notificationsService.create(
-          {
-            userId: assignedEngineerId,
-            title: 'Bạn có phiếu sửa chữa mới',
-            message: `${actor.email} đã phân công phiếu ${repair.code}: ${repair.title}`,
-            href: '/my-tasks',
+        if (selfSubmission) {
+          await this.notificationsService.createForAdmins({
+            title: 'Phiếu sửa chữa chờ phê duyệt',
+            message: `Phiếu sửa chữa ${repair.code} đã được trình phê duyệt.`,
+            href: '/service-tickets',
             entityType: 'Repair',
             entityId: repair.id,
             createdById: actor.id,
-          },
-          tx,
-        )));
+          }, tx);
+        } else await Promise.all(
+          engineerIds.map((assignedEngineerId) =>
+            this.notificationsService.create(
+              {
+                userId: assignedEngineerId,
+                title: 'Phiếu sửa chữa mới được phân công',
+                message: `Phiếu ${repair.code} đã được phân công: ${repair.title}`,
+                href: '/my-tasks',
+                entityType: 'Repair',
+                entityId: repair.id,
+                createdById: actor.id,
+              },
+              tx,
+            ),
+          ),
+        );
 
-        return tx.repair.findUnique({ where: { id: repair.id }, include: this.defaultInclude() });
+        return tx.repair.findUnique({
+          where: { id: repair.id },
+          include: this.defaultInclude(),
+        });
       },
       { timeout: 20_000 },
     );
@@ -381,6 +425,14 @@ export class RepairsService {
           }
         }
 
+        if (repair.machine && repair.machine.id !== nextMachine?.id) {
+          await reconcileMachineStatusFromOpenWork(
+            tx,
+            repair.machine.id,
+            repair.machine.inventoryStatus,
+          );
+        }
+
         if (dto.usedParts !== undefined) {
           await replaceWorkUsedParts({
             actor,
@@ -434,8 +486,8 @@ export class RepairsService {
           await this.notificationsService.create(
             {
               userId: updated.engineerId,
-              title: 'Bạn có phiếu sửa chữa mới',
-              message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+              title: 'Phiếu sửa chữa mới được phân công',
+              message: `Phiếu ${updated.code} đã được phân công: ${updated.title}`,
               href: '/my-tasks',
               entityType: 'Repair',
               entityId: updated.id,
@@ -454,7 +506,10 @@ export class RepairsService {
   async remove(id: string, actor: RequestUser, dto?: DeleteWorkTaskDto) {
     void dto;
     const repair = await this.findOne(id, actor);
-    if (!isAdmin(actor)) throw new ForbiddenException('Only administrators can delete repair tickets');
+    if (!isAdmin(actor))
+      throw new ForbiddenException(
+        'Only administrators can delete repair tickets',
+      );
 
     assertPermission(actor, PERMISSIONS.REPAIR_DELETE);
     return this.deleteRepair(id, repair, actor);
@@ -505,8 +560,8 @@ export class RepairsService {
 
     await this.notificationsService
       .createForAdmins({
-        title: 'Phiếu sửa chữa chờ duyệt xóa',
-        message: `${actor.email} yêu cầu xóa phiếu ${repair.code}: ${deleteRequestDisplayNote(updated.reviewNote)}`,
+        title: 'Yêu cầu xóa phiếu sửa chữa chờ phê duyệt',
+        message: `Lý do yêu cầu xóa phiếu ${repair.code}: ${deleteRequestDisplayNote(updated.reviewNote)}`,
         href: '/service-tickets',
         entityType: 'Repair',
         entityId: repair.id,
@@ -607,8 +662,8 @@ export class RepairsService {
           await this.notificationsService.create(
             {
               userId: updated.engineerId,
-              title: 'Bạn có phiếu sửa chữa mới',
-              message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+              title: 'Phiếu sửa chữa mới được phân công',
+              message: `Phiếu ${updated.code} đã được phân công: ${updated.title}`,
               href: '/my-tasks',
               entityType: 'Repair',
               entityId: updated.id,
@@ -736,7 +791,7 @@ export class RepairsService {
     if (dto.status === RepairStatus.COMPLETED && isEngineer(actor)) {
       await this.notificationsService
         .createForAdmins({
-          title: 'Phiếu sửa chữa chờ xác nhận',
+          title: 'Phiếu sửa chữa chờ phê duyệt',
           message: `Phiếu ${updatedRepair.code} đã hoàn tất.`,
           href: '/service-tickets',
           entityType: 'Repair',
@@ -792,7 +847,7 @@ export class RepairsService {
           .create({
             userId: rejected.engineerId,
             title: 'Yêu cầu xóa phiếu sửa chữa chưa được duyệt',
-            message: `Admin chưa duyệt xóa phiếu ${rejected.code}: ${reviewNote}`,
+            message: `Quản trị viên từ chối yêu cầu xóa phiếu ${rejected.code}: ${reviewNote}`,
             href: '/my-tasks',
             entityType: 'Repair',
             entityId: rejected.id,
@@ -848,6 +903,18 @@ export class RepairsService {
         });
       }
 
+      if (
+        dto.status === WorkReviewStatus.APPROVED &&
+        repair.status === RepairStatus.COMPLETED &&
+        repair.machine
+      ) {
+        await reconcileMachineStatusFromOpenWork(
+          tx,
+          repair.machine.id,
+          repair.machine.inventoryStatus,
+        );
+      }
+
       await this.auditLogsService.create(
         {
           action: AUDIT_ACTIONS.STATUS_CHANGE,
@@ -881,12 +948,12 @@ export class RepairsService {
           userId: updated.engineerId,
           title:
             dto.status === WorkReviewStatus.APPROVED
-              ? 'Phiếu sửa chữa đã được xác nhận'
+              ? 'Phiếu sửa chữa đã được phê duyệt'
               : 'Phiếu sửa chữa cần bổ sung',
           message:
             dto.status === WorkReviewStatus.APPROVED
-              ? `Admin đã xác nhận phiếu ${updated.code}.`
-              : `Admin yêu cầu bổ sung phiếu ${updated.code}: ${reviewNote}`,
+              ? `Quản trị viên đã phê duyệt phiếu ${updated.code}.`
+              : `Quản trị viên yêu cầu bổ sung hồ sơ phiếu ${updated.code}: ${reviewNote}`,
           href: '/my-tasks',
           entityType: 'Repair',
           entityId: updated.id,
@@ -1111,6 +1178,14 @@ export class RepairsService {
     return date;
   }
 
+  private parseRequiredDate(value: string, fieldName: string): Date {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException(`Invalid ${fieldName}`);
+    }
+    return date;
+  }
+
   private buildFindAllWhere(
     query: ListRepairsQueryDto,
   ): Prisma.RepairWhereInput {
@@ -1141,10 +1216,31 @@ export class RepairsService {
       status: query.status,
       priority: query.priority,
       machineId: query.machineId,
+      reportedAt:
+        query.reportedFrom || query.reportedTo
+          ? {
+              gte: query.reportedFrom
+                ? this.parseRequiredDate(query.reportedFrom, 'reportedFrom')
+                : undefined,
+              lte: query.reportedTo
+                ? endOfDate(this.parseRequiredDate(query.reportedTo, 'reportedTo'))
+                : undefined,
+            }
+          : undefined,
       engineerId: undefined,
       AND: query.engineerId
-        ? [...and, { OR: [{ engineerId: query.engineerId }, { assignments: { some: { engineerId: query.engineerId } } }] }]
-        : and.length ? and : undefined,
+        ? [
+            ...and,
+            {
+              OR: [
+                { engineerId: query.engineerId },
+                { assignments: { some: { engineerId: query.engineerId } } },
+              ],
+            },
+          ]
+        : and.length
+          ? and
+          : undefined,
       OR: search
         ? [
             { code: { contains: search } },
@@ -1375,9 +1471,24 @@ export class RepairsService {
         },
       },
       assignments: {
-        include: { engineer: { select: { id: true, email: true, fullName: true, engineerProfile: true } } },
+        include: {
+          engineer: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+              engineerProfile: true,
+            },
+          },
+        },
         orderBy: [{ isLead: 'desc' as const }, { assignedAt: 'asc' as const }],
       },
     };
   }
+}
+
+function endOfDate(value: Date) {
+  const end = new Date(value);
+  end.setUTCHours(23, 59, 59, 999);
+  return end;
 }

@@ -7,14 +7,17 @@ import {
 } from '@nestjs/common';
 import {
   DeviceServiceTicketStatus,
+  MachineInventoryStatus,
   MachineStatus,
   Prisma,
   WorkTaskKind,
 } from '@prisma/client';
 import {
+  customerAccessWhere,
   deviceServiceTicketAccessWhere,
   isAdmin,
   isEngineer,
+  machineAccessWhere,
 } from '../auth/access-scope';
 import { PaginatedResult } from '../common/paginated-result.type';
 import { RequestUser } from '../common/request-user.type';
@@ -30,7 +33,10 @@ import { ReturnDeviceServiceTicketDto } from './dto/return-device-service-ticket
 
 @Injectable()
 export class DeviceServiceTicketsService {
-  constructor(private readonly prisma: PrismaService, private readonly auditLogsService: AuditLogsService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   async findAll(
     query: ListDeviceServiceTicketsQueryDto,
@@ -77,20 +83,35 @@ export class DeviceServiceTicketsService {
 
   async remove(id: string, user: RequestUser) {
     assertPermission(user, PERMISSIONS.DEVICE_SERVICE_DELETE);
-    if (!isAdmin(user)) throw new ForbiddenException('Only administrators can delete device service tickets');
+    if (!isAdmin(user))
+      throw new ForbiddenException(
+        'Only administrators can delete device service tickets',
+      );
     const ticket = await this.findOne(id, user);
     await this.prisma.$transaction(async (tx) => {
       await tx.deviceServiceTicket.delete({ where: { id } });
       if (ticket.machineId && ticket.machine) {
-        await reconcileMachineStatusFromOpenWork(tx, ticket.machineId, ticket.machine.inventoryStatus);
+        await reconcileMachineStatusFromOpenWork(
+          tx,
+          ticket.machineId,
+          ticket.machine.inventoryStatus,
+        );
       }
-      await this.auditLogsService.create({
-        action: AUDIT_ACTIONS.DELETE,
-        entityType: 'DeviceServiceTicket',
-        entityId: id,
-        actor: user,
-        metadata: { receiveCode: ticket.receiveCode, returnCode: ticket.returnCode, machineId: ticket.machineId, status: ticket.status },
-      }, tx);
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.DELETE,
+          entityType: 'DeviceServiceTicket',
+          entityId: id,
+          actor: user,
+          metadata: {
+            receiveCode: ticket.receiveCode,
+            returnCode: ticket.returnCode,
+            machineId: ticket.machineId,
+            status: ticket.status,
+          },
+        },
+        tx,
+      );
     });
     return { deleted: true };
   }
@@ -98,23 +119,60 @@ export class DeviceServiceTicketsService {
   async create(dto: CreateDeviceServiceTicketDto, user?: RequestUser) {
     const receivedAt = this.parseDate(dto.receivedAt) ?? new Date();
     const machine = dto.machineId
-      ? await this.prisma.machine.findUnique({
-          where: { id: dto.machineId },
-          include: { customer: true, machineModel: true },
+      ? await this.prisma.machine.findFirst({
+          where: {
+            AND: [{ id: dto.machineId }, machineAccessWhere(user)],
+          },
+          include: {
+            customer: true,
+            machineModel: {
+              include: {
+                businessLine: { include: { productIndustry: true } },
+              },
+            },
+            businessLine: { include: { productIndustry: true } },
+          },
         })
       : null;
-    if (dto.machineId && !machine)
-      throw new BadRequestException('Machine not found');
+    if (dto.machineId && !machine) {
+      throw new NotFoundException('Machine not found or outside your access');
+    }
+    if (
+      machine &&
+      machine.inventoryStatus !== MachineInventoryStatus.INSTALLED &&
+      machine.inventoryStatus !== MachineInventoryStatus.RETURNED
+    ) {
+      throw new BadRequestException(
+        'Only installed or returned machines can be received for service',
+      );
+    }
 
     const customer = dto.customerId
-      ? await this.prisma.customer.findUnique({ where: { id: dto.customerId } })
+      ? await this.prisma.customer.findFirst({
+          where: {
+            AND: [{ id: dto.customerId }, customerAccessWhere(user)],
+          },
+        })
       : (machine?.customer ?? null);
-    if (dto.customerId && !customer)
-      throw new BadRequestException('Customer not found');
+    if (dto.customerId && !customer) {
+      throw new NotFoundException('Customer not found or outside your access');
+    }
+
+    if (
+      machine?.customerId &&
+      customer?.id &&
+      machine.customerId !== customer.id
+    ) {
+      throw new BadRequestException('Customer does not match selected machine');
+    }
 
     const engineerId = isEngineer(user)
       ? (user?.id ?? null)
-      : dto.engineerId || user?.id || null;
+      : dto.engineerId || null;
+    if (engineerId) await this.ensureEngineer(engineerId);
+    if (machine && user && isEngineer(user)) {
+      await this.assertEngineerCanUseMachine(machine, user);
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const ticket = await tx.deviceServiceTicket.create({
@@ -173,14 +231,37 @@ export class DeviceServiceTicketsService {
       });
 
       if (machine) {
-        await tx.machine.update({
-          where: { id: machine.id },
+        const machineUpdate = await tx.machine.updateMany({
+          where: {
+            id: machine.id,
+            inventoryStatus: machine.inventoryStatus,
+          },
           data: {
             status: MachineStatus.REPAIRING,
             primaryEngineerId: engineerId || undefined,
           },
         });
+        if (machineUpdate.count !== 1) {
+          throw new BadRequestException('Machine status has changed');
+        }
       }
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.CREATE,
+          entityType: 'DeviceServiceTicket',
+          entityId: ticket.id,
+          actor: user,
+          metadata: {
+            receiveCode: ticket.receiveCode,
+            machineId: ticket.machineId,
+            customerId: ticket.customerId,
+            engineerId: ticket.engineerId,
+            status: ticket.status,
+          },
+        },
+        tx,
+      );
 
       return ticket;
     });
@@ -249,10 +330,46 @@ export class DeviceServiceTicketsService {
       }
 
       if (current.machine) {
-        await reconcileMachineStatusFromOpenWork(
+        const machineStatus = await reconcileMachineStatusFromOpenWork(
           tx,
           current.machine.id,
           current.machine.inventoryStatus,
+        );
+
+        await this.auditLogsService.create(
+          {
+            action: AUDIT_ACTIONS.STATUS_CHANGE,
+            entityType: 'DeviceServiceTicket',
+            entityId: id,
+            actor: user,
+            changes: {
+              status: {
+                from: current.status,
+                to: DeviceServiceTicketStatus.RETURNED,
+              },
+            },
+            metadata: {
+              machineId: current.machine.id,
+              machineStatus,
+            },
+          },
+          tx,
+        );
+      } else {
+        await this.auditLogsService.create(
+          {
+            action: AUDIT_ACTIONS.STATUS_CHANGE,
+            entityType: 'DeviceServiceTicket',
+            entityId: id,
+            actor: user,
+            changes: {
+              status: {
+                from: current.status,
+                to: DeviceServiceTicketStatus.RETURNED,
+              },
+            },
+          },
+          tx,
         );
       }
 
@@ -330,6 +447,19 @@ export class DeviceServiceTicketsService {
         });
       }
 
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.UPDATE,
+          entityType: 'DeviceServiceTicket',
+          entityId: id,
+          actor: user,
+          metadata: {
+            updatedFields: Object.keys(dto),
+          },
+        },
+        tx,
+      );
+
       return tx.deviceServiceTicket.findUnique({
         where: { id },
         include: this.defaultInclude(),
@@ -339,6 +469,53 @@ export class DeviceServiceTicketsService {
 
   getStatuses() {
     return Object.values(DeviceServiceTicketStatus);
+  }
+
+  private async ensureEngineer(engineerId: string) {
+    const engineer = await this.prisma.user.findUnique({
+      where: { id: engineerId },
+      include: { role: true },
+    });
+    if (!engineer || engineer.status !== 'ACTIVE') {
+      throw new BadRequestException('Engineer does not exist or is inactive');
+    }
+    if (engineer.role.name !== 'engineer' && engineer.role.name !== 'admin') {
+      throw new BadRequestException('Assigned user must be an engineer');
+    }
+  }
+
+  private async assertEngineerCanUseMachine(
+    machine: {
+      businessLine?: {
+        expertiseGroup?: string | null;
+        productIndustry?: { expertiseGroup?: string | null } | null;
+      } | null;
+      machineModel?: {
+        businessLine?: {
+          expertiseGroup?: string | null;
+          productIndustry?: { expertiseGroup?: string | null } | null;
+        } | null;
+      } | null;
+    },
+    actor: RequestUser,
+  ) {
+    const engineer = await this.prisma.user.findUnique({
+      where: { id: actor.id },
+      include: { engineerProfile: true },
+    });
+    const expertiseGroup = engineer?.engineerProfile?.expertiseGroup;
+    if (!expertiseGroup) return;
+
+    const machineGroup =
+      machine.businessLine?.productIndustry?.expertiseGroup ??
+      machine.businessLine?.expertiseGroup ??
+      machine.machineModel?.businessLine?.productIndustry?.expertiseGroup ??
+      machine.machineModel?.businessLine?.expertiseGroup;
+    if (machineGroup && machineGroup !== expertiseGroup) {
+      throw new ForbiddenException(
+        'Engineer can only create tickets for assigned product group',
+      );
+    }
   }
 
   async previewReceiveCode(date?: string) {

@@ -29,18 +29,17 @@ export type ResourceConfig = {
 export const resources: Record<string, ResourceConfig> = {
   customers: {
     title: 'Khách hàng',
-    description: 'Khách hàng & liên hệ.',
+    description: 'Danh sách khách hàng, thông tin liên hệ và thiết bị đang quản lý.',
     endpoint: '/customers',
     icon: <Building2 size={20} />,
     searchPlaceholder: 'Tìm tên, mã, tỉnh, SĐT',
-    roles: ['admin', 'manager'],
+    roles: ['admin', 'manager', 'engineer'],
     columns: [
       { key: 'customerCode', label: 'Mã' },
       { key: 'name', label: 'Khách hàng' },
-      { key: 'provinceRef.name', label: 'Tỉnh' },
-      { key: 'provinceRef.branch.name', label: 'Chi nhánh' },
+      { key: 'fullAddress', label: 'Địa chỉ', fallbackKeys: ['address'] },
       { key: 'phone', label: 'SĐT', fallbackKeys: ['contactPhone'] },
-      { key: 'engineers', label: 'Kỹ sư quản lý' },
+      { key: 'primaryEngineer.fullName', label: 'Kỹ sư phụ trách' },
       { key: '_count.machines', label: 'Máy' },
       { key: 'status', label: 'Trạng thái' },
     ],
@@ -67,7 +66,7 @@ export const resources: Record<string, ResourceConfig> = {
     endpoint: '/installations',
     icon: <PackageCheck size={20} />,
     searchPlaceholder: 'Tìm theo mã máy, khách hàng',
-    roles: ['admin', 'manager'],
+    roles: ['admin', 'manager', 'engineer'],
     columns: [
       { key: 'machine.machineCode', label: 'Mã máy' },
       { key: 'customer.name', label: 'Khách hàng' },

@@ -74,6 +74,15 @@ export class DemoLoansController {
     return this.service.returnLoan(id, dto, user);
   }
 
+  @Post(':id/prepare')
+  completePreparation(
+    @Param('id') id: string,
+    @Body() dto: CompleteDemoLoanDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.completePreparation(id, dto, user);
+  }
+
   @Post(':id/cancel')
   cancel(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.service.cancel(id, user);

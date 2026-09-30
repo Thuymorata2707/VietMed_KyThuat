@@ -178,8 +178,8 @@ export function buildTimeline(machines: CustomerMachine[], customer?: CustomerSu
     .slice(0, 30);
 }
 
-export function buildOpenTasks(machines: CustomerMachine[], customer: CustomerSummary | null, isAdminProfile: boolean): OpenTaskItem[] {
-  const returnTo = encodeURIComponent(isAdminProfile && customer ? `/customers/profile?customerId=${customer.id}` : '/my-customers');
+export function buildOpenTasks(machines: CustomerMachine[], customer: CustomerSummary | null): OpenTaskItem[] {
+  const returnTo = encodeURIComponent(customer ? `/customers/${customer.id}` : '/customers');
   return buildTimeline(machines, customer)
     .filter((item) => item.kind !== 'inventory' && !isClosedStatus(item.status))
     .slice(0, 8)

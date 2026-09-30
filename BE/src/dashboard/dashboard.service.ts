@@ -478,6 +478,7 @@ export class DashboardService {
     const businessLineId = query.businessLineId?.trim();
     const productIndustryId = query.productIndustryId?.trim();
     const installState = query.installState?.trim();
+    const attention = query.attention?.trim();
     const accessScope = machineAccessWhere(user);
     const baseFilters: Prisma.MachineWhereInput[] = [];
 
@@ -552,6 +553,35 @@ export class DashboardService {
       });
     }
 
+    if (attention === 'REPAIRING') {
+      baseFilters.push({ status: 'REPAIRING' });
+    } else if (attention === 'WAITING_PARTS') {
+      baseFilters.push({ repairs: { some: { status: 'WAITING_PARTS' } } });
+    } else if (attention === 'OVERDUE_MAINTENANCE') {
+      const today = startOfVietnamDay();
+      baseFilters.push({
+        maintenances: {
+          some: {
+            OR: [
+              { status: 'OVERDUE' },
+              { scheduledDate: { lt: today }, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+            ],
+          },
+        },
+      });
+    } else if (attention === 'WARRANTY_30D') {
+      const today = startOfVietnamDay();
+      const inThirtyDays = new Date(today);
+      inThirtyDays.setDate(inThirtyDays.getDate() + 30);
+      const warrantyWindow = { gte: today, lte: inThirtyDays };
+      baseFilters.push({
+        OR: [
+          { warrantyEndDate: warrantyWindow },
+          { installations: { some: { warrantyEndDate: warrantyWindow } } },
+        ],
+      });
+    }
+
     if (productIndustryId) {
       baseFilters.push({
         businessLine: {
@@ -573,7 +603,7 @@ export class DashboardService {
       AND: [filterWhere, selectedBusinessLineWhere],
     };
 
-    const [total, filteredTotal, businessLineCounts, machines] =
+    const [total, filteredTotal, businessLineCounts, inventoryStatusCounts, machines] =
       await Promise.all([
         this.prisma.machine.count({ where: accessScope }),
         this.prisma.machine.count({ where }),
@@ -584,6 +614,11 @@ export class DashboardService {
             _all: true,
           },
         }),
+        this.prisma.machine.groupBy({
+          by: ['inventoryStatus'],
+          where,
+          _count: { _all: true },
+        }),
         this.prisma.machine.findMany({
           where,
           select: {
@@ -591,12 +626,17 @@ export class DashboardService {
             machineCode: true,
             serialNumber: true,
             machineModelId: true,
+            machineModel: {
+              select: { code: true, name: true, displayName: true },
+            },
             modelName: true,
             name: true,
             manufacturer: true,
             productCategory: true,
             status: true,
             inventoryStatus: true,
+            demoCategory: true,
+            demoPreparationStatus: true,
             dataStatus: true,
             createdSource: true,
             installDate: true,
@@ -629,6 +669,8 @@ export class DashboardService {
                 contactPhone: true,
                 province: true,
                 district: true,
+                locality: true,
+                ward: true,
                 address: true,
                 fullAddress: true,
               },
@@ -669,6 +711,8 @@ export class DashboardService {
                     contactPhone: true,
                     province: true,
                     district: true,
+                    locality: true,
+                    ward: true,
                     address: true,
                     fullAddress: true,
                   },
@@ -694,6 +738,16 @@ export class DashboardService {
               orderBy: {
                 installedAt: 'desc',
               },
+              take: 1,
+            },
+            repairs: {
+              select: { reportedAt: true, completedAt: true },
+              orderBy: [{ completedAt: 'desc' }, { reportedAt: 'desc' }],
+              take: 1,
+            },
+            maintenances: {
+              select: { scheduledDate: true, completedAt: true },
+              orderBy: [{ completedAt: 'desc' }, { scheduledDate: 'desc' }],
               take: 1,
             },
             accessories: {
@@ -805,6 +859,9 @@ export class DashboardService {
     return {
       total,
       filteredTotal,
+      inventorySummary: Object.fromEntries(
+        inventoryStatusCounts.map((item) => [item.inventoryStatus, item._count._all]),
+      ),
       page,
       limit,
       totalPages: Math.ceil(filteredTotal / limit),
@@ -819,12 +876,25 @@ export class DashboardService {
           (machine.inventoryStatus === 'INSTALLED' ? machine.customer : null);
         const installedAt =
           currentInstallation?.installedAt ?? machine.installDate;
+        const activityCandidates = [
+          installedAt ? { date: installedAt, type: 'Lắp đặt' } : null,
+          machine.repairs[0]
+            ? { date: machine.repairs[0].completedAt ?? machine.repairs[0].reportedAt, type: 'Sửa chữa' }
+            : null,
+          machine.maintenances[0]
+            ? { date: machine.maintenances[0].completedAt ?? machine.maintenances[0].scheduledDate, type: 'Bảo trì' }
+            : null,
+        ].filter((item): item is { date: Date; type: string } => Boolean(item));
+        const latestActivity = activityCandidates.sort(
+          (left, right) => right.date.getTime() - left.date.getTime(),
+        )[0] ?? null;
 
         return {
           id: machine.id,
           machineCode: machine.machineCode,
           serialNumber: machine.serialNumber,
           machineModelId: machine.machineModelId,
+          machineModel: machine.machineModel,
           modelName: machine.modelName,
           name: machine.name,
           manufacturer: machine.manufacturer,
@@ -834,6 +904,7 @@ export class DashboardService {
           dataStatus: machine.dataStatus,
           createdSource: machine.createdSource,
           installDate: installedAt,
+          latestActivity,
           warrantyStartDate:
             currentInstallation?.warrantyCard?.startDate ??
             machine.warrantyStartDate,
@@ -899,6 +970,8 @@ export class DashboardService {
             contactPhone: true,
             province: true,
             district: true,
+            locality: true,
+            ward: true,
             address: true,
             fullAddress: true,
           },
@@ -939,6 +1012,8 @@ export class DashboardService {
                 contactPhone: true,
                 province: true,
                 district: true,
+                locality: true,
+                ward: true,
                 address: true,
                 fullAddress: true,
               },

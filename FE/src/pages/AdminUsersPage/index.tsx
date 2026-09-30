@@ -389,7 +389,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
       <PageFrame>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
-            eyebrow="Admin"
+            eyebrow="Quản trị hệ thống"
             title={formMode === 'edit' ? 'Sửa nhân sự' : 'Thêm nhân sự'}
             description="Tài khoản & quyền."
           />
@@ -464,7 +464,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
           <MiniStat label="Tổng" value={userStats.total} />
           <MiniStat label="Hoạt động" value={userStats.active} />
           <MiniStat label="Kỹ thuật" value={userStats.technical} />
-          <MiniStat label="Admin" value={userStats.admins} />
+          <MiniStat label="Quản trị viên" value={userStats.admins} />
           <MiniStat label="Tạm khóa" value={userStats.inactive} />
         </div>
 
@@ -814,9 +814,9 @@ function UserForm({
                 <input onChange={(event) => onChange((current) => ({ ...current, certificateNo: event.target.value }))} value={form.certificateNo} />
               </label>
 
-              <DateInput label="Ngày sinh" onChange={(value) => onChange((current) => ({ ...current, dateOfBirth: value }))} value={form.dateOfBirth} />
+              <DateInput className="[&>button]:h-11 [&>button]:rounded-xl [&>button]:border-[#d8d4ce] [&>button]:px-3.5 [&>button]:shadow-none" label="Ngày sinh" onChange={(value) => onChange((current) => ({ ...current, dateOfBirth: value }))} value={form.dateOfBirth} />
 
-              <DateInput label="Ngày bắt đầu làm" onChange={(value) => onChange((current) => ({ ...current, workStartDate: value }))} value={form.workStartDate} />
+              <DateInput className="[&>button]:h-11 [&>button]:rounded-xl [&>button]:border-[#d8d4ce] [&>button]:px-3.5 [&>button]:shadow-none" label="Ngày bắt đầu làm" onChange={(value) => onChange((current) => ({ ...current, workStartDate: value }))} value={form.workStartDate} />
 
               <label className="wide-field">
                 Ảnh kỹ sư

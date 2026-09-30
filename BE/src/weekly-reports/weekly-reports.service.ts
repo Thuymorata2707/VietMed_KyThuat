@@ -436,7 +436,7 @@ export class WeeklyReportsService {
         content: this.buildDailyWorkContent(note),
         result:
           note.status === DailyWorkStatus.PENDING
-            ? 'Đang chờ admin duyệt lịch.'
+            ? 'Đang chờ quản trị viên phê duyệt lịch.'
             : note.note || '',
         pending: '',
         proposal: '',
@@ -764,7 +764,7 @@ export class WeeklyReportsService {
         reviewerId: user.id,
         reviewNote:
           dto.status === WeeklyReportStatus.NEEDS_REVISION
-            ? this.cleanOptional(dto.reviewNote) || 'Admin yêu cầu sửa báo cáo.'
+            ? this.cleanOptional(dto.reviewNote) || 'Quản trị viên yêu cầu bổ sung báo cáo.'
             : this.cleanOptional(dto.reviewNote),
       },
       include: this.defaultInclude(),
@@ -908,7 +908,7 @@ export class WeeklyReportsService {
       .join(' - ');
     const prefix = dailyWorkTypeLabels[note.type] || 'Công việc';
     const statusSuffix =
-      note.status === DailyWorkStatus.PENDING ? ' (chờ duyệt)' : '';
+      note.status === DailyWorkStatus.PENDING ? ' (chờ phê duyệt)' : '';
     return [timeRange, `${prefix}: ${note.title}${statusSuffix}`]
       .filter(Boolean)
       .join(' · ');

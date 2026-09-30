@@ -20,7 +20,7 @@ import { isTechnicalUser } from '../../utils/technicalUsers';
 import { AsyncEntityPicker, type PickerOption } from '../EngineerTasksPage/components/AsyncEntityPicker';
 
 type TicketKind = 'repair' | 'maintenance' | 'installation';
-type CreateTicketStep = 'setup' | 'records' | 'work';
+type CreateTicketStep = 'setup' | 'records';
 type TicketScope = 'installation' | 'service';
 
 type ProvinceOption = { id: string; name: string; code: string; branch?: { name: string } | null };
@@ -83,6 +83,8 @@ type MachineOption = {
 
 type TicketForm = {
   address: string;
+  addressNote: string;
+  installationAccessories: string;
   checklist: string;
   conditionAssessment: string;
   contactPhone: string;
@@ -104,6 +106,7 @@ type TicketForm = {
   repairCostInWords: string;
   repairCostItems: string;
   reportedAt: string;
+  resultNote: string;
   representative: string;
   representativePosition: string;
   scheduledDate: string;
@@ -116,6 +119,16 @@ type TicketForm = {
   warrantyStartDate: string;
   warrantyStatus: string;
   installedDeviceItems: InstallationDeviceItem[];
+  handoverInstallerName: string;
+  handoverInstallerPosition: string;
+  handoverVehicle: string;
+  handoverDepartureDate: string;
+  receiverInstallAddress: string;
+  receiverRepresentative: string;
+  receiverPosition: string;
+  receiverPhone: string;
+  deviceCondition: string;
+  deviceConditionNote: string;
 };
 
 type InstallationDeviceItem = {
@@ -133,8 +146,10 @@ type InstallationDeviceItem = {
 
 type QuickCustomerForm = {
   address: string;
+  addressNote: string;
   contactPerson: string;
   district: string;
+  locality: string;
   name: string;
   phone: string;
   province: string;
@@ -158,7 +173,12 @@ type CreateTicketOptions = {
   provinces: ProvinceOption[];
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const date = new Date();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+};
 
 export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: TicketKind; user: ApiUser }) {
   const navigate = useNavigate();
@@ -310,9 +330,10 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
           province: selectedProvince?.name || quickCustomerForm.province.trim() || undefined,
           provinceId,
           district: quickCustomerForm.district.trim() || undefined,
+          locality: quickCustomerForm.locality.trim() || undefined,
           ward: quickCustomerForm.ward.trim() || undefined,
           address: quickCustomerForm.address.trim() || undefined,
-          fullAddress: buildFullVietnamAddress(quickCustomerForm) || undefined,
+          fullAddress: [buildFullVietnamAddress(quickCustomerForm), quickCustomerForm.addressNote.trim()].filter(Boolean).join(' · ') || undefined,
           primaryEngineerId: role === 'engineer' ? user.id : undefined,
           status: 'ACTIVE',
         }),
@@ -414,13 +435,13 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
   const createTicketMutation = useMutation({
     mutationFn: () => {
-      if (currentStep !== 'work') {
-        throw new Error('Hãy đến bước 3 — Nội dung trước khi tạo phiếu.');
+      if (currentStep !== 'records') {
+        throw new Error('Hãy hoàn thành bước 2 trước khi tạo phiếu.');
       }
       return createTicket(kind, form, visibleMachineModels);
     },
     onSuccess: async () => {
-      setSuccess('Đã tạo phiếu.');
+      setSuccess(role === 'admin' ? 'Đã tạo và phân công phiếu.' : 'Đã trình phiếu, chờ quản trị viên phê duyệt.');
       setForm(emptyTicketForm(user, kind));
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['service-tickets', 'board'] }),
@@ -564,38 +585,17 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   function goToRecordsStep() {
     setFormError('');
     setSuccess('');
-    if (!form.engineerIds.length) {
+    if (role === 'admin' && !form.engineerIds.length) {
       setFormError('Vui lòng chọn ít nhất một kỹ sư nhận việc.');
       return;
     }
     setCurrentStep('records');
   }
 
-  function goToWorkStep() {
-    setFormError('');
-    setSuccess('');
-
-    if (kind === 'installation' && !form.customerId) {
-      setFormError('Phiếu lắp đặt cần có khách hàng trước khi sang bước 3.');
-      return;
-    }
-
-    if (!form.customerId && !form.machineId) {
-      setFormError('Chưa thể sang bước 3. Hãy chọn khách hàng hoặc máy đã gắn với khách hàng.');
-      return;
-    }
-
-    createCustomerMutation.reset();
-    createMachineMutation.reset();
-    createTicketMutation.reset();
-    setCurrentStep('work');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
   function goBackStep() {
     setFormError('');
     setSuccess('');
-    setCurrentStep((step) => (step === 'work' ? 'records' : 'setup'));
+    setCurrentStep('setup');
   }
 
   function selectCustomer(customerId: string) {
@@ -609,6 +609,9 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       usingDepartment: customer?.name || form.usingDepartment,
       representative: customer?.contactPerson || form.representative,
       address: customer?.fullAddress || customer?.address || form.address,
+      receiverInstallAddress: customer?.fullAddress || customer?.address || form.receiverInstallAddress,
+      receiverRepresentative: customer?.contactPerson || form.receiverRepresentative,
+      receiverPhone: customer?.contactPhone || customer?.phone || form.receiverPhone,
       contactPhone: customer?.contactPhone || customer?.phone || form.contactPhone,
     });
     setQuickMachineForm((current) => ({ ...current, customerId: customer?.id || fallbackCustomerId || current.customerId }));
@@ -688,9 +691,45 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       return;
     }
 
-    if (currentStep === 'records') {
-      goToWorkStep();
+    if (kind === 'installation' && !form.customerId) {
+      setFormError('Vui lòng chọn khách hàng ở bước 2 trước khi tạo phiếu lắp đặt.');
       return;
+    }
+    if (role === 'admin' && kind === 'installation' && !form.machineId) {
+        setFormError('Quản trị viên cần chọn máy trong kho ở bước 2 trước khi phân công phiếu lắp đặt.');
+      return;
+    }
+
+    if (role === 'engineer') {
+      if (!form.customerId) {
+        setFormError('Vui lòng chọn khách hàng cho phiếu.');
+        return;
+      }
+      if (kind !== 'installation' && (!form.machineId || !form.description.trim())) {
+        setFormError('Phiếu sửa chữa/bảo trì cần có khách hàng, máy và mô tả công việc.');
+        return;
+      }
+      if (kind === 'repair' && (!form.repairMethod.trim() || !form.resultNote.trim())) {
+        setFormError('Vui lòng nhập phương pháp sửa chữa và kết quả xử lý trước khi trình phê duyệt.');
+        return;
+      }
+      if (kind === 'maintenance' && (!splitLines(form.checklist).length || !form.resultNote.trim())) {
+        setFormError('Vui lòng nhập hạng mục kiểm tra và kết quả bảo trì trước khi trình phê duyệt.');
+        return;
+      }
+      if (kind === 'installation' && !form.machineId && !form.machineModelId) {
+        setFormError('Vui lòng chọn máy hoặc khai báo model/thiết bị bàn giao trong phiếu lắp đặt.');
+        return;
+      }
+      if (kind === 'installation') {
+        const hasSerial = form.machineId
+          ? Boolean(selectedMachine?.serialNumber?.trim())
+          : Boolean(form.serialNumber.trim());
+        if (!form.scheduledDate || !hasSerial || !form.receiverInstallAddress.trim() || !form.receiverRepresentative.trim() || !form.receiverPhone.trim() || !form.handoverInstallerName.trim()) {
+          setFormError('Vui lòng điền ngày lắp đặt, S/N máy, địa chỉ, người nhận, số điện thoại và người lắp đặt.');
+          return;
+        }
+      }
     }
 
     try {
@@ -700,11 +739,11 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
     }
   }
 
-  return role !== 'admin' ? (
-    <PageFrame>
-      <Notice message="Phiếu mới do quản trị viên giao việc. Hãy mở “Công việc của tôi” để cập nhật các phiếu đã được phân công." />
-    </PageFrame>
-  ) : (
+  if (role !== 'admin' && role !== 'engineer') {
+    return <PageFrame><Notice message="Chỉ quản trị viên và kỹ sư được phép lập phiếu sửa chữa, bảo trì hoặc lắp đặt." /></PageFrame>;
+  }
+
+  return (
     <PageFrame>
       <div className="flex flex-wrap items-start justify-between gap-4 font-sans">
         <PageTitle
@@ -719,7 +758,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
-      <ServiceCreateOperationalGuide currentStep={currentStep} kind={kind} />
+      <ServiceCreateOperationalGuide currentStep={currentStep} kind={kind} isEngineer={role === 'engineer'} />
 
       <form className="grid min-w-0 gap-5 font-sans min-[1320px]:grid-cols-[minmax(0,1fr)_380px]" onSubmit={submit}>
         <section className="grid min-w-0 gap-5">
@@ -729,15 +768,14 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                 <span className={stepBadgeClass}>1</span>
                 <div>
                   <span className={eyebrowClass}>Loại phiếu</span>
-                  <h2 className={sectionTitleClass}>Chọn nghiệp vụ và người phụ trách</h2>
+                  <h2 className={sectionTitleClass}>{role === 'admin' ? 'Chọn nghiệp vụ và người phụ trách' : 'Chọn loại phiếu cần lập'}</h2>
                 </div>
               </div>
 
               <div className="grid gap-5 md:grid-cols-2">
                 <label className={labelClass}>
-                  Mã phiếu (ước tính)
+                  Mã phiếu
                   <input className={fieldClass} disabled value={ticketPreviewCode || 'Đang sinh mã...'} />
-                  <span className="field-hint">Mã chính thức được cấp khi lưu phiếu.</span>
                 </label>
                 <label className={labelClass}>
                   Loại phiếu
@@ -747,7 +785,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                     <option value="installation">Lắp đặt</option>
                   </select>
                 </label>
-                <fieldset className={`${labelClass} md:col-span-2`}>
+                {role === 'admin' ? <fieldset className={`${labelClass} md:col-span-2`}>
                   <legend>Kỹ sư tham gia <span className="text-[#9a1b2e]">*</span></legend>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {engineers.map((engineer) => {
@@ -770,7 +808,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                       );
                     })}
                   </div>
-                </fieldset>
+                </fieldset> : null}
               </div>
             </div>
           ) : null}
@@ -818,7 +856,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                     rememberCustomerOption(customer);
                     applyCustomer(customer, value);
                   }}
-                  placeholder="Tìm tên, mã khách hàng, tỉnh hoặc số điện thoại"
+                  placeholder="Tìm khách hàng"
                   required
                   value={form.customerId}
                 />
@@ -839,7 +877,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                     rememberMachineOption(machine);
                     applyMachine(machine, value);
                   }}
-                  placeholder={kind === 'installation' ? 'Tìm máy trong kho theo mã máy, S/N, model hoặc tên máy' : 'Tìm mã máy, S/N, model, tên máy hoặc khách hàng'}
+                  placeholder="Tìm máy"
                   rowFilter={(machine) => machinePickerRowFilter(kind, form.customerId, user, machine)}
                   value={form.machineId}
                 />
@@ -874,52 +912,48 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                   onCreate={createMachine}
                   selectedModel={selectedModel}
                   previewCode={quickMachinePreviewCode}
-                  supportsAccessories={Boolean(quickMachineAccessoryMode)}
                   accessoryMode={quickMachineAccessoryMode}
                   updateForm={(patch) => setQuickMachineForm((current) => ({ ...current, ...patch }))}
                 />
               ) : null}
-            </div>
-          ) : null}
-
-          {currentStep === 'work' ? (
-            <div className={panelClass}>
-              <div className="mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[#e4e4e7] pb-4">
-                <span className={stepBadgeClass}>3</span>
-                <div>
-                  <span className={eyebrowClass}>Nội dung</span>
-                  <h2 className={sectionTitleClass}>Thông tin công việc</h2>
+              {role === 'engineer' ? (
+                <div className="mt-6 border-t border-[#e4e4e7] pt-5">
+                  <div className="mb-5 grid grid-cols-[34px_minmax(0,1fr)] gap-3">
+                    <span className={stepBadgeClass}>2</span>
+                    <div>
+                      <span className={eyebrowClass}>Chi tiết phiếu</span>
+                      <h3 className={sectionTitleClass}>Thông tin công việc và biên bản</h3>
+                    </div>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    {kind !== 'installation' ? (
+                      <label className={wideLabelClass}>
+                        Tiêu đề công việc
+                        <input className={fieldClass} onChange={(event) => updateForm({ title: event.target.value })} value={form.title} />
+                      </label>
+                    ) : null}
+                    {kind === 'repair' ? (
+                      <RepairFields form={form} models={visibleMachineModels} updateForm={updateForm} />
+                    ) : kind === 'maintenance' ? (
+                      <MaintenanceFields form={form} models={visibleMachineModels} updateForm={updateForm} />
+                    ) : (
+                      <InstallationFields
+                        addDeviceItem={addInstallationDeviceItem}
+                        engineers={engineers}
+                        form={form}
+                        loadDeviceAccessories={loadInstallationDeviceAccessories}
+                        machineOptions={machineOptions}
+                        machines={visibleMachines}
+                        models={visibleMachineModels}
+                        removeDeviceItem={removeInstallationDeviceItem}
+                        updateDeviceItem={updateInstallationDeviceItem}
+                        updateForm={updateForm}
+                        user={user}
+                      />
+                    )}
+                  </div>
                 </div>
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                {kind !== 'installation' ? (
-                  <label className={wideLabelClass}>
-                    Tiêu đề công việc
-                    <input className={fieldClass} onChange={(event) => updateForm({ title: event.target.value })} placeholder={kind === 'repair' ? 'Phiếu sửa chữa' : 'Phiếu bảo trì'} value={form.title} />
-                  </label>
-                ) : null}
-
-                {kind === 'repair' ? (
-                  <RepairFields form={form} models={visibleMachineModels} updateForm={updateForm} />
-                ) : kind === 'maintenance' ? (
-                  <MaintenanceFields form={form} models={visibleMachineModels} updateForm={updateForm} />
-                ) : (
-                  <InstallationFields
-                    addDeviceItem={addInstallationDeviceItem}
-                    engineers={engineers}
-                    form={form}
-                    loadDeviceAccessories={loadInstallationDeviceAccessories}
-                    machineOptions={machineOptions}
-                    machines={visibleMachines}
-                    models={visibleMachineModels}
-                    removeDeviceItem={removeInstallationDeviceItem}
-                    updateDeviceItem={updateInstallationDeviceItem}
-                    updateForm={updateForm}
-                    user={user}
-                  />
-                )}
-              </div>
+              ) : null}
             </div>
           ) : null}
         </section>
@@ -930,7 +964,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
             <h2 className={`${sectionTitleClass} mb-4`}>Tóm tắt</h2>
             <div className="grid gap-3 text-sm text-[#333333]">
               <SummaryRow label="Loại phiếu" value={ticketKindLabel(kind)} />
-              <SummaryRow label="Mã phiếu (ước tính)" value={ticketPreviewCode || 'Đang sinh mã'} />
+              <SummaryRow label="Mã phiếu" value={ticketPreviewCode || 'Đang sinh mã'} />
               <SummaryRow label="Thiết bị" value={kind === 'installation' ? installationDeviceSummary.summary || 'Chưa chọn' : selectedMachine ? machineLabel(selectedMachine) : 'Chưa chọn'} />
               <SummaryRow label="Khách hàng" value={customerNameForSummary(selectedMachine, customers, form.customerId)} />
               <SummaryRow label="Kỹ sư tham gia" value={engineers.filter((engineer) => form.engineerIds.includes(engineer.id)).map((engineer) => engineer.fullName || engineer.email).join(', ') || 'Chưa phân công'} />
@@ -942,14 +976,14 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
               <button className="secondary-button" onClick={currentStep === 'setup' ? () => navigate(backHref) : goBackStep} type="button">
                 {currentStep === 'setup' ? 'Hủy' : 'Quay lại bước trước'}
               </button>
-              {currentStep === 'work' ? (
+              {currentStep === 'records' ? (
                 <button className="primary-button" disabled={saving || loading} type="submit">
                   {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
-                  {saving ? 'Đang tạo' : 'Tạo phiếu'}
+      {saving ? 'Đang tạo' : role === 'admin' ? 'Tạo và phân công phiếu' : 'Trình phê duyệt'}
                 </button>
               ) : (
-              <button className="primary-button" disabled={loading} onClick={currentStep === 'setup' ? goToRecordsStep : goToWorkStep} type="button">
-                  {currentStep === 'setup' ? 'Tiếp tục · Bước 2' : 'Tiếp tục đến bước 3'}
+                <button className="primary-button" disabled={loading} onClick={goToRecordsStep} type="button">
+                  Tiếp tục · Bước 2
                 </button>
               )}
             </div>
@@ -961,6 +995,8 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
 }
 
 function RepairFields({ form, models, updateForm }: { form: TicketForm; models: MachineModelOption[]; updateForm: (patch: Partial<TicketForm>) => void }) {
+  const model = models.find((item) => item.id === form.machineModelId);
+  const accessoryMode = isEndoscopyMachineModel(model) ? 'endoscopy' : isUltrasoundMachineModel(model) ? 'probe' : 'generic';
   return (
     <>
       <label className={labelClass}>
@@ -998,7 +1034,7 @@ function RepairFields({ form, models, updateForm }: { form: TicketForm; models: 
       </label>
       <label className={labelClass}>
         Thời hạn bảo hành
-        <input className={fieldClass} onChange={(event) => updateForm({ warrantyTerm: event.target.value })} placeholder="VD: đến 31/12/2026 hoặc 12 tháng" value={form.warrantyTerm} />
+        <input className={fieldClass} onChange={(event) => updateForm({ warrantyTerm: event.target.value })} value={form.warrantyTerm} />
       </label>
       <label className={wideLabelClass}>
         Địa chỉ
@@ -1014,15 +1050,15 @@ function RepairFields({ form, models, updateForm }: { form: TicketForm; models: 
         <textarea className={textareaClass} onChange={(event) => updateForm({ description: event.target.value })} value={form.description} />
       </label>
       <label className={wideLabelClass}>
-        Tình trạng thiết bị lúc nhận
+        Tình trạng nhận
         <textarea className={textareaClass} onChange={(event) => updateForm({ conditionAssessment: event.target.value })} value={form.conditionAssessment} />
       </label>
       <label className={wideLabelClass}>
         Phụ kiện nhận kèm
-        <textarea className={textareaClass} onChange={(event) => updateForm({ receivedAccessories: event.target.value })} placeholder="Mỗi dòng một phụ kiện hoặc tình trạng phụ kiện" value={form.receivedAccessories} />
+        <MachineAccessoryEditor mode={accessoryMode} onChange={(receivedAccessories) => updateForm({ receivedAccessories })} value={form.receivedAccessories} />
       </label>
       <label className={wideLabelClass}>
-        Sơ bộ xác định nguyên nhân
+        Nguyên nhân sơ bộ
         <textarea className={textareaClass} onChange={(event) => updateForm({ preliminaryCause: event.target.value })} value={form.preliminaryCause} />
       </label>
       <label className={wideLabelClass}>
@@ -1030,11 +1066,19 @@ function RepairFields({ form, models, updateForm }: { form: TicketForm; models: 
         <textarea className={textareaClass} onChange={(event) => updateForm({ repairMethod: event.target.value })} value={form.repairMethod} />
       </label>
       <label className={wideLabelClass}>
-        Bảng hư hỏng / biện pháp / chi phí
-        <textarea className={textareaClass} onChange={(event) => updateForm({ repairCostItems: event.target.value })} placeholder="VD: 1. Hư hỏng - Biện pháp khắc phục - Chi phí" value={form.repairCostItems} />
+        Kết quả xử lý
+        <textarea className={textareaClass} onChange={(event) => updateForm({ resultNote: event.target.value })} value={form.resultNote} />
+      </label>
+      <label className={wideLabelClass}>
+        Ý kiến khách hàng
+        <textarea className={textareaClass} onChange={(event) => updateForm({ customerFeedback: event.target.value })} value={form.customerFeedback} />
+      </label>
+      <label className={wideLabelClass}>
+        Hư hỏng / khắc phục / chi phí
+        <textarea className={textareaClass} onChange={(event) => updateForm({ repairCostItems: event.target.value })} value={form.repairCostItems} />
       </label>
       <label className={labelClass}>
-        Tổng chi phí sửa chữa
+        Chi phí sửa chữa
         <input className={fieldClass} onChange={(event) => updateForm({ totalRepairCost: event.target.value })} value={form.totalRepairCost} />
       </label>
       <label className={labelClass}>
@@ -1045,23 +1089,14 @@ function RepairFields({ form, models, updateForm }: { form: TicketForm; models: 
   );
 }
 
-function ServiceCreateOperationalGuide({ currentStep, kind }: { currentStep: CreateTicketStep; kind: TicketKind }) {
+function ServiceCreateOperationalGuide({ currentStep, kind, isEngineer }: { currentStep: CreateTicketStep; kind: TicketKind; isEngineer: boolean }) {
   const steps: Array<{ id: CreateTicketStep; number: string; title: string }> = [
     { id: 'setup', number: '1', title: ticketKindLabel(kind) },
-    {
-      id: 'records',
-      number: '2',
-      title: 'Khách hàng & máy',
-    },
-    {
-      id: 'work',
-      number: '3',
-      title: 'Nội dung',
-    },
+    { id: 'records', number: '2', title: isEngineer ? 'Thông tin & chi tiết phiếu' : 'Khách hàng & máy' },
   ];
 
   return (
-    <section className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white p-3 shadow-[0_8px_24px_rgba(24,24,27,0.04)] md:grid-cols-3">
+    <section className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white p-3 shadow-[0_8px_24px_rgba(24,24,27,0.04)] md:grid-cols-2">
       {steps.map((step) => {
         const isActive = step.id === currentStep;
         return (
@@ -1085,6 +1120,8 @@ function ServiceCreateOperationalGuide({ currentStep, kind }: { currentStep: Cre
 }
 
 function MaintenanceFields({ form, models, updateForm }: { form: TicketForm; models: MachineModelOption[]; updateForm: (patch: Partial<TicketForm>) => void }) {
+  const model = models.find((item) => item.id === form.machineModelId);
+  const accessoryMode = isEndoscopyMachineModel(model) ? 'endoscopy' : isUltrasoundMachineModel(model) ? 'probe' : 'generic';
   return (
     <>
       <label className={labelClass}>
@@ -1097,7 +1134,7 @@ function MaintenanceFields({ form, models, updateForm }: { form: TicketForm; mod
           <option value="OTHER">Khác</option>
         </select>
       </label>
-      <DateInput className={labelClass} label="Ngày dự kiến bảo trì" onChange={(value) => updateForm({ scheduledDate: value })} value={form.scheduledDate} />
+      <DateInput className={labelClass} label="Ngày bảo trì" onChange={(value) => updateForm({ scheduledDate: value })} value={form.scheduledDate} />
       <DateInput className={labelClass} label="Lịch tiếp theo" onChange={(value) => updateForm({ nextDueDate: value })} value={form.nextDueDate} />
       <label className={labelClass}>
         Đơn vị sử dụng
@@ -1122,11 +1159,18 @@ function MaintenanceFields({ form, models, updateForm }: { form: TicketForm; mod
       </label>
       <label className={wideLabelClass}>
         Checklist
-        <textarea className={textareaClass} onChange={(event) => updateForm({ checklist: event.target.value })} placeholder="Hạng mục kiểm tra" value={form.checklist} />
+        <textarea className={textareaClass} onChange={(event) => updateForm({ checklist: event.target.value })} value={form.checklist} />
       </label>
+      <div className="md:col-span-2">
+        <MachineAccessoryEditor mode={accessoryMode} onChange={(receivedAccessories) => updateForm({ receivedAccessories })} value={form.receivedAccessories} />
+      </div>
       <label className={wideLabelClass}>
         Ghi chú
         <textarea className={textareaClass} onChange={(event) => updateForm({ description: event.target.value })} value={form.description} />
+      </label>
+      <label className={wideLabelClass}>
+        Kết quả bảo trì
+        <textarea className={textareaClass} onChange={(event) => updateForm({ resultNote: event.target.value })} value={form.resultNote} />
       </label>
     </>
   );
@@ -1138,7 +1182,7 @@ function ModelDeviceSelect({ form, models, updateForm }: { form: TicketForm; mod
   return (
     <div className="grid gap-3 md:col-span-2">
       <label className={wideLabelClass}>
-        Model / tên thiết bị
+        Model
         <select
           className={fieldClass}
           onChange={(event) => {
@@ -1191,13 +1235,12 @@ function InstallationFields({
   user: ApiUser;
 }) {
   const selectedMachine = machines.find((machine) => machine.id === form.machineId) || machineOptions.find((option) => option.value === form.machineId)?.row;
+  const accessoryModel = models.find((model) => model.id === form.machineModelId) || selectedMachine?.machineModel;
   const extraMachineOptions = machineOptions.filter((option) => option.value !== form.machineId && machinePickerRowFilter('installation', '', user, option.row));
 
   return (
     <>
-      <DateInput className={labelClass} label="Ngày dự kiến lắp đặt" onChange={(value) => updateForm({ scheduledDate: value, warrantyStartDate: value })} value={form.scheduledDate} />
-      <DateInput className={labelClass} label="Bắt đầu bảo hành" onChange={(value) => updateForm({ warrantyStartDate: value })} value={form.warrantyStartDate} />
-      <DateInput className={labelClass} label="Hạn bảo hành (nếu đã biết)" onChange={(value) => updateForm({ warrantyEndDate: value })} value={form.warrantyEndDate} />
+      <h3 className="text-base font-bold text-[#172033] md:col-span-2">Máy chính</h3>
       {form.machineId ? (
         <div className="rounded-2xl border border-[#dbeafe] bg-[#f8fbff] p-4 md:col-span-2">
           <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#42638f]">Máy chính đã chọn</span>
@@ -1216,6 +1259,19 @@ function InstallationFields({
           </label>
         </>
       )}
+      <div className="grid gap-3 rounded-2xl border border-[#e4e4e7] bg-[#faf9f7] p-4 md:col-span-2 md:grid-cols-2">
+        <h3 className="text-base font-bold text-[#172033] md:col-span-2">Thời gian & bảo hành</h3>
+        <DateInput className={labelClass} label="Ngày lắp đặt" onChange={(value) => updateForm({ scheduledDate: value, warrantyStartDate: value })} value={form.scheduledDate} />
+        <DateInput className={labelClass} label="Bắt đầu bảo hành" onChange={(value) => updateForm({ warrantyStartDate: value })} value={form.warrantyStartDate} />
+        <DateInput className={labelClass} label="Hạn bảo hành" onChange={(value) => updateForm({ warrantyEndDate: value })} value={form.warrantyEndDate} />
+      </div>
+      <div className="md:col-span-2">
+        <MachineAccessoryEditor
+          mode={isEndoscopyMachineModel(accessoryModel) ? 'endoscopy' : isUltrasoundMachineModel(accessoryModel) ? 'probe' : 'generic'}
+          onChange={(installationAccessories) => updateForm({ installationAccessories })}
+          value={form.installationAccessories}
+        />
+      </div>
       <div className="md:col-span-2">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -1273,7 +1329,7 @@ function InstallationFields({
                       loadDeviceAccessories(index, machine.id);
                     }
                   }}
-                  placeholder="Tìm máy trong kho theo mã máy, S/N, model hoặc tên máy"
+                  placeholder="Tìm máy"
                   rowFilter={(machine) => machine.id !== form.machineId && machinePickerRowFilter('installation', '', user, machine)}
                   value={item.sourceMachineId}
                 />
@@ -1314,7 +1370,7 @@ function InstallationFields({
                 </label>
                 <label className={labelClass}>
                   Bảo hành
-                  <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { warrantyPeriod: event.target.value })} placeholder="VD: 12 tháng" value={item.warrantyPeriod} />
+                  <input className={fieldClass} onChange={(event) => updateDeviceItem(index, { warrantyPeriod: event.target.value })} value={item.warrantyPeriod} />
                 </label>
                 <div className="md:col-span-2 xl:col-span-3">
                   <MachineAccessoryEditor
@@ -1347,6 +1403,55 @@ function InstallationFields({
             </div>
           ))}
         </div>
+      </div>
+      <div className="grid gap-3 rounded-2xl border border-[#e4e4e7] bg-[#faf9f7] p-4 md:col-span-2 md:grid-cols-2">
+        <h3 className="text-base font-bold text-[#172033] md:col-span-2">Thông tin bàn giao</h3>
+        <label className={wideLabelClass}>
+          Địa chỉ lắp đặt
+          <input className={fieldClass} onChange={(event) => updateForm({ receiverInstallAddress: event.target.value })} required value={form.receiverInstallAddress} />
+        </label>
+        <label className={wideLabelClass}>
+          Ghi chú địa chỉ
+          <input className={fieldClass} onChange={(event) => updateForm({ addressNote: event.target.value })} value={form.addressNote} />
+        </label>
+        <label className={labelClass}>
+          Người nhận
+          <input className={fieldClass} onChange={(event) => updateForm({ receiverRepresentative: event.target.value })} required value={form.receiverRepresentative} />
+        </label>
+        <label className={labelClass}>
+          Chức vụ người nhận
+          <input className={fieldClass} onChange={(event) => updateForm({ receiverPosition: event.target.value })} value={form.receiverPosition} />
+        </label>
+        <label className={labelClass}>
+          Điện thoại
+          <input className={fieldClass} onChange={(event) => updateForm({ receiverPhone: event.target.value })} required value={form.receiverPhone} />
+        </label>
+        <label className={labelClass}>
+          Người lắp đặt
+          <input className={fieldClass} onChange={(event) => updateForm({ handoverInstallerName: event.target.value })} required value={form.handoverInstallerName} />
+        </label>
+        <label className={labelClass}>
+          Chức vụ người lắp
+          <input className={fieldClass} onChange={(event) => updateForm({ handoverInstallerPosition: event.target.value })} value={form.handoverInstallerPosition} />
+        </label>
+        <label className={labelClass}>
+          Phương tiện
+          <input className={fieldClass} onChange={(event) => updateForm({ handoverVehicle: event.target.value })} value={form.handoverVehicle} />
+        </label>
+        <DateInput className={labelClass} label="Ngày đi" onChange={(value) => updateForm({ handoverDepartureDate: value })} value={form.handoverDepartureDate} />
+        <label className={labelClass}>
+          Tình trạng máy
+          <select className={fieldClass} onChange={(event) => updateForm({ deviceCondition: event.target.value })} value={form.deviceCondition}>
+            <option value="NEW_100">Mới 100%</option>
+            <option value="OTHER">Khác</option>
+          </select>
+        </label>
+        {form.deviceCondition === 'OTHER' ? (
+          <label className={wideLabelClass}>
+            Chi tiết tình trạng
+            <input className={fieldClass} onChange={(event) => updateForm({ deviceConditionNote: event.target.value })} value={form.deviceConditionNote} />
+          </label>
+        ) : null}
       </div>
       <label className={wideLabelClass}>
         Ghi chú lắp đặt
@@ -1381,7 +1486,7 @@ function QuickCustomerPanel({
           className={fieldClass}
           onChange={(event) => {
             const province = provinces.find((item) => item.id === event.target.value);
-            updateForm({ province: province?.name || '', provinceId: event.target.value, district: '', ward: '' });
+            updateForm({ province: province?.name || '', provinceId: event.target.value, district: '', locality: '', ward: '' });
           }}
           required
           value={form.provinceId}
@@ -1403,6 +1508,10 @@ function QuickCustomerPanel({
           value={form}
         />
       </div>
+      <label className={`${labelClass} md:col-span-2`}>
+        Ghi chú địa chỉ
+        <input className={fieldClass} onChange={(event) => updateForm({ addressNote: event.target.value })} value={form.addressNote} />
+      </label>
       <label className={labelClass}>
         Người liên hệ
         <input className={fieldClass} onChange={(event) => updateForm({ contactPerson: event.target.value })} value={form.contactPerson} />
@@ -1435,7 +1544,6 @@ function QuickMachinePanel({
   previewCode,
   selectedModel,
   accessoryMode,
-  supportsAccessories,
   updateForm,
 }: {
   accessoryMode: 'probe' | 'endoscopy' | null;
@@ -1448,7 +1556,6 @@ function QuickMachinePanel({
   onCreate: () => void;
   previewCode: string;
   selectedModel?: MachineModelOption;
-  supportsAccessories: boolean;
   updateForm: (patch: Partial<QuickMachineForm>) => void;
 }) {
   return (
@@ -1488,25 +1595,17 @@ function QuickMachinePanel({
             <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
           </label>
           <label className={labelClass}>
-            Mã máy (ước tính)
+            Mã máy
             <input className={fieldClass} disabled value={previewCode || 'Đang sinh mã...'} />
-            <span className="field-hint">Mã máy chính thức được cấp khi lưu.</span>
           </label>
           <div className={`${labelClass} rounded-2xl border border-[#dbe6f3] bg-white px-3 py-2.5`}>
-            Khách hàng của phiếu
+            Khách hàng
             <strong className="mt-1 block min-h-10 rounded-xl bg-[#f8fafc] px-3 py-2 text-sm text-[#172033]">
               {hasTicketCustomer ? customerName : 'Chưa chọn khách hàng'}
             </strong>
           </div>
           <div className="border-t border-[#dbe6f3] pt-4 md:col-span-2">
-            {supportsAccessories ? (
-              <MachineAccessoryEditor compact mode={accessoryMode ?? 'probe'} onChange={(value) => updateForm({ accessoriesText: value })} value={form.accessoriesText} />
-            ) : (
-              <label className={labelClass}>
-                Phụ kiện đi kèm
-                <textarea className={textareaClass} onChange={(event) => updateForm({ accessoriesText: event.target.value })} placeholder="Phụ kiện | S/N" value={form.accessoriesText} />
-              </label>
-            )}
+          <MachineAccessoryEditor compact mode={accessoryMode ?? 'generic'} onChange={(value) => updateForm({ accessoriesText: value })} value={form.accessoriesText} />
           </div>
           <div className="md:col-span-2">
             <button className="primary-button" disabled={creating} onClick={onCreate} type="button">
@@ -1551,11 +1650,11 @@ function ModelGridSelect({
     <div className={`grid min-w-0 gap-2 overflow-hidden ${className}`}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <label className="grid min-w-[240px] flex-1 gap-2 text-sm font-semibold text-[#333333]">
-          Model / tên thiết bị
+          Model
           <input
             className={fieldClass}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm model, hãng, ngành hàng"
+            placeholder="Tìm model"
             value={query}
           />
         </label>
@@ -1620,8 +1719,11 @@ function normalizeKind(value: string | null): TicketKind {
 
 function emptyTicketForm(user: ApiUser, kind: TicketKind): TicketForm {
   const date = today();
+  const selfAssignedEngineer = getRoleName(user) === 'engineer' ? [user.id] : [];
   return {
     address: '',
+    addressNote: '',
+    installationAccessories: '',
     checklist: '',
     conditionAssessment: '',
     contactPhone: '',
@@ -1629,8 +1731,8 @@ function emptyTicketForm(user: ApiUser, kind: TicketKind): TicketForm {
     customerId: '',
     description: '',
     deviceName: '',
-    engineerId: '',
-    engineerIds: [],
+    engineerId: selfAssignedEngineer[0] || '',
+    engineerIds: selfAssignedEngineer,
     machineId: '',
     machineModelId: '',
     maintenanceType: 'PERIODIC',
@@ -1643,11 +1745,12 @@ function emptyTicketForm(user: ApiUser, kind: TicketKind): TicketForm {
     repairCostInWords: '',
     repairCostItems: '',
     reportedAt: kind === 'repair' ? date : '',
+    resultNote: '',
     representative: '',
     representativePosition: '',
     scheduledDate: kind !== 'repair' ? date : '',
     serialNumber: '',
-    title: '',
+    title: kind === 'repair' ? 'Phiếu sửa chữa' : kind === 'maintenance' ? 'Phiếu bảo trì' : '',
     totalRepairCost: '',
     usingDepartment: '',
     warrantyTerm: '',
@@ -1655,6 +1758,16 @@ function emptyTicketForm(user: ApiUser, kind: TicketKind): TicketForm {
     warrantyStartDate: kind === 'installation' ? date : '',
     warrantyStatus: 'IN_WARRANTY',
     installedDeviceItems: kind === 'installation' ? [] : [emptyInstallationDeviceItem()],
+    handoverInstallerName: getRoleName(user) === 'engineer' ? user.fullName || '' : '',
+    handoverInstallerPosition: '',
+    handoverVehicle: '',
+    handoverDepartureDate: kind === 'installation' ? date : '',
+    receiverInstallAddress: '',
+    receiverRepresentative: '',
+    receiverPosition: '',
+    receiverPhone: '',
+    deviceCondition: 'NEW_100',
+    deviceConditionNote: '',
   };
 }
 
@@ -1686,8 +1799,10 @@ function emptyInstallationDeviceItem(): InstallationDeviceItem {
 function emptyQuickCustomerForm(_user: ApiUser): QuickCustomerForm {
   return {
     address: '',
+    addressNote: '',
     contactPerson: '',
     district: '',
+    locality: '',
     name: '',
     phone: '',
     province: '',
@@ -1734,6 +1849,8 @@ async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineMo
         preliminaryCause: form.preliminaryCause.trim() || undefined,
         conditionAssessment: form.conditionAssessment.trim() || undefined,
         repairMethod: form.repairMethod.trim() || undefined,
+        resultNote: form.resultNote.trim() || undefined,
+        customerFeedback: form.customerFeedback.trim() || undefined,
         repairCostItems: form.repairCostItems.trim() || undefined,
         totalRepairCost: form.totalRepairCost.trim() || undefined,
         repairCostInWords: form.repairCostInWords.trim() || undefined,
@@ -1755,6 +1872,8 @@ async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineMo
         scheduledDate: form.scheduledDate,
         nextDueDate: form.nextDueDate || undefined,
         checklist: splitLines(form.checklist),
+        receivedAccessories: form.receivedAccessories.trim() || undefined,
+        resultNote: form.resultNote.trim() || undefined,
         usingDepartment: form.usingDepartment.trim() || undefined,
         representative: form.representative.trim() || undefined,
         address: form.address.trim() || undefined,
@@ -1788,10 +1907,27 @@ async function createTicket(kind: TicketKind, form: TicketForm, visibleMachineMo
       installedAt: form.scheduledDate,
       warrantyStartDate: form.warrantyStartDate || form.scheduledDate,
       ...(form.warrantyEndDate ? { warrantyEndDate: form.warrantyEndDate } : {}),
-      note: form.description.trim() || undefined,
+      note: [form.description.trim(), form.addressNote.trim() ? `Ghi chú địa chỉ: ${form.addressNote.trim()}` : ''].filter(Boolean).join('\n') || undefined,
+      accessories: accessoryItemsAsLines(form.installationAccessories),
+      handoverInstallerName: form.handoverInstallerName.trim() || undefined,
+      handoverInstallerPosition: form.handoverInstallerPosition.trim() || undefined,
+      handoverVehicle: form.handoverVehicle.trim() || undefined,
+      handoverDepartureDate: form.handoverDepartureDate || undefined,
+      receiverInstallAddress: form.receiverInstallAddress.trim() || undefined,
+      receiverRepresentative: form.receiverRepresentative.trim() || undefined,
+      receiverPosition: form.receiverPosition.trim() || undefined,
+      receiverPhone: form.receiverPhone.trim() || undefined,
+      deviceCondition: form.deviceCondition || undefined,
+      deviceConditionNote: form.deviceConditionNote.trim() || undefined,
       installedDeviceItems: normalizeInstallationDeviceItems(form.installedDeviceItems),
     }),
   });
+}
+
+function accessoryItemsAsLines(value: string) {
+  return parseMachineAccessoriesInput(value)
+    .map((item) => [item.name || item.code, item.serialNumber ? `S/N ${item.serialNumber}` : '', item.quantity ? `SL ${item.quantity}` : '', item.description || ''].filter(Boolean).join(' | '))
+    .filter(Boolean);
 }
 
 function normalizeInstallationDeviceItems(items: InstallationDeviceItem[]) {

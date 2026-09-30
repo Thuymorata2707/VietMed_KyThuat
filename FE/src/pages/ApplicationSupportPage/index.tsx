@@ -657,7 +657,7 @@ export function ApplicationSupportPage({ currentRole, user }: ApplicationSupport
           loading={deleteMutation.isPending}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => deleteMutation.mutate(deleteTarget.id)}
-          title="Bạn sắp xóa phiếu hỗ trợ này"
+          title="Xác nhận xóa phiếu hỗ trợ"
           warning="Nội dung và lịch sử liên kết của phiếu sẽ bị xóa vĩnh viễn. Kỹ sư có thể tạo lại phiếu sau đó."
         />
       ) : null}

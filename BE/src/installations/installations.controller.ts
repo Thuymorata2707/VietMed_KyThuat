@@ -28,7 +28,7 @@ import { InstallationsService } from './installations.service';
 export class InstallationsController {
   constructor(private readonly installationsService: InstallationsService) {}
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Post()
   create(@Body() dto: CreateInstallationDto, @CurrentUser() user: RequestUser) {
     return this.installationsService.create(dto, user);
@@ -81,7 +81,7 @@ export class InstallationsController {
     response.send(file.buffer);
   }
 
-  @Roles('admin', 'engineer')
+  @Roles('admin', 'manager', 'engineer')
   @Patch(':id')
   update(
     @Param('id') id: string,

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Edit3, Eye, Loader2, PackageSearch, Plus, RotateCcw, Save, Search, ShieldCheck, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardCheck, Edit3, Eye, Loader2, PackageSearch, Plus, RotateCcw, Save, Search, ShieldCheck, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiFetch, apiFetchAllPages } from '../../api';
@@ -23,6 +23,8 @@ type DashboardCustomer = {
   contactPhone?: string | null;
   province?: string | null;
   district?: string | null;
+  locality?: string | null;
+  ward?: string | null;
   address?: string | null;
   fullAddress?: string | null;
 };
@@ -39,17 +41,21 @@ type DashboardMachine = {
   machineCode?: string | null;
   serialNumber: string;
   machineModelId?: string | null;
+  machineModel?: { code?: string | null; name?: string | null; displayName?: string | null } | null;
   modelName: string;
   name?: string | null;
   manufacturer?: string | null;
   productCategory?: string | null;
   status?: string | null;
   inventoryStatus?: string | null;
+  demoCategory?: 'DEMO_UNIT' | 'DEMO_STOCK' | 'DEMO_USED' | null;
+  demoPreparationStatus?: 'NOT_REQUIRED' | 'REQUIRED' | 'COMPLETED' | null;
   dataStatus?: string | null;
   createdSource?: string | null;
   manufacturingDate?: string | null;
   warehouseImportDate?: string | null;
   installDate?: string | null;
+  latestActivity?: { date: string; type: string } | null;
   warrantyStartDate?: string | null;
   warrantyEndDate?: string | null;
   installedBy?: DashboardEngineer | null;
@@ -326,6 +332,7 @@ type TechnicalMachines = {
   page: number;
   limit: number;
   totalPages: number;
+  inventorySummary?: Record<string, number>;
   businessLines: TechnicalMachineGroup[];
   productIndustries?: Array<{
     id: string | null;
@@ -358,6 +365,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [installState, setInstallState] = useState(() => initialParams.get('installState') || 'ALL');
+  const [attention, setAttention] = useState('ALL');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [loading, setLoading] = useState(true);
@@ -366,12 +374,12 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   const [success, setSuccess] = useState('');
 
   const machineStatusSummary = useMemo(() => {
-    const machines = technicalMachines?.machines ?? [];
+    const inventorySummary = technicalMachines?.inventorySummary ?? {};
     return {
       total: technicalMachines?.filteredTotal ?? 0,
-      installed: machines.filter((machine) => machine.inventoryStatus === 'INSTALLED').length,
-      inStock: machines.filter((machine) => machine.inventoryStatus === 'IN_STOCK').length,
-      returned: machines.filter((machine) => machine.inventoryStatus === 'RETURNED').length,
+      installed: inventorySummary.INSTALLED ?? 0,
+      inStock: inventorySummary.IN_STOCK ?? 0,
+      returned: inventorySummary.RETURNED ?? 0,
     };
   }, [technicalMachines]);
 
@@ -402,7 +410,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   useEffect(() => {
     if (machineId) return;
     void loadTechnicalMachines();
-  }, [machineId, search, selectedBusinessLineKey, selectedProductIndustryId, installState, page, limit]);
+  }, [machineId, search, selectedBusinessLineKey, selectedProductIndustryId, installState, attention, page, limit]);
 
   useEffect(() => {
     if (!machineId) return;
@@ -459,6 +467,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       if (selectedBusinessLineKey !== 'ALL') params.set('businessLineId', selectedBusinessLineKey);
       if (selectedProductIndustryId) params.set('productIndustryId', selectedProductIndustryId);
       if (installState !== 'ALL') params.set('installState', installState);
+      if (attention !== 'ALL') params.set('attention', attention);
 
       const result = await apiFetch<TechnicalMachines>(`/dashboard/technical-machines?${params.toString()}`);
       setTechnicalMachines(result);
@@ -513,6 +522,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     setSearchInput('');
     setSearch('');
     setInstallState('ALL');
+    setAttention('ALL');
     setSelectedBusinessLineKey('ALL');
     setSelectedProductIndustryId('');
     setPage(1);
@@ -902,11 +912,11 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         <PageTitle
           eyebrow="Phòng kỹ thuật"
           title="Danh sách máy quản lý"
-          description="Tra cứu máy."
+          description="Theo dõi trạng thái, bảo hành và lần lắp đặt, sửa chữa hoặc bảo trì gần nhất của từng máy."
         />
           <button className="secondary-button" onClick={() => navigate('/')} type="button">
             <ArrowLeft size={17} />
-          Back
+          Quay lại
         </button>
       </div>
 
@@ -914,7 +924,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
       {success ? <div className="success-notice">{success}</div> : null}
 
       <section className="grid gap-4">
-        <div className="grid gap-4 min-[1280px]:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid items-start gap-4 min-[1280px]:grid-cols-[minmax(0,1fr)_320px]">
           <MachineIndustryBarChart
             activeId={selectedBusinessLineKey}
             items={machineIndustryChartItems}
@@ -924,7 +934,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               setPage(1);
             }}
           />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+          <div className="grid content-start gap-3 sm:grid-cols-2 xl:grid-cols-2">
             <MachineSummaryCard label="Tổng kết quả" value={machineStatusSummary.total} />
             <MachineSummaryCard label="Đã lắp" tone="green" value={machineStatusSummary.installed} />
             <MachineSummaryCard label="Trong kho" tone="blue" value={machineStatusSummary.inStock} />
@@ -934,12 +944,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
         <div className="machine-filter-panel grid gap-3 rounded-lg border border-[#d8e0ea] bg-white p-3 shadow-[0_10px_28px_rgba(24,24,27,0.05)]">
           {(currentRole === 'admin' || currentRole === 'engineer') ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-3 py-2">
-              <div>
-                <strong className="block text-sm text-[#18181b]">Nhập máy theo lô</strong>
-                <span className="text-xs font-medium text-[#64748b]">Dán nhiều serial.</span>
-              </div>
-              <button className="primary-button" onClick={openBulkCreate} type="button">
+            <div className="flex justify-end">
+              <button aria-label="Nhập lô máy" className="primary-button !min-h-9 !gap-1.5 !px-3 !text-sm" onClick={openBulkCreate} title="Nhập lô máy" type="button">
                 <Plus size={17} />
                 Nhập lô máy
               </button>
@@ -990,6 +996,23 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               </select>
             </label>
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
+              Cần chú ý
+              <select
+                className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
+                onChange={(event) => {
+                  setAttention(event.target.value);
+                  setPage(1);
+                }}
+                value={attention}
+              >
+                <option value="ALL">Tất cả tình trạng</option>
+                <option value="REPAIRING">Đang sửa chữa</option>
+                <option value="WAITING_PARTS">Chờ linh kiện</option>
+                <option value="OVERDUE_MAINTENANCE">Quá hạn bảo trì</option>
+                <option value="WARRANTY_30D">Sắp hết bảo hành · 30 ngày</option>
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#666666]">
               Hiển thị
               <select
                 className="h-11 min-w-0 rounded-lg border border-[#d6d6d6] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]"
@@ -1022,7 +1045,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             <div>
               <h2 className="text-base font-semibold text-[#1f1f1f]">Danh sách máy</h2>
               <p className="mt-1 text-sm text-[#666666]">
-                {selectedBusinessLine?.name ?? 'Tất cả ngành hàng'} - {technicalMachines?.filteredTotal ?? 0} kết quả
+                {selectedBusinessLine?.name ?? 'Tất cả ngành hàng'} - {technicalMachines?.filteredTotal ?? 0} kết quả · Hoạt động gần nhất được ưu tiên trong trang
               </p>
             </div>
             <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-white px-2.5 text-sm font-medium text-[#18181b]">
@@ -1031,42 +1054,41 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             </span>
           </div>
 
-          <div className="responsive-table-wrap overflow-x-auto">
-            <table className="responsive-data-table w-full min-w-[1040px] border-collapse">
+          <div className="machine-table-scroll overflow-auto">
+            <table className="machine-management-table w-full min-w-[1180px] border-collapse">
               <thead>
-                <tr className="border-b border-[#eeeeee] text-left text-xs font-semibold text-[#666666]">
-                  <th className="px-4 py-3">Máy</th>
-                  <th className="px-4 py-3">Khách hàng</th>
-                  <th className="px-4 py-3">Trạng thái</th>
-                  <th className="px-4 py-3">Bảo hành</th>
-                  <th className="px-4 py-3">Kỹ sư</th>
-                  <th className="px-4 py-3 text-right">Thao tác</th>
+                <tr>
+                  <th>Máy</th>
+                  <th>Model</th>
+                  <th>Khách hàng</th>
+                  <th>Trạng thái</th>
+                  <th>Bảo hành</th>
+                  <th>Hoạt động gần nhất</th>
+                  <th>Kỹ sư</th>
+                  <th className="text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
-                {technicalMachines?.machines.map((machine) => (
-                  <MachineTableRow canEdit={currentRole === 'admin' || currentRole === 'engineer'} key={machine.id} machine={machine} />
-                ))}
+                {[...(technicalMachines?.machines ?? [])]
+                  .sort((a, b) => new Date(b.latestActivity?.date ?? 0).getTime() - new Date(a.latestActivity?.date ?? 0).getTime())
+                  .map((machine) => {
+                    const linkedModel = machineModels.find((model) => model.id === machine.machineModelId);
+                    const modelLabel = machine.machineModel?.code || machine.machineModel?.displayName || machine.machineModel?.name || linkedModel?.code || linkedModel?.displayName || linkedModel?.name || machine.modelName;
+                    return (
+                      <MachineTableRow canEdit={currentRole === 'admin' || currentRole === 'engineer'} key={machine.id} machine={machine} modelLabel={modelLabel} />
+                    );
+                  })}
                 {loading ? (
-                  <tr>
-                    <td className="px-4 py-10 text-center text-sm font-semibold text-[#666666]" colSpan={6}>
-                      <Loader2 className="spin-icon mx-auto mb-2" size={20} />
-                      Đang tải danh sách máy
-                    </td>
-                  </tr>
+                  <tr><td className="machine-table-empty" colSpan={8}><Loader2 className="spin-icon" size={20} />Đang tải danh sách máy</td></tr>
                 ) : null}
                 {!loading && !technicalMachines?.machines.length ? (
-                  <tr>
-                    <td className="px-4 py-10 text-center text-sm text-[#666666]" colSpan={6}>
-                      Không có máy phù hợp bộ lọc.
-                    </td>
-                  </tr>
+                  <tr><td className="machine-table-empty" colSpan={8}>Không có máy phù hợp bộ lọc.</td></tr>
                 ) : null}
               </tbody>
             </table>
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-[#eeeeee] px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eeeeee] px-4 py-3">
             <button
               className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-2.5 text-sm font-medium text-[#333333] disabled:cursor-not-allowed disabled:opacity-45"
               disabled={loading || page <= 1}
@@ -1076,9 +1098,9 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               <ChevronLeft size={16} />
               Trước
             </button>
-            <span className="text-sm font-semibold text-[#666666]">
+            <span className="order-first w-full text-center text-sm font-semibold text-[#666666] sm:order-none sm:w-auto">
               {technicalMachines?.filteredTotal
-                ? `Trang ${technicalMachines.page}/${technicalMachines.totalPages}`
+                ? `Hiển thị ${(technicalMachines.page - 1) * technicalMachines.limit + 1}–${Math.min(technicalMachines.page * technicalMachines.limit, technicalMachines.filteredTotal)} trên ${technicalMachines.filteredTotal} máy · Trang ${technicalMachines.page}/${technicalMachines.totalPages}`
                 : '0 kết quả · 0 trang'}
             </span>
             <button
@@ -1902,12 +1924,12 @@ function MachineSummaryCard({ label, tone = 'neutral', value }: { label: string;
   }[tone];
 
   return (
-    <div className="grid gap-2 rounded-lg border border-[#d8e0ea] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-      <span className="text-sm font-medium text-[#666666]">{label}</span>
+    <div className="grid gap-1.5 rounded-lg border border-[#d8e0ea] bg-white p-3 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
+      <span className="text-xs font-medium text-[#666666]">{label}</span>
       <div className="flex items-end justify-between gap-3">
-        <strong className="text-3xl font-semibold leading-none text-[#1f1f1f]">{value}</strong>
-        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${toneClass}`}>
-          <PackageSearch size={16} />
+        <strong className="text-2xl font-semibold leading-none text-[#1f1f1f]">{value}</strong>
+        <span className={`inline-flex h-7 w-7 items-center justify-center rounded-lg ${toneClass}`}>
+          <PackageSearch size={15} />
         </span>
       </div>
     </div>
@@ -1925,22 +1947,29 @@ function MachineIndustryBarChart({
   loading: boolean;
   onSelect: (id: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const maxCount = Math.max(1, ...items.map((item) => item.count));
 
   return (
-    <section className="grid min-h-[300px] gap-5 rounded-lg border border-[#d8e0ea] bg-white p-5 shadow-[0_12px_34px_rgba(24,24,27,0.06)]">
+    <section className={`grid gap-4 rounded-lg border border-[#d8e0ea] bg-white p-5 shadow-[0_12px_34px_rgba(24,24,27,0.06)] ${expanded ? 'min-h-[300px]' : 'content-start'}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <span className="text-[12px] font-semibold text-[#666666]">Biểu đồ ngành hàng</span>
           <h2 className="mt-1 text-xl font-semibold text-[#1f1f1f]">Số máy theo ngành hàng</h2>
         </div>
-        <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-[#fafafa] px-2.5 text-sm font-medium text-[#18181b]">
-          <PackageSearch size={17} />
-          {items.reduce((sum, item) => sum + item.count, 0)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-[#fafafa] px-2.5 text-sm font-medium text-[#18181b]">
+            <PackageSearch size={17} />
+            {items.reduce((sum, item) => sum + item.count, 0)}
+          </span>
+          <button className="secondary-button compact" onClick={() => setExpanded((value) => !value)} type="button">
+            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {expanded ? 'Thu gọn' : 'Mở biểu đồ'}
+          </button>
+        </div>
       </div>
 
-      {loading ? (
+      {expanded && loading ? (
         <div className="grid min-h-[180px] place-items-center rounded-lg border border-dashed border-[#d7e0eb] bg-[#fafafa] text-sm font-semibold text-[#666666]">
           <span className="inline-flex items-center gap-2">
             <Loader2 className="spin-icon" size={17} />
@@ -1949,7 +1978,7 @@ function MachineIndustryBarChart({
         </div>
       ) : null}
 
-      {!loading && items.length ? (
+      {expanded && !loading && items.length ? (
         <div className="grid min-h-[220px] grid-cols-[repeat(auto-fit,minmax(88px,1fr))] items-end gap-3">
           {items.map((item) => {
             const height = Math.max(12, Math.round((item.count / maxCount) * 100));
@@ -1974,62 +2003,58 @@ function MachineIndustryBarChart({
         </div>
       ) : null}
 
-      {!loading && !items.length ? <EmptyState text="Chưa có dữ liệu ngành hàng để hiển thị biểu đồ." /> : null}
+      {expanded && !loading && !items.length ? <EmptyState text="Chưa có dữ liệu ngành hàng để hiển thị biểu đồ." /> : null}
     </section>
   );
 }
 
-function MachineTableRow({ canEdit, machine }: { canEdit: boolean; machine: DashboardMachine }) {
+function MachineTableRow({ canEdit, machine, modelLabel }: { canEdit: boolean; machine: DashboardMachine; modelLabel: string }) {
   const customerName = machine.customer?.name || machine.customer?.hospitalName || '';
   const warrantyText = machine.warrantyEndDate ? formatDashboardDate(machine.warrantyEndDate) : '';
   const engineerName = machine.primaryEngineer?.fullName || machine.installedBy?.fullName || machine.primaryEngineer?.email || machine.installedBy?.email || '';
 
   return (
-    <tr className="border-b border-[#eeeeee] transition hover:bg-[#fafafa]">
-      <td className="px-4 py-3">
-        <div className="grid gap-1">
-          <Link className="font-semibold text-[#18181b] hover:underline" to={`/technical-machines/${machine.id}`}>
-            {machine.serialNumber}
-          </Link>
-          <span className="text-sm text-[#1f1f1f]">{machine.machineCode || machine.name || 'Chưa có mã máy'}</span>
-          <span className="text-xs text-[#666666]">{machine.modelName}</span>
-        </div>
+    <tr>
+      <td className="machine-table-device">
+        <Link className="font-semibold text-[#18181b] hover:underline" to={`/technical-machines/${machine.id}`}>{machine.serialNumber}</Link>
+        <span>{machine.machineCode || machine.name || 'Chưa có mã máy'}</span>
       </td>
-      <td className="px-4 py-3">
-        <div className="grid gap-1 text-sm">
-          <strong className="max-w-[240px] truncate text-[#1f1f1f]">{customerName || 'Chưa gắn khách hàng'}</strong>
-          <span className="text-xs text-[#666666]">{[machine.customer?.province, machine.customer?.phone || machine.customer?.contactPhone].filter(Boolean).join(' - ') || '-'}</span>
-        </div>
+      <td><strong className="machine-table-model" title={modelLabel}>{modelLabel || 'Chưa có model'}</strong></td>
+      <td className="machine-table-customer">
+        <strong title={customerName}>{customerName || 'Chưa gắn khách hàng'}</strong>
+        <span>{[machine.customer?.province, machine.customer?.phone || machine.customer?.contactPhone].filter(Boolean).join(' · ') || '-'}</span>
       </td>
-      <td className="px-4 py-3">
-        <div className="flex flex-wrap gap-1.5">
+      <td>
+        <div className="machine-table-status">
           <StatusPill value={machine.inventoryStatus || ''} />
           <StatusPill subtle value={machine.status || ''} />
+          {machine.demoCategory ? <span className="rounded-full bg-[#f0eaff] px-2 py-1 text-[11px] font-bold text-[#6236a5]">{demoCategoryLabel(machine.demoCategory)}</span> : null}
+          {machine.demoPreparationStatus === 'REQUIRED' ? <span className="rounded-full bg-[#fff3df] px-2 py-1 text-[11px] font-bold text-[#9a5a00]">Chờ xử lý demo</span> : null}
         </div>
       </td>
-      <td className="px-4 py-3">
-        <div className="grid gap-1 text-sm">
-          <strong className={warrantyClass(machine.warrantyEndDate)}>{warrantyText || 'Chưa có hạn'}</strong>
-          <span className="text-xs text-[#666666]">{machine.installDate ? `Lắp ${formatDashboardDate(machine.installDate)}` : 'Chưa có ngày lắp'}</span>
-        </div>
+      <td className="machine-table-detail">
+        <strong className={warrantyClass(machine.warrantyEndDate)}>{warrantyText || 'Chưa có hạn'}</strong>
+        <span>{machine.installDate ? `Lắp ${formatDashboardDate(machine.installDate)}` : 'Chưa có ngày lắp'}</span>
       </td>
-      <td className="px-4 py-3 text-sm text-[#333333]">{engineerName || '-'}</td>
-      <td className="px-4 py-3">
-        <div className="flex justify-end gap-2">
-          <Link className="secondary-button compact" to={`/technical-machines/${machine.id}`}>
-            <Eye size={16} />
-            View
-          </Link>
-          {canEdit ? (
-            <Link className="primary-button compact" to={`/technical-machines/${machine.id}/edit`}>
-              <Edit3 size={16} />
-              Edit
-            </Link>
-          ) : null}
+      <td className="machine-table-detail">
+        <strong>{machine.latestActivity ? formatDashboardDate(machine.latestActivity.date) : 'Chưa có hoạt động'}</strong>
+        <span>{machine.latestActivity ? displayLabel(machine.latestActivity.type) : 'Chưa lắp / sửa chữa / bảo trì'}</span>
+      </td>
+      <td className="machine-table-engineer">{engineerName || '-'}</td>
+      <td>
+        <div className="machine-table-actions">
+          <Link aria-label={`Xem máy ${machine.serialNumber}`} className="icon-button machine-action--view !h-7 !w-7" title="Xem hồ sơ máy" to={`/technical-machines/${machine.id}`}><Eye size={13} /></Link>
+          {canEdit ? <Link aria-label={`Sửa máy ${machine.serialNumber}`} className="icon-button machine-action--edit !h-7 !w-7" title="Sửa hồ sơ máy" to={`/technical-machines/${machine.id}/edit`}><Edit3 size={13} /></Link> : null}
         </div>
       </td>
     </tr>
   );
+}
+
+function demoCategoryLabel(value: NonNullable<DashboardMachine['demoCategory']>) {
+  if (value === 'DEMO_UNIT') return 'Máy demo';
+  if (value === 'DEMO_USED') return 'Đã qua demo';
+  return 'Máy mới đang demo';
 }
 
 function StatusPill({ subtle, value }: { subtle?: boolean; value: string }) {
@@ -2703,7 +2728,7 @@ function ProbePicker({ onSelect }: { onSelect: (code: string) => void }) {
   return (
     <div className="rounded-2xl border border-[#dbe5ef] bg-[#fafafa] p-3">
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_280px] md:items-center">
-        <span className="text-sm font-semibold text-[#333333]">Chọn nhanh đầu dò</span>
+        <span className="text-sm font-semibold text-[#333333]">Chọn đầu dò</span>
         <select
           className={editFieldClass}
           onChange={(event) => {
@@ -2794,7 +2819,7 @@ function TemplateAccessoryPicker({
   }
 
   if (!templates.length) {
-    return <EmptyState text="Model này chưa có danh sách phụ kiện mẫu để tích chọn nhanh." />;
+    return <EmptyState text="Model này chưa có danh sách phụ kiện mẫu." />;
   }
 
   return (

@@ -50,6 +50,10 @@ export class UpdateMaintenanceDto {
 
   @IsOptional()
   @IsString()
+  receivedAccessories?: string | null;
+
+  @IsOptional()
+  @IsString()
   resultNote?: string | null;
 
   @IsOptional()

@@ -1,6 +1,7 @@
 import { Building2, ChevronRight, Loader2, MapPinned, RefreshCw, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
@@ -187,7 +188,7 @@ export function AdminRegionsPage() {
                 {selectedProvince && customersQuery.isFetching ? <p className="py-8 text-center text-sm text-[#667085]">Đang tải khách hàng…</p> : null}
                 {selectedProvince && !customersQuery.isFetching && !customersQuery.data?.length ? <p className="py-8 text-center text-sm text-[#667085]">Chưa có khách hàng thuộc tỉnh/thành này.</p> : null}
                 {selectedProvince && !customersQuery.isFetching ? customersQuery.data?.map((customer) => (
-                  <article className="flex items-center justify-between gap-3 rounded-xl border border-[#eaecf0] bg-white p-3" key={customer.id}>
+                  <Link className="flex items-center justify-between gap-3 rounded-xl border border-[#eaecf0] bg-white p-3 transition hover:border-[#cbd5e1] hover:bg-[#fcfcfd] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#344054]" key={customer.id} to={`/customers/${customer.id}`}>
                     <div className="flex min-w-0 items-center gap-2.5">
                       <Building2 className="shrink-0 text-[#667085]" size={17} />
                       <div className="min-w-0">
@@ -195,8 +196,8 @@ export function AdminRegionsPage() {
                         <span className="mt-0.5 block truncate text-xs text-[#667085]">{[customer.customerCode, customer.phone].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ'}</span>
                       </div>
                     </div>
-                    <span className="shrink-0 text-xs text-[#667085]">{customer._count?.machines ?? 0} máy</span>
-                  </article>
+                    <span className="flex shrink-0 items-center gap-2 text-xs text-[#667085]">{customer._count?.machines ?? 0} máy <ChevronRight size={16} /></span>
+                  </Link>
                 )) : null}
               </div>
             </div>

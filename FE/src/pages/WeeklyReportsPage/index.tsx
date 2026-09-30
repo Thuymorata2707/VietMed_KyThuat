@@ -88,7 +88,7 @@ type ApplicationSupportRowsResponse = {
 const statusLabels: Record<WeeklyReportStatus, string> = {
   DRAFT: 'Nháp',
   SUBMITTED: 'Đã gửi',
-  APPROVED: 'Đã duyệt',
+  APPROVED: 'Đã phê duyệt',
   NEEDS_REVISION: 'Cần sửa',
 };
 
@@ -242,7 +242,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     mutationFn: (reportId: string) => apiFetch<WeeklyReport>(`/weekly-reports/${reportId}/submit`, { method: 'POST' }),
     onSuccess: async (submitted) => {
       setReport(submitted);
-      setSuccess('Đã gửi báo cáo tuần cho admin.');
+      setSuccess('Đã trình báo cáo tuần để quản trị viên phê duyệt.');
       await queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'report'] });
     },
   });
@@ -256,7 +256,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     onSuccess: async (reviewed) => {
       setReport(reviewed);
       setReviewNoteDraft(reviewed.reviewNote ?? '');
-      setSuccess(reviewed.status === 'APPROVED' ? 'Đã duyệt báo cáo tuần.' : 'Đã gửi yêu cầu sửa báo cáo.');
+      setSuccess(reviewed.status === 'APPROVED' ? 'Đã phê duyệt báo cáo tuần.' : 'Đã yêu cầu bổ sung báo cáo.');
       await queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'report'] });
     },
   });
@@ -446,11 +446,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               <>
                 <button className="secondary-button" disabled={saving || !canEdit} onClick={saveReport} type="button">
                   {saving ? <Loader2 className="spin-icon" size={16} /> : <Save size={16} />}
-                  {saving ? 'Saving' : 'Save Draft'}
+                  {saving ? 'Đang lưu' : 'Lưu bản nháp'}
                 </button>
                 <button className="primary-button" disabled={saving || !canSubmit} onClick={submitReport} type="button">
                   <Send size={16} />
-                  Gửi admin
+                  Trình phê duyệt
                 </button>
               </>
             ) : null}
@@ -470,11 +470,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             <div>
               <span className="text-xs font-semibold text-[#18181b]">Phản hồi báo cáo</span>
               <h2 className="mt-1 text-lg font-semibold text-[#1f1f1f]">
-                {canReview ? 'Kiểm duyệt báo cáo tuần' : 'Ý kiến từ admin'}
+                {canReview ? 'Phê duyệt báo cáo tuần' : 'Ý kiến của quản trị viên'}
               </h2>
               {report?.reviewedAt ? (
                 <p className="mt-1 text-sm text-[#666666]">
-                  {report.reviewer?.fullName || report.reviewer?.email || 'Admin'} · {formatDate(report.reviewedAt)}
+                  {report.reviewer?.fullName || report.reviewer?.email || 'Quản trị viên'} · {formatDate(report.reviewedAt)}
                 </p>
               ) : null}
             </div>
@@ -538,10 +538,10 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               {loadingApplicationSupportRows ? 'Đang tải ứng dụng xét nghiệm...' : `${applicationSupportRows?.counts.total ?? 0} ca ứng dụng xét nghiệm`}
             </span>
             <span className="rounded-lg border border-[#b9e8ca] bg-[#eefaf3] px-3 py-2 font-medium text-[#177245]">
-              Đã duyệt: {dailyWorkRows?.counts.byStatus.APPROVED ?? 0}
+              Đã phê duyệt: {dailyWorkRows?.counts.byStatus.APPROVED ?? 0}
             </span>
             <span className="rounded-lg border border-[#efd8a8] bg-[#fffaeb] px-3 py-2 font-medium text-[#9b5a17]">
-              Chờ duyệt: {dailyWorkRows?.counts.byStatus.PENDING ?? 0}
+              Chờ phê duyệt: {dailyWorkRows?.counts.byStatus.PENDING ?? 0}
             </span>
             <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
               Lắp đặt: {ticketRows?.counts.installations ?? 0}
@@ -633,7 +633,7 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
                     </td>
                     <td className="border-b border-[#eeeeee] p-2">
                       {!isAdmin ? (
-                        <button className="icon-button" disabled={!canEdit} onClick={() => removeRow(index)} title="Delete row" type="button">
+                        <button className="icon-button" disabled={!canEdit} onClick={() => removeRow(index)} title="Xóa dòng" type="button">
                           <Trash2 size={15} />
                         </button>
                       ) : null}

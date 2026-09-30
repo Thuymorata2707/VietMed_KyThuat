@@ -488,10 +488,10 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           symptoms: selectedTask.kind === 'repair' ? splitLines(taskDescription(selectedTask) || taskTitle(selectedTask)) : [],
           steps: splitLines(workLogText || resultNote),
           checklist: selectedCheckedChecklistLines,
-          note: `Tạo nhanh từ phiếu ${selectedTask.code}. Admin duyệt trước khi đưa vào knowledge base.`,
+          note: `Tạo từ phiếu ${selectedTask.code}. Chờ quản trị viên phê duyệt trước khi xuất bản trong thư viện kinh nghiệm.`,
         }),
       });
-      setSuccess('Đã tạo bài học kinh nghiệm dạng nháp để admin duyệt.');
+      setSuccess('Đã tạo bản nháp kinh nghiệm kỹ thuật, chờ quản trị viên phê duyệt.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không tạo được bài học kinh nghiệm.');
     } finally {

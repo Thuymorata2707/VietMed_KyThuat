@@ -74,7 +74,11 @@ export class MaintenanceService {
 
   async create(dto: CreateMaintenanceDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.MAINTENANCE_CREATE);
-    if (!isAdmin(actor)) throw new ForbiddenException('Only administrators can dispatch maintenance tickets');
+    const selfSubmission = isEngineer(actor);
+    if (!isAdmin(actor) && !selfSubmission)
+      throw new ForbiddenException(
+        'Only administrators or engineers can create maintenance tickets',
+      );
     this.validateCreateMaintenance(dto);
     const machine = dto.machineId
       ? await this.ensureMachineExists(dto.machineId)
@@ -83,34 +87,56 @@ export class MaintenanceService {
       await this.assertEngineerCanUseMachine(actor, machine);
     }
 
-    const engineerIds = [...new Set(dto.engineerIds?.length ? dto.engineerIds : dto.engineerId ? [dto.engineerId] : [])];
-    if (!engineerIds.length) throw new BadRequestException('At least one engineer must be assigned');
-    await Promise.all(engineerIds.map((engineerId) => this.ensureEngineerExists(engineerId)));
+    const engineerIds = selfSubmission ? [actor.id] : [
+      ...new Set(
+        dto.engineerIds?.length
+          ? dto.engineerIds
+          : dto.engineerId
+            ? [dto.engineerId]
+            : [],
+      ),
+    ];
+    if (!engineerIds.length)
+      throw new BadRequestException('At least one engineer must be assigned');
+    await Promise.all(
+      engineerIds.map((engineerId) => this.ensureEngineerExists(engineerId)),
+    );
     const engineerId = engineerIds[0];
-    const scheduledDate = this.parseOptionalDate(dto.scheduledDate, 'scheduledDate') ?? new Date();
+    const scheduledDate =
+      this.parseOptionalDate(dto.scheduledDate, 'scheduledDate') ?? new Date();
     const customerId = await this.resolveTicketCustomerId(
       machine,
       dto.customerId,
     );
+    if (
+      selfSubmission &&
+      (!machine || !customerId || !dto.checklist?.length ||
+        !dto.resultNote?.trim())
+    ) {
+      throw new BadRequestException(
+        'Engineer-submitted maintenance reports require a customer, machine, checklist, and result',
+      );
+    }
 
     return this.prisma.$transaction(
       async (tx) => {
         const maintenance = await tx.maintenance.create({
           data: {
-            code: await this.generateMaintenanceCode(
-              tx,
-              scheduledDate,
-            ),
+            code: await this.generateMaintenanceCode(tx, scheduledDate),
             title: dto.title?.trim() || 'Phiếu bảo trì',
             description: dto.description?.trim() || null,
             type: dto.type ?? MaintenanceType.PERIODIC,
-            status: MaintenanceStatus.ASSIGNED,
+            status: selfSubmission ? MaintenanceStatus.COMPLETED : MaintenanceStatus.ASSIGNED,
             machineId: machine?.id ?? null,
             customerId,
             engineerId: engineerId || null,
             scheduledDate,
             assignedAt: new Date(),
+            completedAt: selfSubmission ? new Date() : null,
+            reviewStatus: selfSubmission ? WorkReviewStatus.PENDING : WorkReviewStatus.NOT_REQUIRED,
             checklist: this.normalizeChecklist(dto.checklist),
+            receivedAccessories: this.cleanOptionalString(dto.receivedAccessories),
+            resultNote: this.cleanOptionalString(dto.resultNote),
             nextDueDate: this.parseOptionalDate(dto.nextDueDate, 'nextDueDate'),
             usingDepartment: this.cleanOptionalString(dto.usingDepartment),
             representative: this.cleanOptionalString(dto.representative),
@@ -148,20 +174,36 @@ export class MaintenanceService {
           tx,
         );
 
-        await Promise.all(engineerIds.map((assignedEngineerId) => this.notificationsService.create(
-          {
-            userId: assignedEngineerId,
-            title: 'Bạn có phiếu bảo trì mới',
-            message: `${actor.email} đã phân công phiếu ${maintenance.code}: ${maintenance.title}`,
-            href: '/my-tasks',
+        if (selfSubmission) {
+          await this.notificationsService.createForAdmins({
+            title: 'Phiếu bảo trì chờ phê duyệt',
+            message: `Phiếu bảo trì ${maintenance.code} đã được trình phê duyệt.`,
+            href: '/service-tickets',
             entityType: 'Maintenance',
             entityId: maintenance.id,
             createdById: actor.id,
-          },
-          tx,
-        )));
+          }, tx);
+        } else await Promise.all(
+          engineerIds.map((assignedEngineerId) =>
+            this.notificationsService.create(
+              {
+                userId: assignedEngineerId,
+                title: 'Phiếu bảo trì mới được phân công',
+            message: `Phiếu ${maintenance.code} đã được phân công: ${maintenance.title}`,
+                href: '/my-tasks',
+                entityType: 'Maintenance',
+                entityId: maintenance.id,
+                createdById: actor.id,
+              },
+              tx,
+            ),
+          ),
+        );
 
-        return tx.maintenance.findUnique({ where: { id: maintenance.id }, include: this.defaultInclude() });
+        return tx.maintenance.findUnique({
+          where: { id: maintenance.id },
+          include: this.defaultInclude(),
+        });
       },
       { timeout: 20_000 },
     );
@@ -312,6 +354,7 @@ export class MaintenanceService {
               dto.resultNote === undefined
                 ? undefined
                 : dto.resultNote?.trim() || null,
+            receivedAccessories: this.cleanOptionalUpdateString(dto.receivedAccessories),
             nextDueDate:
               dto.nextDueDate === undefined
                 ? undefined
@@ -357,6 +400,14 @@ export class MaintenanceService {
           }
         }
 
+        if (maintenance.machine && maintenance.machine.id !== nextMachine?.id) {
+          await reconcileMachineStatusFromOpenWork(
+            tx,
+            maintenance.machine.id,
+            maintenance.machine.inventoryStatus,
+          );
+        }
+
         if (dto.usedParts !== undefined) {
           await replaceWorkUsedParts({
             actor,
@@ -388,6 +439,7 @@ export class MaintenanceService {
               'status',
               'scheduledDate',
               'checklist',
+              'receivedAccessories',
               'resultNote',
               'nextDueDate',
               'usingDepartment',
@@ -409,8 +461,8 @@ export class MaintenanceService {
           await this.notificationsService.create(
             {
               userId: updated.engineerId,
-              title: 'Bạn có phiếu bảo trì mới',
-              message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+              title: 'Phiếu bảo trì mới được phân công',
+              message: `Phiếu ${updated.code} đã được phân công: ${updated.title}`,
               href: '/my-tasks',
               entityType: 'Maintenance',
               entityId: updated.id,
@@ -429,7 +481,10 @@ export class MaintenanceService {
   async remove(id: string, actor: RequestUser, dto?: DeleteWorkTaskDto) {
     void dto;
     const maintenance = await this.findOne(id, actor);
-    if (!isAdmin(actor)) throw new ForbiddenException('Only administrators can delete maintenance tickets');
+    if (!isAdmin(actor))
+      throw new ForbiddenException(
+        'Only administrators can delete maintenance tickets',
+      );
 
     assertPermission(actor, PERMISSIONS.MAINTENANCE_DELETE);
     return this.deleteMaintenance(id, maintenance, actor);
@@ -480,8 +535,8 @@ export class MaintenanceService {
 
     await this.notificationsService
       .createForAdmins({
-        title: 'Phiếu bảo trì chờ duyệt xóa',
-        message: `${actor.email} yêu cầu xóa phiếu ${maintenance.code}: ${deleteRequestDisplayNote(updated.reviewNote)}`,
+        title: 'Yêu cầu xóa phiếu bảo trì chờ phê duyệt',
+        message: `Lý do yêu cầu xóa phiếu ${maintenance.code}: ${deleteRequestDisplayNote(updated.reviewNote)}`,
         href: '/service-tickets',
         entityType: 'Maintenance',
         entityId: maintenance.id,
@@ -586,8 +641,8 @@ export class MaintenanceService {
           await this.notificationsService.create(
             {
               userId: updated.engineerId,
-              title: 'Bạn có phiếu bảo trì mới',
-              message: `${actor.email} đã phân công phiếu ${updated.code}: ${updated.title}`,
+              title: 'Phiếu bảo trì mới được phân công',
+              message: `Phiếu ${updated.code} đã được phân công: ${updated.title}`,
               href: '/my-tasks',
               entityType: 'Maintenance',
               entityId: updated.id,
@@ -722,7 +777,7 @@ export class MaintenanceService {
     ) {
       await this.notificationsService
         .createForAdmins({
-          title: 'Phiếu bảo trì chờ xác nhận',
+          title: 'Phiếu bảo trì chờ phê duyệt',
           message: `Phiếu ${updatedMaintenance.code} đã hoàn tất.`,
           href: '/service-tickets',
           entityType: 'Maintenance',
@@ -778,7 +833,7 @@ export class MaintenanceService {
           .create({
             userId: rejected.engineerId,
             title: 'Yêu cầu xóa phiếu bảo trì chưa được duyệt',
-            message: `Admin chưa duyệt xóa phiếu ${rejected.code}: ${reviewNote}`,
+            message: `Quản trị viên từ chối yêu cầu xóa phiếu ${rejected.code}: ${reviewNote}`,
             href: '/my-tasks',
             entityType: 'Maintenance',
             entityId: rejected.id,
@@ -834,6 +889,18 @@ export class MaintenanceService {
         });
       }
 
+      if (
+        dto.status === WorkReviewStatus.APPROVED &&
+        maintenance.status === MaintenanceStatus.COMPLETED &&
+        maintenance.machine
+      ) {
+        await reconcileMachineStatusFromOpenWork(
+          tx,
+          maintenance.machine.id,
+          maintenance.machine.inventoryStatus,
+        );
+      }
+
       await this.auditLogsService.create(
         {
           action: AUDIT_ACTIONS.STATUS_CHANGE,
@@ -867,12 +934,12 @@ export class MaintenanceService {
           userId: updated.engineerId,
           title:
             dto.status === WorkReviewStatus.APPROVED
-              ? 'Phiếu bảo trì đã được xác nhận'
+              ? 'Phiếu bảo trì đã được phê duyệt'
               : 'Phiếu bảo trì cần bổ sung',
           message:
             dto.status === WorkReviewStatus.APPROVED
-              ? `Admin đã xác nhận phiếu ${updated.code}.`
-              : `Admin yêu cầu bổ sung phiếu ${updated.code}: ${reviewNote}`,
+              ? `Quản trị viên đã phê duyệt phiếu ${updated.code}.`
+              : `Quản trị viên yêu cầu bổ sung hồ sơ phiếu ${updated.code}: ${reviewNote}`,
           href: '/my-tasks',
           entityType: 'Maintenance',
           entityId: updated.id,
@@ -1148,8 +1215,18 @@ export class MaintenanceService {
       machineId: query.machineId,
       engineerId: undefined,
       AND: query.engineerId
-        ? [...and, { OR: [{ engineerId: query.engineerId }, { assignments: { some: { engineerId: query.engineerId } } }] }]
-        : and.length ? and : undefined,
+        ? [
+            ...and,
+            {
+              OR: [
+                { engineerId: query.engineerId },
+                { assignments: { some: { engineerId: query.engineerId } } },
+              ],
+            },
+          ]
+        : and.length
+          ? and
+          : undefined,
       scheduledDate:
         query.scheduledFrom || query.scheduledTo
           ? {
@@ -1378,7 +1455,16 @@ export class MaintenanceService {
         },
       },
       assignments: {
-        include: { engineer: { select: { id: true, email: true, fullName: true, engineerProfile: true } } },
+        include: {
+          engineer: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+              engineerProfile: true,
+            },
+          },
+        },
         orderBy: [{ isLead: 'desc' as const }, { assignedAt: 'asc' as const }],
       },
     };

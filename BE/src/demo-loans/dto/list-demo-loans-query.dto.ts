@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { DemoLoanStatus } from '@prisma/client';
+import { DemoLoanStatus, DemoPreparationStatus } from '@prisma/client';
 
 export class ListDemoLoansQueryDto {
   @IsOptional()
@@ -23,6 +23,10 @@ export class ListDemoLoansQueryDto {
   @IsOptional()
   @IsEnum(DemoLoanStatus)
   status?: DemoLoanStatus;
+
+  @IsOptional()
+  @IsEnum(DemoPreparationStatus)
+  preparationStatus?: DemoPreparationStatus;
 
   @IsOptional()
   @IsString()

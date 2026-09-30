@@ -358,7 +358,7 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
         </Card>
 
         {!canManageAccessories && activeTab === 'catalog' ? (
-          <Notice message="Tài khoản của bạn được xem danh mục phụ kiện. Thao tác thêm, sửa, xóa chỉ dành cho admin." />
+          <Notice message="Tài khoản hiện tại chỉ có quyền xem danh mục phụ kiện. Quyền thêm, sửa và xóa dành cho quản trị viên." />
         ) : null}
 
         {activeTab === 'stock' ? (

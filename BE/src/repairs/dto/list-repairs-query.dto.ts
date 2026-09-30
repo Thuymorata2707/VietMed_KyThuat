@@ -1,5 +1,5 @@
 import { RepairPriority, RepairStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 export class ListRepairsQueryDto extends PaginationQueryDto {
@@ -26,4 +26,12 @@ export class ListRepairsQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   engineerId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  reportedFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  reportedTo?: string;
 }

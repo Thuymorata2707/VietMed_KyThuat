@@ -28,7 +28,7 @@ import { RepairsService } from './repairs.service';
 export class RepairsController {
   constructor(private readonly repairsService: RepairsService) {}
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Post()
   create(@Body() dto: CreateRepairDto, @CurrentUser() user: RequestUser) {
     return this.repairsService.create(dto, user);

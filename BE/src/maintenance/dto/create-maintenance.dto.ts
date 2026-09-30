@@ -47,6 +47,14 @@ export class CreateMaintenanceDto {
   checklist?: string[];
 
   @IsOptional()
+  @IsString()
+  receivedAccessories?: string;
+
+  @IsOptional()
+  @IsString()
+  resultNote?: string;
+
+  @IsOptional()
   @IsDateString()
   nextDueDate?: string;
 

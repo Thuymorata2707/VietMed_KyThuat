@@ -12,7 +12,7 @@ import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
 import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { displayLabel } from '../../utils/displayLabels';
 import { TableRow, filterRows, formatValue, readPath } from '../../utils/format';
-import { formatMachineAccessoriesText, parseMachineAccessoriesInput, serializeMachineAccessories } from '../../utils/machineAccessories';
+import { parseMachineAccessoriesInput, serializeMachineAccessories } from '../../utils/machineAccessories';
 import './styles.css';
 
 type SelectOption = { label: string; value: string; row?: TableRow };
@@ -62,10 +62,12 @@ export function AdminCrudPage({
   config,
   extraQueryParams,
   headerControl,
+  readOnly = false,
 }: {
   config: AdminCrudConfig;
   extraQueryParams?: Record<string, string>;
   headerControl?: ReactNode;
+  readOnly?: boolean;
 }) {
   const isCustomerCrud = isCustomersEndpoint(config.endpoint);
   const [rows, setRows] = useState<TableRow[]>([]);
@@ -110,7 +112,10 @@ export function AdminCrudPage({
   const filteredRows = useMemo(() => applyColumnFilters(searchableRows, filters), [filters, searchableRows]);
   const quickFilters = useMemo(() => buildQuickFilters(config, rows), [config, rows]);
   const customerStats = useMemo(() => buildCustomerStats(rows), [rows]);
-  const tableColumnCount = (isCustomerCrud ? 8 : config.columns.length) + (config.canUpdate !== false || config.canDelete !== false ? 1 : 0);
+  const canCreate = !readOnly && config.canCreate !== false;
+  const canUpdate = !readOnly && config.canUpdate !== false;
+  const canDelete = !readOnly && config.canDelete !== false;
+  const tableColumnCount = (isCustomerCrud ? 8 : config.columns.length) + (canUpdate || canDelete ? 1 : 0);
 
   useEffect(() => {
     if (!pagination) return;
@@ -150,7 +155,7 @@ export function AdminCrudPage({
     try {
       const [rowsResult, optionsResult] = await Promise.all([
         loadRows(config.endpoint, page, pageSize, debouncedQuery, extraQueryParams),
-        loadOptions(config.fields),
+        loadOptions(readOnly ? [] : config.fields),
       ]);
       setRows(rowsResult.rows);
       setPagination(rowsResult.pagination);
@@ -280,12 +285,12 @@ export function AdminCrudPage({
   return (
     <PageFrame>
       <div className={isCustomerCrud ? 'admin-crud-heading customer-crud-heading' : 'admin-crud-heading'}>
-        <PageTitle eyebrow="Quản trị" title={config.title} description={config.description} />
+        <PageTitle eyebrow={readOnly && isCustomerCrud ? 'Danh sách vận hành' : 'Quản trị'} title={config.title} description={config.description} />
         <div className="admin-crud-heading-actions">
           {headerControl}
           <button className="secondary-button" disabled={loading} onClick={loadPage} type="button">
             {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-            {loading ? 'Loading' : 'Refresh'}
+            {loading ? 'Đang tải' : 'Làm mới dữ liệu'}
           </button>
         </div>
       </div>
@@ -325,7 +330,7 @@ export function AdminCrudPage({
               ))}
             </div>
           ) : null}
-          {config.canCreate !== false ? (
+          {canCreate ? (
             serviceCreateHref(config.endpoint) ? (
               <Link className="primary-button compact" to={serviceCreateHref(config.endpoint)!}>
                 <Plus size={17} />
@@ -358,14 +363,14 @@ export function AdminCrudPage({
                   <th>Kỹ sư quản lý</th>
                   <th>Máy</th>
                   <th>Trạng thái</th>
-                  {config.canUpdate !== false || config.canDelete !== false ? <th className="actions-column"></th> : null}
+                  {canUpdate || canDelete ? <th className="actions-column"></th> : null}
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.map((row, index) => (
                   <CustomerTableRow
-                    canDelete={config.canDelete !== false}
-                    canUpdate={config.canUpdate !== false}
+                    canDelete={canDelete}
+                    canUpdate={canUpdate}
                     key={String(row.id ?? index)}
                     onDelete={() => setDeletingRow(row)}
                     onEdit={() => startEdit(row)}
@@ -403,7 +408,7 @@ export function AdminCrudPage({
                   {config.columns.map((column) => (
                     <th key={column.key}>{column.label}</th>
                   ))}
-                  {config.canUpdate !== false || config.canDelete !== false ? <th className="actions-column"></th> : null}
+                  {canUpdate || canDelete ? <th className="actions-column"></th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -418,10 +423,10 @@ export function AdminCrudPage({
                     {config.columns.map((column) => (
                       <td key={column.key}>{renderTableValue(readPath(row, column.key), column.key)}</td>
                     ))}
-                    {config.canUpdate !== false || config.canDelete !== false ? (
+                    {canUpdate || canDelete ? (
                       <td className="actions-cell">
                         <div className="row-actions">
-                          {config.canUpdate !== false ? (
+                          {canUpdate ? (
                             adminCrudFormEditHref(config.endpoint, row) ? (
                               <Link
                                 className="icon-button"
@@ -442,7 +447,7 @@ export function AdminCrudPage({
                               </button>
                             )
                           ) : null}
-                          {config.canDelete !== false ? (
+                          {canDelete ? (
                             <button
                               className="icon-button danger"
                               onClick={(event) => handleActionClick(event, () => setDeletingRow(row))}
@@ -525,8 +530,8 @@ export function AdminCrudPage({
 
       {selectedRow && isCustomerCrud ? (
         <CustomerQuickViewModal
-          canDelete={config.canDelete !== false}
-          canUpdate={config.canUpdate !== false}
+          canDelete={canDelete}
+          canUpdate={canUpdate}
           onClose={() => setSelectedRow(null)}
           onDelete={() => setDeletingRow(selectedRow)}
           onEdit={() => startEdit(selectedRow)}
@@ -557,7 +562,7 @@ export function AdminCrudPage({
             </dl>
 
             <div className="drawer-actions">
-              {config.canUpdate !== false ? (
+              {canUpdate ? (
                 adminCrudFormEditHref(config.endpoint, selectedRow) ? (
                   <Link className="primary-button" to={adminCrudFormEditHref(config.endpoint, selectedRow)!}>
                     <Edit3 size={17} />
@@ -570,7 +575,7 @@ export function AdminCrudPage({
                   </button>
                 )
               ) : null}
-              {config.canDelete !== false ? (
+              {canDelete ? (
                 <button className="danger-button" onClick={() => setDeletingRow(selectedRow)} type="button">
                   <Trash2 size={17} />
                   Xóa
@@ -906,24 +911,11 @@ function FieldControl({
   }
 
   if (field.type === 'accessories') {
-    if (accessoryMode === 'probe' || accessoryMode === 'endoscopy') {
-      return (
-        <div className="wide-field">
-          <span className="field-label">{field.label}</span>
-          <MachineAccessoryEditor mode={accessoryMode} onChange={onChange} value={value} />
-        </div>
-      );
-    }
-
     return (
-      <label className="wide-field">
-        {field.label}
-        <textarea
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="Tên phụ kiện | S/N"
-          value={formatMachineAccessoriesText(value)}
-        />
-      </label>
+      <div className="wide-field">
+        <span className="field-label">{field.label}</span>
+        <MachineAccessoryEditor mode={accessoryMode || 'generic'} onChange={onChange} value={value} />
+      </div>
     );
   }
 
@@ -1203,7 +1195,7 @@ function CustomerQuickViewModal({
   const name = formatDisplayValue(readPath(row, 'name'));
   const code = formatDisplayValue(readPath(row, 'customerCode'));
   const type = displayLabel(String(readPath(row, 'customerType') ?? ''));
-  const address = [readPath(row, 'address'), readPath(row, 'district'), readPath(row, 'provinceRef.name') || readPath(row, 'province')]
+  const address = [readPath(row, 'address'), readPath(row, 'locality'), readPath(row, 'ward'), readPath(row, 'district'), readPath(row, 'provinceRef.name') || readPath(row, 'province')]
     .filter(Boolean)
     .map((value) => String(value))
     .join(', ');
@@ -1218,7 +1210,7 @@ function CustomerQuickViewModal({
       <section aria-modal="true" className="customer-quick-modal" onClick={(event) => event.stopPropagation()} role="dialog">
         <header className="customer-quick-header">
           <div>
-            <span>Hồ sơ nhanh</span>
+            <span>Tóm tắt hồ sơ</span>
             <h2>{name}</h2>
             <p>{[code !== '-' ? code : '', type].filter(Boolean).join(' - ') || 'Chưa phân loại'}</p>
           </div>
@@ -1253,7 +1245,7 @@ function CustomerQuickViewModal({
             Đóng
           </button>
           {id ? (
-            <Link className="primary-button" to={`/customers/profile?customerId=${id}`}>
+            <Link className="primary-button" to={`/customers/${id}`}>
               Hồ sơ đầy đủ
             </Link>
           ) : null}
@@ -1303,7 +1295,7 @@ function CustomerTableRow({
   const name = formatDisplayValue(readPath(row, 'name'));
   const code = formatDisplayValue(readPath(row, 'customerCode'));
   const type = displayLabel(String(readPath(row, 'customerType') ?? ''));
-  const address = [readPath(row, 'address'), readPath(row, 'district'), readPath(row, 'provinceRef.name') || readPath(row, 'province')]
+  const address = [readPath(row, 'address'), readPath(row, 'locality'), readPath(row, 'ward'), readPath(row, 'district'), readPath(row, 'provinceRef.name') || readPath(row, 'province')]
     .filter(Boolean)
     .map((value) => String(value))
     .join(', ');
@@ -1313,7 +1305,7 @@ function CustomerTableRow({
   const contact = formatDisplayValue(readPath(row, 'contactPerson'));
   const engineers = customerEngineerNames(row);
   const machineCount = Number(readPath(row, '_count.machines') ?? 0);
-  const profileHref = `/customers/profile?customerId=${String(readPath(row, 'id') ?? '')}`;
+  const profileHref = `/customers/${String(readPath(row, 'id') ?? '')}`;
   const handleCustomerAction = (event: MouseEvent<HTMLButtonElement>, action: () => void) => {
     event.stopPropagation();
     action();
@@ -1409,7 +1401,7 @@ function GroupedCustomerFields({
     },
     {
       title: 'Địa chỉ',
-      fields: ['provinceId', 'district', 'ward', 'address', 'fullAddress'],
+      fields: ['provinceId', 'district', 'locality', 'ward', 'address', 'fullAddress'],
     },
     {
       title: 'Ghi chú',
@@ -1489,10 +1481,18 @@ function CustomerAddressFields({
   onFieldChange: (field: CrudField, value: string) => void;
   options: OptionMap;
 }) {
+  const selectedProvinceOption = (options.provinceId || []).find((option) => option.value === form.provinceId);
+  const selectedProvinceName = String(
+    (selectedProvinceOption?.row ? readPath(selectedProvinceOption.row, 'name') : undefined) ??
+      selectedProvinceOption?.label.split(' - ')[0] ??
+      form.province ??
+      '',
+  ).trim();
   const addressValue = {
     address: form.address ?? '',
     district: form.district ?? '',
-    province: form.province ?? '',
+    locality: form.locality ?? '',
+    province: selectedProvinceName,
     ward: form.ward ?? '',
   };
   const fullAddress = buildFullVietnamAddress(addressValue);
@@ -1502,6 +1502,7 @@ function CustomerAddressFields({
     const fieldsToUpdate: Array<[string, string]> = [
       ['province', nextValue.province],
       ['district', nextValue.district],
+      ['locality', nextValue.locality],
       ['ward', nextValue.ward],
       ['address', nextValue.address],
       ['fullAddress', buildFullVietnamAddress(nextValue)],
@@ -1521,10 +1522,14 @@ function CustomerAddressFields({
           className="min-h-11 rounded-2xl border border-[#d8dee8] bg-white px-4 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.10)]"
           onChange={(event) => {
             const provinceOption = (options.provinceId || []).find((option) => option.value === event.target.value);
-            const provinceName = String(provinceOption?.row ? readPath(provinceOption.row, 'name') ?? '' : '');
+            const provinceName = String(
+              (provinceOption?.row ? readPath(provinceOption.row, 'name') : undefined) ??
+                provinceOption?.label.split(' - ')[0] ??
+                '',
+            ).trim();
             const provinceIdField = fieldMap.get('provinceId');
             if (provinceIdField) onFieldChange(provinceIdField, event.target.value);
-            patchAddress({ province: provinceName, district: '', ward: '' });
+            patchAddress({ province: provinceName, district: '', locality: '', ward: '' });
           }}
           required
           value={form.provinceId ?? ''}
@@ -1535,7 +1540,7 @@ function CustomerAddressFields({
       </label>
       <VietnamAddressSelects onChange={patchAddress} showProvince={false} value={addressValue} />
       <div className="wide-field flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#dbe6f3] bg-white px-4 py-3 text-sm font-semibold text-[#667985]">
-        <span className="min-w-0 flex-1 truncate">{fullAddress || 'Chọn đủ địa chỉ để mở Google Maps nhanh.'}</span>
+        <span className="min-w-0 flex-1 truncate">{fullAddress || 'Nhập đầy đủ địa chỉ để mở Google Maps.'}</span>
         {fullAddress ? <GoogleMapsDirectionsButton address={fullAddress} className="secondary-button compact" /> : null}
       </div>
     </div>

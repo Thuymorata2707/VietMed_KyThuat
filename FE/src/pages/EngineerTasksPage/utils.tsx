@@ -21,7 +21,12 @@ import type {
   WorkOperationsResponse,
 } from './types';
 
-export const todayValue = () => new Date().toISOString().slice(0, 10);
+export const todayValue = () => {
+  const date = new Date();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+};
 
 export function startOfDay(value: Date) {
   const date = new Date(value);
@@ -417,8 +422,8 @@ export function statusLabel(value: string) {
 }
 
 export function reviewStatusLabel(value?: string | null) {
-  if (value === 'PENDING') return 'Chờ admin xác nhận';
-  if (value === 'APPROVED') return 'Admin đã xác nhận';
+  if (value === 'PENDING') return 'Chờ phê duyệt';
+  if (value === 'APPROVED') return 'Đã phê duyệt';
   if (value === 'NEEDS_REVISION') return 'Cần bổ sung';
   return '';
 }
@@ -624,11 +629,11 @@ export function defaultCreateKindForBusinessTab(tab: BusinessTab): TaskKind {
 }
 
 export function taskAttention(task: EngineerTask): { label: string; tone: TaskTone } {
-  if (task.reviewStatus === 'NEEDS_REVISION') return { label: 'Bổ sung theo phản hồi admin', tone: 'danger' };
+  if (task.reviewStatus === 'NEEDS_REVISION') return { label: 'Cần bổ sung theo ý kiến phê duyệt', tone: 'danger' };
   if (isOverdueTask(task)) return { label: 'Quá hạn, xử lý trước', tone: 'danger' };
   if (needsMachineProfile(task)) return { label: 'Tạo hoặc bổ sung hồ sơ máy', tone: 'warn' };
   if (isTodayTask(task)) return { label: 'Việc hôm nay', tone: 'warn' };
-  if (task.reviewStatus === 'PENDING') return { label: 'Đã gửi, chờ admin duyệt', tone: 'good' };
+  if (task.reviewStatus === 'PENDING') return { label: 'Đã trình phê duyệt', tone: 'good' };
   if (['COMPLETED', 'CANCELLED', 'INSTALLED'].includes(task.status)) return { label: 'Đã hoàn tất', tone: 'neutral' };
   return { label: 'Cập nhật kết quả hiện trường', tone: 'neutral' };
 }
@@ -715,7 +720,7 @@ export function taskPriorityScore(task: EngineerTask) {
 
 export function taskActionLabel(task: EngineerTask) {
   if (task.reviewStatus === 'NEEDS_REVISION') return 'Cần bổ sung báo cáo';
-  if (task.reviewStatus === 'PENDING') return 'Chờ admin xác nhận';
+  if (task.reviewStatus === 'PENDING') return 'Chờ phê duyệt';
   if (isOverdueTask(task)) return 'Cần xử lý ngay';
   if (isTodayTask(task)) return 'Cần làm hôm nay';
   if (needsMachineProfile(task)) return 'Cần tạo hồ sơ máy';

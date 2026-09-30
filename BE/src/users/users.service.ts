@@ -520,7 +520,7 @@ export class UsersService {
     if (!actor || !isAdmin(actor) || !regionId) return;
     if (regionId !== actor.regionId) {
       throw new ForbiddenException(
-        'Bạn chỉ được quản lý nhân sự trong khu vực của mình.',
+        'Chỉ được phép quản lý nhân sự trong khu vực được phân quyền.',
       );
     }
   }

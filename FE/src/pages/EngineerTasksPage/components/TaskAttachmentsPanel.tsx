@@ -93,11 +93,11 @@ export function TaskAttachmentsPanel({
         </label>
         <label className={drawerFieldClass}>
           Tên hiển thị
-          <input className={drawerInputClass} onChange={(event) => onTitleChange(event.target.value)} placeholder="VD: Ảnh serial trước sửa chữa" value={attachmentTitle} />
+          <input className={drawerInputClass} onChange={(event) => onTitleChange(event.target.value)} value={attachmentTitle} />
         </label>
         <label className={`col-span-full ${drawerFieldClass}`}>
           Ghi chú
-          <textarea className={drawerTextareaClass} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="Ghi chú ngắn cho file nếu cần" value={attachmentDescription} />
+          <textarea className={drawerTextareaClass} onChange={(event) => onDescriptionChange(event.target.value)} value={attachmentDescription} />
         </label>
         <label className={`col-span-full ${drawerFieldClass}`}>
           File ảnh/PDF

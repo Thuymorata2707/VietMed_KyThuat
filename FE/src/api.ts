@@ -165,7 +165,7 @@ export async function apiFetchAllPages<T>(path: string, pageSize = 100): Promise
 }
 
 export async function login(identifier: string, password: string) {
-  const result = await apiFetch<{ accessToken?: string; user: ApiUser }>('/auth/login', {
+  const result = await apiFetch<{ user: ApiUser }>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ identifier, password }),
   });
@@ -198,7 +198,7 @@ function toVietnameseApiError(message: string, statusCode: number) {
     return 'Đăng nhập đang tạm khóa do nhập sai nhiều lần. Vui lòng chờ khoảng 15 phút rồi thử lại.';
   }
   if (statusCode === 429) {
-    return 'Bạn thao tác quá nhanh. Vui lòng chờ một lúc rồi thử lại.';
+    return 'Thao tác quá thường xuyên. Vui lòng chờ trước khi thử lại.';
   }
   if (normalized.includes('email already exists')) return 'Email đã tồn tại trong hệ thống.';
   if (normalized.includes('username already exists')) return 'Tên đăng nhập đã tồn tại trong hệ thống.';
@@ -210,9 +210,9 @@ function toVietnameseApiError(message: string, statusCode: number) {
   if (normalized.includes('not found')) return 'Không tìm thấy dữ liệu cần thao tác.';
   if (normalized.includes('limit must not be greater than')) return 'Số mục tải lên không được vượt quá giới hạn backend cho phép.';
   if (normalized.includes('unauthorized') || statusCode === 401) return 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ.';
-  if (normalized.includes('forbidden') || statusCode === 403) return 'Bạn không có quyền thực hiện thao tác này.';
+  if (normalized.includes('forbidden') || statusCode === 403) return 'Tài khoản không có quyền thực hiện thao tác này.';
   if (statusCode === 409) return 'Dữ liệu bị trùng, vui lòng kiểm tra lại mã hoặc email.';
-  if (statusCode >= 500) return 'Backend đang gặp lỗi, vui lòng thử lại sau.';
+  if (statusCode >= 500) return 'Hệ thống đang gặp sự cố máy chủ. Vui lòng thử lại sau.';
 
   return message || 'Không thể kết nối API';
 }

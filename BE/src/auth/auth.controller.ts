@@ -32,7 +32,9 @@ export class AuthController {
   ) {
     const result = await this.authService.login(dto, this.getClientIp(request));
     this.setAuthCookie(response, result.accessToken);
-    return result;
+    // The browser authenticates with the HttpOnly cookie. Do not also expose
+    // the same bearer token to application JavaScript in the response body.
+    return { user: result.user };
   }
 
   @Post('logout')
@@ -54,16 +56,8 @@ export class AuthController {
   }
 
   private getClientIp(request: Request) {
-    const forwardedFor = request.headers['x-forwarded-for'];
-
-    if (typeof forwardedFor === 'string') {
-      return forwardedFor.split(',')[0]?.trim();
-    }
-
-    if (Array.isArray(forwardedFor)) {
-      return forwardedFor[0]?.split(',')[0]?.trim();
-    }
-
+    // Express resolves request.ip using the configured trusted proxy chain.
+    // Reading X-Forwarded-For directly would let clients spoof the throttle key.
     return request.ip;
   }
 

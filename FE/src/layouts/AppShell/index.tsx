@@ -1,7 +1,7 @@
 import { Bell, ChevronDown, ChevronsLeft, ChevronsRight, LogOut, Plus } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, clearToken, getApiBaseUrl } from '../../api';
 import { getRoleName, roleLabel } from '../../auth/roles';
 import { Brand } from '../../components/Brand';
@@ -74,16 +74,17 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
   const notificationsPageKey = [...queryKeys.notifications.list, notificationPage] as const;
   const notificationsQuery = useQuery({
     queryKey: notificationsPageKey,
+    enabled: isNotificationOpen,
     queryFn: () =>
       apiFetch<Paginated<NotificationItem>>(
         `/notifications?page=${notificationPage}&limit=20`,
       ),
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
   });
   const unreadCountQuery = useQuery({
     queryKey: queryKeys.notifications.unreadCount,
     queryFn: () => apiFetch<{ count: number }>('/notifications/unread-count'),
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
   });
   const notifications = notificationsQuery.data?.data ?? [];
   const markNotificationReadMutation = useMutation({
@@ -148,8 +149,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
     ? 'Thiết lập tài khoản'
     : location.pathname.startsWith('/technical-machines')
       ? 'Máy phòng kỹ thuật'
-    : location.pathname.startsWith('/customers/profile')
-      ? 'Hồ sơ khách hàng'
+    : location.pathname.startsWith('/customers')
+      ? (location.pathname === '/customers' ? 'Khách hàng' : 'Hồ sơ khách hàng')
     : location.pathname.startsWith('/knowledge-base')
       ? 'Chia sẻ kinh nghiệm'
     : location.pathname.startsWith('/application-support')
@@ -164,8 +165,6 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Nhân sự'
     : location.pathname.startsWith('/reports')
       ? 'Báo cáo'
-    : location.pathname.startsWith('/my-customers')
-      ? 'Khách hàng phụ trách'
     : activeNavItem?.label || 'Tổng quan';
   const unreadCount = unreadCountQuery.data?.count ?? 0;
 
@@ -592,55 +591,47 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
               )
             }
           />
+          <Route path="/my-customers" element={<Navigate replace to={`/customers${location.search}`} />} />
+          <Route path="/my-customers/:customerId" element={<LegacyCustomerProfileRedirect />} />
+          <Route path="/customers/profile/:customerId" element={<LegacyCustomerProfileRedirect />} />
+          <Route path="/customers/profile" element={<LegacyCustomerProfileRedirect />} />
+          <Route path="/customer-profiles" element={<LegacyCustomerProfileRedirect />} />
           <Route
-            path="/my-customers/:customerId"
+            path="/customers/new"
             element={
               <RequireRole
-                allowedRoles={['admin', 'engineer']}
+                allowedRoles={adminCrudConfigs.customers.roles}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <EngineerCustomersPage currentRole={role} user={user} />
+                <AdminCrudFormPage config={adminCrudConfigs.customers} />
               </RequireRole>
             }
           />
           <Route
-            path="/my-customers"
+            path="/customers/:id/edit"
             element={
               <RequireRole
-                allowedRoles={['admin', 'engineer']}
+                allowedRoles={adminCrudConfigs.customers.roles}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <EngineerCustomersPage currentRole={role} user={user} />
+                <AdminCrudFormPage config={adminCrudConfigs.customers} />
               </RequireRole>
             }
           />
           <Route
-            path="/customers/profile/:customerId"
+            path="/customers/:customerId"
             element={
               <RequireRole
-                allowedRoles={['admin', 'manager']}
+                allowedRoles={['admin', 'manager', 'engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <EngineerCustomersPage currentRole={role} user={user} />
+                <EngineerCustomersPage />
               </RequireRole>
             }
           />
-          <Route
-            path="/customers/profile"
-            element={
-              <RequireRole
-                allowedRoles={['admin', 'manager']}
-                currentRole={role}
-                renderDenied={(message) => <AccessDeniedPage message={message} />}
-              >
-                <EngineerCustomersPage currentRole={role} user={user} />
-              </RequireRole>
-            }
-          />
-          <Route path="/customer-profiles" element={<Navigate replace to={`/customers/profile${location.search}`} />} />
           <Route
             path="/knowledge-base"
             element={
@@ -686,30 +677,6 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <AdminUsersPage />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="/customers/new"
-            element={
-              <RequireRole
-                allowedRoles={adminCrudConfigs.customers.roles}
-                currentRole={role}
-                renderDenied={(message) => <AccessDeniedPage message={message} />}
-              >
-                <AdminCrudFormPage config={adminCrudConfigs.customers} />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="/customers/:id/edit"
-            element={
-              <RequireRole
-                allowedRoles={adminCrudConfigs.customers.roles}
-                currentRole={role}
-                renderDenied={(message) => <AccessDeniedPage message={message} />}
-              >
-                <AdminCrudFormPage config={adminCrudConfigs.customers} />
               </RequireRole>
             }
           />
@@ -905,7 +872,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
             path="/installations/:id/update"
             element={
               <RequireRole
-                allowedRoles={['admin', 'engineer']}
+                allowedRoles={['admin', 'manager', 'engineer']}
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
@@ -955,6 +922,12 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                     <ProductCatalogPage user={user} />
                   ) : key === 'installations' ? (
                     <InstallationsPage user={user} />
+                  ) : key === 'customers' ? (
+                    <AdminCrudPage
+                      config={adminCrudConfigs.customers}
+                      extraQueryParams={role === 'engineer' ? { primaryEngineerId: user.id } : undefined}
+                      readOnly={role !== 'admin'}
+                    />
                   ) : role === 'admin' && adminCrudConfigs[key] ? (
                     <AdminCrudPage config={adminCrudConfigs[key]} />
                   ) : (
@@ -981,6 +954,13 @@ function RouteLoadingState() {
       </div>
     </div>
   );
+}
+
+function LegacyCustomerProfileRedirect() {
+  const { customerId } = useParams();
+  const [searchParams] = useSearchParams();
+  const requestedCustomerId = customerId || searchParams.get('customerId');
+  return <Navigate replace to={requestedCustomerId ? `/customers/${requestedCustomerId}` : '/customers'} />;
 }
 
 function formatNotificationDate(value: string) {

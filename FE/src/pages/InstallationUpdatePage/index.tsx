@@ -68,7 +68,7 @@ type StockMachine = {
 };
 
 const statusOptions = [
-  { value: 'PENDING', label: 'Chờ duyệt' },
+  { value: 'PENDING', label: 'Chờ phê duyệt' },
   { value: 'INSTALLED', label: 'Đã lắp đặt' },
   { value: 'CANCELLED', label: 'Hủy' },
 ];
@@ -109,6 +109,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
     uploadSuccessMessage: (count) => `Đã tải ${count} ảnh/tài liệu lên phiếu lắp đặt.`,
   });
   const isAdmin = role === 'admin';
+  const canApprove = isAdmin || role === 'manager';
   const selectedMachine =
     stockMachines.find((machine) => machine.id === form.machineId) ||
     (detail?.machine?.id === form.machineId
@@ -883,7 +884,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
               onUpload={attachmentsPanel.uploadAttachment}
               onView={attachmentsPanel.viewAttachment}
               options={attachmentOptionsByKind.installation}
-              titlePlaceholder="VD: Ảnh serial sau lắp đặt"
+              titlePlaceholder=""
               uploading={attachmentsPanel.uploadingAttachment}
             />
 
@@ -897,7 +898,7 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   onChange={(event) => setStatus(event.target.value)}
                   value={status}
                 >
-                  {statusOptions.map((option) => (
+                  {statusOptionsForCurrent(status, canApprove).map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -925,9 +926,13 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
                   </select>
                 </label>
               ) : null}
-              {role !== 'admin' ? (
+              {role === 'engineer' ? (
                 <p className="mt-3 text-sm font-medium text-[#666666]">
-                  Hoàn thành để gửi admin duyệt.
+                  Hoàn tất phiếu để trình quản trị viên phê duyệt.
+                </p>
+              ) : role === 'manager' ? (
+                <p className="mt-3 text-sm font-medium text-[#666666]">
+                  Hoàn thành để xác nhận lắp đặt.
                 </p>
               ) : null}
             </div>
@@ -975,11 +980,21 @@ export function InstallationUpdatePage({ user }: { user: ApiUser }) {
           loading={deleting}
           onCancel={() => setShowDeleteConfirm(false)}
           onConfirm={() => void deleteTicket()}
-          title="Bạn sắp xóa phiếu lắp đặt này"
+          title="Xác nhận xóa phiếu lắp đặt"
           warning="Phiếu lắp đặt và dữ liệu bảo hành liên kết sẽ bị xóa. Kỹ sư có thể tạo lại phiếu sau đó."
         />
       ) : null}
     </PageFrame>
+  );
+}
+
+function statusOptionsForCurrent(status: string, canApprove: boolean) {
+  if (status !== 'PENDING') {
+    return statusOptions.filter((option) => option.value === status);
+  }
+
+  return statusOptions.filter(
+    (option) => option.value !== 'CANCELLED' || canApprove,
   );
 }
 

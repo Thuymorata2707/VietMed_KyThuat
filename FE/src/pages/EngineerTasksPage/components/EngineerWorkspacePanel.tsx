@@ -142,7 +142,7 @@ function TaskToolbar({
           <select onChange={(event) => onFilterChange(event.target.value as TaskFilter)} value={filter}>
             <option value="action">Cần xử lý</option>
             <option value="revision">Cần bổ sung</option>
-            <option value="review">Chờ duyệt</option>
+            <option value="review">Chờ phê duyệt</option>
             <option value="progress">Đang làm</option>
             <option value="done">Hoàn tất</option>
             <option value="all">Tất cả</option>

@@ -1,15 +1,8 @@
-import type { ApiUser } from '../../api';
-import type { RoleName } from '../../auth/roles';
-
 export type UserSummary = {
   id: string;
   email: string;
   fullName?: string | null;
   phone?: string | null;
-};
-
-export type EngineerOption = UserSummary & {
-  region?: { id: string; name: string } | null;
 };
 
 export type CustomerSummary = {
@@ -24,6 +17,8 @@ export type CustomerSummary = {
   contactPhone?: string | null;
   province?: string | null;
   district?: string | null;
+  locality?: string | null;
+  ward?: string | null;
   address?: string | null;
   fullAddress?: string | null;
   region?: { id: string; name: string } | null;
@@ -156,11 +151,6 @@ export type CustomerMachine = {
 
 export type CustomerDetail = CustomerSummary & {
   machines?: CustomerMachine[];
-};
-
-export type EngineerCustomersPageProps = {
-  currentRole: RoleName;
-  user: ApiUser;
 };
 
 export type TimelineItem = {

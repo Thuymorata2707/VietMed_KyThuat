@@ -52,7 +52,7 @@ type DailyReportResponse = {
 const statusLabels: Record<DailyReportStatus, string> = {
   DRAFT: 'Nháp',
   SUBMITTED: 'Đã chốt',
-  APPROVED: 'Đã duyệt',
+  APPROVED: 'Đã phê duyệt',
   NEEDS_REVISION: 'Cần sửa',
 };
 
@@ -84,10 +84,10 @@ const pendingTemplate = [
 ].join('\n');
 
 const proposalTemplate = [
-  '- Hỗ trợ cần từ điều phối/admin/kho:',
+  '- Hỗ trợ cần từ bộ phận điều phối, quản trị hoặc kho:',
   '- Vật tư/linh kiện cần chuẩn bị:',
   '- Rủi ro cần cảnh báo cho khách hàng:',
-  '- Bài học kinh nghiệm nên lưu vào knowledge base:',
+  '- Bài học kinh nghiệm cần lưu vào thư viện kinh nghiệm kỹ thuật:',
 ].join('\n');
 
 export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {

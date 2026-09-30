@@ -14,7 +14,7 @@ export const maintenanceStatusOptions = [
 ];
 
 export const installationStatusOptions = [
-  { value: 'PENDING', label: 'Chờ duyệt' },
+  { value: 'PENDING', label: 'Chờ phê duyệt' },
   { value: 'INSTALLED', label: 'Đã lắp đặt' },
   { value: 'CANCELLED', label: 'Hủy' },
 ];
@@ -53,8 +53,8 @@ export const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
 
 export const dailyWorkStatusMeta: Record<DailyWorkStatus, { label: string; className: string }> = {
   DRAFT: { label: 'Nháp', className: 'border-[#e5e5e5] bg-white text-[#666666]' },
-  PENDING: { label: 'Chờ duyệt', className: 'border-[#efd8a8] bg-[#fffaeb] text-[#9b5a17]' },
-  APPROVED: { label: 'Đã duyệt', className: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]' },
+  PENDING: { label: 'Chờ phê duyệt', className: 'border-[#efd8a8] bg-[#fffaeb] text-[#9b5a17]' },
+  APPROVED: { label: 'Đã phê duyệt', className: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]' },
   REJECTED: { label: 'Từ chối', className: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]' },
   CANCELLED: { label: 'Đã hủy', className: 'border-[#e5e5e5] bg-[#fafafa] text-[#666666]' },
 };
@@ -63,8 +63,8 @@ export const weeklyReportStatusLabels: Record<WeeklyReportStatus | 'NONE', strin
   NONE: 'Chưa có',
   DRAFT: 'Nháp',
   SUBMITTED: 'Đã gửi',
-  APPROVED: 'Đã duyệt',
-  NEEDS_REVISION: 'Cần sửa',
+  APPROVED: 'Đã phê duyệt',
+  NEEDS_REVISION: 'Cần bổ sung',
 };
 
 export const businessTabs: Array<{ value: BusinessTab; label: string }> = [

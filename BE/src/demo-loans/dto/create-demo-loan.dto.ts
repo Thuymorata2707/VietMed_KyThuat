@@ -1,12 +1,17 @@
+import { DemoLoanMachineUse } from '@prisma/client';
 import {
   IsArray,
   IsDateString,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
 } from 'class-validator';
 
 export class CreateDemoLoanDto {
+  @IsEnum(DemoLoanMachineUse)
+  machineUse!: DemoLoanMachineUse;
+
   @IsString()
   @IsNotEmpty()
   machineId!: string;

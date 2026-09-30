@@ -58,6 +58,7 @@ export class CustomersService {
           province: province?.name || dto.province?.trim() || null,
           provinceId: province?.id || null,
           district: dto.district?.trim() || null,
+          locality: dto.locality?.trim() || null,
           ward: dto.ward?.trim() || null,
           address: dto.address?.trim() || null,
           fullAddress: this.buildFullAddress(dto, province?.name),
@@ -396,6 +397,10 @@ export class CustomersService {
             dto.district === undefined
               ? undefined
               : dto.district?.trim() || null,
+          locality:
+            dto.locality === undefined
+              ? undefined
+              : dto.locality?.trim() || null,
           ward: dto.ward === undefined ? undefined : dto.ward?.trim() || null,
           address:
             dto.address === undefined ? undefined : dto.address?.trim() || null,
@@ -440,6 +445,7 @@ export class CustomersService {
             'contactEmail',
             'province',
             'district',
+            'locality',
             'ward',
             'address',
             'fullAddress',
@@ -722,7 +728,7 @@ export class CustomersService {
       return dto.fullAddress.trim();
     }
 
-    const addressParts = [dto.address, dto.ward, dto.district, provinceName || dto.province]
+    const addressParts = [dto.address, dto.locality, dto.ward, dto.district, provinceName || dto.province]
       .map((part) => part?.trim())
       .filter(Boolean);
 

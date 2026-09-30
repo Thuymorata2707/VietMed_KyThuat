@@ -56,10 +56,10 @@ export const displayLabels: Record<string, string> = {
   IMAGING: 'Chẩn đoán hình ảnh',
   TRUE: 'Có',
   FALSE: 'Không',
-  PENDING_REVIEW: 'Chờ xác nhận',
-  VERIFIED: 'Đã xác nhận',
+  PENDING_REVIEW: 'Chờ xác minh',
+  VERIFIED: 'Đã xác minh',
   NEEDS_UPDATE: 'Cần bổ sung',
-  ADMIN: 'Admin tạo',
+  ADMIN: 'Quản trị viên tạo',
   ENGINEER: 'Kỹ sư tạo',
   SYSTEM: 'Hệ thống tạo',
 };

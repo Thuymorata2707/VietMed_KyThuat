@@ -284,7 +284,7 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
           ) : null}
           <button className="secondary-button" disabled={loading} onClick={() => void catalogQuery.refetch()} type="button">
             {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-            {loading ? 'Loading' : 'Refresh'}
+            {loading ? 'Đang tải' : 'Làm mới dữ liệu'}
           </button>
         </div>
       </div>
@@ -407,7 +407,7 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
       const result = await apiFetch<MachineModelDetail>(`/machine-models/${modelId}`);
       const group = result.businessLine?.productIndustry?.expertiseGroup;
       if (role === 'engineer' && userExpertise.length && (!group || !userExpertise.includes(group))) {
-        throw new Error('Bạn không có quyền xem model của ngành hàng này.');
+        throw new Error('Tài khoản không có quyền xem model thuộc ngành hàng này.');
       }
       return result;
     },
@@ -647,7 +647,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
         ...current,
         machineRows: '',
         manufacturingDate: '',
-        warehouseImportDate: new Date().toISOString().slice(0, 10),
+        warehouseImportDate: todayDateInputValue(),
         accessoriesText: buildTemplateAccessoriesText(model),
       }));
       await Promise.all([
@@ -692,7 +692,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
     event.preventDefault();
 
     if (!canAddProduct) {
-      setFormError('Bạn không có quyền thêm sản phẩm.');
+      setFormError('Tài khoản không có quyền thêm sản phẩm.');
       return;
     }
 
@@ -1035,7 +1035,7 @@ function ProductMachineRowsEditor({
       </div>
 
       <details className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-3 py-2">
-        <summary className="cursor-pointer text-sm font-semibold text-[#475569]">Dán nhanh nhiều dòng</summary>
+        <summary className="cursor-pointer text-sm font-semibold text-[#475569]">Nhập danh sách từ văn bản</summary>
         <textarea
           className="mt-3 min-h-28 w-full rounded-xl border border-[#cbd5e1] bg-[#fbfdff] px-3 py-2 font-mono text-sm leading-6 text-[#172033] outline-none transition placeholder:font-sans placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
           onBlur={(event) => {
@@ -1599,7 +1599,7 @@ function ModelDetailBlock({
               </label>
               <button className="primary-button compact mt-3" disabled={savingImage} onClick={onSaveImage} type="button">
                 {savingImage ? <Loader2 className="spin-icon" size={16} /> : <Save size={16} />}
-                {savingImage ? 'Saving' : 'Save'}
+                {savingImage ? 'Đang lưu' : 'Lưu hình ảnh'}
               </button>
             </div>
           ) : null}
@@ -1990,12 +1990,19 @@ function productNoteText(model: MachineModel) {
     .join('\n');
 }
 
+function todayDateInputValue() {
+  const date = new Date();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 function emptyProductForm(machineModelId: string): ProductForm {
   return {
     machineModelId,
     machineRows: '',
     manufacturingDate: '',
-    warehouseImportDate: new Date().toISOString().slice(0, 10),
+    warehouseImportDate: todayDateInputValue(),
     accessoriesText: '',
   };
 }

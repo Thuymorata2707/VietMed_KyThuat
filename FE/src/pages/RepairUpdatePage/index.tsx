@@ -296,7 +296,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
       }
 
       if (response.deleteRequested) {
-        setSuccess('Đã gửi yêu cầu xóa, chờ admin duyệt.');
+        setSuccess('Đã gửi yêu cầu xóa phiếu, chờ quản trị viên phê duyệt.');
         await loadDetail();
       }
     } catch (err) {
@@ -322,7 +322,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
         return;
       }
 
-      setSuccess(approved ? 'Đã duyệt xóa phiếu sửa chữa.' : 'Đã từ chối yêu cầu xóa phiếu sửa chữa.');
+      setSuccess(approved ? 'Đã phê duyệt yêu cầu xóa phiếu sửa chữa.' : 'Đã từ chối yêu cầu xóa phiếu sửa chữa.');
       await loadDetail();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không duyệt được yêu cầu xóa phiếu.');
@@ -580,7 +580,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
               onUpload={attachmentsPanel.uploadAttachment}
               onView={attachmentsPanel.viewAttachment}
               options={attachmentOptionsByKind.repair}
-              titlePlaceholder="VD: Ảnh serial trước sửa chữa"
+              titlePlaceholder=""
               uploading={attachmentsPanel.uploadingAttachment}
             />
 
@@ -616,7 +616,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
           loading={saving}
           onCancel={() => setShowDeleteConfirm(false)}
           onConfirm={() => void deleteTicket()}
-          title="Bạn sắp xóa phiếu sửa chữa này"
+          title="Xác nhận xóa phiếu sửa chữa"
           warning="Phiếu và dữ liệu liên kết sẽ bị xóa vĩnh viễn. Kỹ sư có thể tạo lại phiếu sau đó."
         />
       ) : null}

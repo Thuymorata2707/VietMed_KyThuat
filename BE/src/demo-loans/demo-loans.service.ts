@@ -8,11 +8,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  DemoLoanMachineUse,
+  DemoMachineCategory,
   DemoLoanStatus,
+  DemoPreparationStatus,
+  DeviceServiceTicketStatus,
   InventoryMovementType,
+  MaintenanceStatus,
   MachineInventoryStatus,
   MachineStatus,
   Prisma,
+  RepairStatus,
 } from '@prisma/client';
 import {
   demoLoanAccessWhere,
@@ -32,7 +38,10 @@ import { UpdateDemoLoanDto } from './dto/update-demo-loan.dto';
 
 @Injectable()
 export class DemoLoansService {
-  constructor(private readonly prisma: PrismaService, private readonly auditLogsService: AuditLogsService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   async findAll(
     query: ListDemoLoansQueryDto,
@@ -45,7 +54,7 @@ export class DemoLoansService {
       AND: [demoLoanAccessWhere(user), this.buildWhere(query, user)],
     };
 
-    await this.refreshOverdueLoans(user);
+    await this.refreshOverdueLoans();
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.demoLoan.findMany({
@@ -71,6 +80,7 @@ export class DemoLoansService {
 
   async findOne(id: string, user?: RequestUser) {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_READ);
+    await this.refreshOverdueLoans();
     const item = await this.prisma.demoLoan.findFirst({
       where: { AND: [{ id }, demoLoanAccessWhere(user)] },
       include: this.defaultInclude(),
@@ -110,6 +120,72 @@ export class DemoLoansService {
         'Only IN_STOCK or RETURNED machines can be assigned for demo',
       );
     }
+    if (machine.demoPreparationStatus === DemoPreparationStatus.REQUIRED) {
+      throw new BadRequestException(
+        'Complete demo cleaning and repacking before reusing this machine',
+      );
+    }
+    const returnedReadyForDemo =
+      machine.inventoryStatus === MachineInventoryStatus.RETURNED &&
+      machine.status === MachineStatus.REPAIRING;
+    if (machine.status !== MachineStatus.ACTIVE && !returnedReadyForDemo) {
+      throw new BadRequestException(
+        'Only operational machines can be sent for demo',
+      );
+    }
+    if (returnedReadyForDemo) {
+      const [openRepair, openMaintenance, openDeviceService] =
+        await Promise.all([
+          this.prisma.repair.findFirst({
+            where: {
+              machineId: machine.id,
+              status: {
+                in: [RepairStatus.IN_PROGRESS, RepairStatus.WAITING_PARTS],
+              },
+            },
+            select: { id: true },
+          }),
+          this.prisma.maintenance.findFirst({
+            where: {
+              machineId: machine.id,
+              status: MaintenanceStatus.IN_PROGRESS,
+            },
+            select: { id: true },
+          }),
+          this.prisma.deviceServiceTicket.findFirst({
+            where: {
+              machineId: machine.id,
+              status: DeviceServiceTicketStatus.RECEIVED,
+            },
+            select: { id: true },
+          }),
+        ]);
+      if (openRepair || openMaintenance || openDeviceService) {
+        throw new BadRequestException(
+          'Finish the open service work before sending the machine for demo',
+        );
+      }
+    }
+    const expectedUse =
+      machine.demoCategory === DemoMachineCategory.DEMO_UNIT
+        ? DemoLoanMachineUse.DEMO_UNIT
+        : machine.demoCategory === DemoMachineCategory.DEMO_USED
+          ? DemoLoanMachineUse.DEMO_USED
+          : null;
+    if (expectedUse && dto.machineUse !== expectedUse) {
+      throw new BadRequestException(
+        'Demo category must match the machine record',
+      );
+    }
+    if (
+      !expectedUse &&
+      dto.machineUse !== DemoLoanMachineUse.DEMO_UNIT &&
+      dto.machineUse !== DemoLoanMachineUse.NEW_STOCK
+    ) {
+      throw new BadRequestException(
+        'Choose dedicated demo machine or new stock for the first demo',
+      );
+    }
 
     const activeLoan = await this.prisma.demoLoan.findFirst({
       where: {
@@ -142,6 +218,8 @@ export class DemoLoansService {
         data: {
           code: await this.generateDemoLoanCode(tx),
           status: DemoLoanStatus.PLANNED,
+          machineUse: dto.machineUse,
+          previousMachineDemoCategory: machine.demoCategory,
           machineId: machine.id,
           customerId: customer.id,
           engineerId: engineer.id,
@@ -193,6 +271,12 @@ export class DemoLoansService {
         data: {
           inventoryStatus: MachineInventoryStatus.RESERVED,
           status: MachineStatus.ACTIVE,
+          demoCategory:
+            dto.machineUse === DemoLoanMachineUse.DEMO_UNIT
+              ? DemoMachineCategory.DEMO_UNIT
+              : dto.machineUse === DemoLoanMachineUse.NEW_STOCK
+                ? DemoMachineCategory.DEMO_STOCK
+                : DemoMachineCategory.DEMO_USED,
           customerId: customer.id,
           primaryEngineerId: engineer.id,
         },
@@ -200,6 +284,23 @@ export class DemoLoansService {
       if (machineUpdate.count !== 1) {
         throw new BadRequestException('Machine inventory status has changed');
       }
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.CREATE,
+          entityType: 'DemoLoan',
+          entityId: loan.id,
+          actor: user,
+          metadata: {
+            code: loan.code,
+            status: loan.status,
+            machineId: loan.machineId,
+            customerId: loan.customerId,
+            engineerId: loan.engineerId,
+          },
+        },
+        tx,
+      );
 
       return loan;
     });
@@ -214,6 +315,15 @@ export class DemoLoansService {
       current.status === DemoLoanStatus.CANCELLED
     ) {
       throw new BadRequestException('Closed demo loans cannot be edited');
+    }
+    if (
+      current.status !== DemoLoanStatus.PLANNED &&
+      dto.customerId !== undefined &&
+      dto.customerId !== current.customerId
+    ) {
+      throw new BadRequestException(
+        'Customer cannot be changed after the demo machine has been handed over',
+      );
     }
 
     if (dto.machineId && dto.machineId !== current.machineId) {
@@ -240,29 +350,67 @@ export class DemoLoansService {
       );
     }
 
-    return this.prisma.demoLoan.update({
-      where: { id },
-      data: {
-        customerId: customer.id,
-        engineerId: engineer.id,
-        plannedHandoverAt,
-        expectedReturnAt,
-        handedOverAt: dto.handedOverAt
-          ? this.parseRequiredDate(dto.handedOverAt, 'handedOverAt')
-          : undefined,
-        handoverAddress: this.cleanPatch(dto.handoverAddress),
-        receiverName: this.cleanPatch(dto.receiverName),
-        receiverPosition: this.cleanPatch(dto.receiverPosition),
-        receiverPhone: this.cleanPatch(dto.receiverPhone),
-        handoverCondition: this.cleanPatch(dto.handoverCondition),
-        handoverAccessories:
-          dto.handoverAccessories === undefined
-            ? undefined
-            : dto.handoverAccessories,
-        handoverNote: this.cleanPatch(dto.handoverNote),
-        purpose: this.cleanPatch(dto.purpose),
-      },
-      include: this.defaultInclude(),
+    return this.prisma.$transaction(async (tx) => {
+      // A planned/active loan keeps its machine reserved for this customer and
+      // engineer. Keep the machine assignment in sync when the ticket is edited.
+      const machineUpdate = await tx.machine.updateMany({
+        where: {
+          id: current.machineId,
+          inventoryStatus: MachineInventoryStatus.RESERVED,
+        },
+        data: { customerId: customer.id, primaryEngineerId: engineer.id },
+      });
+      if (machineUpdate.count !== 1) {
+        throw new BadRequestException('Demo machine is no longer reserved');
+      }
+
+      const updated = await tx.demoLoan.update({
+        where: { id },
+        data: {
+          customerId: customer.id,
+          engineerId: engineer.id,
+          plannedHandoverAt,
+          expectedReturnAt,
+          handedOverAt: dto.handedOverAt
+            ? this.parseRequiredDate(dto.handedOverAt, 'handedOverAt')
+            : undefined,
+          handoverAddress: this.cleanPatch(dto.handoverAddress),
+          receiverName: this.cleanPatch(dto.receiverName),
+          receiverPosition: this.cleanPatch(dto.receiverPosition),
+          receiverPhone: this.cleanPatch(dto.receiverPhone),
+          handoverCondition: this.cleanPatch(dto.handoverCondition),
+          handoverAccessories:
+            dto.handoverAccessories === undefined
+              ? undefined
+              : dto.handoverAccessories,
+          handoverNote: this.cleanPatch(dto.handoverNote),
+          purpose: this.cleanPatch(dto.purpose),
+        },
+        include: this.defaultInclude(),
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.UPDATE,
+          entityType: 'DemoLoan',
+          entityId: id,
+          actor: user,
+          changes: {
+            customerId: { from: current.customerId, to: updated.customerId },
+            engineerId: { from: current.engineerId, to: updated.engineerId },
+            plannedHandoverAt: {
+              from: current.plannedHandoverAt,
+              to: updated.plannedHandoverAt,
+            },
+            expectedReturnAt: {
+              from: current.expectedReturnAt,
+              to: updated.expectedReturnAt,
+            },
+          },
+        },
+        tx,
+      );
+      return updated;
     });
   }
 
@@ -276,20 +424,43 @@ export class DemoLoansService {
       );
     }
 
-    return this.prisma.demoLoan.update({
-      where: { id },
-      data: {
-        status: DemoLoanStatus.HANDED_OVER,
-        handedOverAt: dto.occurredAt
-          ? this.parseRequiredDate(dto.occurredAt, 'occurredAt')
-          : new Date(),
-        handoverCondition:
-          this.clean(dto.condition) ?? current.handoverCondition,
-        handoverAccessories:
-          dto.accessories === undefined ? undefined : dto.accessories,
-        handoverNote: this.clean(dto.note) ?? current.handoverNote,
-      },
-      include: this.defaultInclude(),
+    return this.prisma.$transaction(async (tx) => {
+      const handedOverAt = dto.occurredAt
+        ? this.parseRequiredDate(dto.occurredAt, 'occurredAt')
+        : new Date();
+      const updated = await tx.demoLoan.updateMany({
+        where: { id, status: DemoLoanStatus.PLANNED },
+        data: {
+          status: DemoLoanStatus.HANDED_OVER,
+          handedOverAt,
+          handoverCondition:
+            this.clean(dto.condition) ?? current.handoverCondition,
+          handoverAccessories:
+            dto.accessories === undefined ? undefined : dto.accessories,
+          handoverNote: this.clean(dto.note) ?? current.handoverNote,
+        },
+      });
+      if (updated.count !== 1) {
+        throw new BadRequestException('Demo loan has already been handed over');
+      }
+      const loan = await tx.demoLoan.findUniqueOrThrow({
+        where: { id },
+        include: this.defaultInclude(),
+      });
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.STATUS_CHANGE,
+          entityType: 'DemoLoan',
+          entityId: id,
+          actor: user,
+          changes: {
+            status: { from: current.status, to: loan.status },
+            handedOverAt: { from: current.handedOverAt, to: handedOverAt },
+          },
+        },
+        tx,
+      );
+      return loan;
     });
   }
 
@@ -300,10 +471,11 @@ export class DemoLoansService {
     const returnableStatuses: DemoLoanStatus[] = [
       DemoLoanStatus.HANDED_OVER,
       DemoLoanStatus.OVERDUE,
-      DemoLoanStatus.PLANNED,
     ];
     if (!returnableStatuses.includes(current.status)) {
-      throw new BadRequestException('Demo loan is already closed');
+      throw new BadRequestException(
+        'Only handed-over or overdue demo loans can be returned; cancel planned loans instead',
+      );
     }
 
     const machine = await this.ensureMachine(current.machineId);
@@ -316,6 +488,10 @@ export class DemoLoansService {
       MachineInventoryStatus.RETURNED,
       current.customerId,
     );
+    const needsPreparation =
+      current.machineUse === DemoLoanMachineUse.NEW_STOCK ||
+      current.machineUse === DemoLoanMachineUse.DEMO_USED ||
+      Boolean(dto.requiresRepair);
 
     return this.prisma.$transaction(async (tx) => {
       const loanUpdate = await tx.demoLoan.updateMany({
@@ -327,6 +503,10 @@ export class DemoLoansService {
           returnAccessories:
             dto.accessories === undefined ? undefined : dto.accessories,
           returnNote: this.clean(dto.note),
+          preparationStatus: needsPreparation
+            ? DemoPreparationStatus.REQUIRED
+            : DemoPreparationStatus.NOT_REQUIRED,
+          returnRequiresRepair: dto.requiresRepair ?? false,
         },
       });
       if (loanUpdate.count !== 1) {
@@ -357,16 +537,170 @@ export class DemoLoansService {
           inventoryStatus: machine.inventoryStatus,
         },
         data: {
-          inventoryStatus: MachineInventoryStatus.RETURNED,
-          status: MachineStatus.REPAIRING,
+          inventoryStatus: needsPreparation
+            ? MachineInventoryStatus.RETURNED
+            : MachineInventoryStatus.IN_STOCK,
+          status: needsPreparation
+            ? MachineStatus.REPAIRING
+            : MachineStatus.ACTIVE,
+          demoCategory:
+            current.machineUse === DemoLoanMachineUse.NEW_STOCK
+              ? DemoMachineCategory.DEMO_USED
+              : undefined,
+          demoPreparationStatus: needsPreparation
+            ? DemoPreparationStatus.REQUIRED
+            : DemoPreparationStatus.NOT_REQUIRED,
           customerId: null,
         },
       });
       if (machineUpdate.count !== 1) {
         throw new BadRequestException('Machine inventory status has changed');
       }
+      if (!needsPreparation) {
+        await tx.machineInventoryMovement.create({
+          data: {
+            code: await this.generateMovementCode(tx),
+            type: InventoryMovementType.ADJUST_STATUS,
+            machineId: machine.id,
+            fromStatus: MachineInventoryStatus.RETURNED,
+            toStatus: MachineInventoryStatus.IN_STOCK,
+            occurredAt: returnedAt,
+            note: `Ready for demo after loan ${loan.code}`,
+            createdById: user?.id || null,
+          },
+        });
+      }
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.STATUS_CHANGE,
+          entityType: 'DemoLoan',
+          entityId: id,
+          actor: user,
+          changes: {
+            status: { from: current.status, to: loan.status },
+            returnedAt: { from: current.returnedAt, to: returnedAt },
+          },
+          metadata: {
+            machineId: machine.id,
+            fromInventoryStatus: machine.inventoryStatus,
+            toInventoryStatus: MachineInventoryStatus.RETURNED,
+          },
+        },
+        tx,
+      );
 
       return loan;
+    });
+  }
+
+  async completePreparation(
+    id: string,
+    dto: CompleteDemoLoanDto,
+    user?: RequestUser,
+  ) {
+    assertPermission(user, PERMISSIONS.DEMO_LOAN_STATUS_UPDATE);
+    const current = await this.findOne(id, user);
+    this.assertCanTouchStatus(current.engineerId, user);
+    if (
+      current.status !== DemoLoanStatus.RETURNED ||
+      current.preparationStatus !== DemoPreparationStatus.REQUIRED
+    ) {
+      throw new BadRequestException(
+        'This returned machine does not need demo preparation',
+      );
+    }
+    if (current.returnRequiresRepair) {
+      const completedRepair = await this.prisma.repair.findFirst({
+        where: {
+          machineId: current.machineId,
+          status: 'COMPLETED',
+          completedAt: { gte: current.returnedAt ?? current.updatedAt },
+        },
+        select: { id: true },
+      });
+      if (!completedRepair) {
+        throw new BadRequestException(
+          'Complete a repair ticket before finalizing the returned machine',
+        );
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedLoan = await tx.demoLoan.updateMany({
+        where: {
+          id,
+          status: DemoLoanStatus.RETURNED,
+          preparationStatus: DemoPreparationStatus.REQUIRED,
+        },
+        data: {
+          preparationStatus: DemoPreparationStatus.COMPLETED,
+          preparedAt: new Date(),
+          preparationNote: this.clean(dto.note),
+        },
+      });
+      if (updatedLoan.count !== 1) {
+        throw new BadRequestException(
+          'Demo preparation has already been completed',
+        );
+      }
+
+      const updatedMachine = await tx.machine.updateMany({
+        where: {
+          id: current.machineId,
+          demoPreparationStatus: DemoPreparationStatus.REQUIRED,
+          inventoryStatus: MachineInventoryStatus.RETURNED,
+        },
+        data: {
+          inventoryStatus: MachineInventoryStatus.IN_STOCK,
+          demoPreparationStatus: DemoPreparationStatus.COMPLETED,
+          status: MachineStatus.ACTIVE,
+        },
+      });
+      if (updatedMachine.count !== 1) {
+        throw new BadRequestException(
+          'Machine preparation state has changed; refresh and try again',
+        );
+      }
+
+      await tx.machineInventoryMovement.create({
+        data: {
+          code: await this.generateMovementCode(tx),
+          type: InventoryMovementType.ADJUST_STATUS,
+          machineId: current.machineId,
+          fromStatus: MachineInventoryStatus.RETURNED,
+          toStatus: MachineInventoryStatus.IN_STOCK,
+          occurredAt: new Date(),
+          note: `Demo preparation completed ${current.code}`,
+          createdById: user?.id || null,
+        },
+      });
+
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.STATUS_CHANGE,
+          entityType: 'DemoLoan',
+          entityId: id,
+          actor: user,
+          changes: {
+            preparationStatus: {
+              from: DemoPreparationStatus.REQUIRED,
+              to: DemoPreparationStatus.COMPLETED,
+            },
+            preparationNote: {
+              from: null,
+              to: this.clean(dto.note),
+            },
+          },
+          metadata: { machineId: current.machineId },
+        },
+        tx,
+      );
+
+      return tx.demoLoan.findUniqueOrThrow({
+        where: { id },
+        include: this.defaultInclude(),
+      });
     });
   }
 
@@ -379,6 +713,11 @@ export class DemoLoansService {
       current.status === DemoLoanStatus.CANCELLED
     ) {
       throw new BadRequestException('Demo loan is already closed');
+    }
+    if (current.status !== DemoLoanStatus.PLANNED) {
+      throw new BadRequestException(
+        'Only planned demo loans can be cancelled; return a handed-over machine instead',
+      );
     }
     const machine = await this.ensureMachine(current.machineId);
 
@@ -396,13 +735,18 @@ export class DemoLoansService {
       });
 
       if (machine.inventoryStatus === MachineInventoryStatus.RESERVED) {
+        const restoreInventoryStatus = await this.getReservationSourceStatus(
+          tx,
+          machine.id,
+          loan.code,
+        );
         await tx.machineInventoryMovement.create({
           data: {
             code: await this.generateMovementCode(tx),
             type: InventoryMovementType.ADJUST_STATUS,
             machineId: machine.id,
             fromStatus: MachineInventoryStatus.RESERVED,
-            toStatus: MachineInventoryStatus.IN_STOCK,
+            toStatus: restoreInventoryStatus,
             occurredAt: new Date(),
             note: `Cancel demo loan ${loan.code}`,
             customerId: current.customerId,
@@ -415,9 +759,14 @@ export class DemoLoansService {
             inventoryStatus: MachineInventoryStatus.RESERVED,
           },
           data: {
-            inventoryStatus: MachineInventoryStatus.IN_STOCK,
-            status: MachineStatus.ACTIVE,
+            inventoryStatus: restoreInventoryStatus,
+            status:
+              restoreInventoryStatus === MachineInventoryStatus.RETURNED
+                ? MachineStatus.REPAIRING
+                : MachineStatus.ACTIVE,
+            demoCategory: current.previousMachineDemoCategory,
             customerId: null,
+            primaryEngineerId: null,
           },
         });
         if (machineUpdate.count !== 1) {
@@ -425,23 +774,53 @@ export class DemoLoansService {
         }
       }
 
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.STATUS_CHANGE,
+          entityType: 'DemoLoan',
+          entityId: id,
+          actor: user,
+          changes: {
+            status: { from: current.status, to: loan.status },
+          },
+          metadata: { machineId: current.machineId },
+        },
+        tx,
+      );
+
       return loan;
     });
   }
 
   async remove(id: string, user: RequestUser) {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_DELETE);
-    if (!isAdmin(user)) throw new ForbiddenException('Only administrators can delete demo loans');
+    if (!isAdmin(user))
+      throw new ForbiddenException('Only administrators can delete demo loans');
     const current = await this.findOne(id, user);
+    if (
+      current.status === DemoLoanStatus.HANDED_OVER ||
+      current.status === DemoLoanStatus.OVERDUE
+    ) {
+      throw new BadRequestException(
+        'A handed-over demo loan cannot be deleted; return the machine first',
+      );
+    }
     return this.prisma.$transaction(async (tx) => {
-      if (current.machine?.inventoryStatus === MachineInventoryStatus.RESERVED) {
+      if (
+        current.machine?.inventoryStatus === MachineInventoryStatus.RESERVED
+      ) {
+        const restoreInventoryStatus = await this.getReservationSourceStatus(
+          tx,
+          current.machineId,
+          current.code,
+        );
         await tx.machineInventoryMovement.create({
           data: {
             code: await this.generateMovementCode(tx),
             type: InventoryMovementType.ADJUST_STATUS,
             machineId: current.machineId,
             fromStatus: MachineInventoryStatus.RESERVED,
-            toStatus: MachineInventoryStatus.IN_STOCK,
+            toStatus: restoreInventoryStatus,
             occurredAt: new Date(),
             note: `Delete demo loan ${current.code}`,
             customerId: current.customerId,
@@ -449,19 +828,40 @@ export class DemoLoansService {
           },
         });
         const updated = await tx.machine.updateMany({
-          where: { id: current.machineId, inventoryStatus: MachineInventoryStatus.RESERVED },
-          data: { inventoryStatus: MachineInventoryStatus.IN_STOCK, status: MachineStatus.ACTIVE, customerId: null },
+          where: {
+            id: current.machineId,
+            inventoryStatus: MachineInventoryStatus.RESERVED,
+          },
+          data: {
+            inventoryStatus: restoreInventoryStatus,
+            status:
+              restoreInventoryStatus === MachineInventoryStatus.RETURNED
+                ? MachineStatus.REPAIRING
+                : MachineStatus.ACTIVE,
+            demoCategory: current.previousMachineDemoCategory,
+            customerId: null,
+            primaryEngineerId: null,
+          },
         });
-        if (updated.count !== 1) throw new BadRequestException('Machine inventory status has changed');
+        if (updated.count !== 1)
+          throw new BadRequestException('Machine inventory status has changed');
       }
       await tx.demoLoan.delete({ where: { id } });
-      await this.auditLogsService.create({
-        action: AUDIT_ACTIONS.DELETE,
-        entityType: 'DemoLoan',
-        entityId: id,
-        actor: user,
-        metadata: { code: current.code, status: current.status, machineId: current.machineId, customerId: current.customerId },
-      }, tx);
+      await this.auditLogsService.create(
+        {
+          action: AUDIT_ACTIONS.DELETE,
+          entityType: 'DemoLoan',
+          entityId: id,
+          actor: user,
+          metadata: {
+            code: current.code,
+            status: current.status,
+            machineId: current.machineId,
+            customerId: current.customerId,
+          },
+        },
+        tx,
+      );
       return { deleted: true };
     });
   }
@@ -476,6 +876,8 @@ export class DemoLoansService {
   ): Prisma.DemoLoanWhereInput {
     const where: Prisma.DemoLoanWhereInput = {};
     if (query.status) where.status = query.status;
+    if (query.preparationStatus)
+      where.preparationStatus = query.preparationStatus;
     if (query.customerId) where.customerId = query.customerId;
     if (query.machineId) where.machineId = query.machineId;
     if (query.engineerId && (isAdmin(user) || isManager(user)))
@@ -513,8 +915,7 @@ export class DemoLoansService {
     return where;
   }
 
-  private async refreshOverdueLoans(user?: RequestUser) {
-    if (!isAdmin(user) && !isManager(user)) return;
+  private async refreshOverdueLoans() {
     await this.prisma.demoLoan.updateMany({
       where: {
         status: DemoLoanStatus.HANDED_OVER,
@@ -604,6 +1005,25 @@ export class DemoLoansService {
     const day = String(now.getDate()).padStart(2, '0');
     const prefix = `INV-${year}${month}${day}`;
     return sequenceCode(tx, 'inventory', prefix, 4, false);
+  }
+
+  private async getReservationSourceStatus(
+    tx: Prisma.TransactionClient,
+    machineId: string,
+    demoLoanCode: string,
+  ) {
+    const reservation = await tx.machineInventoryMovement.findFirst({
+      where: {
+        machineId,
+        type: InventoryMovementType.RESERVE,
+        toStatus: MachineInventoryStatus.RESERVED,
+        note: `Demo loan ${demoLoanCode}`,
+      },
+      orderBy: { occurredAt: 'desc' },
+      select: { fromStatus: true },
+    });
+
+    return reservation?.fromStatus ?? MachineInventoryStatus.IN_STOCK;
   }
 
   private defaultInclude() {

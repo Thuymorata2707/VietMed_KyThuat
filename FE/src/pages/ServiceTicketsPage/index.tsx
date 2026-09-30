@@ -46,6 +46,9 @@ type MachineSummary = {
   serialNumber?: string | null;
   modelName?: string | null;
   inventoryStatus?: string | null;
+  status?: string | null;
+  demoCategory?: 'DEMO_UNIT' | 'DEMO_STOCK' | 'DEMO_USED' | null;
+  demoPreparationStatus?: 'NOT_REQUIRED' | 'REQUIRED' | 'COMPLETED' | null;
   warrantyStartDate?: string | null;
   warrantyEndDate?: string | null;
   productCategory?: string | null;
@@ -60,6 +63,8 @@ type MachineSummary = {
     name?: string | null;
     hospitalName?: string | null;
     province?: string | null;
+    fullAddress?: string | null;
+    address?: string | null;
   } | null;
 };
 
@@ -80,6 +85,11 @@ type DemoLoanRow = {
   id: string;
   code: string;
   status: 'PLANNED' | 'HANDED_OVER' | 'OVERDUE' | 'RETURNED' | 'CANCELLED';
+  machineUse?: 'DEMO_UNIT' | 'NEW_STOCK' | 'DEMO_USED' | 'UNKNOWN';
+  preparationStatus?: 'NOT_REQUIRED' | 'REQUIRED' | 'COMPLETED';
+  preparedAt?: string | null;
+  preparationNote?: string | null;
+  returnRequiresRepair?: boolean;
   plannedHandoverAt: string;
   handedOverAt?: string | null;
   expectedReturnAt: string;
@@ -105,6 +115,7 @@ type DemoReturnDraft = {
   condition: string;
   loan: DemoLoanRow;
   note: string;
+  needsRepair: boolean;
   occurredAt: string;
 };
 
@@ -217,9 +228,12 @@ type ServiceRow = {
     name?: string | null;
     hospitalName?: string | null;
     province?: string | null;
+    fullAddress?: string | null;
+    address?: string | null;
   } | null;
   machine?: MachineSummary | null;
   usingDepartment?: string | null;
+  address?: string | null;
 };
 
 type InstallationRow = {
@@ -242,6 +256,8 @@ type InstallationRow = {
     name?: string | null;
     hospitalName?: string | null;
     province?: string | null;
+    fullAddress?: string | null;
+    address?: string | null;
   } | null;
   businessLine?: {
     name?: string | null;
@@ -279,10 +295,11 @@ type BoardItem = {
   updatedAt?: string | null;
   engineer?: EngineerOption | null;
   machine?: MachineSummary | null;
-  customer?: { name?: string | null; hospitalName?: string | null; province?: string | null } | null;
+  customer?: { name?: string | null; hospitalName?: string | null; province?: string | null; fullAddress?: string | null; address?: string | null } | null;
   productIndustry?: string | null;
   warrantyEndDate?: string | null;
   secondary?: string | null;
+  address?: string | null;
   urgency?: string | null;
 };
 
@@ -369,7 +386,7 @@ const queues: Array<{ key: QueueKey; label: string }> = [
   { key: 'all', label: 'Tất cả phiếu' },
   { key: 'action', label: 'Cần xử lý' },
   { key: 'active', label: 'Đang làm' },
-  { key: 'review', label: 'Chờ xác nhận' },
+  { key: 'review', label: 'Chờ phê duyệt' },
   { key: 'closed', label: 'Đã xong' },
 ];
 
@@ -753,6 +770,7 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
   const [search, setSearch] = useState(initialSearch);
   const debouncedSearch = useDebouncedValue(search);
   const [status, setStatus] = useState('');
+  const [preparationStatus, setPreparationStatus] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [formError, setFormError] = useState('');
@@ -760,22 +778,26 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
   const [returnDraft, setReturnDraft] = useState<DemoReturnDraft | null>(null);
   const [selectedLoan, setSelectedLoan] = useState<DemoLoanRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DemoLoanRow | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
   const listParams = useMemo(() => {
-    const params = new URLSearchParams({ limit: '100' });
+    const params = new URLSearchParams({ limit: String(pageSize), page: String(page) });
     if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
     if (status) params.set('status', status);
+    if (preparationStatus) params.set('preparationStatus', preparationStatus);
     if (dateFrom) params.set('from', dateFrom);
     if (dateTo) params.set('to', dateTo);
     return params.toString();
-  }, [dateFrom, dateTo, debouncedSearch, status]);
+  }, [dateFrom, dateTo, debouncedSearch, page, preparationStatus, status]);
 
   const loansQuery = useQuery({
     queryKey: ['demo-loans', listParams],
-    queryFn: () => apiFetchAllPages<DemoLoanRow>(`/demo-loans?${listParams}`),
+    queryFn: () => apiFetch<Paginated<DemoLoanRow>>(`/demo-loans?${listParams}`),
   });
 
-  const loans = loansQuery.data ?? [];
+  const loans = loansQuery.data?.data ?? [];
+  const loanMeta = loansQuery.data?.meta;
   const summary = demoLoanSummary(loans);
 
   useEffect(() => {
@@ -784,10 +806,10 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
   }, [initialDetailId, loans]);
 
   const actionMutation = useMutation({
-    mutationFn: ({ action, id, payload }: { action: 'handover' | 'return'; id: string; payload?: Record<string, unknown> }) =>
+    mutationFn: ({ action, id, payload }: { action: 'handover' | 'return' | 'prepare' | 'cancel'; id: string; payload?: Record<string, unknown> }) =>
       apiFetch<DemoLoanRow>(`/demo-loans/${id}/${action}`, {
         method: 'POST',
-        body: JSON.stringify(payload ?? { occurredAt: new Date().toISOString() }),
+        body: action === 'cancel' ? undefined : JSON.stringify(payload ?? (action === 'handover' ? { occurredAt: new Date().toISOString() } : {})),
       }),
     onSuccess: () => {
       setSuccess('Đã cập nhật trạng thái phiếu demo.');
@@ -815,12 +837,15 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
     setSuccess('');
     setReturnDraft({
       accessoriesText: (loan.handoverAccessories ?? []).join('\n'),
-      condition: 'Máy đã nhận lại, tình trạng cần kiểm tra tại kho.',
+      condition: 'Máy nhận đủ và hoạt động bình thường.',
       loan,
       note: '',
-      occurredAt: new Date().toISOString().slice(0, 10),
+      needsRepair: false,
+      occurredAt: toDateInput(new Date()),
     });
   }
+
+  useEffect(() => setPage(1), [debouncedSearch, status, preparationStatus, dateFrom, dateTo]);
 
   function submitReturnDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -834,6 +859,7 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
           .map((item) => item.trim())
           .filter(Boolean),
         condition: returnDraft.condition,
+        requiresRepair: returnDraft.needsRepair,
         note: returnDraft.note,
         occurredAt: returnDraft.occurredAt,
       },
@@ -868,19 +894,19 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
       </div>
 
       <section className="grid gap-3 sm:grid-cols-4">
-        <DemoMetric label="Đang demo" tone="warn" value={summary.active} />
-        <DemoMetric label="Quá hạn" tone="danger" value={summary.overdue} />
-        <DemoMetric label="Sắp thu hồi" tone="warn" value={summary.dueSoon} />
-        <DemoMetric label="Đã thu hồi" tone="good" value={summary.returned} />
+        <DemoMetric label="Đang demo · trang này" tone="warn" value={summary.active} />
+        <DemoMetric label="Quá hạn · trang này" tone="danger" value={summary.overdue} />
+        <DemoMetric label="Sắp thu hồi · trang này" tone="warn" value={summary.dueSoon} />
+        <DemoMetric label="Cần xử lý sau thu hồi · trang này" tone="warn" value={summary.preparationRequired} />
       </section>
 
       {formError ? <Notice message={formError} /> : null}
       {success ? <Notice message={success} /> : null}
 
       <section className="grid gap-3 rounded-[24px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]">
-        <div className="grid gap-3 min-[980px]:grid-cols-[minmax(0,1fr)_180px_160px_160px] min-[980px]:items-end">
+        <div className="grid gap-3 min-[1280px]:grid-cols-[minmax(0,1fr)_150px_190px_150px_150px] min-[1280px]:items-end">
           <label className="operation-filter-field">
-            <span>Tìm nhanh</span>
+            <span>Tra cứu</span>
             <input onChange={(event) => setSearch(event.target.value)} placeholder="Mã phiếu, khách hàng, serial..." value={search} />
           </label>
           <label className="operation-filter-field">
@@ -892,6 +918,15 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
               <option value="OVERDUE">Quá hạn</option>
               <option value="RETURNED">Đã thu hồi</option>
               <option value="CANCELLED">Đã hủy</option>
+            </select>
+          </label>
+          <label className="operation-filter-field">
+            <span>Sau thu hồi</span>
+            <select onChange={(event) => setPreparationStatus(event.target.value)} value={preparationStatus}>
+              <option value="">Tất cả</option>
+              <option value="REQUIRED">Chờ xử lý</option>
+              <option value="COMPLETED">Đã xử lý</option>
+              <option value="NOT_REQUIRED">Không cần xử lý</option>
             </select>
           </label>
           <DateInput label="Từ ngày" onChange={setDateFrom} value={dateFrom} />
@@ -917,6 +952,7 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
             {loans.map((loan) => (
               <DemoLoanCard
                 actionLoading={actionMutation.isPending || deleteMutation.isPending}
+                canCancel={canManage}
                 canUpdate={canManage || loan.engineer?.id === user.id}
                 isAdmin={role === 'admin'}
                 key={loan.id}
@@ -925,10 +961,13 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
                 onView={() => setSelectedLoan(loan)}
                 onHandOver={() => actionMutation.mutate({ action: 'handover', id: loan.id })}
                 onReturn={() => openReturnDraft(loan)}
+                onPrepare={() => actionMutation.mutate({ action: 'prepare', id: loan.id })}
+                onCancelPlanned={() => actionMutation.mutate({ action: 'cancel', id: loan.id })}
               />
             ))}
           </div>
         ) : null}
+        {loanMeta ? <RegisterTablePager disabled={loansQuery.isFetching} page={loanMeta.page} pageSize={loanMeta.limit} total={loanMeta.total} totalPages={Math.max(1, loanMeta.totalPages)} onPageChange={setPage} /> : null}
       </section>
 
       {returnDraft ? (
@@ -953,7 +992,7 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
           loading={deleteMutation.isPending}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => deleteMutation.mutate(deleteTarget)}
-          title="Bạn sắp xóa phiếu demo này"
+          title="Xác nhận xóa phiếu demo"
           warning="Máy giữ chỗ sẽ về kho. Phiếu và lịch sử liên quan sẽ bị xóa."
         />
       ) : null}
@@ -973,20 +1012,26 @@ function DemoMetric({ label, tone, value }: { label: string; tone: 'good' | 'war
 
 function DemoLoanCard({
   actionLoading,
+  canCancel,
   canUpdate,
   isAdmin,
   loan,
   onDelete,
   onHandOver,
+  onCancelPlanned,
+  onPrepare,
   onReturn,
   onView,
 }: {
   actionLoading: boolean;
+  canCancel: boolean;
   canUpdate: boolean;
   isAdmin: boolean;
   loan: DemoLoanRow;
   onDelete: () => void;
   onHandOver: () => void;
+  onCancelPlanned: () => void;
+  onPrepare: () => void;
   onReturn: () => void;
   onView: () => void;
 }) {
@@ -999,6 +1044,8 @@ function DemoLoanCard({
           {demoIsDueSoon(loan) ? <Badge tone="warn">Sắp đến hạn</Badge> : null}
         </div>
         <h3 className="truncate text-lg font-semibold text-[#202124]">{demoMachineLabel(loan.machine)}</h3>
+        {loan.machine?.demoCategory ? <Badge tone="neutral">{demoMachineCategoryLabel(loan.machine.demoCategory)}</Badge> : null}
+        {loan.preparationStatus === 'REQUIRED' ? <Badge tone={loan.returnRequiresRepair ? 'danger' : 'warn'}>{loan.returnRequiresRepair ? 'Chờ sửa chữa' : 'Chờ vệ sinh/đóng gói'}</Badge> : null}
         <div className="flex flex-wrap gap-2 text-sm font-medium text-[#667085]">
           <span>{loan.customer ? demoCustomerLabel(loan.customer) : 'Chưa có khách'}</span>
           <span>{loan.handoverAddress || loan.customer?.fullAddress || loan.customer?.address || ''}</span>
@@ -1019,10 +1066,22 @@ function DemoLoanCard({
             Đã bàn giao
           </button>
         ) : null}
-        {canUpdate && ['PLANNED', 'HANDED_OVER', 'OVERDUE'].includes(loan.status) ? (
+        {canCancel && loan.status === 'PLANNED' ? (
+          <button className="secondary-button danger rounded-2xl" disabled={actionLoading} onClick={onCancelPlanned} type="button">
+            {actionLoading ? <Loader2 className="spin-icon" size={15} /> : <X size={15} />}
+            Hủy lịch
+          </button>
+        ) : null}
+        {canUpdate && ['HANDED_OVER', 'OVERDUE'].includes(loan.status) ? (
           <button className="secondary-button rounded-2xl" disabled={actionLoading} onClick={onReturn} type="button">
             {actionLoading ? <Loader2 className="spin-icon" size={15} /> : null}
             Đã thu hồi
+          </button>
+        ) : null}
+        {canUpdate && loan.status === 'RETURNED' && loan.preparationStatus === 'REQUIRED' ? (
+          <button className="primary-button rounded-2xl" disabled={actionLoading} onClick={onPrepare} type="button">
+            {actionLoading ? <Loader2 className="spin-icon" size={15} /> : null}
+            {loan.returnRequiresRepair ? 'Hoàn tất xử lý' : 'Đã vệ sinh/đóng gói'}
           </button>
         ) : null}
       </div>
@@ -1056,6 +1115,9 @@ function DemoLoanDetailModal({ loan, onClose }: { loan: DemoLoanRow; onClose: ()
             <RegisterDetailRow label="Ngày bàn giao" value={formatTicketDate(loan.handedOverAt)} />
             <RegisterDetailRow label="Hạn thu hồi" value={formatTicketDate(loan.expectedReturnAt)} />
             <RegisterDetailRow label="Ngày thu hồi" value={formatTicketDate(loan.returnedAt)} />
+            <RegisterDetailRow label="Loại máy" value={loan.machine?.demoCategory ? demoMachineCategoryLabel(loan.machine.demoCategory) : demoMachineUseLabel(loan.machineUse)} />
+            <RegisterDetailRow label="Sau thu hồi" value={demoPreparationLabel(loan.preparationStatus, loan.returnRequiresRepair)} />
+            <RegisterDetailRow label="Sửa chữa" value={loan.returnRequiresRepair ? 'Có' : 'Không'} />
             <RegisterDetailRow label="Người nhận" value={[loan.receiverName, loan.receiverPosition, loan.receiverPhone].filter(Boolean).join(' · ')} />
           </section>
           <section className="grid content-start gap-3 md:col-span-2">
@@ -1115,6 +1177,13 @@ function DemoReturnModal({
         <div className="grid gap-3 md:grid-cols-2">
           <DateInput label="Ngày thu hồi" onChange={(value) => onChange({ occurredAt: value })} required value={draft.occurredAt} />
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+            Tình trạng máy
+            <select className="h-12 rounded-2xl border border-[#cbd5e1] bg-white px-3" onChange={(event) => onChange({ needsRepair: event.target.value === 'repair' })} value={draft.needsRepair ? 'repair' : 'normal'}>
+              <option value="normal">Bình thường</option>
+              <option value="repair">Cần kiểm tra/sửa chữa</option>
+            </select>
+          </label>
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
             Tình trạng khi nhận lại
             <textarea
               className="min-h-[104px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-semibold leading-6 text-[#172033] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
@@ -1161,7 +1230,7 @@ function demoLoanSummary(loans: DemoLoanRow[]) {
     active: loans.filter((loan) => loan.status === 'HANDED_OVER').length,
     overdue: loans.filter((loan) => loan.status === 'OVERDUE').length,
     dueSoon: loans.filter(demoIsDueSoon).length,
-    returned: loans.filter((loan) => loan.status === 'RETURNED').length,
+    preparationRequired: loans.filter((loan) => loan.preparationStatus === 'REQUIRED').length,
   };
 }
 
@@ -1179,6 +1248,26 @@ function demoStatusLabel(status: DemoLoanRow['status']) {
   if (status === 'OVERDUE') return 'Quá hạn';
   if (status === 'RETURNED') return 'Đã thu hồi';
   return 'Đã hủy';
+}
+
+function demoMachineCategoryLabel(category: NonNullable<MachineSummary['demoCategory']>) {
+  if (category === 'DEMO_UNIT') return 'Máy demo';
+  if (category === 'DEMO_USED') return 'Đã qua demo';
+  return 'Máy mới đang demo';
+}
+
+function demoMachineUseLabel(machineUse?: DemoLoanRow['machineUse']) {
+  if (machineUse === 'DEMO_UNIT') return 'Máy demo chuyên dụng';
+  if (machineUse === 'NEW_STOCK') return 'Máy mới mang đi demo';
+  if (machineUse === 'DEMO_USED') return 'Đã qua demo';
+  return 'Chưa phân loại';
+}
+
+function demoPreparationLabel(status?: DemoLoanRow['preparationStatus'], requiresRepair = false) {
+  if (status === 'REQUIRED') return requiresRepair ? 'Chờ sửa chữa' : 'Chờ vệ sinh/đóng gói';
+  if (status === 'COMPLETED') return 'Đã vệ sinh/đóng gói';
+  if (status === 'NOT_REQUIRED') return 'Không cần xử lý thêm';
+  return '—';
 }
 
 function demoMachineLabel(machine?: MachineSummary | null) {
@@ -1199,6 +1288,8 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [returnForm, setReturnForm] = useState<DeviceReturnForm | null>(null);
   const [selectedDeviceTicket, setSelectedDeviceTicket] = useState<DeviceServiceRow | null>(null);
@@ -1206,14 +1297,16 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
   const [receiveForm, setReceiveForm] = useState<DeviceReceiveForm>(() => emptyDeviceReceiveForm(user));
 
   const ticketsQuery = useQuery({
-    queryKey: queryKeys.serviceTickets.board('device-service', `${debouncedSearch}:${status}`),
+    queryKey: queryKeys.serviceTickets.board('device-service', `${debouncedSearch}:${status}:${page}`),
     queryFn: async () => {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
       if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
       if (status) params.set('status', status);
-      return apiFetchAllPages<DeviceServiceRow>(`/device-service-tickets?${params.toString()}`);
+      return apiFetch<Paginated<DeviceServiceRow>>(`/device-service-tickets?${params.toString()}`);
     },
   });
+
+  useEffect(() => setPage(1), [debouncedSearch, status]);
 
   const optionsQuery = useQuery({
     queryKey: queryKeys.serviceTickets.deviceServiceOptions,
@@ -1274,7 +1367,8 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
     },
   });
 
-  const tickets = ticketsQuery.data ?? [];
+  const tickets = ticketsQuery.data?.data ?? [];
+  const ticketMeta = ticketsQuery.data?.meta;
   const activeCount = tickets.filter((ticket) => ticket.status === 'RECEIVED').length;
   const returnedCount = tickets.filter((ticket) => ticket.status === 'RETURNED').length;
   const customers = optionsQuery.data?.customers ?? [];
@@ -1329,9 +1423,9 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
       </div>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <DemoMetric label="Đang ở phòng kỹ thuật" tone="warn" value={activeCount} />
-        <DemoMetric label="Đã trả thiết bị" tone="good" value={returnedCount} />
-        <DemoMetric label="Tổng phiếu" tone="good" value={tickets.length} />
+        <DemoMetric label="Đang ở phòng kỹ thuật · trang này" tone="warn" value={activeCount} />
+        <DemoMetric label="Đã trả thiết bị · trang này" tone="good" value={returnedCount} />
+        <DemoMetric label="Tổng phiếu" tone="good" value={ticketMeta?.total ?? 0} />
       </section>
 
       {createMutation.error instanceof Error ? <Notice message={createMutation.error.message} /> : null}
@@ -1403,7 +1497,7 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
       <section className="grid gap-3 rounded-[24px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]">
         <div className="grid gap-3 min-[860px]:grid-cols-[minmax(0,1fr)_180px]">
           <label className="operation-filter-field">
-            <span>Tìm nhanh</span>
+            <span>Tra cứu</span>
             <input onChange={(event) => setSearch(event.target.value)} placeholder="Mã phiếu, khách hàng, serial..." value={search} />
           </label>
           <label className="operation-filter-field">
@@ -1430,6 +1524,7 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
             />
           ))}
         </div>
+        {ticketMeta ? <RegisterTablePager disabled={ticketsQuery.isFetching} page={ticketMeta.page} pageSize={ticketMeta.limit} total={ticketMeta.total} totalPages={Math.max(1, ticketMeta.totalPages)} onPageChange={setPage} /> : null}
       </section>
 
       {returnForm ? (
@@ -1455,7 +1550,7 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
           loading={deleteMutation.isPending}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => deleteMutation.mutate(deleteTarget)}
-          title="Bạn sắp xóa phiếu nhận/trả thiết bị này"
+          title="Xác nhận xóa phiếu nhận/trả thiết bị"
           warning="Phiếu và lịch sử phụ kiện liên quan sẽ bị xóa. Trạng thái máy sẽ được cập nhật lại."
         />
       ) : null}
@@ -1485,6 +1580,8 @@ function OperationsBoard({
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<BoardItem | null>(null);
 
@@ -1507,11 +1604,13 @@ function OperationsBoard({
   }, [selectedItem]);
 
   const boardParams = useMemo(() => {
-    const params = new URLSearchParams({ limit: '100' });
+    const params = new URLSearchParams({ limit: String(pageSize), page: String(page) });
     if (debouncedQuery) params.set('search', debouncedQuery);
     if (productIndustryId) params.set('productIndustryId', productIndustryId);
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
     return params.toString();
-  }, [debouncedQuery, productIndustryId]);
+  }, [dateFrom, dateTo, debouncedQuery, page, productIndustryId]);
 
   const boardQuery = useQuery({
     queryKey: queryKeys.serviceTickets.board(kind, `${boardParams}&engineer=${engineerId}`),
@@ -1520,15 +1619,17 @@ function OperationsBoard({
       const responses = await Promise.all(
         scopes.map(async (scope) => {
           const endpoint = scope === 'installations' ? '/installations' : scope === 'maintenance' ? '/maintenance' : '/repairs';
-          const rows = await apiFetchAllPages<ServiceRow | InstallationRow>(
+          const result = await apiFetch<Paginated<ServiceRow | InstallationRow>>(
             `${endpoint}?${paramsForScope(boardParams, scope, engineerId)}`,
           );
-          return rows.map((row) => normalizeBoardItem(row, scope));
+          return { items: result.data.map((row) => normalizeBoardItem(row, scope)), meta: result.meta };
         }),
       );
-      return responses.flat();
+      return { items: responses.flatMap((response) => response.items), meta: responses[0]?.meta };
     },
   });
+
+  useEffect(() => setPage(1), [kind, debouncedQuery, productIndustryId, engineerId, dateFrom, dateTo, queue]);
 
   const engineersQuery = useQuery({
     queryKey: queryKeys.serviceTickets.engineers,
@@ -1539,7 +1640,7 @@ function OperationsBoard({
     },
   });
 
-  const items = useMemo(() => [...(boardQuery.data ?? [])].sort(compareBoardItemsByDateDesc), [boardQuery.data]);
+  const items = useMemo(() => [...(boardQuery.data?.items ?? [])].sort(compareBoardItemsByDateDesc), [boardQuery.data]);
   const dateFilteredItems = useMemo(() => filterByDateRange(items, dateFrom, dateTo), [dateFrom, dateTo, items]);
   const engineers = engineersQuery.data ?? [];
   const loading = boardQuery.isLoading || boardQuery.isFetching;
@@ -1602,7 +1703,7 @@ function OperationsBoard({
 
           <div className="grid gap-3 min-[980px]:grid-cols-[minmax(280px,1fr)_auto] min-[980px]:items-center">
             <label className="grid min-w-0 gap-1.5">
-              <span className="text-xs font-bold text-[#7a6367]">Tìm nhanh</span>
+              <span className="text-xs font-bold text-[#7a6367]">Tra cứu</span>
               <div className="flex min-h-12 items-center gap-3 rounded-[20px] border border-[#e4e4e7] bg-white px-4 text-[#667985] shadow-[0_12px_28px_rgba(24,24,27,0.06)] focus-within:border-[#18181b] focus-within:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]">
                 <Search size={17} />
                 <input
@@ -1681,7 +1782,7 @@ function OperationsBoard({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f4e2e4] bg-[#fafafa] px-4 py-3">
           <div>
             <h2 className="text-base font-semibold text-[#1f1f1f]">{queues.find((item) => item.key === queue)?.label}</h2>
-            <p className="mt-1 text-sm text-[#666666]">{loading ? 'Đang tải' : `${visibleItems.length} phiếu`}</p>
+            <p className="mt-1 text-sm text-[#666666]">{loading ? 'Đang tải' : `${boardQuery.data?.meta?.total ?? visibleItems.length} phiếu · Trang ${boardQuery.data?.meta?.page ?? page}/${Math.max(1, boardQuery.data?.meta?.totalPages ?? 1)}`}</p>
           </div>
         </div>
 
@@ -1717,6 +1818,8 @@ function OperationsBoard({
           </div>
         ) : null}
       </section>
+
+      {boardQuery.data?.meta ? <RegisterTablePager disabled={boardQuery.isFetching} page={boardQuery.data.meta.page} pageSize={boardQuery.data.meta.limit} total={boardQuery.data.meta.total} totalPages={Math.max(1, boardQuery.data.meta.totalPages)} onPageChange={setPage} /> : null}
 
       {selectedItem ? <TicketPreviewModal item={selectedItem} onClose={() => setSelectedItem(null)} /> : null}
     </PageFrame>
@@ -1759,7 +1862,7 @@ function TicketCard({ item, onView }: { item: BoardItem; onView: (item: BoardIte
       <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
       <div className="grid min-w-0 gap-1.5">
         <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#666666]">
-          <span>{kindLabel(item.kind)}</span>
+          <Badge tone={item.kind === 'installation' ? 'good' : 'neutral'}>{kindLabel(item.kind)}</Badge>
           <span>{item.code}</span>
           {item.date ? <span>{formatDate(item.date)}</span> : null}
           {item.productIndustry ? <span>{item.productIndustry}</span> : null}
@@ -1771,7 +1874,8 @@ function TicketCard({ item, onView }: { item: BoardItem; onView: (item: BoardIte
           ))}
         </div>
         <div className="flex flex-wrap gap-2 text-[13px] leading-5 text-[#666666]">
-          <span>{customerText(item)}</span>
+          <span><strong className="text-[#475569]">Khách hàng:</strong> {customerText(item)}</span>
+          {item.address ? <span className="basis-full truncate"><strong className="text-[#475569]">Địa chỉ:</strong> {item.address}</span> : null}
           <span>{machineText(item)}</span>
           {item.warrantyEndDate ? <WarrantyBadge value={item.warrantyEndDate} /> : null}
           {item.secondary ? <span>{item.secondary}</span> : null}
@@ -1845,7 +1949,7 @@ function TicketPreviewModal({ item, onClose }: { item: BoardItem; onClose: () =>
               </div>
               <div className="h-px bg-[#f4e2e4]" />
               <PreviewField label="Trạng thái" value={displayLabel(item.status)} />
-              <PreviewField label="Duyệt admin" value={item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? reviewLabel(item.reviewStatus) : 'Không yêu cầu'} />
+              <PreviewField label="Phê duyệt hồ sơ" value={item.reviewStatus && item.reviewStatus !== 'NOT_REQUIRED' ? reviewLabel(item.reviewStatus) : 'Không yêu cầu'} />
             </aside>
 
             <section className="grid gap-3 rounded-[24px] border border-[#e4e4e7] bg-white p-4 min-[760px]:col-span-2">
@@ -1935,6 +2039,7 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
       engineer: item.installedBy,
       machine,
       customer,
+      address: customer?.fullAddress || customer?.address || null,
       productIndustry: item.businessLine?.productIndustry?.name || machine?.businessLine?.productIndustry?.name || item.plannedMachineModel?.businessLine?.productIndustry?.name,
       warrantyEndDate: item.warrantyEndDate || item.warrantyCard?.endDate || machine?.warrantyEndDate,
       secondary: [item.businessLine?.name || item.plannedMachineModel?.businessLine?.name || machine?.businessLine?.name, item.plannedMachineModel?.displayName || item.plannedMachineModel?.name || item.plannedModelName].filter(Boolean).join(' - '),
@@ -1958,6 +2063,7 @@ function normalizeBoardItem(row: ServiceRow | InstallationRow, boardKind: BoardK
     engineer: item.engineer,
     machine: item.machine,
     customer: item.customer || item.machine?.customer || (item.usingDepartment ? { name: item.usingDepartment } : null),
+    address: item.address || item.customer?.fullAddress || item.customer?.address || null,
     productIndustry: item.machine?.businessLine?.productIndustry?.name,
     warrantyEndDate: item.machine?.warrantyEndDate,
     secondary: isMaintenance ? displayLabel(item.type || '') : displayLabel(item.priority || ''),
@@ -2089,7 +2195,7 @@ function alertBadges(item: BoardItem): Array<{ label: string; tone: 'good' | 'wa
   const badges: Array<{ label: string; tone: 'good' | 'warn' | 'danger' | 'neutral' }> = [];
 
   if (!item.engineer?.id) badges.push({ label: 'Chưa phân kỹ sư', tone: 'danger' });
-  if (item.reviewStatus === 'PENDING') badges.push({ label: hasDeleteRequestNote(item) ? 'Chờ duyệt xóa' : 'Chờ xác nhận', tone: hasDeleteRequestNote(item) ? 'danger' : 'warn' });
+  if (item.reviewStatus === 'PENDING') badges.push({ label: hasDeleteRequestNote(item) ? 'Chờ phê duyệt yêu cầu xóa' : 'Chờ phê duyệt', tone: hasDeleteRequestNote(item) ? 'danger' : 'warn' });
   if (item.reviewStatus === 'NEEDS_REVISION') badges.push({ label: 'Cần bổ sung', tone: 'danger' });
   if (item.status === 'WAITING_PARTS') badges.push({ label: 'Chờ linh kiện', tone: 'danger' });
   if (item.status === 'OVERDUE') badges.push({ label: 'Quá hạn', tone: 'danger' });
@@ -2202,8 +2308,8 @@ function reviewTone(status: string): 'good' | 'warn' | 'danger' | 'neutral' {
 }
 
 function reviewLabel(status: string) {
-  if (status === 'PENDING') return 'Chờ xác nhận';
-  if (status === 'APPROVED') return 'Đã xác nhận';
+  if (status === 'PENDING') return 'Chờ phê duyệt';
+  if (status === 'APPROVED') return 'Đã phê duyệt';
   if (status === 'NEEDS_REVISION') return 'Cần bổ sung';
   return displayLabel(status);
 }
@@ -2240,6 +2346,20 @@ function warrantyStatus(value: string): 'active' | 'expiring' | 'expired' {
 
 function paramsForScope(baseParams: string, scope: BoardKind, engineerId: string) {
   const params = new URLSearchParams(baseParams);
+  const dateFrom = params.get('dateFrom');
+  const dateTo = params.get('dateTo');
+  params.delete('dateFrom');
+  params.delete('dateTo');
+  if (scope === 'installations') {
+    if (dateFrom) params.set('installedFrom', dateFrom);
+    if (dateTo) params.set('installedTo', dateTo);
+  } else if (scope === 'maintenance') {
+    if (dateFrom) params.set('scheduledFrom', dateFrom);
+    if (dateTo) params.set('scheduledTo', dateTo);
+  } else {
+    if (dateFrom) params.set('reportedFrom', dateFrom);
+    if (dateTo) params.set('reportedTo', dateTo);
+  }
   if (engineerId) params.set(scope === 'installations' ? 'installedById' : 'engineerId', engineerId);
   return params.toString();
 }

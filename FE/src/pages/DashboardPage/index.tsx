@@ -180,7 +180,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     },
     {
       code: 'DATA-REVIEW',
-      name: 'Máy chờ xác nhận dữ liệu',
+      name: 'Máy chờ xác minh dữ liệu',
       status: (summary?.pendingReviewMachines ?? 0) > 0 ? 'Cần duyệt' : 'Ổn định',
       value: summary?.pendingReviewMachines ?? 0,
       tone: (summary?.pendingReviewMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const),
@@ -221,7 +221,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
     {
       label: 'Máy chưa xác minh',
       value: summary?.unverifiedMachines ?? 0,
-      detail: `${summary?.pendingReviewMachines ?? 0} đang chờ duyệt`,
+      detail: `${summary?.pendingReviewMachines ?? 0} máy chờ xác minh`,
       tone: (summary?.unverifiedMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const),
       href: canOpenReports ? reportsHref('details') : undefined,
     },
@@ -233,7 +233,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
       value: summary?.totalCustomers ?? 0,
       icon: <Users size={18} />,
       tone: 'neutral' as const,
-      to: canOpenReports ? '/customers' : '/my-customers',
+      to: '/customers',
     },
     {
       label: 'Máy quản lý',
@@ -273,7 +273,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
   ];
   const dataRows = [
     { label: 'Máy chưa xác minh', value: summary?.unverifiedMachines ?? 0, tone: (summary?.unverifiedMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const) },
-    { label: 'Đang chờ duyệt (trong số trên)', value: summary?.pendingReviewMachines ?? 0, tone: (summary?.pendingReviewMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const) },
+    { label: 'Máy chờ xác minh (trong số trên)', value: summary?.pendingReviewMachines ?? 0, tone: (summary?.pendingReviewMachines ?? 0) > 0 ? ('warn' as const) : ('good' as const) },
     { label: 'Phiếu chưa gắn máy', value: openTicketsWithoutMachine, tone: openTicketsWithoutMachine > 0 ? ('warn' as const) : ('good' as const) },
     { label: 'Máy kỹ sư tạo', value: summary?.engineerCreatedMachines ?? 0, tone: 'neutral' as const },
   ];
@@ -285,7 +285,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
           <div className="grid content-between gap-6 rounded-[18px] border border-[#e4e4e7] bg-white p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="inline-flex rounded-md border border-[#e4e4e7] bg-[#f4f4f5] px-3 py-2 text-[12px] font-semibold text-[#18181b]">
-                Tổng quan kỹ thuật
+                Tổng quan hoạt động
               </span>
               <button
                 className="secondary-button border-[#e4e4e7] bg-white/90 text-[#333333]"
@@ -300,7 +300,7 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
 
             <div className="max-w-[780px]">
               <h1 className="max-w-[720px] text-[clamp(30px,4vw,48px)] font-bold leading-[1.05] tracking-[-0.03em] tabular-nums text-[#171717]">
-                {loading ? 'Đang tải tổng quan' : totalOpenWork > 0 ? `${totalOpenWork} việc đang mở` : 'Không có việc đang mở'}
+                {loading ? 'Đang tải tổng quan' : totalOpenWork > 0 ? `${totalOpenWork} việc chưa hoàn tất` : 'Không có việc tồn đọng'}
               </h1>
             </div>
 
@@ -314,7 +314,8 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
           <div className="grid content-start gap-3 rounded-[18px] border border-[#e4e4e7] bg-white p-4 text-[#18212f]">
             <div className="flex items-start justify-between gap-3 border-b border-[#ededf0] pb-3">
               <div>
-                <h2 className="text-sm font-semibold text-[#3f3f46]">Việc cần chú ý</h2>
+                <h2 className="text-sm font-semibold text-[#3f3f46]">Nên xem trước</h2>
+                <p className="mt-1 text-xs leading-5 text-[#71717a]">Các nhóm việc đang cần theo dõi hoặc bổ sung.</p>
               </div>
               <span className="rounded-2xl border border-[#e4e4e7] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[#667985]">
                 {lastUpdatedAt ?? 'Chưa cập nhật'}
@@ -331,9 +332,9 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-[13px] font-semibold text-[#3f3f46]">{row.name}</span>
-                      <span className="mt-0.5 block text-[12px] font-medium text-[#71717a]">{row.status}</span>
+                      <span className="mt-0.5 block text-[12px] font-medium text-[#71717a]">{row.status} · mở danh sách</span>
                     </span>
-                    <strong className={row.tone === 'danger' ? 'text-[#09090b]' : row.tone === 'warn' ? 'text-[#996018]' : 'text-[#1b7a4c]'}>
+                    <strong aria-label={`${row.value} việc`} className={`tabular-nums ${row.tone === 'danger' ? 'text-[#09090b]' : row.tone === 'warn' ? 'text-[#996018]' : 'text-[#1b7a4c]'}`}>
                       {loading ? '-' : row.value}
                     </strong>
                   </Link>

@@ -1,0 +1,2 @@
+ALTER TABLE `Customer`
+  ADD COLUMN `locality` VARCHAR(191) NULL;

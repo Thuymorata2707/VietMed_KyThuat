@@ -18,6 +18,14 @@ export class CreateRepairDto {
 
   @IsOptional()
   @IsString()
+  resultNote?: string;
+
+  @IsOptional()
+  @IsString()
+  customerFeedback?: string;
+
+  @IsOptional()
+  @IsString()
   machineId?: string;
 
   @IsOptional()

@@ -1,4 +1,10 @@
-import { IsArray, IsDateString, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CompleteDemoLoanDto {
   @IsOptional()
@@ -17,4 +23,8 @@ export class CompleteDemoLoanDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresRepair?: boolean;
 }

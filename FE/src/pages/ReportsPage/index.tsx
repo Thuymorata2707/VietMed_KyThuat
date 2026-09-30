@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, BarChart3, CalendarDays, Download, Loader2, MapPinned, PackageCheck, Table2, Users, Wrench } from 'lucide-react';
+import { ArrowLeft, BarChart3, CalendarDays, Download, Loader2, PackageCheck, Table2, Users } from 'lucide-react';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api';
@@ -11,7 +11,7 @@ import { queryKeys } from '../../lib/queryKeys';
 import { displayLabel } from '../../utils/displayLabels';
 import { exportReportXlsx } from '../../utils/xlsxExport';
 
-type ReportView = 'summary' | 'kinds' | 'customers' | 'machines' | 'models' | 'provinces' | 'details' | 'customer';
+type ReportView = 'summary' | 'customers' | 'machines' | 'models' | 'details' | 'customer';
 type WorkKind = 'installation' | 'repair' | 'maintenance' | 'demo' | 'deviceService' | 'applicationSupport';
 
 type EngineerFilterOption = {
@@ -120,11 +120,9 @@ type TechnicalReport = {
 
 const reportTabs: Array<{ key: ReportView; label: string; icon: ReactNode }> = [
   { key: 'summary', label: 'Tổng quan', icon: <BarChart3 size={16} /> },
-  { key: 'kinds', label: 'Loại việc', icon: <Wrench size={16} /> },
   { key: 'customers', label: 'Khách hàng', icon: <Users size={16} /> },
   { key: 'machines', label: 'Máy', icon: <PackageCheck size={16} /> },
   { key: 'models', label: 'Model', icon: <Table2 size={16} /> },
-  { key: 'provinces', label: 'Tỉnh', icon: <MapPinned size={16} /> },
   { key: 'details', label: 'Chi tiết', icon: <CalendarDays size={16} /> },
 ];
 
@@ -215,6 +213,7 @@ export function ReportsPage() {
           <PageTitle
             eyebrow="Báo cáo kỹ thuật"
             title="Báo cáo tổng hợp"
+            description="Tổng quan hồ sơ kỹ thuật phát sinh trong kỳ theo loại việc, khách hàng, máy và kỹ sư."
           />
           <button className="secondary-button" disabled={!report} onClick={exportCsv} type="button">
             <Download size={16} />
@@ -224,7 +223,7 @@ export function ReportsPage() {
 
         <section className="grid gap-3 rounded-[24px] bg-[#fafafa] p-3 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)]">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <strong className="text-sm text-[#202124]">Bộ lọc báo cáo</strong>
+            <div><strong className="text-sm text-[#202124]">Khoảng thời gian và phạm vi</strong><p className="mt-1 text-xs text-[#667085]">Lọc số liệu phòng kỹ thuật theo kỳ hoặc theo một nhóm đối tượng.</p></div>
             <button className="secondary-button compact" onClick={resetFilters} type="button">
               Xóa lọc
             </button>
@@ -292,25 +291,25 @@ function ReportSummary({ from, report, to }: { from: string; report: TechnicalRe
   return (
     <section className="grid gap-4 rounded-[24px] bg-[#f6f8f7] p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)]">
       <div>
-        <span className="text-xs font-bold uppercase text-[#3e8375]">Tóm tắt kỳ</span>
+        <span className="text-xs font-bold uppercase text-[#3e8375]">Hoạt động ghi nhận trong kỳ</span>
         <h2 className="mt-1 text-xl font-semibold text-[#202124]">
-          {report.summary.total} việc từ {formatDate(from)} đến {formatDate(to)}
+          {report.summary.total} hồ sơ từ {formatDate(from)} đến {formatDate(to)}
         </h2>
       </div>
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
-        <SummaryCard label="Tổng việc" value={report.summary.total} />
-        <SummaryCard label="Lắp đặt" value={report.summary.installations} />
-        <SummaryCard label="Sửa chữa" value={report.summary.repairs} />
-        <SummaryCard label="Bảo trì" value={report.summary.maintenances} />
-        <SummaryCard label="Demo" value={report.summary.demos} />
-        <SummaryCard label="Nhận/trả thiết bị" value={report.summary.deviceServiceTickets} />
-        <SummaryCard label="Ứng dụng xét nghiệm" value={report.summary.applicationSupport} />
+        <SummaryCard label="Tổng hồ sơ phát sinh" value={report.summary.total} />
+        <SummaryCard label="Lượt lắp đặt" value={report.summary.installations} />
+        <SummaryCard label="Phiếu sửa chữa tiếp nhận" value={report.summary.repairs} />
+        <SummaryCard label="Lịch bảo trì dự kiến" value={report.summary.maintenances} />
+        <SummaryCard label="Phiếu demo" value={report.summary.demos} />
+        <SummaryCard label="Phiếu nhận/trả thiết bị" value={report.summary.deviceServiceTickets} />
+        <SummaryCard label="Ca hỗ trợ ứng dụng" value={report.summary.applicationSupport} />
       </div>
       <div className="grid gap-3 md:grid-cols-4">
-        <MiniSummary label="Khách hàng" value={report.summary.customers} />
-        <MiniSummary label="Máy/model" value={report.summary.machines} />
-        <MiniSummary label="Kỹ sư" value={report.summary.engineers} />
-        <MiniSummary label="Tỉnh" value={report.summary.provinces} />
+        <MiniSummary label="Khách có hồ sơ" value={report.summary.customers} />
+        <MiniSummary label="Máy có hồ sơ" value={report.summary.machines} />
+        <MiniSummary label="Kỹ sư có phân công" value={report.summary.engineers} />
+        <MiniSummary label="Tỉnh/thành có hoạt động" value={report.summary.provinces} />
       </div>
     </section>
   );
@@ -321,17 +320,15 @@ function ReportContent({ onOpenCustomer, report, view }: { onOpenCustomer: (cust
     return (
       <div className="grid gap-4 xl:grid-cols-2">
         <CustomerHighlights onOpen={onOpenCustomer} report={report} title="Khách hàng phát sinh nhiều việc" />
-        <MachineGroupTable rows={report.byMachine.slice(0, 6)} title="Máy phát sinh nhiều việc" />
+        <GroupTable linkRow={(row) => `/technical-statistics?view=models&modelId=${encodeURIComponent(row.id)}&from=${report.filters.from}&to=${report.filters.to}`} rows={report.byModel.slice(0, 6)} title="Model phát sinh nhiều việc" />
         <KindTable report={report} />
         <TrendPanel rows={report.rows} />
       </div>
-    );
+  );
   }
-  if (view === 'kinds') return <KindTable report={report} />;
   if (view === 'customers') return <GroupTable onSelect={onOpenCustomer} rows={report.byCustomer} title="Theo khách hàng" />;
   if (view === 'machines') return <MachineGroupTable rows={report.byMachine} title="Theo máy" />;
-  if (view === 'models') return <GroupTable rows={report.byModel} title="Theo model" />;
-  if (view === 'provinces') return <GroupTable rows={report.byProvince} title="Theo tỉnh" />;
+  if (view === 'models') return <GroupTable linkRow={(row) => `/technical-statistics?view=models&modelId=${encodeURIComponent(row.id)}&from=${report.filters.from}&to=${report.filters.to}`} rows={report.byModel} title="Theo model" />;
   return <DetailTable rows={report.rows} />;
 }
 
@@ -383,7 +380,7 @@ function KindTable({ report }: { report: TechnicalReport }) {
   );
 }
 
-function GroupTable({ onSelect, rows, title }: { onSelect?: (id: string) => void; rows: TechnicalReportGroup[]; title: string }) {
+function GroupTable({ linkRow, onSelect, rows, title }: { linkRow?: (row: TechnicalReportGroup) => string; onSelect?: (id: string) => void; rows: TechnicalReportGroup[]; title: string }) {
   const pagination = usePagedRows(rows, title);
 
   return (
@@ -394,14 +391,14 @@ function GroupTable({ onSelect, rows, title }: { onSelect?: (id: string) => void
           <thead className="text-xs uppercase text-[#667085]">
             <tr>
               <th className="border-b border-[#eef0f3] px-4 py-3">Tên</th>
-              <th className="border-b border-[#eef0f3] px-4 py-3">Tổng</th>
-              <th className="border-b border-[#eef0f3] px-4 py-3">Lắp</th>
-              <th className="border-b border-[#eef0f3] px-4 py-3">Sửa</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Hồ sơ</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Lắp đặt</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Sửa chữa</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Bảo trì</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Demo</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Nhận/trả</th>
-              <th className="border-b border-[#eef0f3] px-4 py-3">App</th>
-              <th className="border-b border-[#eef0f3] px-4 py-3">Phạm vi</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Hỗ trợ ứng dụng</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Khách / máy</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Gần nhất</th>
             </tr>
           </thead>
@@ -409,7 +406,11 @@ function GroupTable({ onSelect, rows, title }: { onSelect?: (id: string) => void
             {pagination.rows.map((row) => (
               <tr className="hover:bg-[#fafafa]" key={row.id}>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">
-                  {onSelect ? (
+                  {linkRow ? (
+                    <Link className="inline-flex items-center gap-1 font-semibold text-[#202124] transition hover:text-[#3e8375]" to={linkRow(row)}>
+                      {row.label}<ArrowLeft className="rotate-180" size={14} />
+                    </Link>
+                  ) : onSelect ? (
                     <button className="inline-flex items-center gap-1 font-semibold text-[#202124] transition hover:text-[#3e8375]" onClick={() => onSelect(row.id)} type="button">
                       {row.label}
                       <ArrowLeft className="rotate-180" size={14} />
@@ -429,7 +430,7 @@ function GroupTable({ onSelect, rows, title }: { onSelect?: (id: string) => void
                 <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.lastWorkedAt)}</td>
               </tr>
             ))}
-            <EmptyRow colSpan={9} show={!rows.length} />
+            <EmptyRow colSpan={10} show={!rows.length} />
           </tbody>
         </table>
       </div>
@@ -452,13 +453,13 @@ function MachineGroupTable({ rows, title }: { rows: TechnicalMachineGroup[]; tit
               <th className="border-b border-[#eef0f3] px-4 py-3">Model</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Khách hàng</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Tỉnh</th>
-              <th className="border-b border-[#eef0f3] px-4 py-3">Tổng</th>
-              <th className="border-b border-[#eef0f3] px-4 py-3">Lắp</th>
-              <th className="border-b border-[#eef0f3] px-4 py-3">Sửa</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Hồ sơ</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Lắp đặt</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Sửa chữa</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Bảo trì</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Demo</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Nhận/trả</th>
-              <th className="border-b border-[#eef0f3] px-4 py-3">App</th>
+              <th className="border-b border-[#eef0f3] px-4 py-3">Hỗ trợ ứng dụng</th>
               <th className="border-b border-[#eef0f3] px-4 py-3">Gần nhất</th>
             </tr>
           </thead>
@@ -466,12 +467,12 @@ function MachineGroupTable({ rows, title }: { rows: TechnicalMachineGroup[]; tit
             {pagination.rows.map((row) => (
               <tr className="hover:bg-[#fafafa]" key={row.id}>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">
-                  <strong className="block text-[#202124]">{row.machineCode}</strong>
+                  {row.id.startsWith('m:') ? <Link className="block font-semibold text-[#202124] hover:text-[#3e8375]" to={`/technical-machines/${row.id.slice(2)}`}>{row.machineCode}</Link> : <strong className="block text-[#202124]">{row.machineCode}</strong>}
                   <span className="text-xs text-[#667085]">{row.serialNumber}</span>
                 </td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.model}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">
-                  {row.customerId ? <Link className="hover:text-[#3e8375]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
+                  {row.customerId ? <Link className="hover:text-[#3e8375]" to={`/customers/${row.customerId}`}>{row.customer}</Link> : row.customer}
                 </td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{row.province}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold">{row.total}</td>
@@ -484,7 +485,7 @@ function MachineGroupTable({ rows, title }: { rows: TechnicalMachineGroup[]; tit
                 <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.lastWorkedAt)}</td>
               </tr>
             ))}
-            <EmptyRow colSpan={11} show={!rows.length} />
+            <EmptyRow colSpan={12} show={!rows.length} />
           </tbody>
         </table>
       </div>
@@ -543,7 +544,7 @@ function DetailTable({ rows }: { rows: WorkReportRow[] }) {
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{workLabel(row.kind)}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.date)}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">{row.engineer}</td>
-                <td className="border-b border-[#f1f2f4] px-4 py-3">{row.customerId ? <Link to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}</td>
+                <td className="border-b border-[#f1f2f4] px-4 py-3">{row.customerId ? <Link to={`/customers/${row.customerId}`}>{row.customer}</Link> : row.customer}</td>
                 <td className="border-b border-[#f1f2f4] px-4 py-3">
                   <strong className="block">{row.machineCode}</strong>
                   <span className="text-xs text-[#667085]">{row.model} · {row.serialNumber}</span>
@@ -669,6 +670,11 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
           <KindStat label="Demo" value={group.demo} />
           <KindStat label="Ứng dụng xét nghiệm" value={group.applicationSupport} />
         </div>
+        {customerId && !customerId.startsWith('unknown') && customerId !== group.label ? (
+          <Link className="secondary-button mt-4 inline-flex" to={`/customers/${customerId}`}>
+            Mở hồ sơ khách hàng đầy đủ <ArrowLeft className="rotate-180" size={16} />
+          </Link>
+        ) : null}
       </section>
 
       <section className="overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07)]">
@@ -692,7 +698,7 @@ function CustomerDetailView({ customerId, onBack, report }: { customerId: string
                     </td>
                     <td className="border-b border-[#f1f2f4] px-4 py-3">{row.model}</td>
                     <td className="border-b border-[#f1f2f4] px-4 py-3">
-                      {row.customerId ? <Link className="hover:text-[#3e8375]" to={`/customers/profile?customerId=${row.customerId}`}>{row.customer}</Link> : row.customer}
+                      {row.customerId ? <Link className="hover:text-[#3e8375]" to={`/customers/${row.customerId}`}>{row.customer}</Link> : row.customer}
                     </td>
                     <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{row.province}</td>
                     <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold">{row.total}</td>

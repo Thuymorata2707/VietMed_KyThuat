@@ -80,6 +80,10 @@ export class UpdateCustomerDto {
 
   @IsOptional()
   @IsString()
+  locality?: string | null;
+
+  @IsOptional()
+  @IsString()
   ward?: string | null;
 
   @IsOptional()

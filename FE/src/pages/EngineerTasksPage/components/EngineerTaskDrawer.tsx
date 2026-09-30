@@ -215,7 +215,7 @@ function DrawerSummary({ task }: { task: EngineerTask }) {
         </div>
         {task.reviewStatus && task.reviewStatus !== 'NOT_REQUIRED' ? (
           <div>
-            <dt>Kiểm duyệt admin</dt>
+            <dt>Phê duyệt hồ sơ</dt>
             <dd>{reviewStatusLabel(task.reviewStatus)}</dd>
           </div>
         ) : null}
@@ -223,7 +223,7 @@ function DrawerSummary({ task }: { task: EngineerTask }) {
 
       {task.reviewNote ? (
         <div className="task-info-block">
-          <h3>Phản hồi admin</h3>
+          <h3>Ý kiến của quản trị viên</h3>
           <p>{task.reviewNote}</p>
         </div>
       ) : null}
@@ -299,7 +299,7 @@ function EngineerWorkBench({
         </div>
       ) : (
         <div className="rounded-xl border border-[#b9e8ca] bg-[#eefaf3] px-3 py-2 text-[13px] font-bold text-[#177245]">
-          Hồ sơ đã đủ thông tin chính để admin kiểm duyệt.
+          Hồ sơ đã có các thông tin chính để trình phê duyệt.
         </div>
       )}
 

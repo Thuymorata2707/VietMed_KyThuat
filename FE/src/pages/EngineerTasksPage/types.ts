@@ -133,6 +133,7 @@ export type MaintenanceTask = WorkReviewFields & {
   scheduledDate?: string | null;
   nextDueDate?: string | null;
   resultNote?: string | null;
+  receivedAccessories?: string | null;
   checklist?: string[];
   engineer?: {
     id?: string | null;

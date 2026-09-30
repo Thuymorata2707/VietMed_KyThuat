@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { createRateLimitMiddleware } from './common/middleware/rate-limit.middleware';
 import { createCsrfProtectionMiddleware } from './common/middleware/csrf-protection.middleware';
+import { createRequestTimingMiddleware } from './common/middleware/request-timing.middleware';
 import { AppConfigService } from './config/app-config.service';
 
 async function bootstrap() {
@@ -36,6 +37,7 @@ async function bootstrap() {
   });
   app.use(createCsrfProtectionMiddleware(config));
   app.use(createRateLimitMiddleware(config));
+  app.use(createRequestTimingMiddleware());
 
   app.useGlobalPipes(
     new ValidationPipe({

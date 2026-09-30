@@ -90,13 +90,13 @@ export function AdminRolesPage() {
     <PageFrame>
       <div className="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
         <PageTitle
-          eyebrow="Admin"
+          eyebrow="Quản trị hệ thống"
           title="Vai trò"
           description="Phân quyền."
         />
         <button className="secondary-button" disabled={loading} onClick={() => void rolesQuery.refetch()} type="button">
           {loading ? <Loader2 className="spin-icon" size={17} /> : <RefreshCw size={17} />}
-          {loading ? 'Loading' : 'Refresh'}
+          {loading ? 'Đang tải' : 'Làm mới dữ liệu'}
         </button>
       </div>
 
@@ -189,7 +189,7 @@ export function AdminRolesPage() {
                   Cancel
                 </button>
                 <button className="primary-button" disabled={saving} type="submit">
-                  {saving ? 'Saving' : 'Save'}
+                  {saving ? 'Đang lưu' : 'Lưu vai trò'}
                 </button>
               </div>
             </form>

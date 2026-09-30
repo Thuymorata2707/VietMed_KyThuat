@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  DemoMachineCategory,
   InstallationStatus,
   InventoryMovementType,
   MachineInventoryStatus,
@@ -62,13 +63,29 @@ export class InstallationsService {
 
   async create(dto: CreateInstallationDto, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.INSTALLATION_CREATE);
-    if (!isAdmin(actor)) throw new ForbiddenException('Only administrators can dispatch installation tickets');
-    this.validateCreate(dto);
+    const selfSubmission = isEngineer(actor);
+    if (!isAdmin(actor) && !selfSubmission)
+      throw new ForbiddenException(
+        'Only administrators or engineers can create installation tickets',
+      );
+    this.validateCreate(selfSubmission
+      ? { ...dto, installedById: actor.id, engineerIds: [actor.id] }
+      : dto);
 
-    const engineerIds = [...new Set(dto.engineerIds?.length ? dto.engineerIds : dto.installedById ? [dto.installedById] : [])];
+    const engineerIds = selfSubmission ? [actor.id] : [
+      ...new Set(
+        dto.engineerIds?.length
+          ? dto.engineerIds
+          : dto.installedById
+            ? [dto.installedById]
+            : [],
+      ),
+    ];
     const installedById = engineerIds[0];
 
-    await Promise.all(engineerIds.map((engineerId) => this.findEngineer(engineerId)));
+    await Promise.all(
+      engineerIds.map((engineerId) => this.findEngineer(engineerId)),
+    );
     const [selectedMachine, customer, engineer, businessLine, machineModel] =
       await Promise.all([
         dto.machineId ? this.findMachine(dto.machineId) : Promise.resolve(null),
@@ -80,8 +97,26 @@ export class InstallationsService {
           : Promise.resolve(null),
       ]);
 
+    if (selectedMachine?.demoCategory === DemoMachineCategory.DEMO_UNIT) {
+      throw new BadRequestException(
+        'Dedicated demo machines must be returned through a demo loan, not installed as customer equipment',
+      );
+    }
+
     if (selectedMachine?.inventoryStatus === MachineInventoryStatus.INSTALLED) {
       throw new BadRequestException('Machine is already installed');
+    }
+    if (
+      selectedMachine &&
+      ![
+        MachineInventoryStatus.IN_STOCK,
+        MachineInventoryStatus.RESERVED,
+        MachineInventoryStatus.RETURNED,
+      ].includes(selectedMachine.inventoryStatus)
+    ) {
+      throw new BadRequestException(
+        'Only in-stock, reserved, or returned machines can be installed',
+      );
     }
 
     if (selectedMachine) {
@@ -90,6 +125,16 @@ export class InstallationsService {
 
     const installedAt =
       this.parseOptionalDate(dto.installedAt, 'installedAt') ?? new Date();
+    if (
+      selfSubmission &&
+      !selectedMachine &&
+      !dto.machineModelId &&
+      !dto.plannedModelName?.trim()
+    ) {
+      throw new BadRequestException(
+        'An engineer installation report must include a machine or device model',
+      );
+    }
     const warrantyStartDate =
       this.parseOptionalDate(dto.warrantyStartDate, 'warrantyStartDate') ??
       installedAt;
@@ -158,7 +203,9 @@ export class InstallationsService {
             deviceConditionNote: this.cleanOptionalString(
               dto.deviceConditionNote,
             ),
-            reviewStatus: WorkReviewStatus.NOT_REQUIRED,
+            reviewStatus: selfSubmission
+              ? WorkReviewStatus.PENDING
+              : WorkReviewStatus.NOT_REQUIRED,
           },
         });
 
@@ -191,18 +238,31 @@ export class InstallationsService {
           tx,
         );
 
-        await Promise.all(engineerIds.map((engineerId) => this.notificationsService.create(
-          {
-            userId: engineerId,
-            title: 'Bạn có phiếu lắp đặt mới',
-            message: `${actor.email} đã giao phiếu lắp đặt ${installationCode}.`,
-            href: '/my-tasks',
+        if (selfSubmission) {
+          await this.notificationsService.createForAdmins({
+            title: 'Phiếu lắp đặt chờ phê duyệt',
+            message: `Phiếu lắp đặt ${installationCode} đã được trình phê duyệt.`,
+            href: '/installations',
             entityType: 'MachineInstallation',
             entityId: installation.id,
             createdById: actor.id,
-          },
-          tx,
-        )));
+          }, tx);
+        } else await Promise.all(
+          engineerIds.map((engineerId) =>
+            this.notificationsService.create(
+              {
+                userId: engineerId,
+                title: 'Phiếu lắp đặt mới được phân công',
+                message: `Phiếu lắp đặt ${installationCode} đã được phân công.`,
+                href: '/my-tasks',
+                entityType: 'MachineInstallation',
+                entityId: installation.id,
+                createdById: actor.id,
+              },
+              tx,
+            ),
+          ),
+        );
 
         return tx.machineInstallation.findUnique({
           where: { id: installation.id },
@@ -562,7 +622,10 @@ export class InstallationsService {
 
     const isAssignedEngineerCompleting =
       isEngineer(actor) &&
-      (installation.installedById === actor.id || installation.assignments?.some((assignment) => assignment.engineerId === actor.id)) &&
+      (installation.installedById === actor.id ||
+        installation.assignments?.some(
+          (assignment) => assignment.engineerId === actor.id,
+        )) &&
       installation.status === InstallationStatus.PENDING &&
       dto.status === InstallationStatus.INSTALLED;
     const isAdminApprovingInstallation =
@@ -570,6 +633,13 @@ export class InstallationsService {
       (installation.status === InstallationStatus.PENDING ||
         installation.reviewStatus === WorkReviewStatus.PENDING) &&
       dto.status === InstallationStatus.INSTALLED;
+    const installationEffectsAlreadyApplied =
+      isAdminApprovingInstallation &&
+      installation.status === InstallationStatus.INSTALLED &&
+      installation.reviewStatus === WorkReviewStatus.PENDING &&
+      installation.machine?.id === installation.machineId &&
+      installation.machine?.inventoryStatus ===
+        MachineInventoryStatus.INSTALLED;
     const primaryDeviceAccessories = dto.installedDeviceItems?.find(
       (item) => item.isPrimary,
     )?.accessories;
@@ -578,6 +648,7 @@ export class InstallationsService {
 
     if (
       !isAdmin(actor) &&
+      !isManager(actor) &&
       dto.status &&
       dto.status !== installation.status &&
       !isAssignedEngineerCompleting
@@ -595,65 +666,79 @@ export class InstallationsService {
           actor,
         );
         completedMachineId = actualMachine.id;
-        const nextInstalledAt = installedAt ?? installation.installedAt;
-        const approvedWarrantyStartDate =
-          warrantyStartDate ??
-          installation.warrantyStartDate ??
-          installation.warrantyCard?.startDate ??
-          nextInstalledAt;
-        const approvedWarrantyEndDate =
-          warrantyEndDate ??
-          installation.warrantyEndDate ??
-          installation.warrantyCard?.endDate ??
-          nextInstalledAt;
+        if (installationEffectsAlreadyApplied) {
+          if (
+            actualMachine.inventoryStatus !== MachineInventoryStatus.INSTALLED
+          ) {
+            throw new BadRequestException(
+              'Machine inventory changed before installation review',
+            );
+          }
+        } else {
+          const nextInstalledAt = installedAt ?? installation.installedAt;
+          const approvedWarrantyStartDate =
+            warrantyStartDate ??
+            installation.warrantyStartDate ??
+            installation.warrantyCard?.startDate ??
+            nextInstalledAt;
+          const approvedWarrantyEndDate =
+            warrantyEndDate ??
+            installation.warrantyEndDate ??
+            installation.warrantyCard?.endDate ??
+            null;
 
-        if (actualMachine.inventoryStatus !== MachineInventoryStatus.INSTALLED) {
+          if (
+            actualMachine.inventoryStatus === MachineInventoryStatus.INSTALLED
+          ) {
+            throw new BadRequestException('Machine is already installed');
+          }
           validateInventoryMovement(
             InventoryMovementType.INSTALL,
             actualMachine.inventoryStatus,
             MachineInventoryStatus.INSTALLED,
             installation.customerId,
           );
-        }
 
-        const machineUpdate = await tx.machine.updateMany({
-          where: {
-            id: actualMachine.id,
-            inventoryStatus: actualMachine.inventoryStatus,
-          },
-          data: {
-            customerId: installation.customerId,
-            businessLineId:
-              dto.businessLineId === undefined
-                ? (installation.businessLineId ?? actualMachine.businessLineId)
-                : (businessLine?.id ?? null),
-            installedById: installedBy?.id ?? installation.installedById,
-            primaryEngineerId:
-              installedBy?.id ?? installation.installedById ?? undefined,
-            installDate: nextInstalledAt,
-            warrantyStartDate: approvedWarrantyStartDate,
-            warrantyEndDate: approvedWarrantyEndDate,
-            inventoryStatus: MachineInventoryStatus.INSTALLED,
-            status: MachineStatus.ACTIVE,
-          },
-        });
+          const machineUpdate = await tx.machine.updateMany({
+            where: {
+              id: actualMachine.id,
+              inventoryStatus: actualMachine.inventoryStatus,
+            },
+            data: {
+              customerId: installation.customerId,
+              businessLineId:
+                dto.businessLineId === undefined
+                  ? (installation.businessLineId ??
+                    actualMachine.businessLineId)
+                  : (businessLine?.id ?? null),
+              installedById: installedBy?.id ?? installation.installedById,
+              primaryEngineerId:
+                installedBy?.id ?? installation.installedById ?? undefined,
+              installDate: nextInstalledAt,
+              warrantyStartDate: approvedWarrantyStartDate,
+              warrantyEndDate: approvedWarrantyEndDate,
+              inventoryStatus: MachineInventoryStatus.INSTALLED,
+              status: MachineStatus.ACTIVE,
+            },
+          });
 
-        if (machineUpdate.count !== 1) {
-          throw new BadRequestException(
-            'Machine has already been installed or changed status',
+          if (machineUpdate.count !== 1) {
+            throw new BadRequestException(
+              'Machine has already been installed or changed status',
+            );
+          }
+
+          await this.syncMachineEngineerAssignments(
+            tx,
+            actualMachine.id,
+            installation.assignments?.map(
+              (assignment) => assignment.engineerId,
+            ) ??
+              [installedBy?.id ?? installation.installedById].filter(
+                (id): id is string => Boolean(id),
+              ),
           );
-        }
 
-        await this.syncMachineEngineerAssignments(
-          tx,
-          actualMachine.id,
-          installation.assignments?.map((assignment) => assignment.engineerId) ??
-            [installedBy?.id ?? installation.installedById].filter(
-              (id): id is string => Boolean(id),
-            ),
-        );
-
-        if (actualMachine.inventoryStatus !== MachineInventoryStatus.INSTALLED) {
           await tx.machineInventoryMovement.create({
             data: {
               code: await this.generateMovementCode(tx),
@@ -861,11 +946,17 @@ export class InstallationsService {
             machine?.machineModelId ?? null,
             accessoriesToSync,
           );
-          await this.machinesService.refreshMachineAccessoriesSnapshot(tx, machineId);
+          await this.machinesService.refreshMachineAccessoriesSnapshot(
+            tx,
+            machineId,
+          );
         }
       }
 
-      if (isAdminApprovingInstallation || isAssignedEngineerCompleting) {
+      if (
+        (isAdminApprovingInstallation || isAssignedEngineerCompleting) &&
+        !installationEffectsAlreadyApplied
+      ) {
         const model = dto.machineModelId
           ? await tx.machineModel.findUnique({
               where: { id: dto.machineModelId },
@@ -878,7 +969,13 @@ export class InstallationsService {
           customerId: updated.customerId,
           engineerId:
             updated.installedById ?? installation.installedById ?? actor.id,
-          engineerIds: installation.assignments?.map((assignment) => assignment.engineerId) ?? [installation.installedById].filter((id): id is string => Boolean(id)),
+          engineerIds:
+            installation.assignments?.map(
+              (assignment) => assignment.engineerId,
+            ) ??
+            [installation.installedById].filter((id): id is string =>
+              Boolean(id),
+            ),
           installedAt: updated.installedAt,
           warrantyStartDate:
             updated.warrantyStartDate ??
@@ -933,8 +1030,8 @@ export class InstallationsService {
     if (isAssignedEngineerCompleting) {
       await this.notificationsService
         .createForAdmins({
-          title: 'Phiếu lắp đặt chờ xác nhận',
-          message: `Phiếu ${updatedInstallation.code} đã hoàn tất, chờ xác nhận lắp đặt.`,
+          title: 'Phiếu lắp đặt chờ phê duyệt',
+          message: `Phiếu ${updatedInstallation.code} đã hoàn tất, chờ phê duyệt hồ sơ lắp đặt.`,
           href: '/my-tasks',
           entityType: 'MachineInstallation',
           entityId: updatedInstallation.id,
@@ -949,6 +1046,11 @@ export class InstallationsService {
   async remove(id: string, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.INSTALLATION_DELETE);
     const installation = await this.findOne(id, actor);
+    if (installation.status === InstallationStatus.INSTALLED) {
+      throw new BadRequestException(
+        'Completed installation tickets cannot be deleted; keep the installation history',
+      );
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.warrantyCard.deleteMany({
@@ -1003,10 +1105,22 @@ export class InstallationsService {
     const isInstallationApprover = isAdmin(actor) || isManager(actor);
     const isInstallationReviewApproval =
       isInstallationApprover &&
-      installation.reviewStatus === WorkReviewStatus.PENDING &&
+      (installation.status === InstallationStatus.PENDING ||
+        installation.reviewStatus === WorkReviewStatus.PENDING) &&
       dto.status === InstallationStatus.INSTALLED;
+    const installationEffectsAlreadyApplied =
+      isInstallationReviewApproval &&
+      installation.status === InstallationStatus.INSTALLED &&
+      installation.reviewStatus === WorkReviewStatus.PENDING &&
+      installation.machine?.id === installation.machineId &&
+      installation.machine?.inventoryStatus ===
+        MachineInventoryStatus.INSTALLED;
     const isAssignedEngineerDecision =
-      isEngineer(actor) && (installation.installedById === actor.id || installation.assignments?.some((assignment) => assignment.engineerId === actor.id));
+      isEngineer(actor) &&
+      (installation.installedById === actor.id ||
+        installation.assignments?.some(
+          (assignment) => assignment.engineerId === actor.id,
+        ));
 
     if (
       isPendingDecision &&
@@ -1020,7 +1134,10 @@ export class InstallationsService {
 
     return this.prisma.$transaction(
       async (tx) => {
-        if (isInstallationReviewApproval) {
+        if (
+          isInstallationReviewApproval &&
+          !installationEffectsAlreadyApplied
+        ) {
           if (!installation.machine) {
             throw new BadRequestException(
               'Machine serial number must be updated before approving installation',
@@ -1034,7 +1151,7 @@ export class InstallationsService {
           const warrantyEndDate =
             installation.warrantyEndDate ??
             installation.warrantyCard?.endDate ??
-            nextInstalledAt;
+            null;
 
           validateInventoryMovement(
             InventoryMovementType.INSTALL,
@@ -1069,7 +1186,16 @@ export class InstallationsService {
             );
           }
 
-          await this.syncMachineEngineerAssignments(tx, installation.machineId, installation.assignments?.map((assignment) => assignment.engineerId) ?? [installation.installedById].filter((id): id is string => Boolean(id)));
+          await this.syncMachineEngineerAssignments(
+            tx,
+            installation.machineId,
+            installation.assignments?.map(
+              (assignment) => assignment.engineerId,
+            ) ??
+              [installation.installedById].filter((id): id is string =>
+                Boolean(id),
+              ),
+          );
 
           await tx.machineInventoryMovement.create({
             data: {
@@ -1119,7 +1245,13 @@ export class InstallationsService {
             actor,
             customerId: installation.customerId,
             engineerId: installation.installedById ?? actor.id,
-            engineerIds: installation.assignments?.map((assignment) => assignment.engineerId) ?? [installation.installedById].filter((id): id is string => Boolean(id)),
+            engineerIds:
+              installation.assignments?.map(
+                (assignment) => assignment.engineerId,
+              ) ??
+              [installation.installedById].filter((id): id is string =>
+                Boolean(id),
+              ),
             installedAt: nextInstalledAt,
             warrantyStartDate,
             warrantyEndDate,
@@ -1172,7 +1304,12 @@ export class InstallationsService {
           include: this.defaultInclude(),
         });
 
-        if (installedAt) {
+        if (
+          installedAt &&
+          (dto.status === InstallationStatus.INSTALLED ||
+            installation.status === InstallationStatus.INSTALLED) &&
+          installation.machineId
+        ) {
           await tx.machine.update({
             where: { id: installation.machineId },
             data: {
@@ -1301,12 +1438,12 @@ export class InstallationsService {
           userId: updated.installedById,
           title:
             dto.status === WorkReviewStatus.APPROVED
-              ? 'Phiếu lắp đặt đã được xác nhận'
+              ? 'Phiếu lắp đặt đã được phê duyệt'
               : 'Phiếu lắp đặt cần bổ sung',
           message:
             dto.status === WorkReviewStatus.APPROVED
-              ? `Admin đã xác nhận phiếu ${updated.code}.`
-              : `Admin yêu cầu bổ sung phiếu ${updated.code}: ${reviewNote}`,
+              ? `Quản trị viên đã phê duyệt phiếu ${updated.code}.`
+              : `Quản trị viên yêu cầu bổ sung hồ sơ phiếu ${updated.code}: ${reviewNote}`,
           href: '/my-tasks',
           entityType: 'MachineInstallation',
           entityId: updated.id,
@@ -1386,7 +1523,11 @@ export class InstallationsService {
   }
 
   private validateCreate(dto: CreateInstallationDto) {
-    const engineerIds = dto.engineerIds?.length ? dto.engineerIds : dto.installedById ? [dto.installedById] : [];
+    const engineerIds = dto.engineerIds?.length
+      ? dto.engineerIds
+      : dto.installedById
+        ? [dto.installedById]
+        : [];
     if (!dto.customerId || !engineerIds.length) {
       throw new BadRequestException(
         'customerId and at least one assigned engineer are required',
@@ -1415,7 +1556,9 @@ export class InstallationsService {
     },
   ) {
     const primaryDeviceItem = (
-      this.normalizeDeviceItems(input.dto.installedDeviceItems) as unknown as Array<{
+      this.normalizeDeviceItems(
+        input.dto.installedDeviceItems,
+      ) as unknown as Array<{
         itemName?: string | null;
         model?: string | null;
         serialNumber?: string | null;
@@ -1599,7 +1742,9 @@ export class InstallationsService {
           include: { businessLine: true },
         })
       : null;
-    const primaryItem = dto.installedDeviceItems?.find((item) => item.isPrimary);
+    const primaryItem = dto.installedDeviceItems?.find(
+      (item) => item.isPrimary,
+    );
     const fallbackModelName =
       dto.modelName?.trim() ||
       dto.installedDeviceItems
@@ -1635,9 +1780,11 @@ export class InstallationsService {
           )),
         serialNumber: serialNumber.toUpperCase(),
         name: machineName,
-        modelName: dto.modelName?.trim() || machineModel?.name || fallbackModelName,
+        modelName:
+          dto.modelName?.trim() || machineModel?.name || fallbackModelName,
         manufacturer,
-        productCategory: dto.productCategory || machineModel?.productCategory || 'OTHER',
+        productCategory:
+          dto.productCategory || machineModel?.productCategory || 'OTHER',
         productLine: machineModel?.productLine || null,
         machineModelId: machineModel?.id || null,
         businessLineId:
@@ -1675,15 +1822,16 @@ export class InstallationsService {
     const normalizedItems = this.normalizeDeviceItems(
       input.installedDeviceItems,
     ) as unknown as Array<{
-        sourceMachineId?: string | null;
-        itemName?: string | null;
-        model?: string | null;
-        serialNumber?: string | null;
-        quantity?: number;
-        engineerIds?: string[];
-        accessories?: import('../machines/dto/update-machine.dto').UpdateMachineAccessoryItemDto[];
-      }>;
-    const items = normalizedItems.flatMap((item) => {
+      sourceMachineId?: string | null;
+      itemName?: string | null;
+      model?: string | null;
+      serialNumber?: string | null;
+      quantity?: number;
+      engineerIds?: string[];
+      accessories?: import('../machines/dto/update-machine.dto').UpdateMachineAccessoryItemDto[];
+    }>;
+    const items = normalizedItems
+      .flatMap((item) => {
         const serialNumbers = (item.serialNumber || '')
           .split(/[\n,;]+/)
           .map((serialNumber) => serialNumber.trim())
@@ -1698,7 +1846,8 @@ export class InstallationsService {
         return serialNumbers.map((serialNumber) => ({
           ...item,
           serialNumber,
-          sourceMachineId: serialNumbers.length === 1 ? item.sourceMachineId : null,
+          sourceMachineId:
+            serialNumbers.length === 1 ? item.sourceMachineId : null,
         }));
       })
       .filter((item) => item.serialNumber?.trim());
@@ -1736,13 +1885,21 @@ export class InstallationsService {
       const existing = item.sourceMachineId
         ? await tx.machine.findUnique({ where: { id: item.sourceMachineId } })
         : await tx.machine.findUnique({ where: { serialNumber } });
-      if (existing && existing.serialNumber.trim().toUpperCase() !== serialNumber) {
+      if (
+        existing &&
+        existing.serialNumber.trim().toUpperCase() !== serialNumber
+      ) {
         throw new BadRequestException(
           `Serial number on linked machine ${existing.machineCode || existing.id} does not match the handover item`,
         );
       }
 
       if (existing) {
+        if (existing.demoCategory === DemoMachineCategory.DEMO_UNIT) {
+          throw new BadRequestException(
+            `Dedicated demo machine ${serialNumber} cannot be installed`,
+          );
+        }
         if (existing.inventoryStatus !== MachineInventoryStatus.INSTALLED) {
           validateInventoryMovement(
             InventoryMovementType.INSTALL,
@@ -1789,21 +1946,15 @@ export class InstallationsService {
             },
           });
         } else {
-          await tx.machine.update({
-            where: { id: existing.id },
-            data: {
-              customerId: input.customerId,
-              businessLineId,
-              installedById: input.engineerId,
-              primaryEngineerId: input.engineerId,
-              installDate: input.installedAt,
-              warrantyStartDate: input.warrantyStartDate,
-              warrantyEndDate: input.warrantyEndDate,
-              status: MachineStatus.ACTIVE,
-            },
-          });
+          throw new BadRequestException(
+            `Machine ${serialNumber} is already installed`,
+          );
         }
-        await this.syncMachineEngineerAssignments(tx, existing.id, item.engineerIds?.length ? item.engineerIds : input.engineerIds);
+        await this.syncMachineEngineerAssignments(
+          tx,
+          existing.id,
+          item.engineerIds?.length ? item.engineerIds : input.engineerIds,
+        );
         if (item.accessories) {
           await this.machinesService.syncMachineAccessories(
             tx,
@@ -1811,7 +1962,10 @@ export class InstallationsService {
             existing.machineModelId,
             item.accessories,
           );
-          await this.machinesService.refreshMachineAccessoriesSnapshot(tx, existing.id);
+          await this.machinesService.refreshMachineAccessoriesSnapshot(
+            tx,
+            existing.id,
+          );
         }
         continue;
       }
@@ -1844,7 +1998,11 @@ export class InstallationsService {
         },
       });
 
-      await this.syncMachineEngineerAssignments(tx, createdMachine.id, item.engineerIds?.length ? item.engineerIds : input.engineerIds);
+      await this.syncMachineEngineerAssignments(
+        tx,
+        createdMachine.id,
+        item.engineerIds?.length ? item.engineerIds : input.engineerIds,
+      );
       if (item.accessories) {
         await this.machinesService.syncMachineAccessories(
           tx,
@@ -1852,7 +2010,10 @@ export class InstallationsService {
           createdMachine.machineModelId,
           item.accessories,
         );
-        await this.machinesService.refreshMachineAccessoriesSnapshot(tx, createdMachine.id);
+        await this.machinesService.refreshMachineAccessoriesSnapshot(
+          tx,
+          createdMachine.id,
+        );
       }
 
       await tx.machineInventoryMovement.create({
@@ -2042,7 +2203,14 @@ export class InstallationsService {
       businessLineId: query.businessLineId,
       installedById: undefined,
       AND: query.installedById
-        ? [{ OR: [{ installedById: query.installedById }, { assignments: { some: { engineerId: query.installedById } } }] }]
+        ? [
+            {
+              OR: [
+                { installedById: query.installedById },
+                { assignments: { some: { engineerId: query.installedById } } },
+              ],
+            },
+          ]
         : undefined,
       installedAt:
         query.installedFrom || query.installedTo
@@ -2278,7 +2446,16 @@ export class InstallationsService {
         },
       },
       assignments: {
-        include: { engineer: { select: { id: true, email: true, fullName: true, engineerProfile: true } } },
+        include: {
+          engineer: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+              engineerProfile: true,
+            },
+          },
+        },
         orderBy: [{ isLead: 'desc' as const }, { assignedAt: 'asc' as const }],
       },
       reviewer: {

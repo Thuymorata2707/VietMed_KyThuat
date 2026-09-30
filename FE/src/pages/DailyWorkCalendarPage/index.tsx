@@ -87,8 +87,8 @@ const workTypeLabels: Record<DailyWorkType, string> = {
 
 const statusMeta: Record<DailyWorkStatus, { label: string; className: string }> = {
   DRAFT: { label: 'Nháp', className: 'border-[#e5e5e5] bg-white text-[#666666]' },
-  PENDING: { label: 'Chờ duyệt', className: 'border-[#efd8a8] bg-[#fffaeb] text-[#9b5a17]' },
-  APPROVED: { label: 'Đã duyệt', className: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]' },
+  PENDING: { label: 'Chờ phê duyệt', className: 'border-[#efd8a8] bg-[#fffaeb] text-[#9b5a17]' },
+  APPROVED: { label: 'Đã phê duyệt', className: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]' },
   REJECTED: { label: 'Từ chối', className: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]' },
   CANCELLED: { label: 'Đã hủy', className: 'border-[#e5e5e5] bg-[#fafafa] text-[#666666]' },
 };
@@ -192,7 +192,7 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
         body: JSON.stringify({ status }),
       }).then(() => status),
     onSuccess: async (status) => {
-      setSuccess(status === 'APPROVED' ? 'Đã duyệt lịch công việc.' : 'Đã từ chối lịch công việc.');
+      setSuccess(status === 'APPROVED' ? 'Đã phê duyệt lịch công việc.' : 'Đã từ chối lịch công việc.');
       await invalidateDailyWorkData(queryClient);
     },
   });

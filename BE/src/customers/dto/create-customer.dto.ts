@@ -81,6 +81,10 @@ export class CreateCustomerDto {
 
   @IsOptional()
   @IsString()
+  locality?: string;
+
+  @IsOptional()
+  @IsString()
   ward?: string;
 
   @IsOptional()

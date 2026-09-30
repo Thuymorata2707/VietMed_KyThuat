@@ -42,6 +42,25 @@ enum DemoLoanStatus {
   CANCELLED
 }
 
+enum DemoMachineCategory {
+  DEMO_UNIT
+  DEMO_STOCK
+  DEMO_USED
+}
+
+enum DemoLoanMachineUse {
+  DEMO_UNIT
+  NEW_STOCK
+  DEMO_USED
+  UNKNOWN
+}
+
+enum DemoPreparationStatus {
+  NOT_REQUIRED
+  REQUIRED
+  COMPLETED
+}
+
 enum DeviceServiceTicketStatus {
   RECEIVED
   RETURNED
@@ -665,6 +684,7 @@ model Customer {
   provinceId  String?
   provinceRef Province? @relation(fields: [provinceId], references: [id], onDelete: SetNull)
   district    String?
+  locality    String?
   ward        String?
   address     String?
   fullAddress String?
@@ -884,6 +904,8 @@ model Machine {
 
   status          MachineStatus            @default(ACTIVE)
   inventoryStatus MachineInventoryStatus   @default(IN_STOCK)
+  demoCategory    DemoMachineCategory?
+  demoPreparationStatus DemoPreparationStatus @default(NOT_REQUIRED)
   dataStatus      OperationalDataStatus    @default(VERIFIED)
   createdSource   OperationalCreatedSource @default(ADMIN)
 
@@ -942,6 +964,12 @@ model DemoLoan {
 
   code   String         @unique
   status DemoLoanStatus @default(PLANNED)
+  machineUse DemoLoanMachineUse @default(UNKNOWN)
+  preparationStatus DemoPreparationStatus @default(NOT_REQUIRED)
+  preparedAt DateTime?
+  preparationNote String? @db.Text
+  previousMachineDemoCategory DemoMachineCategory?
+  returnRequiresRepair Boolean @default(false)
 
   machineId String
   machine   Machine @relation(fields: [machineId], references: [id])
@@ -1285,6 +1313,7 @@ model Maintenance {
   completedAt   DateTime?
 
   checklist   Json      @default("[]")
+  receivedAccessories String? @db.Text
   resultNote  String?
   nextDueDate DateTime?
 

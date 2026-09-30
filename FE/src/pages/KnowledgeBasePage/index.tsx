@@ -350,8 +350,8 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
           </div>
 
           <div className="rounded-2xl border border-dashed border-[#e4e4e7] bg-[#fafafa] p-4 text-sm text-[#666666]">
-            <strong className="block text-[#1f1f1f]">{canApprove ? 'Admin duyệt nội dung' : 'Đóng góp kinh nghiệm'}</strong>
-            {canApprove ? 'Duyệt bài kỹ thuật.' : 'Tạo bài chờ duyệt.'}
+            <strong className="block text-[#1f1f1f]">{canApprove ? 'Phê duyệt nội dung' : 'Đóng góp kinh nghiệm kỹ thuật'}</strong>
+            {canApprove ? 'Phê duyệt bài viết kỹ thuật.' : 'Tạo bản nháp để trình phê duyệt.'}
           </div>
         </aside>
 
@@ -440,7 +440,7 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
                 </Field>
               ) : (
                 <div className="rounded-2xl border border-[#f4ddb5] bg-[#fff9ed] p-4 text-sm text-[#805000]">
-                  Bài của bạn sẽ ở trạng thái <strong>Chờ duyệt</strong>. Admin duyệt Published thì mọi kỹ sư mới nhìn thấy.
+                  Bài viết sẽ ở trạng thái <strong>Chờ phê duyệt</strong>. Sau khi được phê duyệt và xuất bản, nội dung sẽ hiển thị với kỹ sư.
                 </div>
               )}
               <Field className="md:col-span-2" label="Tóm tắt">
@@ -681,8 +681,8 @@ function safeList(value: unknown): string[] {
 }
 
 function statusLabel(status: KnowledgeArticleStatus) {
-  if (status === 'PUBLISHED') return 'Published';
-  if (status === 'DRAFT') return 'Chờ duyệt';
+  if (status === 'PUBLISHED') return 'Đã xuất bản';
+  if (status === 'DRAFT') return 'Chờ phê duyệt';
   return 'Archived';
 }
 

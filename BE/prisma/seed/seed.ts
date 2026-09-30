@@ -1,8 +1,22 @@
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '@prisma/client';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const prisma = new PrismaClient();
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is required to seed the database');
+}
+
+const databaseUrl = new URL(process.env.DATABASE_URL);
+const prisma = new PrismaClient({
+  adapter: new PrismaMariaDb({
+    host: databaseUrl.hostname,
+    port: Number(databaseUrl.port || 3306),
+    user: decodeURIComponent(databaseUrl.username),
+    password: decodeURIComponent(databaseUrl.password),
+    database: databaseUrl.pathname.replace(/^\//, ''),
+  }),
+});
 
 type SeedTable =
   | 'Region'
@@ -150,7 +164,9 @@ async function main() {
 
   if ((snapshot.tables.KnowledgeArticle ?? []).length === 0) {
     const adminUser = await prisma.user.findFirst({
-      where: { role: { name: { in: ['admin', 'Quản trị viên', 'quan tri vien'] } } },
+      where: {
+        role: { name: { in: ['admin', 'Quản trị viên', 'quan tri vien'] } },
+      },
       select: { id: true },
     });
 
@@ -185,13 +201,18 @@ async function main() {
 const defaultKnowledgeArticles = [
   {
     title: 'Máy xét nghiệm huyết học báo tắc kim hút mẫu',
-    summary: 'Cách khoanh vùng lỗi khi BC series báo tắc, hút mẫu yếu hoặc kết quả bất thường.',
+    summary:
+      'Cách khoanh vùng lỗi khi BC series báo tắc, hút mẫu yếu hoặc kết quả bất thường.',
     modelHint: 'BC-20s, BC-30s, BC-60s, BC-6800',
     ownerTeam: 'Nhóm xét nghiệm',
     category: 'COMMON_FAULT' as const,
     status: 'PUBLISHED' as const,
     tags: ['Huyết học', 'Mindray', 'Kim hút mẫu'],
-    symptoms: ['Máy báo clog/aperture block.', 'Mẫu hút chậm hoặc không đủ thể tích.', 'Kết quả WBC/RBC/PLT dao động bất thường.'],
+    symptoms: [
+      'Máy báo clog/aperture block.',
+      'Mẫu hút chậm hoặc không đủ thể tích.',
+      'Kết quả WBC/RBC/PLT dao động bất thường.',
+    ],
     steps: [
       'Hỏi khách hàng thời điểm phát sinh lỗi và loại mẫu chạy gần nhất.',
       'Kiểm tra hóa chất, mức dung dịch rửa, đường ống xả và bình thải.',
@@ -199,18 +220,27 @@ const defaultKnowledgeArticles = [
       'Kiểm tra kim hút mẫu, tubing và bơm định lượng nếu lỗi lặp lại.',
       'Chạy QC sau xử lý và lưu ảnh màn hình kết quả vào phiếu.',
     ],
-    checklist: ['Găng tay, khăn thấm, dung dịch rửa.', 'Ảnh cảnh báo lỗi trước/sau xử lý.', 'Kết quả QC hoặc mẫu kiểm chứng.'],
+    checklist: [
+      'Găng tay, khăn thấm, dung dịch rửa.',
+      'Ảnh cảnh báo lỗi trước/sau xử lý.',
+      'Kết quả QC hoặc mẫu kiểm chứng.',
+    ],
     note: 'Không tháo cụm kim khi chưa xả áp và chưa ghi nhận tình trạng ban đầu.',
   },
   {
     title: 'Máy siêu âm mất hình hoặc nhiễu mạnh',
-    summary: 'Checklist nhanh để phân biệt lỗi đầu dò, cổng probe, setting hoặc bo xử lý hình ảnh.',
+    summary:
+      'Checklist nhanh để phân biệt lỗi đầu dò, cổng probe, setting hoặc bo xử lý hình ảnh.',
     modelHint: 'HD-350, X-CUBE 50, P series',
     ownerTeam: 'Nhóm CĐHA',
     category: 'COMMON_FAULT' as const,
     status: 'PUBLISHED' as const,
     tags: ['Siêu âm', 'Đầu dò', 'Hình ảnh'],
-    symptoms: ['Màn hình có sọc/nhiễu.', 'Một đầu dò mất hình, đầu dò khác bình thường.', 'Freeze hoặc gain không phản hồi ổn định.'],
+    symptoms: [
+      'Màn hình có sọc/nhiễu.',
+      'Một đầu dò mất hình, đầu dò khác bình thường.',
+      'Freeze hoặc gain không phản hồi ổn định.',
+    ],
     steps: [
       'Chụp lại preset, đầu dò đang dùng và tình trạng hình ảnh.',
       'Đổi đầu dò sang cổng khác nếu máy có nhiều cổng.',
@@ -218,12 +248,17 @@ const defaultKnowledgeArticles = [
       'Reset preset hoặc thử exam type khác để loại trừ setting.',
       'Nếu nhiều đầu dò cùng lỗi, kiểm tra log và bo xử lý theo service manual.',
     ],
-    checklist: ['Ảnh connector đầu dò.', 'Video ngắn mô tả nhiễu.', 'Tên preset và phiên bản phần mềm.'],
+    checklist: [
+      'Ảnh connector đầu dò.',
+      'Video ngắn mô tả nhiễu.',
+      'Tên preset và phiên bản phần mềm.',
+    ],
     note: 'Không kéo cáp đầu dò khi đầu dò còn khóa trên cổng máy.',
   },
   {
     title: 'Đóng hàng máy siêu âm dạng trolley',
-    summary: 'Quy trình đóng máy trước khi chuyển kho, chuyển tỉnh hoặc gửi bảo hành.',
+    summary:
+      'Quy trình đóng máy trước khi chuyển kho, chuyển tỉnh hoặc gửi bảo hành.',
     modelHint: 'Máy siêu âm có trolley',
     ownerTeam: 'Kho máy',
     category: 'PACKING' as const,
@@ -237,12 +272,18 @@ const defaultKnowledgeArticles = [
       'Bọc thân máy bằng màng PE, foam góc và lớp chống ẩm.',
       'Dán tem hướng đặt, tem dễ vỡ và ghi rõ danh sách phụ kiện đi kèm.',
     ],
-    checklist: ['Biên bản tình trạng máy.', 'Ảnh 4 mặt trước khi đóng.', 'Danh sách đầu dò/phụ kiện.', 'Tem serial ngoài kiện.'],
+    checklist: [
+      'Biên bản tình trạng máy.',
+      'Ảnh 4 mặt trước khi đóng.',
+      'Danh sách đầu dò/phụ kiện.',
+      'Tem serial ngoài kiện.',
+    ],
     note: 'Đầu dò luôn đi hộp riêng hoặc khoang riêng, không đặt đè lên thân máy.',
   },
   {
     title: 'Chuẩn bị trước khi đi sửa chữa onsite',
-    summary: 'Các bước cần có trước khi kỹ sư xuất phát để tránh thiếu linh kiện và thiếu thông tin lỗi.',
+    summary:
+      'Các bước cần có trước khi kỹ sư xuất phát để tránh thiếu linh kiện và thiếu thông tin lỗi.',
     modelHint: 'Tất cả model',
     ownerTeam: 'Điều phối kỹ thuật',
     category: 'REPAIR' as const,
@@ -256,12 +297,19 @@ const defaultKnowledgeArticles = [
       'Kiểm tra phiên bản phần mềm hoặc tài liệu service cần mang theo.',
       'Cập nhật trạng thái di chuyển để admin và khách hàng theo dõi.',
     ],
-    checklist: ['Phiếu lỗi.', 'Serial/model máy.', 'Dụng cụ đo.', 'Linh kiện nghi ngờ.', 'Thông tin liên hệ khách hàng.'],
+    checklist: [
+      'Phiếu lỗi.',
+      'Serial/model máy.',
+      'Dụng cụ đo.',
+      'Linh kiện nghi ngờ.',
+      'Thông tin liên hệ khách hàng.',
+    ],
     note: 'Nếu lỗi ảnh hưởng vận hành khoa, ưu tiên phương án tạm chạy an toàn trước khi xử lý triệt để.',
   },
   {
     title: 'Lắp đặt và bàn giao máy mới',
-    summary: 'Khung thao tác từ nhận mặt bằng, lắp đặt, chạy thử đến ký nghiệm thu.',
+    summary:
+      'Khung thao tác từ nhận mặt bằng, lắp đặt, chạy thử đến ký nghiệm thu.',
     modelHint: 'Máy siêu âm, nội soi, xét nghiệm',
     ownerTeam: 'Nhóm lắp đặt',
     category: 'INSTALLATION' as const,
@@ -276,7 +324,13 @@ const defaultKnowledgeArticles = [
       'Hướng dẫn vận hành cơ bản, vệ sinh, tắt mở máy và cảnh báo an toàn.',
       'Ký biên bản bàn giao, nghiệm thu và cập nhật hồ sơ máy.',
     ],
-    checklist: ['Biên bản lắp đặt.', 'Ảnh serial.', 'Ảnh vị trí máy.', 'Kết quả test.', 'Thông tin người nhận bàn giao.'],
+    checklist: [
+      'Biên bản lắp đặt.',
+      'Ảnh serial.',
+      'Ảnh vị trí máy.',
+      'Kết quả test.',
+      'Thông tin người nhận bàn giao.',
+    ],
     note: 'Không nghiệm thu khi nguồn điện hoặc tiếp địa chưa đạt điều kiện tối thiểu.',
   },
   {
@@ -295,12 +349,18 @@ const defaultKnowledgeArticles = [
       'Chạy kiểm tra chức năng chính theo từng dòng máy.',
       'Khuyến nghị vật tư cần thay trong kỳ tới và cập nhật phiếu bảo trì.',
     ],
-    checklist: ['Ảnh trước/sau bảo trì.', 'Log lỗi nếu có.', 'Counter máy.', 'Khuyến nghị vật tư.'],
+    checklist: [
+      'Ảnh trước/sau bảo trì.',
+      'Log lỗi nếu có.',
+      'Counter máy.',
+      'Khuyến nghị vật tư.',
+    ],
     note: 'Luôn hỏi khách hàng về lỗi nhỏ lặp lại, vì nhiều lỗi không xuất hiện trong ngày bảo trì.',
   },
   {
     title: 'An toàn điện trước khi thao tác máy',
-    summary: 'Các điểm cần kiểm tra trước khi mở vỏ máy, đo nguồn hoặc thay linh kiện.',
+    summary:
+      'Các điểm cần kiểm tra trước khi mở vỏ máy, đo nguồn hoặc thay linh kiện.',
     modelHint: 'Tất cả model',
     ownerTeam: 'Quản lý kỹ thuật',
     category: 'SAFETY' as const,
@@ -314,7 +374,12 @@ const defaultKnowledgeArticles = [
       'Đeo vòng chống tĩnh điện khi thao tác bo mạch.',
       'Chỉ cấp nguồn lại khi tất cả connector, vỏ che và dây tiếp địa đã đúng vị trí.',
     ],
-    checklist: ['Đồng hồ đo.', 'Găng tay phù hợp.', 'Vòng ESD.', 'Ảnh connector trước khi tháo.'],
+    checklist: [
+      'Đồng hồ đo.',
+      'Găng tay phù hợp.',
+      'Vòng ESD.',
+      'Ảnh connector trước khi tháo.',
+    ],
     note: 'Nếu môi trường ẩm hoặc nguồn không ổn định, dừng thao tác và báo quản lý kỹ thuật.',
   },
 ];

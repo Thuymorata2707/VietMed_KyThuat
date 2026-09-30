@@ -1,26 +1,24 @@
-import { ArrowRight, CalendarClock, ChevronDown, ClipboardList, Phone, Stethoscope, UserRound, Wrench } from 'lucide-react';
+import { ArrowRight, CalendarClock, ChevronDown, ChevronLeft, ClipboardList, MapPin, PackageCheck, Phone, Stethoscope, UserRound, Wrench } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import type { CustomerMachine, CustomerSummary, OpenTaskItem, TimelineItem } from './types';
-import { categoryLabels, displayStatus, formatDate, machineTitle, normalizeAccessoryList, taskKindLabel } from './utils';
+import { categoryLabels, countUnique, displayStatus, formatDate, machineTitle, normalizeAccessoryList, taskKindLabel } from './utils';
 
 export function CustomerDetailView({
   customer,
   detailLoading,
-  isAdminProfile,
   machines,
   openTasks,
   timeline,
 }: {
   customer: CustomerSummary;
   detailLoading: boolean;
-  isAdminProfile: boolean;
   machines: CustomerMachine[];
   openTasks: OpenTaskItem[];
   timeline: TimelineItem[];
 }) {
-  const returnTo = encodeURIComponent(isAdminProfile ? `/customers/profile/${customer.id}` : `/my-customers/${customer.id}`);
+  const returnTo = encodeURIComponent(`/customers/${customer.id}`);
   const accessories = machines.flatMap((machine) =>
     (machine.accessories ?? []).map((accessory) => ({ ...accessory, machine })),
   );
@@ -40,6 +38,14 @@ export function CustomerDetailView({
   const [workSearch, setWorkSearch] = useState('');
   const [workPage, setWorkPage] = useState(1);
   const allAccessoriesCount = accessories.length + installationAccessories.length;
+  const totalRepairs = countUnique([
+    ...machines.flatMap((machine) => machine.repairs ?? []),
+    ...(customer.directRepairs ?? []),
+  ]);
+  const totalMaintenances = countUnique([
+    ...machines.flatMap((machine) => machine.maintenances ?? []),
+    ...(customer.directMaintenances ?? []),
+  ]);
   const filteredTimeline = timeline.filter((item) => matchWorkSearch(item, workSearch));
   const workPageSize = 10;
   const workTotalPages = Math.max(1, Math.ceil(filteredTimeline.length / workPageSize));
@@ -56,16 +62,20 @@ export function CustomerDetailView({
 
   return (
     <div className="grid min-w-0 gap-5">
-      <div className="min-w-0 rounded-[26px] border border-[#e4e4e7] bg-white p-5 shadow-[0_8px_24px_rgba(24,24,27,0.04)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#666666]">{customer.customerCode || customer.region?.name || 'Khách hàng'}</span>
-            <h2 className="mt-1 [overflow-wrap:anywhere] text-2xl font-extrabold leading-tight text-[#1f1f1f]">{customer.name || customer.hospitalName}</h2>
-            <p className="mt-2 max-w-[980px] [overflow-wrap:anywhere] text-sm font-semibold leading-6 text-[#666666]">
-              {customer.fullAddress || [customer.address, customer.district, customer.province].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}
+      <div className="grid min-w-0 gap-5 rounded-[26px] border border-[#e4e4e7] bg-white p-5 shadow-[0_8px_24px_rgba(24,24,27,0.04)] sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#eeeeee] pb-5">
+          <div className="min-w-0 flex-1">
+            <span className="inline-flex rounded-md bg-[#f4f4f5] px-2 py-1 text-xs font-bold tracking-wide text-[#52525b]">{customer.customerCode || customer.region?.name || 'Khách hàng'}</span>
+            <h1 className="mt-2 [overflow-wrap:anywhere] text-[clamp(24px,3vw,32px)] font-extrabold leading-tight tracking-[-0.025em] text-[#1f1f1f]">{customer.name || customer.hospitalName}</h1>
+            <p className="mt-2 flex max-w-[70ch] items-start gap-2 [overflow-wrap:anywhere] text-sm font-medium leading-6 text-[#666666]">
+              <MapPin className="mt-1 shrink-0 text-[#991b2b]" size={16} />
+              {customer.fullAddress || [customer.address, customer.locality, customer.ward, customer.district, customer.province].filter(Boolean).join(', ') || 'Chưa có địa chỉ'}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex max-w-full flex-wrap items-center gap-2">
+            <Button asChild variant="secondary">
+              <Link to="/customers"><ChevronLeft size={16} />Danh sách khách hàng</Link>
+            </Button>
             <Button asChild>
               <Link to={`/service-tickets/create?kind=repair&customerId=${customer.id}&returnTo=${returnTo}`}>
                 <Wrench size={16} />
@@ -81,11 +91,17 @@ export function CustomerDetailView({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric icon={<Stethoscope size={18} />} label="Máy đang quản lý" value={machines.length} />
+          <Metric icon={<Wrench size={18} />} label="Lượt sửa chữa" value={totalRepairs} />
+          <Metric icon={<CalendarClock size={18} />} label="Lượt bảo trì" value={totalMaintenances} />
+          <Metric icon={<PackageCheck size={18} />} label="Phụ kiện/linh kiện" value={allAccessoriesCount} />
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
           <InfoTile icon={<UserRound size={17} />} label="Kỹ sư phụ trách" value={customer.primaryEngineer?.fullName || 'Chưa gán'} hint={customer.primaryEngineer?.phone || customer.primaryEngineer?.email || ''} />
           <InfoTile icon={<Phone size={17} />} label="Liên hệ" value={customer.contactPerson || customer.phone || 'Chưa có'} hint={customer.contactPhone || customer.phone || ''} />
           <InfoTile icon={<ClipboardList size={17} />} label="Việc mở" value={`${openTasks.length}`} hint="Cần xử lý" />
-          <InfoTile icon={<Stethoscope size={17} />} label="Máy quản lý" value={`${machines.length}`} hint={displayStatus(customer.status)} />
         </div>
       </div>
 
