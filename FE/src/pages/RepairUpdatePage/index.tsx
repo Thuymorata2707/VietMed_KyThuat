@@ -1,5 +1,6 @@
 import { ArrowLeft, Loader2, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
@@ -19,14 +20,13 @@ import {
   workFieldClass,
   workLabelClass,
   workPanelClass,
-  workSectionDescriptionClass,
   workSectionHeaderClass,
   workSectionTitleClass,
   workSidePanelClass,
   workStepBadgeClass,
   workTextareaClass,
 } from '../../styles/workFormClasses';
-import { deleteRequestReason, deleteWorkTicket, isDeletedResponse, isDeleteRequest, reviewDeleteWorkTicket } from '../../utils/workDeleteRequests';
+import { deleteRequestReason, deleteWorkTicket, invalidateWorkTicketQueries, isDeletedResponse, isDeleteRequest, reviewDeleteWorkTicket } from '../../utils/workDeleteRequests';
 import { buildUsedParts, fetchModelAccessories, normalizeUsedPartsPayload } from '../../utils/workParts';
 import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
 import type { RepairTask } from '../EngineerTasksPage/types';
@@ -95,6 +95,7 @@ type MachineModelOption = {
 export function RepairUpdatePage({ user }: { user: ApiUser }) {
   const { id = '' } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/service-tickets';
   const isAdmin = getRoleName(user) === 'admin';
@@ -291,6 +292,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
 
       if (response.deleted) {
         setShowDeleteConfirm(false);
+        await invalidateWorkTicketQueries(queryClient);
         navigate(returnTo);
         return;
       }
@@ -318,6 +320,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
       const response = await reviewDeleteWorkTicket<RepairTask>(`/repairs/${id}/review`, approved, reviewNote);
 
       if (isDeletedResponse(response)) {
+        await invalidateWorkTicketQueries(queryClient);
         navigate(returnTo);
         return;
       }
@@ -336,8 +339,8 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle
           eyebrow="Sửa chữa"
+          meta={detail?.code ? `${detail.code} · ${statusLabel(detail.status || '')}` : undefined}
           title="Cập nhật phiếu sửa chữa"
-          description={detail?.code ? `Mã phiếu ${detail.code} · ${statusLabel(detail.status || '')}` : 'Thông tin thiết bị và kết quả xử lý'}
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
@@ -498,7 +501,6 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Khách hàng</span>
                   <h2 className={sectionTitleClass}>Thông tin tại điểm sửa chữa</h2>
-                  <p className={sectionDescriptionClass}>Liên hệ & địa chỉ.</p>
                 </div>
               </div>
               <CustomerSiteFields
@@ -523,7 +525,6 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Kết quả</span>
                   <h2 className={sectionTitleClass}>Ghi nhận sau xử lý</h2>
-                  <p className={sectionDescriptionClass}>Xử lý & phản hồi.</p>
                 </div>
               </div>
               <div className="grid min-w-0 gap-5">
@@ -589,11 +590,13 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
                 <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
                   Hủy
                 </button>
-                {isAdmin ? (
+                {isAdmin && detail?.status === 'PENDING' ? (
                   <button className="secondary-button justify-center text-[#b5121b]" disabled={saving} onClick={() => setShowDeleteConfirm(true)} type="button">
-                  <Trash2 size={17} />
-                  Xóa phiếu
+                    <Trash2 size={17} />
+                    Xóa phiếu
                   </button>
+                ) : isAdmin && detail ? (
+                  <span className="inline-flex items-center rounded-md border border-[#e5e7eb] bg-white px-2 py-1 text-xs font-semibold text-[#667085]">Chỉ xóa phiếu chờ xử lý</span>
                 ) : null}
                 <button className="primary-button" disabled={saving} type="submit">
                   {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
@@ -759,7 +762,6 @@ const sectionHeaderClass = workSectionHeaderClass;
 const stepBadgeClass = workStepBadgeClass;
 const eyebrowClass = workEyebrowClass;
 const sectionTitleClass = workSectionTitleClass;
-const sectionDescriptionClass = workSectionDescriptionClass;
 const labelClass = workLabelClass;
 const fieldClass = workFieldClass;
 const textareaClass = workTextareaClass;

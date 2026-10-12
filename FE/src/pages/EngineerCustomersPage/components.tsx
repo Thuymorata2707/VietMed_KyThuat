@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarClock, ChevronDown, ChevronLeft, ClipboardList, MapPin, PackageCheck, Phone, Stethoscope, UserRound, Wrench } from 'lucide-react';
+import { ArrowRight, CalendarClock, ChevronDown, ChevronLeft, ClipboardList, Mail, MapPin, PackageCheck, Phone, Stethoscope, UserRound, Wrench } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
@@ -22,6 +22,13 @@ export function CustomerDetailView({
   const accessories = machines.flatMap((machine) =>
     (machine.accessories ?? []).map((accessory) => ({ ...accessory, machine })),
   );
+  const demoMachines = machines.filter((machine) => machine.demoLoans?.length);
+  const customerMachines = machines.filter((machine) => !machine.demoLoans?.length);
+  const contacts = customer.contacts?.length
+    ? customer.contacts
+    : customer.contactPerson || customer.contactPhone || customer.contactEmail
+      ? [{ id: 'legacy-primary-contact', name: customer.contactPerson || 'Liên hệ chính', position: customer.contactPosition, phone: customer.contactPhone, email: customer.contactEmail, isPrimary: true }]
+      : [];
   const installationAccessories = machines.flatMap((machine) =>
     (machine.installations ?? []).flatMap((installation) =>
       normalizeAccessoryList(installation.accessories).map((name) => ({
@@ -55,7 +62,7 @@ export function CustomerDetailView({
   const lastWorkIndex = Math.min(filteredTimeline.length, safeWorkPage * workPageSize);
   const sectionTabs = [
     { id: 'overview', label: 'Tổng quan', value: openTasks.length },
-    { id: 'machines', label: 'Máy', value: machines.length },
+    { id: 'machines', label: 'Thiết bị', value: machines.length },
     { id: 'work', label: 'Công việc', value: timeline.length },
     { id: 'accessories', label: 'Phụ kiện', value: allAccessoriesCount },
   ] as const;
@@ -91,8 +98,9 @@ export function CustomerDetailView({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Metric icon={<Stethoscope size={18} />} label="Máy đang quản lý" value={machines.length} />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Metric icon={<Stethoscope size={18} />} label="Máy khách đang sử dụng" value={customerMachines.length} />
+          <Metric icon={<PackageCheck size={18} />} label="Máy đang demo" value={demoMachines.length} />
           <Metric icon={<Wrench size={18} />} label="Lượt sửa chữa" value={totalRepairs} />
           <Metric icon={<CalendarClock size={18} />} label="Lượt bảo trì" value={totalMaintenances} />
           <Metric icon={<PackageCheck size={18} />} label="Phụ kiện/linh kiện" value={allAccessoriesCount} />
@@ -103,6 +111,29 @@ export function CustomerDetailView({
           <InfoTile icon={<Phone size={17} />} label="Liên hệ" value={customer.contactPerson || customer.phone || 'Chưa có'} hint={customer.contactPhone || customer.phone || ''} />
           <InfoTile icon={<ClipboardList size={17} />} label="Việc mở" value={`${openTasks.length}`} hint="Cần xử lý" />
         </div>
+        <section className="grid min-w-0 gap-3 rounded-2xl border border-[#e4e4e7] bg-[#faf9f7] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-extrabold text-[#252c30]">Đầu mối liên hệ</h2>
+            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#666666]">{contacts.length}</span>
+          </div>
+          {contacts.length ? (
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {contacts.map((contact) => (
+                <article className="min-w-0 rounded-xl border border-[#e5e5e5] bg-white p-3" key={contact.id}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <strong className="[overflow-wrap:anywhere] text-sm text-[#252c30]">{contact.name}</strong>
+                    {contact.isPrimary ? <span className="rounded-full bg-[#f8ecee] px-2 py-0.5 text-[11px] font-bold text-[#991b2b]">Chính</span> : null}
+                  </div>
+                  {contact.position ? <p className="mt-1 text-xs text-[#737373]">{contact.position}</p> : null}
+                  <div className="mt-2 grid gap-1 text-xs text-[#555555]">
+                    {contact.phone ? <a className="inline-flex items-center gap-1.5 hover:text-[#991b2b]" href={`tel:${contact.phone}`}><Phone size={13} />{contact.phone}</a> : null}
+                    {contact.email ? <a className="inline-flex items-center gap-1.5 break-all hover:text-[#991b2b]" href={`mailto:${contact.email}`}><Mail size={13} />{contact.email}</a> : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : <p className="rounded-xl border border-dashed border-[#d8d8d8] bg-white px-3 py-4 text-sm text-[#777777]">Chưa có người liên hệ.</p>}
+        </section>
       </div>
 
       <section className="rounded-[26px] border border-[#e4e4e7] bg-white p-2 shadow-[0_8px_24px_rgba(24,24,27,0.04)]">
@@ -143,7 +174,7 @@ export function CustomerDetailView({
             <PanelTitle title="Thông tin khách hàng" />
             <div className="grid gap-3">
               <InfoTile icon={<ClipboardList size={17} />} label="Loại khách" value={categoryLabels[customer.customerType || ''] || customer.customerType || 'Chưa phân loại'} hint={displayStatus(customer.status)} />
-              <InfoTile icon={<Stethoscope size={17} />} label="Máy gần nhất" value={machines[0] ? machineTitle(machines[0]) : 'Chưa có máy'} hint={machines[0]?.serialNumber ? `S/N ${machines[0].serialNumber}` : ''} />
+              <InfoTile icon={<Stethoscope size={17} />} label="Máy khách đang sử dụng" value={customerMachines[0] ? machineTitle(customerMachines[0]) : 'Chưa có máy của khách'} hint={customerMachines[0]?.serialNumber ? `S/N ${customerMachines[0].serialNumber}` : ''} />
               <InfoTile icon={<CalendarClock size={17} />} label="Lịch sử" value={`${timeline.length} phiếu`} hint="Lắp đặt, sửa chữa, bảo trì" />
             </div>
           </section>
@@ -151,20 +182,32 @@ export function CustomerDetailView({
       ) : null}
 
       {activeSection === 'machines' ? (
+        <div className="grid min-w-0 gap-5">
         <section className={panelClass}>
-          <PanelTitle title="Máy đang quản lý" subtitle={`${machines.length} máy`} />
+          <PanelTitle title="Máy khách đang sử dụng" subtitle={`${customerMachines.length} máy`} />
           {detailLoading ? (
             <EmptyState title="Đang tải máy..." />
-          ) : machines.length ? (
+          ) : customerMachines.length ? (
             <div className="grid gap-3">
-              {machines.map((machine) => (
+              {customerMachines.map((machine) => (
                 <MachineCard customerId={customer.id} key={machine.id} machine={machine} returnTo={returnTo} />
               ))}
             </div>
           ) : (
-            <EmptyState title="Khách hàng này chưa có máy trong dữ liệu" />
+            <EmptyState title="Chưa ghi nhận máy thuộc khách hàng này" />
           )}
         </section>
+        {demoMachines.length ? (
+          <section className={panelClass}>
+            <PanelTitle title="Máy khách đang mượn demo" subtitle={`${demoMachines.length} máy`} />
+            <div className="grid gap-3">
+              {demoMachines.map((machine) => (
+                <MachineCard customerId={customer.id} key={machine.id} machine={machine} returnTo={returnTo} demo />
+              ))}
+            </div>
+          </section>
+        ) : null}
+        </div>
       ) : null}
 
       {activeSection === 'work' ? (
@@ -465,7 +508,8 @@ function TaskCompactCard({ task }: { task: OpenTaskItem }) {
   );
 }
 
-function MachineCard({ customerId, machine, returnTo }: { customerId: string; machine: CustomerMachine; returnTo: string }) {
+function MachineCard({ customerId, machine, returnTo, demo = false }: { customerId: string; machine: CustomerMachine; returnTo: string; demo?: boolean }) {
+  const demoLoan = machine.demoLoans?.[0];
   return (
     <article className="grid min-w-0 gap-3 rounded-[22px] border border-[#ededf0] bg-[#fafafa] p-4 transition hover:border-[#e4e4e7] hover:bg-[#fafafa]">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -473,14 +517,19 @@ function MachineCard({ customerId, machine, returnTo }: { customerId: string; ma
           <strong className="block [overflow-wrap:anywhere] text-sm text-[#1f1f1f]">{machineTitle(machine)}</strong>
           <span className="mt-1 block [overflow-wrap:anywhere] text-xs text-[#666666]">{[categoryLabels[machine.productCategory || ''], machine.manufacturer, machine.serialNumber ? `S/N ${machine.serialNumber}` : ''].filter(Boolean).join(' - ') || 'Chưa đủ thông tin máy'}</span>
         </div>
-        <span className="rounded-lg border border-[#ededf0] bg-white px-2.5 py-1 text-xs font-bold text-[#333333]">{displayStatus(machine.inventoryStatus || machine.status)}</span>
+        <span className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${demo ? 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]' : 'border-[#ededf0] bg-white text-[#333333]'}`}>{demo ? 'Đang demo' : displayStatus(machine.inventoryStatus || machine.status)}</span>
       </div>
       <div className="grid gap-2 text-xs text-[#666666] sm:grid-cols-3">
-        <span>Lắp đặt: <b className="font-semibold text-[#333333]">{formatDate(machine.installDate) || '-'}</b></span>
-        <span>Bảo hành: <b className="font-semibold text-[#333333]">{formatDate(machine.warrantyEndDate) || '-'}</b></span>
+        {demo ? <span>Phiếu demo: <b className="font-semibold text-[#333333]">{demoLoan?.ticketCode || demoLoan?.code || '-'}</b></span> : <span>Lắp đặt: <b className="font-semibold text-[#333333]">{formatDate(machine.installDate) || '-'}</b></span>}
+        {demo ? <span>Dự kiến thu hồi: <b className="font-semibold text-[#333333]">{formatDate(demoLoan?.expectedReturnAt) || '-'}</b></span> : <span>Bảo hành: <b className="font-semibold text-[#333333]">{formatDate(machine.warrantyEndDate) || '-'}</b></span>}
         <span>Kỹ sư máy: <b className="font-semibold text-[#333333]">{machine.primaryEngineer?.fullName || machine.installedBy?.fullName || '-'}</b></span>
       </div>
       <div className="flex flex-wrap gap-2">
+        {demo ? (
+          <Button asChild variant="secondary">
+            <Link to="/service-tickets?type=demo">Xem phiếu demo</Link>
+          </Button>
+        ) : null}
         <Button asChild variant="secondary">
           <Link to={`/technical-machines/${machine.id}`}>
             Xem máy

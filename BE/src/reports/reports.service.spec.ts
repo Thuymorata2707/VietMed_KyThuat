@@ -3,6 +3,44 @@ import { ReportsService } from './reports.service';
 describe('ReportsService report aggregates', () => {
   const service = new ReportsService({} as never);
 
+  it('returns scoped ticket counts without loading ticket rows', async () => {
+    const prisma = {
+      repair: { count: jest.fn().mockResolvedValue(2) },
+      maintenance: { count: jest.fn().mockResolvedValue(3) },
+      machineInstallation: { count: jest.fn().mockResolvedValue(5) },
+      demoLoan: { count: jest.fn().mockResolvedValue(7) },
+      deviceServiceTicket: { count: jest.fn().mockResolvedValue(11) },
+    };
+    const reports = new ReportsService(prisma as never);
+    const user = {
+      id: 'admin-1',
+      email: 'admin@example.com',
+      roleId: 'role-admin',
+      roleName: 'admin',
+      regionId: 'region-1',
+      expertiseGroup: null,
+      expertiseGroups: [],
+    };
+
+    await expect(reports.getServiceTicketOverview(user)).resolves.toEqual({
+      repairs: 2,
+      maintenance: 3,
+      installations: 5,
+      demo: 7,
+      'device-service': 11,
+    });
+    expect(prisma.repair.count).toHaveBeenCalledTimes(1);
+    expect(prisma.maintenance.count).toHaveBeenCalledTimes(1);
+    expect(prisma.machineInstallation.count).toHaveBeenCalledTimes(1);
+    expect(prisma.demoLoan.count).toHaveBeenCalledTimes(1);
+    expect(prisma.deviceServiceTicket.count).toHaveBeenCalledTimes(1);
+    for (const model of Object.values(prisma)) {
+      expect(model.count).toHaveBeenCalledWith({
+        where: expect.objectContaining({ OR: expect.any(Array) }),
+      });
+    }
+  });
+
   it('does not count missing installation relations as real entities', () => {
     const rows = [
       {

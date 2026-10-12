@@ -9,12 +9,19 @@ type MachineAccessoryEditorProps = {
   onChange: (value: string) => void;
   compact?: boolean;
   mode?: 'probe' | 'endoscopy' | 'generic';
+  templates?: Array<{ id: string; code: string; name: string; quantity?: number | null }>;
 };
 
-export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe' }: MachineAccessoryEditorProps) {
+export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe', templates = [] }: MachineAccessoryEditorProps) {
   const items = parseMachineAccessoriesInput(value, [], { keepBlank: true });
   const isEndoscopy = mode === 'endoscopy';
   const isProbe = mode === 'probe';
+  const modelProbeOptions = templates
+    .filter((template) => ultrasoundProbeOptions.some((option) => option.value === template.code))
+    .map((template) => ({ label: template.code, value: template.code, id: template.id }));
+  const probeOptions = modelProbeOptions.length
+    ? modelProbeOptions
+    : ultrasoundProbeOptions.map((option) => ({ ...option, id: undefined }));
   const [accessorySearch, setAccessorySearch] = useState('');
   const visibleEndoscopyOptions = useMemo(() => {
     const keyword = accessorySearch.trim().toLowerCase();
@@ -53,7 +60,8 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
       setItems(items.filter((item) => (item.name || item.code) !== name));
       return;
     }
-    setItems([...items.filter((item) => item.name), { code: name, name, quantity: isCoreEndoscopyAccessory(name) ? undefined : 1, serialNumber: '', description: '' }]);
+    const template = templates.find((item) => item.code === name || item.name === name);
+    setItems([...items.filter((item) => item.name), { componentAccessoryId: template?.id, code: template?.code || name, name: template?.name || name, quantity: isCoreEndoscopyAccessory(name) ? undefined : template?.quantity ?? 1, serialNumber: '', description: '' }]);
   }
 
   function setAllEndoscopyAccessories(checked: boolean) {
@@ -66,7 +74,10 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
     const existingNames = new Set(items.map((item) => item.name || item.code).filter(Boolean));
     const missingItems = endoscopyAccessoryOptions
       .filter((option) => !existingNames.has(option.value))
-      .map((option) => ({ code: option.value, name: option.value, quantity: isCoreEndoscopyAccessory(option.value) ? undefined : 1, serialNumber: '', description: '' }));
+      .map((option) => {
+        const template = templates.find((item) => item.code === option.value || item.name === option.value);
+        return { componentAccessoryId: template?.id, code: template?.code || option.value, name: template?.name || option.value, quantity: isCoreEndoscopyAccessory(option.value) ? undefined : template?.quantity ?? 1, serialNumber: '', description: '' };
+      });
     setItems([...items.filter((item) => item.name), ...missingItems]);
   }
 
@@ -135,9 +146,16 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
                 <label className={labelClass}>
                   {isEndoscopy ? 'Tên phụ kiện' : isProbe ? 'Ký hiệu đầu dò' : 'Tên phụ kiện'}
                   {isProbe ? (
-                    <select className={fieldClass} onChange={(event) => updateItem(index, { code: event.target.value })} value={item.code || item.name || ''}>
+                    <select className={fieldClass} onChange={(event) => {
+                      const option = probeOptions.find((candidate) => candidate.value === event.target.value);
+                      updateItem(index, {
+                        code: event.target.value,
+                        name: event.target.value,
+                        componentAccessoryId: option?.id,
+                      });
+                    }} value={item.code || item.name || ''}>
                       <option value="">Chọn đầu dò</option>
-                      {ultrasoundProbeOptions.map((option) => (
+                      {probeOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>

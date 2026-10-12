@@ -345,8 +345,8 @@ model Region {
 model Branch {
   id String @id @default(cuid())
 
-  code String @unique
-  name String @unique
+  code      String     @unique
+  name      String     @unique
   provinces Province[]
 
   createdAt DateTime @default(now())
@@ -356,10 +356,10 @@ model Branch {
 model Province {
   id String @id @default(cuid())
 
-  code String @unique
-  name String @unique
-  branchId String?
-  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  code      String     @unique
+  name      String     @unique
+  branchId  String?
+  branch    Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
   customers Customer[]
 
   createdAt DateTime @default(now())
@@ -397,45 +397,48 @@ model User {
   regionId String
   region   Region @relation(fields: [regionId], references: [id])
 
-  assignedRepairs             Repair[]                   @relation("RepairEngineer")
+  assignedRepairs             Repair[]                    @relation("RepairEngineer")
   repairAssignments           RepairAssignment[]
-  createdRepairs              Repair[]                   @relation("RepairCreatedBy")
-  reviewedRepairs             Repair[]                   @relation("RepairReviewer")
+  createdRepairs              Repair[]                    @relation("RepairCreatedBy")
+  reviewedRepairs             Repair[]                    @relation("RepairReviewer")
   maintenances                Maintenance[]
   maintenanceAssignments      MaintenanceAssignment[]
-  reviewedMaintenances        Maintenance[]              @relation("MaintenanceReviewer")
-  installedMachines           Machine[]                  @relation("MachineInstalledBy")
-  machineInstallations        MachineInstallation[]      @relation("MachineInstallationEngineer")
-  installationAssignments    InstallationAssignment[]
-  reviewedInstallations       MachineInstallation[]      @relation("InstallationReviewer")
-  demoLoans                   DemoLoan[]                 @relation("DemoLoanEngineer")
-  issuedWarrantyCards         WarrantyCard[]             @relation("WarrantyCardIssuedBy")
-  responsibleMachines         Machine[]                  @relation("MachinePrimaryEngineer")
+  reviewedMaintenances        Maintenance[]               @relation("MaintenanceReviewer")
+  installedMachines           Machine[]                   @relation("MachineInstalledBy")
+  machineInstallations        MachineInstallation[]       @relation("MachineInstallationEngineer")
+  installationAssignments     InstallationAssignment[]
+  reviewedInstallations       MachineInstallation[]       @relation("InstallationReviewer")
+  demoLoans                   DemoLoan[]                  @relation("DemoLoanEngineer")
+  demoLoanAssignments         DemoLoanAssignment[]
+  demoLoansHandedOver         DemoLoan[]                  @relation("DemoLoanHandedOverBy")
+  demoLoansReturned           DemoLoan[]                  @relation("DemoLoanReturnedBy")
+  issuedWarrantyCards         WarrantyCard[]              @relation("WarrantyCardIssuedBy")
+  responsibleMachines         Machine[]                   @relation("MachinePrimaryEngineer")
   machineAssignments          MachineEngineerAssignment[]
-  inventoryMovements          MachineInventoryMovement[] @relation("InventoryMovementCreatedBy")
-  receivedNotifications       Notification[]             @relation("NotificationRecipient")
-  sentNotifications           Notification[]             @relation("NotificationSender")
-  managedBusinessLines        BusinessLine[]             @relation("BusinessLineManager")
-  auditLogs                   AuditLog[]                 @relation("AuditLogActor")
-  uploadedAttachments         Attachment[]               @relation("AttachmentUploadedBy")
+  inventoryMovements          MachineInventoryMovement[]  @relation("InventoryMovementCreatedBy")
+  receivedNotifications       Notification[]              @relation("NotificationRecipient")
+  sentNotifications           Notification[]              @relation("NotificationSender")
+  managedBusinessLines        BusinessLine[]              @relation("BusinessLineManager")
+  auditLogs                   AuditLog[]                  @relation("AuditLogActor")
+  uploadedAttachments         Attachment[]                @relation("AttachmentUploadedBy")
   engineerProfile             EngineerProfile?
-  dailyWorkNotes              DailyWorkNote[]            @relation("DailyWorkNoteUser")
-  reviewedDailyWorkNotes      DailyWorkNote[]            @relation("DailyWorkNoteReviewer")
-  dailyReports                DailyReport[]              @relation("DailyReportUser")
-  reviewedDailyReports        DailyReport[]              @relation("DailyReportReviewer")
-  weeklyReports               WeeklyReport[]             @relation("WeeklyReportUser")
-  reviewedWeeklyReports       WeeklyReport[]             @relation("WeeklyReportReviewer")
-  primaryCustomers            Customer[]                 @relation("CustomerPrimaryEngineer")
-  managedCustomers            Customer[]                 @relation("CustomerEngineers")
-  createdKnowledgeArticles    KnowledgeArticle[]         @relation("KnowledgeArticleCreatedBy")
-  updatedKnowledgeArticles    KnowledgeArticle[]         @relation("KnowledgeArticleUpdatedBy")
-  createdWorkLogs             WorkLog[]                  @relation("WorkLogCreatedBy")
-  createdUsedParts            UsedPart[]                 @relation("UsedPartCreatedBy")
-  accessoryStockMovements     AccessoryStockMovement[]   @relation("AccessoryStockMovementCreatedBy")
-  updatedTaskChecklistItems   TaskChecklistItem[]        @relation("TaskChecklistUpdatedBy")
-  applicationSupportCases     ApplicationSupportCase[]   @relation("ApplicationSupportEngineer")
+  dailyWorkNotes              DailyWorkNote[]             @relation("DailyWorkNoteUser")
+  reviewedDailyWorkNotes      DailyWorkNote[]             @relation("DailyWorkNoteReviewer")
+  dailyReports                DailyReport[]               @relation("DailyReportUser")
+  reviewedDailyReports        DailyReport[]               @relation("DailyReportReviewer")
+  weeklyReports               WeeklyReport[]              @relation("WeeklyReportUser")
+  reviewedWeeklyReports       WeeklyReport[]              @relation("WeeklyReportReviewer")
+  primaryCustomers            Customer[]                  @relation("CustomerPrimaryEngineer")
+  managedCustomers            Customer[]                  @relation("CustomerEngineers")
+  createdKnowledgeArticles    KnowledgeArticle[]          @relation("KnowledgeArticleCreatedBy")
+  updatedKnowledgeArticles    KnowledgeArticle[]          @relation("KnowledgeArticleUpdatedBy")
+  createdWorkLogs             WorkLog[]                   @relation("WorkLogCreatedBy")
+  createdUsedParts            UsedPart[]                  @relation("UsedPartCreatedBy")
+  accessoryStockMovements     AccessoryStockMovement[]    @relation("AccessoryStockMovementCreatedBy")
+  updatedTaskChecklistItems   TaskChecklistItem[]         @relation("TaskChecklistUpdatedBy")
+  applicationSupportCases     ApplicationSupportCase[]    @relation("ApplicationSupportEngineer")
   deviceServiceTickets        DeviceServiceTicket[]
-  createdDeviceServiceTickets DeviceServiceTicket[]      @relation("DeviceServiceTicketCreatedBy")
+  createdDeviceServiceTickets DeviceServiceTicket[]       @relation("DeviceServiceTicketCreatedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -513,7 +516,12 @@ model WeeklyReport {
 
   weekStart DateTime
   status    WeeklyReportStatus @default(DRAFT)
-  note      String?
+  note            String? @db.LongText
+  learnings       String? @db.LongText
+  accomplishments String? @db.LongText
+  timeSummary     String? @db.LongText
+  blockers        String? @db.LongText
+  nextWeekPlan    String? @db.LongText
 
   submittedAt DateTime?
   reviewedAt  DateTime?
@@ -640,18 +648,18 @@ model EngineerProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
 
-  employeeCode   String?         @unique
-  dateOfBirth    DateTime?
-  position       String?
-  department     String?
-  workStartDate  DateTime?
-  specialties    Json            @default("[]")
-  expertiseGroup ExpertiseGroup?
-  expertiseImaging   Boolean         @default(false)
+  employeeCode        String?         @unique
+  dateOfBirth         DateTime?
+  position            String?
+  department          String?
+  workStartDate       DateTime?
+  specialties         Json            @default("[]")
+  expertiseGroup      ExpertiseGroup?
+  expertiseImaging    Boolean         @default(false)
   expertiseLabTesting Boolean         @default(false)
-  certificateNo  String?
-  photoUrl       String?         @db.Text
-  note           String?
+  certificateNo       String?
+  photoUrl            String?         @db.Text
+  note                String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -697,6 +705,7 @@ model Customer {
   primaryEngineerId String?
   primaryEngineer   User?   @relation("CustomerPrimaryEngineer", fields: [primaryEngineerId], references: [id], onDelete: SetNull)
   engineers         User[]  @relation("CustomerEngineers")
+  contacts          CustomerContact[]
 
   machines                Machine[]
   inventoryMovements      MachineInventoryMovement[]
@@ -713,6 +722,22 @@ model Customer {
   updatedAt DateTime @updatedAt
 
   @@index([primaryEngineerId])
+}
+
+model CustomerContact {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  name      String
+  position  String?
+  phone     String?
+  email     String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId, isPrimary])
 }
 
 model BusinessLine {
@@ -902,12 +927,12 @@ model Machine {
   productCategory MachineProductCategory @default(OTHER)
   productLine     String?
 
-  status          MachineStatus            @default(ACTIVE)
-  inventoryStatus MachineInventoryStatus   @default(IN_STOCK)
-  demoCategory    DemoMachineCategory?
-  demoPreparationStatus DemoPreparationStatus @default(NOT_REQUIRED)
-  dataStatus      OperationalDataStatus    @default(VERIFIED)
-  createdSource   OperationalCreatedSource @default(ADMIN)
+  status                MachineStatus            @default(ACTIVE)
+  inventoryStatus       MachineInventoryStatus   @default(IN_STOCK)
+  demoCategory          DemoMachineCategory?
+  demoPreparationStatus DemoPreparationStatus    @default(NOT_REQUIRED)
+  dataStatus            OperationalDataStatus    @default(VERIFIED)
+  createdSource         OperationalCreatedSource @default(ADMIN)
 
   manufacturingDate   DateTime?
   warehouseImportDate DateTime?
@@ -928,8 +953,8 @@ model Machine {
   installedById String?
   installedBy   User?   @relation("MachineInstalledBy", fields: [installedById], references: [id])
 
-  primaryEngineerId String?
-  primaryEngineer   User?   @relation("MachinePrimaryEngineer", fields: [primaryEngineerId], references: [id])
+  primaryEngineerId   String?
+  primaryEngineer     User?                       @relation("MachinePrimaryEngineer", fields: [primaryEngineerId], references: [id])
   engineerAssignments MachineEngineerAssignment[]
 
   repairs                 Repair[]
@@ -962,14 +987,15 @@ model MachineEngineerAssignment {
 model DemoLoan {
   id String @id @default(cuid())
 
-  code   String         @unique
-  status DemoLoanStatus @default(PLANNED)
-  machineUse DemoLoanMachineUse @default(UNKNOWN)
-  preparationStatus DemoPreparationStatus @default(NOT_REQUIRED)
-  preparedAt DateTime?
-  preparationNote String? @db.Text
+  code                        String                @unique
+  ticketCode                  String?
+  status                      DemoLoanStatus        @default(PLANNED)
+  machineUse                  DemoLoanMachineUse    @default(UNKNOWN)
+  preparationStatus           DemoPreparationStatus @default(NOT_REQUIRED)
+  preparedAt                  DateTime?
+  preparationNote             String?               @db.Text
   previousMachineDemoCategory DemoMachineCategory?
-  returnRequiresRepair Boolean @default(false)
+  returnRequiresRepair        Boolean               @default(false)
 
   machineId String
   machine   Machine @relation(fields: [machineId], references: [id])
@@ -977,8 +1003,14 @@ model DemoLoan {
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
 
-  engineerId String
-  engineer   User   @relation("DemoLoanEngineer", fields: [engineerId], references: [id], onDelete: Restrict)
+  engineerId  String
+  engineer    User                 @relation("DemoLoanEngineer", fields: [engineerId], references: [id], onDelete: Restrict)
+  assignments DemoLoanAssignment[]
+
+  handedOverById String?
+  handedOverBy   User? @relation("DemoLoanHandedOverBy", fields: [handedOverById], references: [id], onDelete: SetNull)
+  returnedById   String?
+  returnedBy     User? @relation("DemoLoanReturnedBy", fields: [returnedById], references: [id], onDelete: SetNull)
 
   plannedHandoverAt DateTime
   handedOverAt      DateTime?
@@ -1001,12 +1033,25 @@ model DemoLoan {
   updatedAt DateTime @updatedAt
 
   @@index([machineId])
+  @@index([ticketCode])
   @@index([customerId])
   @@index([engineerId])
   @@index([status])
   @@index([plannedHandoverAt])
   @@index([expectedReturnAt])
   @@index([returnedAt])
+}
+
+model DemoLoanAssignment {
+  demoLoanId String
+  engineerId String
+  isLead     Boolean  @default(false)
+  assignedAt DateTime @default(now())
+  demoLoan   DemoLoan @relation(fields: [demoLoanId], references: [id], onDelete: Cascade)
+  engineer   User     @relation(fields: [engineerId], references: [id], onDelete: Cascade)
+
+  @@id([demoLoanId, engineerId])
+  @@index([engineerId, assignedAt])
 }
 
 model DeviceServiceTicket {
@@ -1221,9 +1266,9 @@ model InstallationAssignment {
   installationId String
   installation   MachineInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
   engineerId     String
-  engineer       User                 @relation(fields: [engineerId], references: [id], onDelete: Cascade)
-  isLead         Boolean              @default(false)
-  assignedAt     DateTime             @default(now())
+  engineer       User                @relation(fields: [engineerId], references: [id], onDelete: Cascade)
+  isLead         Boolean             @default(false)
+  assignedAt     DateTime            @default(now())
 
   @@id([installationId, engineerId])
   @@index([engineerId, assignedAt])
@@ -1312,10 +1357,10 @@ model Maintenance {
   startedAt     DateTime?
   completedAt   DateTime?
 
-  checklist   Json      @default("[]")
-  receivedAccessories String? @db.Text
-  resultNote  String?
-  nextDueDate DateTime?
+  checklist           Json      @default("[]")
+  receivedAccessories String?   @db.Text
+  resultNote          String?
+  nextDueDate         DateTime?
 
   reviewStatus WorkReviewStatus @default(NOT_REQUIRED)
   reviewNote   String?
@@ -1343,6 +1388,7 @@ model Maintenance {
   @@index([reviewStatus])
   @@index([reviewerId])
   @@index([customerId])
+  @@index([scheduledDate])
 }
 
 model MaintenanceAssignment {
@@ -1425,6 +1471,7 @@ model Repair {
   @@index([reviewStatus])
   @@index([reviewerId])
   @@index([customerId])
+  @@index([reportedAt])
 }
 
 model RepairAssignment {

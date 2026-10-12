@@ -5,6 +5,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiUser, apiFetch, apiFetchAllPages } from '../../api';
 import { DateInput } from '../../components/DateInput';
 import { MachineAccessoryEditor } from '../../components/MachineAccessoryEditor';
+import { isEndoscopyMachineModel } from '../../config/endoscopyAccessories';
+import { isUltrasoundMachineModel } from '../../config/ultrasoundProbes';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
@@ -12,7 +14,7 @@ import { VietnamAddressSelects } from '../../components/VietnamAddressSelects';
 import { AsyncEntityPicker, type PickerOption } from '../EngineerTasksPage/components/AsyncEntityPicker';
 import { getRoleName } from '../../auth/roles';
 import { displayLabel } from '../../utils/displayLabels';
-import { parseMachineAccessoriesInput } from '../../utils/machineAccessories';
+import { parseMachineAccessoriesInput, serializeMachineAccessories } from '../../utils/machineAccessories';
 import { isTechnicalUser, technicalUserName } from '../../utils/technicalUsers';
 
 type DemoCreateStep = 'records' | 'handover';
@@ -65,14 +67,28 @@ type MachineModelOption = {
   id: string;
   code: string;
   name: string;
+  displayName?: string | null;
   manufacturer?: string | null;
-  businessLine?: { name?: string | null } | null;
+  productCategory?: string | null;
+  businessLine?: { name?: string | null; productCategory?: string | null } | null;
+  components?: Array<{
+    accessories?: MachineModelAccessoryOption[];
+    ComponentAccessory?: MachineModelAccessoryOption[];
+  }>;
+};
+
+type MachineModelAccessoryOption = {
+  id: string;
+  code: string;
+  name: string;
+  quantity?: number | null;
+  requiresSerial?: boolean;
 };
 
 type DemoLoanForm = {
   customerId: string;
   machineUse: '' | 'DEMO_UNIT' | 'NEW_STOCK' | 'DEMO_USED';
-  engineerId: string;
+  engineerIds: string[];
   expectedReturnAt: string;
   handoverAddress: string;
   handoverCondition: string;
@@ -114,6 +130,7 @@ type DemoLoanOptions = {
   machines: MachineOption[];
   provinces: ProvinceOption[];
 };
+type SelectedDemoMachine = { machineId: string; machineUse: DemoLoanForm['machineUse'] };
 
 const panelClass = 'grid min-w-0 gap-5 rounded-[24px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]';
 const fieldClass = 'h-12 w-full min-w-0 rounded-2xl border border-[#cbd5e1] bg-white px-3 text-sm font-semibold text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)] disabled:bg-[#f8fafc] disabled:text-[#94a3b8]';
@@ -126,6 +143,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/service-tickets';
   const [form, setForm] = useState<DemoLoanForm>(() => emptyDemoLoanForm());
+  const [selectedDemoMachines, setSelectedDemoMachines] = useState<SelectedDemoMachine[]>([]);
   const [customerOptions, setCustomerOptions] = useState<Array<PickerOption<CustomerOption>>>([]);
   const [machineOptions, setMachineOptions] = useState<Array<PickerOption<MachineOption>>>([]);
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
@@ -189,14 +207,14 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
     () => customers.find((customer) => customer.id === form.customerId) || customerOptions.find((item) => item.value === form.customerId)?.row,
     [customerOptions, customers, form.customerId],
   );
-  const selectedMachine = useMemo(
-    () => machines.find((machine) => machine.id === form.machineId) || machineOptions.find((item) => item.value === form.machineId)?.row,
-    [form.machineId, machineOptions, machines],
-  );
+  const selectedDemoMachineRows = selectedDemoMachines.map((item) => ({
+    ...item,
+    machine: machines.find((machine) => machine.id === item.machineId) || machineOptions.find((option) => option.value === item.machineId)?.row,
+  }));
 
   useEffect(() => {
     if (!isEngineer) return;
-    updateForm({ engineerId: user.id });
+    updateForm({ engineerIds: [user.id] });
   }, [isEngineer, user.id]);
 
   useEffect(() => {
@@ -227,16 +245,21 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      apiFetch('/demo-loans', {
+      apiFetch('/demo-loans/batch', {
         method: 'POST',
         body: JSON.stringify({
-          ...form,
+          ...(({ engineerIds: _engineerIds, ...payload }) => payload)(form),
+          engineerId: form.engineerIds[0],
+          participantEngineerIds: form.engineerIds.slice(1),
+          machines: selectedDemoMachines,
+          machineId: undefined,
+          machineUse: undefined,
           handoverAccessories: accessoryItemsAsLines(form.handoverAccessoriesText),
           handoverAccessoriesText: undefined,
         }),
       }),
     onSuccess: async () => {
-      setSuccess('Đã tạo phiếu demo và giữ máy khỏi kho.');
+      setSuccess(`Đã tạo ${selectedDemoMachines.length} phiếu demo và giữ máy khỏi kho.`);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['demo-loans'] }),
         queryClient.invalidateQueries({ queryKey: ['service-tickets'] }),
@@ -265,7 +288,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
           locality: quickCustomerForm.locality.trim(),
           name,
           phone: quickCustomerForm.phone.trim(),
-          primaryEngineerId: isEngineer ? user.id : form.engineerId || undefined,
+          primaryEngineerId: isEngineer ? user.id : form.engineerIds[0] || undefined,
           province: selectedProvince?.name,
           provinceId,
           status: 'ACTIVE',
@@ -297,7 +320,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
           machineCode: undefined,
           machineModelId: quickMachineForm.machineModelId,
           name: quickMachineForm.name.trim() || undefined,
-          primaryEngineerId: isEngineer ? user.id : form.engineerId || undefined,
+          primaryEngineerId: isEngineer ? user.id : form.engineerIds[0] || undefined,
           serialNumber,
           status: 'ACTIVE',
           warehouseImportDate: dateInputValue(new Date()),
@@ -307,7 +330,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
     },
     onSuccess: (machine) => {
       rememberMachineOption(machine);
-      updateForm({ machineId: machine.id });
+      setSelectedDemoMachines((current) => [...current, { machineId: machine.id, machineUse: machineUseFor(machine) }]);
       setQuickMachineForm(emptyQuickMachineForm());
       setQuickMachineOpen(false);
       setSuccess('Đã tạo hồ sơ máy demo.');
@@ -348,8 +371,8 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
     setFormError('');
     setSuccess('');
 
-    if (!form.machineId || !form.customerId || !form.engineerId || !form.machineUse || !form.plannedHandoverAt || !form.expectedReturnAt) {
-      setFormError('Vui lòng chọn máy, loại máy, khách hàng, kỹ sư và thời gian demo.');
+    if (!selectedDemoMachines.length || selectedDemoMachines.some((item) => !item.machineUse) || !form.customerId || !form.engineerIds.length || !form.plannedHandoverAt || !form.expectedReturnAt) {
+      setFormError('Vui lòng thêm máy, chọn loại máy, khách hàng, kỹ sư và thời gian demo.');
       return;
     }
 
@@ -362,8 +385,8 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
 
   function goToHandoverStep() {
     setFormError('');
-    if (!form.machineId || !form.customerId || !form.engineerId || !form.machineUse) {
-      setFormError('Vui lòng chọn máy, loại máy, khách hàng và kỹ sư trước khi tiếp tục.');
+    if (!selectedDemoMachines.length || selectedDemoMachines.some((item) => !item.machineUse) || !form.customerId || !form.engineerIds.length) {
+      setFormError('Vui lòng thêm máy, chọn loại máy, khách hàng và kỹ sư trước khi tiếp tục.');
       return;
     }
     setCurrentStep('handover');
@@ -383,9 +406,8 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Phiếu demo"
           title="Tạo phiếu bàn giao máy dùng thử"
-          description="Bàn giao & thu hồi demo."
         />
-        <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
+        <button className="secondary-button w-fit flex-none" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
           Quay lại
         </button>
@@ -405,10 +427,10 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
               <h2 className="mt-1 text-lg font-semibold text-[#202124]">Chọn hồ sơ khách hàng và máy</h2>
             </div>
 
-            <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
-              <div className="order-3 grid min-w-0 gap-2">
+            <div className="grid items-start gap-x-5 gap-y-4 md:grid-cols-2">
+              <div className="order-1 grid min-w-0 content-start">
                 <AsyncEntityPicker<CustomerOption>
-                  className={labelClass}
+                  className="min-w-0 text-sm font-semibold text-[#334155]"
                   disabled={loading}
                   endpoint="/customers?limit=20"
                   formatOption={(customer) => ({
@@ -427,32 +449,38 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
                   required
                   value={form.customerId}
                 />
-                <button className="secondary-button compact h-10 justify-self-start" onClick={() => setQuickCustomerOpen((current) => !current)} type="button">
+                <button className="secondary-button compact mt-2 h-10 justify-self-start" onClick={() => setQuickCustomerOpen((current) => !current)} type="button">
                   <Plus size={15} />
-                  Chưa có khách hàng
+                  Tạo hồ sơ khách hàng
                 </button>
               </div>
 
-              <label className={`${labelClass} order-4`}>
-                Kỹ sư bàn giao
+              <div className="order-2 grid min-w-0 gap-2 md:col-span-2">
+                <span className="text-sm font-semibold text-[#334155]">Kỹ sư thực hiện</span>
                 {isEngineer ? (
-                  <div className={`${fieldClass} flex items-center bg-[#f8fafc]`}>{user.fullName || user.email}</div>
+                  <div className="rounded-2xl border border-[#cbd5e1] bg-[#f8fafc] p-2">
+                    <label className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-medium text-[#334155]">
+                      <input checked readOnly type="checkbox" />
+                      <span className="truncate">{user.fullName || user.email}</span>
+                    </label>
+                  </div>
                 ) : (
-                  <select className={fieldClass} disabled={loading} onChange={(event) => updateForm({ engineerId: event.target.value })} required value={form.engineerId}>
-                    <option value="">Chọn kỹ sư</option>
+                  <div aria-label="Kỹ sư thực hiện" className="grid max-h-36 gap-1 overflow-y-auto rounded-2xl border border-[#cbd5e1] bg-white p-2 sm:grid-cols-2 lg:grid-cols-4">
                     {engineers.map((engineer) => (
-                      <option key={engineer.id} value={engineer.id}>
-                        {technicalUserName(engineer)}
-                      </option>
+                      <label className="flex min-w-0 cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-medium text-[#334155] hover:bg-[#f8fafc]" key={engineer.id}>
+                        <input checked={form.engineerIds.includes(engineer.id)} disabled={loading} onChange={(event) => updateForm({ engineerIds: event.target.checked ? [...form.engineerIds, engineer.id] : form.engineerIds.filter((id) => id !== engineer.id) })} type="checkbox" />
+                        <span className="truncate">{technicalUserName(engineer)}</span>
+                      </label>
                     ))}
-                  </select>
+                    {engineers.length === 0 ? <span className="px-2 py-1 text-xs font-medium text-[#64748b]">Chưa có kỹ sư trong phạm vi.</span> : null}
+                  </div>
                 )}
-              </label>
+              </div>
 
-              <div className="order-1 grid min-w-0 gap-2">
+              <div className="order-4 grid min-w-0 content-start md:col-span-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-3">
                 <AsyncEntityPicker<MachineOption>
                   disabled={loading}
-                  className={labelClass}
+                  className="min-w-0 text-sm font-semibold text-[#334155]"
                   endpoint="/machines?limit=20"
                   formatOption={(machine) => ({
                     label: machineLabel(machine),
@@ -461,42 +489,57 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
                   })}
                   initialOptions={machineOptions}
                   inputClassName={fieldClass}
-                  label="Máy demo"
+                  label="Thêm máy demo"
                   onChange={(value, machine) => {
                     rememberMachineOption(machine);
-                    updateForm({ machineId: machine?.id || value, machineUse: machine ? machineUseFor(machine) : '' });
+                    if (machine && !selectedDemoMachines.some((item) => item.machineId === machine.id)) {
+                      setSelectedDemoMachines((current) => [...current, { machineId: machine.id, machineUse: machineUseFor(machine) }]);
+                    }
                   }}
                   placeholder="Tìm mã máy, serial, model"
-                  required
                   rowFilter={isEligibleDemoMachine}
-                  value={form.machineId}
+                  value=""
                 />
-                <button className="secondary-button compact h-10 justify-self-start" onClick={() => setQuickMachineOpen((current) => !current)} type="button">
+                <button className="secondary-button compact mt-2 h-12 justify-self-start md:mt-0" onClick={() => setQuickMachineOpen((current) => !current)} type="button">
                   <Plus size={15} />
-                  Chưa có máy
+                  Tạo hồ sơ máy
                 </button>
               </div>
 
-              <label className={`${labelClass} order-2`}>
-                Loại máy
-                {selectedMachine ? (
-                  selectedMachine.demoCategory === 'DEMO_UNIT' || selectedMachine.demoCategory === 'DEMO_USED' ? (
-                    <div className={`${fieldClass} flex items-center`}>{machineUseLabel(machineUseFor(selectedMachine))}</div>
-                  ) : (
-                    <select className={fieldClass} onChange={(event) => updateForm({ machineUse: event.target.value as DemoLoanForm['machineUse'] })} required value={form.machineUse}>
-                      <option value="">Chọn loại máy</option>
-                      <option value="DEMO_UNIT">Máy demo chuyên dụng</option>
-                      <option value="NEW_STOCK">Máy mới mang đi demo</option>
-                    </select>
-                  )
+              <section className="order-5 grid min-w-0 gap-2 md:col-span-2" aria-label="Máy được chọn để demo">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-[#334155]">Thiết bị trong phiếu</h3>
+                  <span className="text-xs font-semibold text-[#64748b]">{selectedDemoMachines.length} máy</span>
+                </div>
+                {selectedDemoMachineRows.length ? (
+                  <div className="grid gap-2">
+                    {selectedDemoMachineRows.map(({ machineId, machineUse, machine }, index) => (
+                      <div className="grid min-w-0 items-center gap-3 rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-3 md:grid-cols-[minmax(0,1fr)_260px_auto]" key={machineId}>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-[#172033]">{machine ? machineLabel(machine) : machineId}</div>
+                          <div className="mt-1 text-xs text-[#64748b]">Thiết bị {index + 1}</div>
+                        </div>
+                        {machine?.demoCategory === 'DEMO_UNIT' || machine?.demoCategory === 'DEMO_USED' ? (
+                          <div className={`${fieldClass} flex items-center`}>{machineUseLabel(machineUse)}</div>
+                        ) : (
+                          <select aria-label={`Loại máy demo ${index + 1}`} className={fieldClass} onChange={(event) => setSelectedDemoMachines((current) => current.map((item) => item.machineId === machineId ? { ...item, machineUse: event.target.value as DemoLoanForm['machineUse'] } : item))} value={machineUse}>
+                            <option value="">Chọn loại máy</option>
+                            <option value="DEMO_UNIT">Máy demo chuyên dụng</option>
+                            <option value="NEW_STOCK">Máy mới mang đi demo</option>
+                          </select>
+                        )}
+                        <button aria-label={`Bỏ máy ${index + 1}`} className="secondary-button compact" onClick={() => setSelectedDemoMachines((current) => current.filter((item) => item.machineId !== machineId))} type="button">Bỏ</button>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <div className={`${fieldClass} flex items-center text-[#94a3b8]`}>Chọn máy trước</div>
+                  <div className="rounded-2xl border border-dashed border-[#cbd5e1] px-4 py-5 text-sm text-[#64748b]">Chưa thêm máy demo</div>
                 )}
-              </label>
+              </section>
 
               {quickMachineOpen ? (
                 <QuickMachinePanel
-                  className="order-5"
+                  className="order-6"
                   form={quickMachineForm}
                   loading={createMachineMutation.isPending}
                   machineModels={machineModels}
@@ -508,7 +551,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
 
               {quickCustomerOpen ? (
                 <QuickCustomerPanel
-                  className="order-6"
+                  className="order-7"
                   form={quickCustomerForm}
                   loading={createCustomerMutation.isPending}
                   onChange={(patch) => setQuickCustomerForm((current) => ({ ...current, ...patch }))}
@@ -517,7 +560,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
                 />
               ) : null}
 
-              <div className="order-7 flex flex-wrap justify-end gap-2 md:col-span-2">
+              <div className="order-8 flex flex-wrap justify-end gap-2 md:col-span-2">
                 <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
                   Hủy
                 </button>
@@ -595,7 +638,7 @@ export function DemoLoanCreatePage({ user }: { user: ApiUser }) {
         <aside className="grid content-start gap-4">
           <section className={panelClass}>
             <h2 className="text-lg font-semibold text-[#202124]">Tóm tắt</h2>
-            <SummaryField label="Máy" value={selectedMachine ? machineLabel(selectedMachine) : 'Chưa chọn'} />
+            <SummaryField label="Thiết bị" value={selectedDemoMachines.length ? `${selectedDemoMachines.length} máy đã chọn` : 'Chưa chọn'} />
             <SummaryField label="Khách hàng" value={selectedCustomer ? customerLabel(selectedCustomer) : 'Chưa chọn'} />
             <SummaryField label="Thời gian demo" value={`${formatDate(form.plannedHandoverAt)} - ${formatDate(form.expectedReturnAt)}`} />
           </section>
@@ -742,7 +785,22 @@ function QuickMachinePanel({
       <div className="grid gap-3 md:grid-cols-3">
         <label className={`${labelClass} md:col-span-3`}>
           Model
-          <select className={fieldClass} onChange={(event) => onChange({ machineModelId: event.target.value })} value={form.machineModelId}>
+          <select
+            className={fieldClass}
+            onChange={(event) => {
+              const model = machineModels.find((item) => item.id === event.target.value);
+              onChange({
+                machineModelId: event.target.value,
+                accessoriesText: serializeMachineAccessories(getModelAccessoryTemplates(model).map((accessory) => ({
+                  componentAccessoryId: accessory.id,
+                  code: accessory.code,
+                  name: accessory.name,
+                  quantity: accessory.quantity ?? 1,
+                }))),
+              });
+            }}
+            value={form.machineModelId}
+          >
             <option value="">Chọn model</option>
             {machineModels.map((model) => (
               <option key={model.id} value={model.id}>
@@ -764,7 +822,12 @@ function QuickMachinePanel({
           <input className={fieldClass} onChange={(event) => onChange({ name: event.target.value })} value={form.name} />
         </label>
         <div className="md:col-span-3">
-          <MachineAccessoryEditor mode="generic" onChange={(accessoriesText) => onChange({ accessoriesText })} value={form.accessoriesText} />
+          <MachineAccessoryEditor
+            mode={machineAccessoryMode(form.machineModelId ? machineModels.find((item) => item.id === form.machineModelId) : undefined)}
+            onChange={(accessoriesText) => onChange({ accessoriesText })}
+            templates={getModelAccessoryTemplates(form.machineModelId ? machineModels.find((item) => item.id === form.machineModelId) : undefined)}
+            value={form.accessoriesText}
+          />
         </div>
       </div>
       <button className="primary-button justify-self-start" disabled={loading} onClick={onSubmit} type="button">
@@ -782,7 +845,7 @@ function emptyDemoLoanForm(): DemoLoanForm {
   return {
     customerId: '',
     machineUse: '',
-    engineerId: '',
+    engineerIds: [],
     expectedReturnAt: dateInputValue(expected),
     handoverAddress: '',
     handoverCondition: 'Máy hoạt động bình thường khi bàn giao.',
@@ -877,6 +940,16 @@ function customerLabel(customer: CustomerOption) {
 
 function machineModelLabel(model: MachineModelOption) {
   return [model.code, model.name, model.manufacturer, model.businessLine?.name].filter(Boolean).join(' - ');
+}
+
+function getModelAccessoryTemplates(model?: MachineModelOption) {
+  return model?.components?.flatMap((component) => component.accessories ?? component.ComponentAccessory ?? []) ?? [];
+}
+
+function machineAccessoryMode(model?: MachineModelOption): 'probe' | 'endoscopy' | 'generic' {
+  if (isEndoscopyMachineModel(model)) return 'endoscopy';
+  if (isUltrasoundMachineModel(model)) return 'probe';
+  return 'generic';
 }
 
 function mergeMachines(machines: MachineOption[]) {

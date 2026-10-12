@@ -29,7 +29,7 @@ import {
   isApprovedDeleteReview,
   isDeleteRequest,
 } from '../common/work-delete-request';
-import { assertNoPendingDeleteRequest } from '../common/pending-delete-request';
+import { assertNoPendingDeleteRequest, assertTicketCanBeDeleted } from '../common/pending-delete-request';
 import { reconcileMachineStatusFromOpenWork } from '../common/machine-work-status';
 import { replaceWorkUsedParts } from '../common/work-used-parts';
 import { shortDateCode } from '../common/code-format';
@@ -496,6 +496,7 @@ export class MaintenanceService {
     actor: RequestUser,
     reason?: string | null,
   ) {
+    assertTicketCanBeDeleted(maintenance.status);
     if (
       maintenance.reviewStatus === WorkReviewStatus.PENDING &&
       isDeleteRequest(maintenance.reviewNote)
@@ -552,6 +553,7 @@ export class MaintenanceService {
     maintenance: Awaited<ReturnType<MaintenanceService['findOne']>>,
     actor: RequestUser,
   ) {
+    assertTicketCanBeDeleted(maintenance.status);
     await this.prisma.$transaction(async (tx) => {
       await tx.maintenance.delete({
         where: { id },

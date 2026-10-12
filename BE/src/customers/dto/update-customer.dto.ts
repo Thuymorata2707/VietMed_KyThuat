@@ -7,9 +7,18 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CustomerContactDto } from './customer-contact.dto';
 
 export class UpdateCustomerDto {
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CustomerContactDto)
+  contacts?: CustomerContactDto[];
+
   @IsOptional()
   @IsString()
   customerCode?: string | null;

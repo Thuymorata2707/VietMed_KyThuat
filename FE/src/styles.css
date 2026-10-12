@@ -1404,6 +1404,7 @@ p {
 }
 
 .operation-filter-field select,
+.operation-filter-field > input,
 .operation-search-field > div {
   background-color: #ffffff;
   border: 1px solid var(--color-field-border);
@@ -1416,6 +1417,47 @@ p {
     box-shadow 140ms ease,
     transform 140ms ease;
   width: 100%;
+}
+
+.operation-filter-field > input {
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 0;
+  outline: none;
+  padding: 0 12px;
+}
+
+.operation-filter-field > span:has(> input) {
+  display: block;
+  min-width: 0;
+  position: relative;
+}
+
+.operation-filter-field > span > input {
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+  min-height: 42px;
+  min-width: 0;
+  outline: none;
+  padding: 0 12px;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+  width: 100%;
+}
+
+.operation-filter-field > span > input:focus,
+.operation-filter-field > input:focus {
+  border-color: var(--color-brand);
+  box-shadow: var(--focus-ring);
+}
+
+.operation-filter-field > span:has(> svg) > input {
+  padding-left: 36px;
 }
 
 .operation-filter-field select {
@@ -1480,6 +1522,8 @@ p {
 }
 
 .operation-filter-field select:hover,
+.operation-filter-field > input:hover,
+.operation-filter-field > span > input:hover,
 .operation-search-field > div:hover {
   border-color: #c7c7c7;
 }

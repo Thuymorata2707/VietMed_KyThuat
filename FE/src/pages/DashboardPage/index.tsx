@@ -315,7 +315,6 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
             <div className="flex items-start justify-between gap-3 border-b border-[#ededf0] pb-3">
               <div>
                 <h2 className="text-sm font-semibold text-[#3f3f46]">Nên xem trước</h2>
-                <p className="mt-1 text-xs leading-5 text-[#71717a]">Các nhóm việc đang cần theo dõi hoặc bổ sung.</p>
               </div>
               <span className="rounded-2xl border border-[#e4e4e7] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[#667985]">
                 {lastUpdatedAt ?? 'Chưa cập nhật'}
@@ -415,9 +414,6 @@ export function DashboardPage({ role, user }: { role: RoleName; user: ApiUser })
           <div>
             <span className="text-[12px] font-semibold text-[#18181b]">Máy phòng kỹ thuật đang quản lý</span>
             <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-[#1f1f1f]">Danh sách lắp đặt theo ngành hàng</h2>
-            <p className="mt-1 text-sm font-medium text-[#666666]">
-              Theo bộ lọc lắp đặt hiện tại trong phạm vi dữ liệu của tài khoản.
-            </p>
           </div>
           <Link
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[16px] border border-[#e4e4e7] bg-[#fafafa] px-3 text-sm font-bold text-[#333333] transition hover:border-[#18181b]/35 hover:bg-white"

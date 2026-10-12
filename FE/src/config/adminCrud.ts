@@ -5,7 +5,7 @@ export type CrudField = {
   name: string;
   label: string;
   placeholder?: string;
-  type?: 'text' | 'email' | 'url' | 'image' | 'date' | 'number' | 'select' | 'multiSelect' | 'textarea' | 'tags' | 'accessories' | 'businessLines';
+  type?: 'text' | 'email' | 'url' | 'image' | 'date' | 'number' | 'select' | 'multiSelect' | 'textarea' | 'tags' | 'accessories' | 'businessLines' | 'customerContacts';
   required?: boolean;
   createOnly?: boolean;
   updateOnly?: boolean;
@@ -152,9 +152,7 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'phone', label: 'Điện thoại' },
       { name: 'email', label: 'Email', type: 'email' },
       { name: 'taxCode', label: 'Mã số thuế' },
-      { name: 'contactPerson', label: 'Người liên hệ' },
-      { name: 'contactPhone', label: 'SĐT liên hệ' },
-      { name: 'contactEmail', label: 'Email liên hệ', type: 'email' },
+      { name: 'contacts', label: 'Danh sách người liên hệ', type: 'customerContacts', wide: true },
       { name: 'provinceId', label: 'Danh mục tỉnh/thành', type: 'select', valuePath: 'provinceRef.id', optionSource: { endpoint: '/provinces', labelPath: 'name', labelPaths: ['name', 'code', 'branch.name'], valuePath: 'id' } },
       { name: 'district', label: 'Quận/Huyện (dữ liệu cũ)' },
       { name: 'locality', label: 'Thôn/Ấp/Tổ dân phố/Khu phố' },

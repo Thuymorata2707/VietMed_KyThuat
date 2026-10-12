@@ -578,7 +578,7 @@ export function AccessoryInventoryPage({ user }: { user: ApiUser }) {
         <section className="grid gap-3 rounded-[24px] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]">
           <label className="operation-filter-field">
             <span>Tìm lịch sử phát sinh</span>
-            <span className="relative">
+            <span className="relative block min-w-0">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a8f99]" size={16} />
               <input className="pl-9" onChange={(event) => setMovementSearch(event.target.value)} placeholder="Mã phiếu, serial, máy, khách..." value={movementSearch} />
             </span>

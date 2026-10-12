@@ -32,7 +32,7 @@ import { RequestUser } from '../common/request-user.type';
 import { validateInventoryMovement } from '../machines/machine-state.rules';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompleteDemoLoanDto } from './dto/complete-demo-loan.dto';
-import { CreateDemoLoanDto } from './dto/create-demo-loan.dto';
+import { CreateDemoLoanBatchDto, CreateDemoLoanDto } from './dto/create-demo-loan.dto';
 import { ListDemoLoansQueryDto } from './dto/list-demo-loans-query.dto';
 import { UpdateDemoLoanDto } from './dto/update-demo-loan.dto';
 
@@ -51,7 +51,7 @@ export class DemoLoansService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const where: Prisma.DemoLoanWhereInput = {
-      AND: [demoLoanAccessWhere(user), this.buildWhere(query, user)],
+      AND: [demoLoanAccessWhere(user), await this.buildWhere(query, user)],
     };
 
     await this.refreshOverdueLoans();
@@ -60,7 +60,7 @@ export class DemoLoansService {
       this.prisma.demoLoan.findMany({
         where,
         include: this.defaultInclude(),
-        orderBy: [{ expectedReturnAt: 'asc' }, { plannedHandoverAt: 'desc' }],
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -89,7 +89,7 @@ export class DemoLoansService {
     return item;
   }
 
-  async create(dto: CreateDemoLoanDto, user?: RequestUser) {
+  async create(dto: CreateDemoLoanDto, user?: RequestUser, ticketCode?: string) {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_CREATE);
     this.assertCanCreate(dto.engineerId, user);
     const plannedHandoverAt = this.parseRequiredDate(
@@ -111,6 +111,12 @@ export class DemoLoansService {
       this.ensureCustomer(dto.customerId, user),
       this.ensureEngineer(dto.engineerId, user),
     ]);
+    const participantIds = [...new Set(dto.participantEngineerIds ?? [])]
+      .filter((id) => id !== engineer.id);
+    if (participantIds.length && !isAdmin(user) && !isManager(user)) {
+      throw new ForbiddenException('Only admin or manager can assign additional demo engineers');
+    }
+    const participants = await Promise.all(participantIds.map((id) => this.ensureEngineer(id, user)));
 
     if (
       machine.inventoryStatus !== MachineInventoryStatus.IN_STOCK &&
@@ -214,15 +220,23 @@ export class DemoLoansService {
     );
 
     return this.prisma.$transaction(async (tx) => {
+      const code = await this.generateDemoLoanCode(tx);
       const loan = await tx.demoLoan.create({
         data: {
-          code: await this.generateDemoLoanCode(tx),
+          code,
+          ticketCode: ticketCode ?? code,
           status: DemoLoanStatus.PLANNED,
           machineUse: dto.machineUse,
           previousMachineDemoCategory: machine.demoCategory,
           machineId: machine.id,
           customerId: customer.id,
           engineerId: engineer.id,
+          assignments: {
+            create: [
+              { engineerId: engineer.id, isLead: true },
+              ...participants.map((participant) => ({ engineerId: participant.id, isLead: false })),
+            ],
+          },
           plannedHandoverAt,
           expectedReturnAt,
           handoverAddress:
@@ -304,6 +318,28 @@ export class DemoLoansService {
 
       return loan;
     });
+  }
+
+  async createBatch(dto: CreateDemoLoanBatchDto, user?: RequestUser) {
+    if (dto.machines.length < 1) {
+      throw new BadRequestException('Select at least one machine for demo');
+    }
+    const ids = dto.machines.map((item) => item.machineId);
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException('A machine can only be selected once');
+    }
+    const ticketCode = await this.prisma.$transaction((tx) =>
+      this.generateDemoLoanCode(tx),
+    );
+    const created = [];
+    for (const item of dto.machines) {
+      created.push(await this.create({
+        ...dto,
+        machineId: item.machineId,
+        machineUse: item.machineUse,
+      }, user, ticketCode));
+    }
+    return { createdCount: created.length, loans: created };
   }
 
   async update(id: string, dto: UpdateDemoLoanDto, user?: RequestUser) {
@@ -389,6 +425,19 @@ export class DemoLoansService {
         include: this.defaultInclude(),
       });
 
+      if (dto.engineerId !== undefined && dto.engineerId !== current.engineerId) {
+        const retainedParticipants = current.assignments
+          .filter((assignment) => assignment.engineerId !== current.engineerId && assignment.engineerId !== engineer.id)
+          .map((assignment) => assignment.engineerId);
+        await tx.demoLoanAssignment.deleteMany({ where: { demoLoanId: id } });
+        await tx.demoLoanAssignment.createMany({
+          data: [
+            { demoLoanId: id, engineerId: engineer.id, isLead: true },
+            ...retainedParticipants.map((engineerId) => ({ demoLoanId: id, engineerId, isLead: false })),
+          ],
+        });
+      }
+
       await this.auditLogsService.create(
         {
           action: AUDIT_ACTIONS.UPDATE,
@@ -417,7 +466,7 @@ export class DemoLoansService {
   async handOver(id: string, dto: CompleteDemoLoanDto, user?: RequestUser) {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_STATUS_UPDATE);
     const current = await this.findOne(id, user);
-    this.assertCanTouchStatus(current.engineerId, user);
+    this.assertCanTouchStatus(current, user);
     if (current.status !== DemoLoanStatus.PLANNED) {
       throw new BadRequestException(
         'Only planned demo loans can be handed over',
@@ -433,6 +482,7 @@ export class DemoLoansService {
         data: {
           status: DemoLoanStatus.HANDED_OVER,
           handedOverAt,
+          handedOverById: user?.id ?? null,
           handoverCondition:
             this.clean(dto.condition) ?? current.handoverCondition,
           handoverAccessories:
@@ -467,7 +517,7 @@ export class DemoLoansService {
   async returnLoan(id: string, dto: CompleteDemoLoanDto, user?: RequestUser) {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_STATUS_UPDATE);
     const current = await this.findOne(id, user);
-    this.assertCanTouchStatus(current.engineerId, user);
+    await this.assertCanReturn(current, user);
     const returnableStatuses: DemoLoanStatus[] = [
       DemoLoanStatus.HANDED_OVER,
       DemoLoanStatus.OVERDUE,
@@ -499,6 +549,7 @@ export class DemoLoansService {
         data: {
           status: DemoLoanStatus.RETURNED,
           returnedAt,
+          returnedById: user?.id ?? null,
           returnCondition: this.clean(dto.condition),
           returnAccessories:
             dto.accessories === undefined ? undefined : dto.accessories,
@@ -601,7 +652,7 @@ export class DemoLoansService {
   ) {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_STATUS_UPDATE);
     const current = await this.findOne(id, user);
-    this.assertCanTouchStatus(current.engineerId, user);
+    this.assertCanTouchStatus(current, user);
     if (
       current.status !== DemoLoanStatus.RETURNED ||
       current.preparationStatus !== DemoPreparationStatus.REQUIRED
@@ -796,84 +847,17 @@ export class DemoLoansService {
     assertPermission(user, PERMISSIONS.DEMO_LOAN_DELETE);
     if (!isAdmin(user))
       throw new ForbiddenException('Only administrators can delete demo loans');
-    const current = await this.findOne(id, user);
-    if (
-      current.status === DemoLoanStatus.HANDED_OVER ||
-      current.status === DemoLoanStatus.OVERDUE
-    ) {
-      throw new BadRequestException(
-        'A handed-over demo loan cannot be deleted; return the machine first',
-      );
-    }
-    return this.prisma.$transaction(async (tx) => {
-      if (
-        current.machine?.inventoryStatus === MachineInventoryStatus.RESERVED
-      ) {
-        const restoreInventoryStatus = await this.getReservationSourceStatus(
-          tx,
-          current.machineId,
-          current.code,
-        );
-        await tx.machineInventoryMovement.create({
-          data: {
-            code: await this.generateMovementCode(tx),
-            type: InventoryMovementType.ADJUST_STATUS,
-            machineId: current.machineId,
-            fromStatus: MachineInventoryStatus.RESERVED,
-            toStatus: restoreInventoryStatus,
-            occurredAt: new Date(),
-            note: `Delete demo loan ${current.code}`,
-            customerId: current.customerId,
-            createdById: user.id,
-          },
-        });
-        const updated = await tx.machine.updateMany({
-          where: {
-            id: current.machineId,
-            inventoryStatus: MachineInventoryStatus.RESERVED,
-          },
-          data: {
-            inventoryStatus: restoreInventoryStatus,
-            status:
-              restoreInventoryStatus === MachineInventoryStatus.RETURNED
-                ? MachineStatus.REPAIRING
-                : MachineStatus.ACTIVE,
-            demoCategory: current.previousMachineDemoCategory,
-            customerId: null,
-            primaryEngineerId: null,
-          },
-        });
-        if (updated.count !== 1)
-          throw new BadRequestException('Machine inventory status has changed');
-      }
-      await tx.demoLoan.delete({ where: { id } });
-      await this.auditLogsService.create(
-        {
-          action: AUDIT_ACTIONS.DELETE,
-          entityType: 'DemoLoan',
-          entityId: id,
-          actor: user,
-          metadata: {
-            code: current.code,
-            status: current.status,
-            machineId: current.machineId,
-            customerId: current.customerId,
-          },
-        },
-        tx,
-      );
-      return { deleted: true };
-    });
+    return this.cancel(id, user);
   }
 
   getStatuses() {
     return Object.values(DemoLoanStatus);
   }
 
-  private buildWhere(
+  private async buildWhere(
     query: ListDemoLoansQueryDto,
     user?: RequestUser,
-  ): Prisma.DemoLoanWhereInput {
+  ): Promise<Prisma.DemoLoanWhereInput> {
     const where: Prisma.DemoLoanWhereInput = {};
     if (query.status) where.status = query.status;
     if (query.preparationStatus)
@@ -901,7 +885,7 @@ export class DemoLoansService {
     }
     if (query.search?.trim()) {
       const search = query.search.trim();
-      where.OR = [
+      const searchConditions: Prisma.DemoLoanWhereInput[] = [
         { code: { contains: search } },
         { purpose: { contains: search } },
         { receiverName: { contains: search } },
@@ -910,6 +894,21 @@ export class DemoLoansService {
         { machine: { machineCode: { contains: search } } },
         { machine: { serialNumber: { contains: search } } },
         { machine: { modelName: { contains: search } } },
+      ];
+      const matchingLoans = await this.prisma.demoLoan.findMany({
+        where: {
+          AND: [demoLoanAccessWhere(user), where, { OR: searchConditions }],
+        },
+        select: { ticketCode: true },
+        distinct: ['ticketCode'],
+      });
+      const ticketCodes = matchingLoans
+        .map((loan) => loan.ticketCode)
+        .filter((ticketCode): ticketCode is string => Boolean(ticketCode));
+      where.OR = [
+        ...searchConditions,
+        { ticketCode: { contains: search } },
+        ...(ticketCodes.length ? [{ ticketCode: { in: ticketCodes } }] : []),
       ];
     }
     return where;
@@ -941,12 +940,34 @@ export class DemoLoansService {
     );
   }
 
-  private assertCanTouchStatus(engineerId: string, user?: RequestUser) {
+  private assertCanTouchStatus(
+    loan: { engineerId: string; assignments?: Array<{ engineerId: string }> },
+    user?: RequestUser,
+  ) {
     if (isAdmin(user) || isManager(user)) return;
-    if (isEngineer(user) && user?.id === engineerId) return;
+    if (
+      isEngineer(user) &&
+      (user?.id === loan.engineerId ||
+        loan.assignments?.some((assignment) => assignment.engineerId === user.id))
+    ) return;
     throw new ForbiddenException(
       'Only assigned engineer can update this demo loan',
     );
+  }
+
+  private async assertCanReturn(
+    loan: { engineerId: string; assignments?: Array<{ engineerId: string }>; machineId: string },
+    user?: RequestUser,
+  ) {
+    if (isAdmin(user) || isManager(user)) return;
+    if (!isEngineer(user)) {
+      throw new ForbiddenException('Only technical engineers can return demo machines');
+    }
+    if (
+      user.id === loan.engineerId ||
+      loan.assignments?.some((assignment) => assignment.engineerId === user.id)
+    ) return;
+    throw new ForbiddenException('Only assigned engineers can return demo machines');
   }
 
   private async ensureMachine(machineId: string) {
@@ -982,6 +1003,9 @@ export class DemoLoansService {
     });
     if (!engineer || engineer.status !== 'ACTIVE') {
       throw new BadRequestException('Engineer does not exist');
+    }
+    if (!['engineer', 'admin'].includes(engineer.role.name)) {
+      throw new BadRequestException('Demo loans can only be assigned to technical engineers');
     }
     if (
       (isAdmin(user) || isManager(user)) &&
@@ -1049,6 +1073,12 @@ export class DemoLoansService {
           phone: true,
         },
       },
+      assignments: {
+        include: { engineer: { select: { id: true, fullName: true, email: true, phone: true } } },
+        orderBy: [{ isLead: 'desc' }, { assignedAt: 'asc' }],
+      },
+      handedOverBy: { select: { id: true, fullName: true, email: true } },
+      returnedBy: { select: { id: true, fullName: true, email: true } },
       machine: {
         include: {
           customer: {

@@ -15,7 +15,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequestUser } from '../common/request-user.type';
 import { DemoLoansService } from './demo-loans.service';
 import { CompleteDemoLoanDto } from './dto/complete-demo-loan.dto';
-import { CreateDemoLoanDto } from './dto/create-demo-loan.dto';
+import { CreateDemoLoanBatchDto, CreateDemoLoanDto } from './dto/create-demo-loan.dto';
 import { ListDemoLoansQueryDto } from './dto/list-demo-loans-query.dto';
 import { UpdateDemoLoanDto } from './dto/update-demo-loan.dto';
 
@@ -45,6 +45,11 @@ export class DemoLoansController {
   @Post()
   create(@Body() dto: CreateDemoLoanDto, @CurrentUser() user: RequestUser) {
     return this.service.create(dto, user);
+  }
+
+  @Post('batch')
+  createBatch(@Body() dto: CreateDemoLoanBatchDto, @CurrentUser() user: RequestUser) {
+    return this.service.createBatch(dto, user);
   }
 
   @Patch(':id')

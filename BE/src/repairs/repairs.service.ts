@@ -8,6 +8,9 @@ import {
 import {
   MachineInventoryStatus,
   MachineStatus,
+  OperationalCreatedSource,
+  OperationalDataStatus,
+  MachineProductCategory,
   Prisma,
   RepairPriority,
   RepairStatus,
@@ -25,7 +28,7 @@ import {
   isApprovedDeleteReview,
   isDeleteRequest,
 } from '../common/work-delete-request';
-import { assertNoPendingDeleteRequest } from '../common/pending-delete-request';
+import { assertNoPendingDeleteRequest, assertTicketCanBeDeleted } from '../common/pending-delete-request';
 import { reconcileMachineStatusFromOpenWork } from '../common/machine-work-status';
 import { replaceWorkUsedParts } from '../common/work-used-parts';
 import { shortDateCode } from '../common/code-format';
@@ -397,6 +400,26 @@ export class RepairsService {
           include: this.defaultInclude(),
         });
 
+        // Register/link the repaired unit only after an administrator accepts
+        // completion. A manually entered serial can identify or create its
+        // machine record here.
+        if (
+          nextStatus === RepairStatus.COMPLETED &&
+          updated.reviewStatus === WorkReviewStatus.APPROVED &&
+          updated.customerId
+        ) {
+          await this.ensureCompletedRepairMachine(
+            tx,
+            updated.id,
+            actor,
+            updated.machineId,
+            updated.customerId,
+            updated.serialNumber,
+            updated.modelName,
+            updated.deviceName,
+          );
+        }
+
         let machineStatus = this.getMachineStatusForRepairStatus(
           nextStatus,
           nextMachine?.inventoryStatus,
@@ -497,7 +520,10 @@ export class RepairsService {
           );
         }
 
-        return updated;
+        return tx.repair.findUnique({
+          where: { id },
+          include: this.defaultInclude(),
+        });
       },
       { timeout: 20_000 },
     );
@@ -521,6 +547,7 @@ export class RepairsService {
     actor: RequestUser,
     reason?: string | null,
   ) {
+    assertTicketCanBeDeleted(repair.status);
     if (
       repair.reviewStatus === WorkReviewStatus.PENDING &&
       isDeleteRequest(repair.reviewNote)
@@ -577,6 +604,7 @@ export class RepairsService {
     repair: Awaited<ReturnType<RepairsService['findOne']>>,
     actor: RequestUser,
   ) {
+    assertTicketCanBeDeleted(repair.status);
     await this.prisma.$transaction(async (tx) => {
       await tx.repair.delete({
         where: { id },
@@ -728,6 +756,23 @@ export class RepairsService {
           include: this.defaultInclude(),
         });
 
+        if (
+          dto.status === RepairStatus.COMPLETED &&
+          updated.reviewStatus === WorkReviewStatus.APPROVED &&
+          updated.customerId
+        ) {
+          await this.ensureCompletedRepairMachine(
+            tx,
+            updated.id,
+            actor,
+            updated.machineId,
+            updated.customerId,
+            updated.serialNumber,
+            updated.modelName,
+            updated.deviceName,
+          );
+        }
+
         let machineStatus = this.getMachineStatusForRepairStatus(
           dto.status,
           repair.machine?.inventoryStatus,
@@ -783,7 +828,10 @@ export class RepairsService {
           tx,
         );
 
-        return updated;
+        return tx.repair.findUnique({
+          where: { id },
+          include: this.defaultInclude(),
+        });
       },
       { timeout: 20_000 },
     );
@@ -905,14 +953,28 @@ export class RepairsService {
 
       if (
         dto.status === WorkReviewStatus.APPROVED &&
-        repair.status === RepairStatus.COMPLETED &&
-        repair.machine
+        repair.status === RepairStatus.COMPLETED
       ) {
-        await reconcileMachineStatusFromOpenWork(
-          tx,
-          repair.machine.id,
-          repair.machine.inventoryStatus,
-        );
+        if (repair.customerId) {
+          await this.ensureCompletedRepairMachine(
+            tx,
+            repair.id,
+            actor,
+            repair.machine?.id ?? null,
+            repair.customerId,
+            repair.serialNumber,
+            repair.modelName,
+            repair.deviceName,
+          );
+        }
+
+        if (repair.machine) {
+          await reconcileMachineStatusFromOpenWork(
+            tx,
+            repair.machine.id,
+            repair.machine.inventoryStatus,
+          );
+        }
       }
 
       await this.auditLogsService.create(
@@ -939,7 +1001,10 @@ export class RepairsService {
         tx,
       );
 
-      return reviewed;
+      return tx.repair.findUnique({
+        where: { id },
+        include: this.defaultInclude(),
+      });
     });
 
     if (updated.engineerId) {
@@ -1050,6 +1115,87 @@ export class RepairsService {
     }
 
     return customer.id;
+  }
+
+  private async ensureCompletedRepairMachine(
+    tx: Prisma.TransactionClient,
+    repairId: string,
+    actor: RequestUser,
+    existingMachineId: string | null,
+    customerId: string,
+    serialNumber?: string | null,
+    modelName?: string | null,
+    deviceName?: string | null,
+  ) {
+    let machineId = existingMachineId;
+    const normalizedSerial = serialNumber?.trim().toUpperCase();
+
+    if (!machineId && normalizedSerial) {
+      let machine = await tx.machine.findUnique({
+        where: { serialNumber: normalizedSerial },
+        select: { id: true },
+      });
+
+      if (!machine) {
+        machine = await tx.machine.create({
+          data: {
+            serialNumber: normalizedSerial,
+            name: deviceName?.trim() || null,
+            modelName:
+              modelName?.trim() || deviceName?.trim() || 'Chưa xác định',
+            manufacturer: '',
+            productCategory: MachineProductCategory.OTHER,
+            status: MachineStatus.ACTIVE,
+            inventoryStatus: MachineInventoryStatus.INSTALLED,
+            customerId,
+            dataStatus: OperationalDataStatus.PENDING_REVIEW,
+            createdSource: OperationalCreatedSource.SYSTEM,
+          },
+          select: { id: true },
+        });
+        await this.auditLogsService.create(
+          {
+            action: AUDIT_ACTIONS.CREATE,
+            entityType: 'Machine',
+            entityId: machine.id,
+            actor,
+            metadata: {
+              source: 'COMPLETED_REPAIR',
+              repairId,
+              serialNumber: normalizedSerial,
+              customerId,
+              dataStatus: OperationalDataStatus.PENDING_REVIEW,
+            },
+          },
+          tx,
+        );
+      }
+
+      machineId = machine.id;
+      await tx.repair.update({ where: { id: repairId }, data: { machineId } });
+    }
+
+    if (!machineId) return null;
+
+    const linked = await tx.machine.updateMany({
+      where: { id: machineId, customerId: null },
+      data: { customerId },
+    });
+
+    if (linked.count === 0) {
+      const machine = await tx.machine.findUnique({
+        where: { id: machineId },
+        select: { customerId: true },
+      });
+
+      if (!machine || machine.customerId !== customerId) {
+        throw new BadRequestException(
+          'Machine is already linked to another customer',
+        );
+      }
+    }
+
+    return machineId;
   }
 
   private async assertEngineerCanUseMachine(

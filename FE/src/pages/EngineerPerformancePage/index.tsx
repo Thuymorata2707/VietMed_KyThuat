@@ -158,7 +158,6 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       <PageTitle
         eyebrow="Năng suất thực hiện"
         title="Hiệu suất kỹ sư"
-        description="Theo dõi khối lượng công việc đã hoàn tất trong kỳ và danh sách khách hàng kỹ sư đang phụ trách."
       />
 
       <section className="grid gap-3 rounded-2xl border border-[#e5e5e5] bg-white p-4 md:grid-cols-4">
@@ -190,18 +189,17 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
       {error ? <Notice message={error.message} /> : null}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <Metric label="Tổng việc hoàn tất" value={summary?.totals.activities ?? 0} hint={`${formatDate(from)} – ${formatDate(to)}`} />
-        <Metric label="Máy đã lắp" value={summary?.totals.installations ?? 0} hint="Máy lắp hoàn tất trong kỳ" />
-        <Metric label="Sửa chữa hoàn tất" value={summary?.totals.repairs ?? 0} hint="Phiếu sửa chữa đã xử lý" />
-        <Metric label="Bảo trì hoàn tất" value={summary?.totals.maintenances ?? 0} hint="Lịch bảo trì đã thực hiện" />
-        <Metric label="Khách đang phụ trách" value={totalAssignedCustomers} hint="Phân công hiện tại" />
-        <Metric label="Khách có việc trong kỳ" value={summary?.totals.customers ?? 0} hint={`${summary?.totals.machines ?? 0} máy có hoạt động`} />
+        <Metric label="Tổng việc hoàn tất" value={summary?.totals.activities ?? 0} />
+        <Metric label="Máy đã lắp" value={summary?.totals.installations ?? 0} />
+        <Metric label="Sửa chữa hoàn tất" value={summary?.totals.repairs ?? 0} />
+        <Metric label="Bảo trì hoàn tất" value={summary?.totals.maintenances ?? 0} />
+        <Metric label="Khách đang phụ trách" value={totalAssignedCustomers} />
+        <Metric label="Khách có việc trong kỳ" value={summary?.totals.customers ?? 0} />
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white">
         <div className="border-b border-[#eeeeee] px-4 py-3">
           <h2 className="font-semibold text-[#1f1f1f]">Khách hàng đang phụ trách</h2>
-          <p className="mt-1 text-xs text-[#666666]">Danh sách phân công hiện tại; số máy tính theo hồ sơ máy của từng khách.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] border-collapse text-left text-sm">
@@ -231,7 +229,7 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
 
       <section className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eeeeee] px-4 py-3">
-          <div><h2 className="font-semibold text-[#1f1f1f]">Công việc hoàn tất trong kỳ</h2><p className="mt-1 text-xs text-[#666666]">{activities.length} lượt · gồm cả khách ngoài danh sách phân công nếu có</p></div>
+          <div className="flex items-center gap-2"><h2 className="font-semibold text-[#1f1f1f]">Công việc hoàn tất trong kỳ</h2><span className="rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold tabular-nums text-[#475467]">{activities.length} lượt</span></div>
           <Link className="secondary-button compact" to={buildTechnicalReportHref(from, to, isAdmin ? engineerId : user.id, isAdmin)}><FileText size={15} />Phân tích kỹ thuật</Link>
         </div>
         <div className="overflow-x-auto">
@@ -257,8 +255,8 @@ export function EngineerPerformancePage({ currentRole, user }: EngineerPerforman
   );
 }
 
-function Metric({ hint, label, value }: { hint: string; label: string; value: number }) {
-  return <article className="rounded-2xl border border-[#e5e5e5] bg-white p-4"><span className="text-sm font-semibold text-[#666666]">{label}</span><strong className="mt-2 block text-3xl tabular-nums text-[#1f1f1f]">{value}</strong><span className="mt-1 block text-xs text-[#8a8a8a]">{hint}</span></article>;
+function Metric({ label, value }: { label: string; value: number }) {
+  return <article className="rounded-2xl border border-[#e5e5e5] bg-white p-4"><span className="text-sm font-semibold text-[#666666]">{label}</span><strong className="mt-2 block text-3xl tabular-nums text-[#1f1f1f]">{value}</strong></article>;
 }
 
 function activityKindLabel(kind: EngineerWorkSummary['activities'][number]['kind']) {

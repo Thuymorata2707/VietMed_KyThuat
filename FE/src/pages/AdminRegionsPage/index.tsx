@@ -184,7 +184,7 @@ export function AdminRegionsPage() {
                   <h3 className="text-sm font-semibold text-[#344054]">Khách hàng{selectedProvince ? ` · ${selectedProvince.name}` : ''}</h3>
                   {selectedProvince ? <span className="text-xs text-[#667085]">{customersQuery.data?.length ?? 0} khách hàng</span> : null}
                 </div>
-                {!selectedProvince ? <p className="py-8 text-center text-sm text-[#667085]">Chọn một tỉnh/thành để xem khách hàng.</p> : null}
+                {!selectedProvince ? <p className="py-8 text-center"><span className="rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold text-[#475467]">Chưa chọn khu vực</span></p> : null}
                 {selectedProvince && customersQuery.isFetching ? <p className="py-8 text-center text-sm text-[#667085]">Đang tải khách hàng…</p> : null}
                 {selectedProvince && !customersQuery.isFetching && !customersQuery.data?.length ? <p className="py-8 text-center text-sm text-[#667085]">Chưa có khách hàng thuộc tỉnh/thành này.</p> : null}
                 {selectedProvince && !customersQuery.isFetching ? customersQuery.data?.map((customer) => (

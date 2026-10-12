@@ -1,0 +1,3 @@
+-- Legacy demo ticket groups were normalized in the operational database before
+-- this migration was committed. New multi-machine tickets share ticketCode at
+-- creation time; this migration intentionally makes no further data changes.

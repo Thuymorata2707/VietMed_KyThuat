@@ -15,3 +15,11 @@ export function assertNoPendingDeleteRequest(task: {
     );
   }
 }
+
+export function assertTicketCanBeDeleted(status: string) {
+  if (status !== 'PENDING') {
+    throw new BadRequestException(
+      'Only tickets waiting for processing can be deleted',
+    );
+  }
+}

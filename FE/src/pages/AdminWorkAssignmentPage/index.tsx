@@ -6,6 +6,7 @@ import { ApiUser, Paginated, apiFetch, apiFetchAllPages, getApiBaseUrl, getToken
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { InfoHint } from '../../components/InfoHint';
 import { checklistForCategory } from '../../config/medicalDeviceChecklists';
 import { queryKeys } from '../../lib/queryKeys';
 import { isTechnicalUser, technicalUserName } from '../../utils/technicalUsers';
@@ -13,6 +14,7 @@ import { hasDeleteRequestNote } from '../../utils/workDeleteRequests';
 
 type WorkKind = 'repair' | 'maintenance' | 'installation';
 type WorkFilter = 'action' | 'unassigned' | 'review' | 'active' | 'closed' | 'all';
+type SlaFilter = 'overdue' | 'due-soon' | 'waiting-parts';
 type KindFilter = WorkKind | 'all';
 type WorkReviewStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'NEEDS_REVISION';
 type Tone = 'good' | 'warn' | 'danger' | 'neutral';
@@ -184,6 +186,7 @@ export function AdminWorkAssignmentPage() {
   const queryClient = useQueryClient();
   const [assignmentByKey, setAssignmentByKey] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<WorkFilter>('action');
+  const [slaFilter, setSlaFilter] = useState<SlaFilter | null>(null);
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [engineerFilter, setEngineerFilter] = useState('');
   const [query, setQuery] = useState('');
@@ -316,6 +319,9 @@ export function AdminWorkAssignmentPage() {
   const items = useMemo(() => {
     return allItems
       .filter((item) => {
+        if (slaFilter === 'overdue') return slaStateForItem(item) === 'overdue';
+        if (slaFilter === 'due-soon') return slaStateForItem(item) === 'due-soon';
+        if (slaFilter === 'waiting-parts') return item.status === 'WAITING_PARTS';
         if (filter === 'action') return !item.engineer?.id || item.reviewStatus === 'PENDING';
         if (filter === 'unassigned') return !item.engineer?.id;
         if (filter === 'review') return item.reviewStatus === 'PENDING';
@@ -330,7 +336,7 @@ export function AdminWorkAssignmentPage() {
         return item.engineer?.id === engineerFilter;
       })
       .sort((left, right) => actionRank(left) - actionRank(right) || dateRank(right) - dateRank(left) || left.code.localeCompare(right.code));
-  }, [allItems, engineerFilter, filter, kindFilter]);
+  }, [allItems, engineerFilter, filter, kindFilter, slaFilter]);
 
   async function assignWork(item: WorkItem) {
     const engineerId = assignmentByKey[item.key];
@@ -394,7 +400,9 @@ export function AdminWorkAssignmentPage() {
     all: repairs.length + maintenances.length + installations.length,
   };
   const slaSummary = useMemo(() => buildSlaSummary(allItems), [allItems]);
-  const currentFilterLabel = filterOptions.find((option) => option.value === filter)?.label ?? 'Công việc';
+  const currentFilterLabel = slaFilter
+    ? { overdue: 'Đã quá mốc nhắc', 'due-soon': 'Gần mốc nhắc', 'waiting-parts': 'Đang chờ linh kiện' }[slaFilter]
+    : filterOptions.find((option) => option.value === filter)?.label ?? 'Công việc';
   const groupedItems = useMemo(() => groupWorkItems(items, filter), [filter, items]);
   const engineerLoads = useMemo(() => buildEngineerLoads(engineers, [
     ...repairs.map((item): WorkItem => ({
@@ -451,7 +459,6 @@ export function AdminWorkAssignmentPage() {
         <PageTitle
             eyebrow="Điều phối kỹ thuật"
             title="Điều phối & duyệt"
-            description="Chia việc cho kỹ sư, theo dõi tiến độ và xác nhận hồ sơ hoàn tất."
         />
           <button
             className="secondary-button bg-white/90"
@@ -468,33 +475,28 @@ export function AdminWorkAssignmentPage() {
           </button>
         </div>
         <div className="relative mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <button className={summaryCardClass(filter === 'action')} onClick={() => setFilter('action')} type="button">
+          <button className={summaryCardClass(!slaFilter && filter === 'action')} onClick={() => { setSlaFilter(null); setFilter('action'); }} type="button">
             <span>Cần xử lý</span>
             <strong>{actionCount}</strong>
-            <small>Chưa phân công hoặc chờ phê duyệt</small>
           </button>
-          <button className={summaryCardClass(filter === 'unassigned')} onClick={() => setFilter('unassigned')} type="button">
+          <button className={summaryCardClass(!slaFilter && filter === 'unassigned')} onClick={() => { setSlaFilter(null); setFilter('unassigned'); }} type="button">
             <span>Chưa có kỹ sư</span>
             <strong>{unassignedCount}</strong>
-            <small>Cần chọn người phụ trách</small>
           </button>
-          <button className={summaryCardClass(filter === 'review')} onClick={() => setFilter('review')} type="button">
+          <button className={summaryCardClass(!slaFilter && filter === 'review')} onClick={() => { setSlaFilter(null); setFilter('review'); }} type="button">
             <span>Chờ phê duyệt</span>
             <strong>{pendingReviewCount}</strong>
-            <small>Kỹ sư đã gửi hồ sơ</small>
           </button>
-          <button className={summaryCardClass(filter === 'active')} onClick={() => setFilter('active')} type="button">
+          <button className={summaryCardClass(!slaFilter && filter === 'active')} onClick={() => { setSlaFilter(null); setFilter('active'); }} type="button">
             <span>Kỹ sư đang xử lý</span>
             <strong>{assignedActiveCount}</strong>
-            <small>Đã có người phụ trách</small>
           </button>
-          <button className={summaryCardClass(filter === 'all')} onClick={() => setFilter('all')} type="button">
+          <button className={summaryCardClass(!slaFilter && filter === 'all')} onClick={() => { setSlaFilter(null); setFilter('all'); }} type="button">
             <span className="inline-flex items-center gap-1.5">
               <CheckCircle2 size={14} />
               Tất cả
             </span>
             <strong>{filterCounts.all}</strong>
-            <small>Toàn bộ phiếu công việc</small>
           </button>
         </div>
       </section>
@@ -505,19 +507,31 @@ export function AdminWorkAssignmentPage() {
       <SlaCommandPanel
         pendingMachinesCount={pendingMachines.length}
         summary={slaSummary}
+        onSelect={(selected) => {
+          if (selected === 'pending-machines') {
+            document.getElementById('pending-machine-review')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+          }
+          setFilter('all');
+          setSlaFilter(selected);
+          window.setTimeout(() => document.getElementById('work-assignment-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+        }}
       />
 
-      <section className="grid min-w-0 gap-5 min-[1420px]:grid-cols-[minmax(0,1fr)_minmax(300px,320px)]">
+      <section className="grid min-w-0 gap-5 min-[1420px]:grid-cols-[minmax(0,1fr)_minmax(300px,320px)]" id="work-assignment-list">
         <div className="min-w-0 overflow-hidden rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_8px_24px_rgba(24,24,27,0.05)]">
           <div className="grid gap-4 border-b border-[#ededf0] bg-[#fafafa] p-4">
             <div className="grid gap-1">
-              <h2 className="text-lg font-semibold text-[#1f1f1f]">{currentFilterLabel}</h2>
-              <p className="text-xs font-medium leading-5 text-[#8a8f99]">{filterDescription(filter)}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold text-[#1f1f1f]">{currentFilterLabel}</h2>
+                {slaFilter ? (
+                  <button className="text-xs font-semibold text-[#64748b] underline underline-offset-2" onClick={() => setSlaFilter(null)} type="button">
+                    Xóa lọc
+                  </button>
+                ) : null}
+              </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#ededf0] bg-white px-3 py-2">
-              <span className="text-[13px] font-semibold text-[#666666]">
-                Đang xem: <strong className="text-[#18181b]">{currentFilterLabel}</strong>
-              </span>
               <span className="text-[13px] font-semibold text-[#666666]">{loading ? 'Đang tải dữ liệu' : `${items.length} việc hiển thị`}</span>
             </div>
             <div className="grid gap-2 min-[861px]:grid-cols-[minmax(260px,1fr)_190px_220px]">
@@ -620,7 +634,7 @@ export function AdminWorkAssignmentPage() {
             </div>
           </div>
 
-          <div className="min-w-0 overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
+          <div className="min-w-0 overflow-visible rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#c9ead6] bg-[#eefaf3] text-[#177245]">
@@ -628,10 +642,9 @@ export function AdminWorkAssignmentPage() {
                 </span>
                 <div className="min-w-0">
                 <h2 className="text-base font-semibold text-[#1f1f1f]">Đã hoàn thành gần đây</h2>
-                <p className="mt-1 text-xs leading-5 text-[#8a8f99]">Việc vừa xong.</p>
                 </div>
               </div>
-              <button className="secondary-button px-3 py-2 text-sm" onClick={() => setFilter('closed')} type="button">
+              <button className="secondary-button px-3 py-2 text-sm" onClick={() => { setSlaFilter(null); setFilter('closed'); }} type="button">
                 Mở lọc
               </button>
             </div>
@@ -656,11 +669,12 @@ export function AdminWorkAssignmentPage() {
           </div>
 
           <div className="min-w-0 overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-[0_10px_26px_rgba(24,24,27,0.05)]">
-            <h2 className="text-base font-semibold text-[#1f1f1f]">Các bước xử lý</h2>
-            <div className="mt-3 grid gap-2 text-xs font-medium leading-5 text-[#6f7784]">
-              <p><strong>1.</strong> Chọn người phụ trách cho phiếu chưa có kỹ sư.</p>
-              <p><strong>2.</strong> Kỹ sư cập nhật và gửi hồ sơ sau khi làm xong.</p>
-              <p><strong>3.</strong> Kiểm tra hồ sơ rồi xác nhận hoặc trả lại để bổ sung.</p>
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-base font-semibold text-[#1f1f1f]">Quy trình duyệt</h2>
+              <InfoHint
+                content="Phân công kỹ sư → cập nhật hồ sơ → duyệt hoặc trả lại để bổ sung."
+                label="Quy trình duyệt"
+              />
             </div>
           </div>
         </aside>
@@ -681,9 +695,11 @@ function summaryCardClass(active: boolean) {
 function SlaCommandPanel({
   pendingMachinesCount,
   summary,
+  onSelect,
 }: {
   pendingMachinesCount: number;
   summary: ReturnType<typeof buildSlaSummary>;
+  onSelect: (filter: SlaFilter | 'pending-machines') => void;
 }) {
   const hasRisk = summary.overdue.length || summary.dueSoon.length || summary.waitingParts.length || pendingMachinesCount;
   if (!hasRisk) return null;
@@ -696,31 +712,31 @@ function SlaCommandPanel({
             <AlertTriangle size={18} />
           </span>
           <div>
-            <span className="text-xs font-semibold text-[#666666]">Nhắc việc theo thời gian</span>
             <h2 className="text-lg font-semibold text-[#1f1f1f]">Việc cần theo dõi sớm</h2>
           </div>
         </div>
-        <p className="max-w-4xl text-sm leading-6 text-[#667085]">
-          Đây là mốc nhắc nội bộ, không phải hạn cam kết với khách hàng. Tính từ ngày ghi nhận hoặc ngày lên lịch: sửa chữa 3 ngày, bảo trì 1 ngày, lắp đặt 2 ngày; phiếu chưa có kỹ sư được nhắc sau 1 ngày. Phiếu thiếu ngày ghi nhận và chưa phân công cũng được đưa vào danh sách nhắc. Phiếu chờ linh kiện được liệt kê riêng.
-        </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {summary.overdue.length ? <SlaMetric detail="Đã vượt số ngày nhắc ở trên." label="Đã quá mốc nhắc" tone="danger" value={summary.overdue.length} /> : null}
-          {summary.dueSoon.length ? <SlaMetric detail="Đang chạm mốc nhắc; nên xem lại." label="Gần mốc nhắc" tone="warn" value={summary.dueSoon.length} /> : null}
-          {summary.waitingParts.length ? <SlaMetric detail="Đang chờ vật tư, chưa tính là trễ." label="Đang chờ linh kiện" tone="neutral" value={summary.waitingParts.length} /> : null}
-          {pendingMachinesCount ? <SlaMetric detail="Cần kiểm tra thông tin máy." label="Máy chờ xác minh" tone="warn" value={pendingMachinesCount} /> : null}
+          {summary.overdue.length ? <SlaMetric label="Đã quá mốc nhắc" tone="danger" value={summary.overdue.length} onClick={() => onSelect('overdue')} /> : null}
+          {summary.dueSoon.length ? <SlaMetric label="Gần mốc nhắc" tone="warn" value={summary.dueSoon.length} onClick={() => onSelect('due-soon')} /> : null}
+          {summary.waitingParts.length ? <SlaMetric label="Đang chờ linh kiện" tone="neutral" value={summary.waitingParts.length} onClick={() => onSelect('waiting-parts')} /> : null}
+          {pendingMachinesCount ? <SlaMetric label="Máy chờ xác minh" tone="warn" value={pendingMachinesCount} onClick={() => onSelect('pending-machines')} /> : null}
         </div>
       </div>
     </section>
   );
 }
 
-function SlaMetric({ detail, label, tone, value }: { detail: string; label: string; tone: Tone; value: number }) {
+function SlaMetric({ label, tone, value, onClick }: { label: string; tone: Tone; value: number; onClick: () => void }) {
   return (
-    <div className={`rounded-2xl border p-3 ${slaMetricToneClass(tone)}`}>
+    <button
+      aria-label={`Xem danh sách: ${label} (${value})`}
+      className={`w-full cursor-pointer rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb] focus-visible:ring-offset-2 ${slaMetricToneClass(tone)}`}
+      onClick={onClick}
+      type="button"
+    >
       <span className="text-xs font-semibold text-[#666666]">{label}</span>
       <strong className="mt-1 block text-2xl leading-none tabular-nums text-[#1f1f1f]">{value}</strong>
-      <span className="mt-1 block text-xs leading-5 text-[#667085]">{detail}</span>
-    </div>
+    </button>
   );
 }
 
@@ -784,7 +800,7 @@ function MiniMetric({ label, value }: { label: string; value: string | number })
 
 function PendingMachineReviewPanel({ machines }: { machines: ReviewMachine[] }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-[24px] border border-[#efd8a8] bg-[#fff8ed] p-4 shadow-[0_12px_30px_rgba(24,24,27,0.06)]">
+    <section className="min-w-0 overflow-hidden rounded-[24px] border border-[#efd8a8] bg-[#fff8ed] p-4 shadow-[0_12px_30px_rgba(24,24,27,0.06)]" id="pending-machine-review">
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <span className="text-xs font-semibold text-[#9b5a17]">Xác minh dữ liệu</span>
@@ -875,7 +891,10 @@ function WorkDispatchRow({
   const workflowLabel = closed ? 'Hoàn tất' : deleteRequest ? 'Chờ phê duyệt yêu cầu xóa' : pendingReview ? 'Chờ phê duyệt' : 'Đang xử lý';
 
   return (
-    <article className={`grid min-w-0 items-start gap-3.5 border-b border-[#ededf0] px-4 py-4 last:border-b-0 [grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(220px,300px)] min-[1181px]:items-center min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(130px,190px)_minmax(220px,280px)] ${workRowClass(workflowTone)}`}>
+    <article className={`grid min-w-0 items-start gap-3.5 border-b border-[#ededf0] px-4 py-4 last:border-b-0 ${pendingReview
+      ? 'grid-cols-[42px_minmax(0,1fr)]'
+      : '[grid-template-columns:42px_minmax(0,1fr)] min-[821px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(220px,300px)] min-[1181px]:[grid-template-columns:42px_minmax(0,1fr)_minmax(130px,190px)_minmax(220px,280px)]'
+    } ${workRowClass(workflowTone)}`}>
       <div className={kindIconClass(item.kind)}>{kindIcon(item.kind)}</div>
       <div className="grid min-w-0 gap-[7px]">
         <div className={metaClass}>
@@ -890,7 +909,7 @@ function WorkDispatchRow({
           <span>{customerText(item)}</span>
         </div>
       </div>
-      <div className="col-span-full grid min-w-0 justify-items-start gap-2 min-[821px]:col-start-2 min-[821px]:col-span-1 min-[1181px]:col-auto">
+      <div className={`${pendingReview ? 'col-start-2 flex min-w-0 flex-wrap items-center gap-2' : 'col-span-full grid min-w-0 justify-items-start gap-2 min-[821px]:col-start-2 min-[821px]:col-span-1 min-[1181px]:col-auto'}`}>
         {actionLabel(item) ? (
           <span className={badgeClass(actionTone(item))}>
             <span className={badgeDotClass(actionTone(item))} />
@@ -911,8 +930,8 @@ function WorkDispatchRow({
           {item.engineer?.fullName || item.engineer?.email || 'Chưa có kỹ sư'}
         </span>
       </div>
-      <div className="col-span-full grid gap-2.5 min-[821px]:col-start-3 min-[821px]:col-span-1 min-[821px]:row-span-2 min-[821px]:row-start-1 min-[1181px]:col-auto min-[1181px]:row-auto">
-        {lockedAssignment ? (
+      <div className={`${pendingReview ? 'col-span-full grid min-w-0 gap-3' : 'col-span-full grid gap-2.5 min-[821px]:col-start-3 min-[821px]:col-span-1 min-[821px]:row-span-2 min-[821px]:row-start-1 min-[1181px]:col-auto min-[1181px]:row-auto'}`}>
+        {pendingReview ? null : lockedAssignment ? (
           <div className={`grid gap-2 rounded-2xl border px-3 py-3 ${closed ? 'border-[#c9ead6] bg-[#eefaf3]' : 'border-[#efd8a8] bg-[#fff8ed]'}`}>
             <div className="flex items-center gap-2">
               <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full bg-white ${closed ? 'text-[#177245]' : 'text-[#9b5a17]'}`}>
@@ -963,16 +982,16 @@ function WorkDispatchRow({
           </div>
         )}
         {pendingReview ? (
-          <div className="col-span-full grid gap-2 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3">
+          <div className="col-span-full grid min-w-0 gap-3 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-3 min-[900px]:grid-cols-2">
             <ReviewAttachmentsPanel item={item} />
             <QualityReviewChecklist item={item} />
             <textarea
-              className="form-input min-h-16"
+              className="form-input min-h-16 min-[900px]:col-span-2"
               onChange={(event) => onReviewNoteChange(event.target.value)}
               placeholder={deleteRequest ? 'Ghi chú nếu không duyệt xóa' : 'Ghi chú nếu trả kỹ sư bổ sung'}
               value={reviewNote}
             />
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2 min-[900px]:col-span-2">
               <button className="secondary-button" disabled={reviewingKey === item.key} onClick={() => onReview(item, 'NEEDS_REVISION')} type="button">
                 {deleteRequest ? 'Từ chối yêu cầu xóa' : 'Yêu cầu bổ sung'}
               </button>
@@ -995,7 +1014,6 @@ function QualityReviewChecklist({ item }: { item: WorkItem }) {
     <div className="grid gap-2 rounded-lg border border-[#dbe5ef] bg-white p-3">
       <div>
         <strong className="text-sm text-[#1f1f1f]">Điểm cần kiểm tra trước khi xác nhận</strong>
-        <p className="mt-1 text-xs leading-5 text-[#666666]">Loại việc: {kindLabel(item.kind)}.</p>
       </div>
       <div className="grid gap-1.5">
         {checks.map((check) => (
@@ -1026,7 +1044,6 @@ function ReviewAttachmentsPanel({ item }: { item: WorkItem }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <strong className="text-sm text-[#1f1f1f]">Ảnh và tài liệu kỹ sư đã tải lên</strong>
-          <p className="mt-1 text-xs leading-5 text-[#666666]">File đính kèm.</p>
         </div>
         <span className="rounded-full bg-[#f4f4f5] px-2.5 py-1 text-xs font-semibold text-[#18181b]">
           {attachmentsQuery.isLoading ? '...' : attachments.length}
@@ -1073,42 +1090,26 @@ function ReviewAttachmentsPanel({ item }: { item: WorkItem }) {
   );
 }
 
-function filterDescription(filter: WorkFilter) {
-  const descriptions: Record<WorkFilter, string> = {
-    action: 'Phiếu chưa phân công kỹ sư hoặc đang chờ phê duyệt.',
-    unassigned: 'Chưa có kỹ sư phụ trách.',
-    review: 'Hồ sơ kỹ thuật đã trình phê duyệt.',
-    active: 'Đã có kỹ sư phụ trách và công việc chưa hoàn tất.',
-    closed: 'Đã xong hoặc đã đóng.',
-    all: 'Tất cả việc trong bộ lọc.',
-  };
-  return descriptions[filter];
-}
-
 function groupWorkItems(items: WorkItem[], filter: WorkFilter) {
   const groups = [
     {
       key: 'review',
       title: 'Chờ phê duyệt hồ sơ',
-      description: 'Cần duyệt hoặc trả về.',
       items: items.filter((item) => item.reviewStatus === 'PENDING').sort(compareWorkItemsByDateDesc),
     },
     {
       key: 'unassigned',
       title: 'Chưa phân kỹ sư',
-      description: 'Cần chọn kỹ sư.',
       items: items.filter((item) => !item.engineer?.id).sort(compareWorkItemsByDateDesc),
     },
     {
       key: 'active',
       title: 'Đang thực hiện',
-      description: 'Đang theo dõi.',
       items: items.filter((item) => item.engineer?.id && item.reviewStatus !== 'PENDING' && !isClosed(item.status)).sort(compareWorkItemsByDateDesc),
     },
     {
       key: 'closed',
       title: 'Đã đóng',
-      description: 'Đã hoàn tất.',
       items: items.filter((item) => item.engineer?.id && item.reviewStatus !== 'PENDING' && isClosed(item.status)).sort(compareWorkItemsByDateDesc),
     },
   ];
@@ -1129,7 +1130,7 @@ function groupWorkItems(items: WorkItem[], filter: WorkFilter) {
   return visibleGroups.flatMap(splitWorkGroupByDate);
 }
 
-function splitWorkGroupByDate(group: { key: string; title: string; description: string; items: WorkItem[] }) {
+function splitWorkGroupByDate(group: { key: string; title: string; items: WorkItem[] }) {
   const dateGroups = new Map<string, WorkItem[]>();
 
   group.items.forEach((item) => {
@@ -1142,7 +1143,6 @@ function splitWorkGroupByDate(group: { key: string; title: string; description: 
     .map(([dateKey, items]) => ({
       key: `${group.key}:${dateKey}`,
       title: dateKey === '__missing__' ? `${group.title} · Chưa có ngày` : `${group.title} · ${formatDate(dateKey)}`,
-      description: group.description,
       items: items.sort(compareWorkItemsByDateDesc),
     }));
 }

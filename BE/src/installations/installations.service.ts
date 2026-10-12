@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import {
   DemoMachineCategory,
+  DemoLoanStatus,
   InstallationStatus,
   InventoryMovementType,
   MachineInventoryStatus,
@@ -108,14 +109,10 @@ export class InstallationsService {
     }
     if (
       selectedMachine &&
-      ![
-        MachineInventoryStatus.IN_STOCK,
-        MachineInventoryStatus.RESERVED,
-        MachineInventoryStatus.RETURNED,
-      ].includes(selectedMachine.inventoryStatus)
+      selectedMachine.inventoryStatus !== MachineInventoryStatus.IN_STOCK
     ) {
       throw new BadRequestException(
-        'Only in-stock, reserved, or returned machines can be installed',
+        'Only machines currently in stock can be selected for installation',
       );
     }
 
@@ -156,8 +153,8 @@ export class InstallationsService {
           tx,
           installedAt,
         );
-        const installation = await tx.machineInstallation.create({
-          data: {
+      const installation = await tx.machineInstallation.create({
+        data: {
             code: installationCode,
             status: InstallationStatus.PENDING,
             machineId: machine?.id ?? null,
@@ -197,7 +194,7 @@ export class InstallationsService {
             receiverPosition: this.cleanOptionalString(dto.receiverPosition),
             receiverPhone: this.cleanOptionalString(dto.receiverPhone),
             installedDeviceItems: this.normalizeDeviceItems(
-              dto.installedDeviceItems,
+              this.withPrimaryMachineDraft(dto, machineModel),
             ),
             deviceCondition: dto.deviceCondition || 'NEW_100',
             deviceConditionNote: this.cleanOptionalString(
@@ -633,6 +630,17 @@ export class InstallationsService {
       (installation.status === InstallationStatus.PENDING ||
         installation.reviewStatus === WorkReviewStatus.PENDING) &&
       dto.status === InstallationStatus.INSTALLED;
+    const deviceItemsToComplete =
+      dto.installedDeviceItems ??
+      (installation.installedDeviceItems as unknown as CreateInstallationDto['installedDeviceItems']);
+    if (
+      dto.status === InstallationStatus.INSTALLED &&
+      deviceItemsToComplete?.some((item) => item.isInstalled === false)
+    ) {
+      throw new BadRequestException(
+        'All listed machines must be marked installed before completing the ticket',
+      );
+    }
     const installationEffectsAlreadyApplied =
       isAdminApprovingInstallation &&
       installation.status === InstallationStatus.INSTALLED &&
@@ -1046,9 +1054,9 @@ export class InstallationsService {
   async remove(id: string, actor: RequestUser) {
     assertPermission(actor, PERMISSIONS.INSTALLATION_DELETE);
     const installation = await this.findOne(id, actor);
-    if (installation.status === InstallationStatus.INSTALLED) {
+    if (installation.status !== InstallationStatus.PENDING) {
       throw new BadRequestException(
-        'Completed installation tickets cannot be deleted; keep the installation history',
+        'Only installation tickets waiting for processing can be deleted',
       );
     }
 
@@ -1541,6 +1549,45 @@ export class InstallationsService {
     }
   }
 
+  private withPrimaryMachineDraft(
+    dto: CreateInstallationDto,
+    machineModel: Awaited<ReturnType<InstallationsService['findMachineModel']>> | null,
+  ): CreateInstallationDto['installedDeviceItems'] {
+    const items = [...(dto.installedDeviceItems ?? [])];
+    if (dto.machineId) return items;
+
+    const serialNumber = dto.machineSerialNumber?.trim();
+    const itemName =
+      dto.machineName?.trim() ||
+      machineModel?.displayName ||
+      machineModel?.name ||
+      dto.plannedModelName?.trim();
+    const existingPrimaryIndex = items.findIndex((item) => item.isPrimary);
+    if (!serialNumber && !itemName) {
+      if (existingPrimaryIndex >= 0 || !items.length) return items;
+      items[0] = { ...items[0], isPrimary: true };
+      return items;
+    }
+
+    const primaryItem = {
+      itemName: itemName || 'Máy chính',
+      model: machineModel?.name || dto.plannedModelName?.trim() || undefined,
+      serialNumber: serialNumber || undefined,
+      quantity: 1,
+      isPrimary: true,
+    };
+    if (existingPrimaryIndex >= 0) {
+      items[existingPrimaryIndex] = {
+        ...items[existingPrimaryIndex],
+        ...primaryItem,
+        serialNumber: serialNumber || items[existingPrimaryIndex].serialNumber,
+      };
+    } else {
+      items.unshift(primaryItem);
+    }
+    return items;
+  }
+
   private async createManualInstallationMachine(
     tx: Prisma.TransactionClient,
     input: {
@@ -1592,7 +1639,7 @@ export class InstallationsService {
       input.machineModel?.name ||
       'Máy lắp đặt';
 
-    return tx.machine.create({
+    const machine = await tx.machine.create({
       data: {
         machineCode:
           input.dto.machineCode?.trim() ||
@@ -1625,6 +1672,12 @@ export class InstallationsService {
         dataStatus: isEngineer(input.actor) ? 'PENDING_REVIEW' : 'VERIFIED',
       },
     });
+    await this.machinesService.ensureMachineAccessoryTemplates(
+      tx,
+      machine.id,
+      machine.machineModelId,
+    );
+    return machine;
   }
 
   private async findMachine(machineId: string) {
@@ -1711,13 +1764,35 @@ export class InstallationsService {
     dto: UpdateInstallationDto,
     actor: RequestUser,
   ) {
-    const existingMachineId = dto.machineId || installation.machineId;
+    const primarySourceMachineId = dto.installedDeviceItems?.find(
+      (item) => item.isPrimary,
+    )?.sourceMachineId;
+    const existingMachineId =
+      dto.machineId || installation.machineId || primarySourceMachineId;
     if (existingMachineId) {
       const machine = await tx.machine.findUnique({
         where: { id: existingMachineId },
       });
       if (!machine) {
         throw new BadRequestException('Machine does not exist');
+      }
+      const activeDemoLoan = await tx.demoLoan.findFirst({
+        where: {
+          machineId: machine.id,
+          status: {
+            in: [
+              DemoLoanStatus.PLANNED,
+              DemoLoanStatus.HANDED_OVER,
+              DemoLoanStatus.OVERDUE,
+            ],
+          },
+        },
+        select: { id: true },
+      });
+      if (activeDemoLoan) {
+        throw new BadRequestException(
+          'Machine is currently assigned to a demo loan and cannot be installed',
+        );
       }
       return machine;
     }
@@ -1798,6 +1873,12 @@ export class InstallationsService {
         dataStatus: isEngineer(actor) ? 'PENDING_REVIEW' : 'VERIFIED',
       },
     });
+
+    await this.machinesService.ensureMachineAccessoryTemplates(
+      tx,
+      machine.id,
+      machine.machineModelId,
+    );
 
     return machine;
   }
@@ -1998,6 +2079,12 @@ export class InstallationsService {
         },
       });
 
+      await this.machinesService.ensureMachineAccessoryTemplates(
+        tx,
+        createdMachine.id,
+        createdMachine.machineModelId,
+      );
+
       await this.syncMachineEngineerAssignments(
         tx,
         createdMachine.id,
@@ -2148,6 +2235,7 @@ export class InstallationsService {
         manufacturer: item.manufacturer?.trim() || null,
         productCategory: item.productCategory || null,
         isPrimary: item.isPrimary === true,
+        isInstalled: item.isInstalled ?? null,
         engineerIds: [...new Set(item.engineerIds ?? [])],
         ...(item.accessories !== undefined
           ? {

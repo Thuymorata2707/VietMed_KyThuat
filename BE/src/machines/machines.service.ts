@@ -65,7 +65,7 @@ export class MachinesService {
       machineModel?.businessLineId ?? input.businessLineId,
     );
     const accessoryInputs = await this.prepareAccessoryInputs(
-      input.accessories ?? [],
+      this.includeModelAccessoryTemplates(input.accessories ?? [], machineModel),
       machineModel?.id ?? null,
     );
 
@@ -300,6 +300,13 @@ export class MachinesService {
           orderBy: {
             installedAt: 'desc',
           },
+        },
+        demoLoans: {
+          include: {
+            customer: { select: { id: true, name: true, hospitalName: true } },
+            engineer: { select: { id: true, fullName: true, email: true } },
+          },
+          orderBy: { plannedHandoverAt: 'desc' },
         },
         warrantyCards: {
           orderBy: {
@@ -702,6 +709,45 @@ export class MachinesService {
       dto.customerId === undefined ? currentMachine.customerId : dto.customerId,
     );
 
+    const machineModelChanged =
+      dto.machineModelId !== undefined &&
+      (machineModel?.id ?? null) !== currentMachine.machineModelId;
+    const machineModelForAccessories =
+      dto.machineModelId === undefined && dto.accessories !== undefined && currentMachine.machineModelId
+        ? await this.ensureMachineModelExists(currentMachine.machineModelId)
+        : machineModel ?? null;
+    const accessoriesToSync =
+      dto.accessories !== undefined
+        ? dto.machineModelId === null
+          ? dto.accessories.map((accessory) => ({ ...accessory, componentAccessoryId: null }))
+          : this.includeModelAccessoryTemplates(dto.accessories, machineModelForAccessories)
+        : machineModelChanged
+          ? machineModelForAccessories
+            ? this.includeModelAccessoryTemplates(
+                currentMachine.accessories.map((accessory) => ({
+                  id: accessory.id,
+                  componentAccessoryId: accessory.componentAccessoryId,
+                  code: accessory.code,
+                  name: accessory.name,
+                  quantity: accessory.quantity,
+                  serialNumber: accessory.serialNumber,
+                  description: accessory.description,
+                  note: accessory.note,
+                })),
+                machineModelForAccessories,
+              )
+            : currentMachine.accessories.map((accessory) => ({
+                id: accessory.id,
+                componentAccessoryId: null,
+                code: accessory.code,
+                name: accessory.name,
+                quantity: accessory.quantity,
+                serialNumber: accessory.serialNumber,
+                description: accessory.description,
+                note: accessory.note,
+              }))
+          : undefined;
+
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.machine.update({
         where: { id },
@@ -727,6 +773,7 @@ export class MachinesService {
               : dto.productLine?.trim() || null,
           status: dto.status,
           inventoryStatus: dto.inventoryStatus,
+          demoCategory: dto.demoCategory,
           dataStatus: dto.dataStatus,
           createdSource: dto.createdSource,
           manufacturingDate:
@@ -762,12 +809,12 @@ export class MachinesService {
         include: this.defaultInclude(),
       });
 
-      if (dto.accessories !== undefined) {
+      if (accessoriesToSync !== undefined) {
         await this.syncMachineAccessories(
           tx,
           id,
           updated.machineModelId,
-          dto.accessories,
+          accessoriesToSync,
         );
         await this.refreshMachineAccessoriesSnapshot(tx, id);
       }
@@ -797,6 +844,7 @@ export class MachinesService {
             'productLine',
             'status',
             'inventoryStatus',
+            'demoCategory',
             'dataStatus',
             'createdSource',
             'customerId',
@@ -809,10 +857,10 @@ export class MachinesService {
             'warrantyEndDate',
           ]),
           metadata:
-            dto.accessories === undefined
+            accessoriesToSync === undefined
               ? undefined
               : {
-                  accessoriesCount: dto.accessories.length,
+                  accessoriesCount: accessoriesToSync.length,
                 },
         },
         tx,
@@ -1043,6 +1091,14 @@ export class MachinesService {
       where: { id: machineModelId },
       include: {
         businessLine: true,
+        components: {
+          include: {
+            ComponentAccessory: {
+                orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+            },
+          },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        },
       },
     });
 
@@ -1118,12 +1174,81 @@ export class MachinesService {
     return prepared;
   }
 
+  private includeModelAccessoryTemplates<
+    T extends CreateMachineAccessoryDto | UpdateMachineAccessoryItemDto,
+  >(
+    accessories: T[],
+    machineModel: Awaited<ReturnType<MachinesService['ensureMachineModelExists']>>,
+  ): T[] {
+    if (!machineModel) return accessories;
+
+    const templates = machineModel.components.flatMap(
+      (component) => component.ComponentAccessory,
+    );
+    const normalized = accessories.map((accessory) => {
+      const accessoryText = [accessory.componentAccessoryId, accessory.code, accessory.name]
+        .filter(Boolean)
+        .map((value) => String(value).trim().toLowerCase());
+      const template = templates.find((candidate) =>
+        accessoryText.some((value) =>
+          [candidate.id, candidate.code, candidate.name]
+            .some((candidateValue) => candidateValue.trim().toLowerCase() === value),
+        ),
+      );
+
+      if (!template) {
+        return machineModel.id
+          ? ({ ...accessory, componentAccessoryId: null } as T)
+          : accessory;
+      }
+
+      return {
+        ...accessory,
+        componentAccessoryId: template.id,
+        code: accessory.code?.trim() || template.code,
+        name: accessory.name?.trim() || template.name,
+        quantity: accessory.quantity ?? template.quantity,
+      } as T;
+    });
+    const linkedTemplateIds = new Set(
+      normalized.map((accessory) => accessory.componentAccessoryId).filter(Boolean),
+    );
+    const missingTemplates = templates
+      .filter((template) => template.status === 'ACTIVE' && !linkedTemplateIds.has(template.id))
+      .map((template) => ({
+        componentAccessoryId: template.id,
+        code: template.code,
+        name: template.name,
+        quantity: template.quantity,
+      }) as T);
+
+    return [...normalized, ...missingTemplates];
+  }
+
   async syncMachineAccessories(
     tx: Prisma.TransactionClient,
     machineId: string,
     machineModelId: string | null,
     accessories: UpdateMachineAccessoryItemDto[],
   ) {
+    if (machineModelId) {
+      const machineModel = await tx.machineModel.findUnique({
+        where: { id: machineModelId },
+        include: {
+          businessLine: true,
+          components: {
+            include: {
+              ComponentAccessory: {
+                orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+              },
+            },
+            orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+          },
+        },
+      });
+      accessories = this.includeModelAccessoryTemplates(accessories, machineModel);
+    }
+
     const currentAccessories = await tx.machineAccessory.findMany({
       where: { machineId },
     });
@@ -1235,6 +1360,53 @@ export class MachinesService {
         },
       });
     }
+  }
+
+  async ensureMachineAccessoryTemplates(
+    tx: Prisma.TransactionClient,
+    machineId: string,
+    machineModelId: string | null,
+  ) {
+    if (!machineModelId) return;
+
+    const [machineModel, existingAccessories] = await Promise.all([
+      tx.machineModel.findUnique({
+        where: { id: machineModelId },
+        include: {
+          businessLine: true,
+          components: {
+            include: {
+              ComponentAccessory: {
+                orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+              },
+            },
+            orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+          },
+        },
+      }),
+      tx.machineAccessory.findMany({ where: { machineId } }),
+    ]);
+    if (!machineModel) return;
+    const normalizedAccessories = this.includeModelAccessoryTemplates(
+      existingAccessories.map((accessory) => ({
+        id: accessory.id,
+        componentAccessoryId: accessory.componentAccessoryId,
+        code: accessory.code,
+        name: accessory.name,
+        quantity: accessory.quantity,
+        serialNumber: accessory.serialNumber,
+        description: accessory.description,
+        note: accessory.note,
+      })),
+      machineModel,
+    );
+    await this.syncMachineAccessories(
+      tx,
+      machineId,
+      machineModelId,
+      normalizedAccessories,
+    );
+    await this.refreshMachineAccessoriesSnapshot(tx, machineId);
   }
 
   async refreshMachineAccessoriesSnapshot(

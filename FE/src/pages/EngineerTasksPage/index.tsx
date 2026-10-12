@@ -60,8 +60,23 @@ import {
 } from './utils';
 import './styles.css';
 
+type EngineerDemoLoan = {
+  id: string;
+  code: string;
+  ticketCode?: string | null;
+  status: 'PLANNED' | 'HANDED_OVER' | 'OVERDUE' | 'RETURNED' | 'CANCELLED';
+  handedOverAt?: string | null;
+  customer?: { name?: string | null; hospitalName?: string | null } | null;
+  machine?: { machineCode?: string | null; name?: string | null; modelName?: string | null; serialNumber?: string | null } | null;
+  engineer?: { id: string } | null;
+  assignments?: Array<{ engineer: { id: string } }>;
+};
+
 export function EngineerTasksPage({ user }: { user: ApiUser }) {
   const [tasks, setTasks] = useState<EngineerTask[]>([]);
+  const [demoLoans, setDemoLoans] = useState<EngineerDemoLoan[]>([]);
+  const [loadingDemos, setLoadingDemos] = useState(true);
+  const [confirmingDemo, setConfirmingDemo] = useState('');
   const [dailyWorkNotes, setDailyWorkNotes] = useState<DailyWorkNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingDailyWork, setLoadingDailyWork] = useState(true);
@@ -94,8 +109,27 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
   useEffect(() => {
     loadTasks();
+    loadDemoLoans();
     loadDailyWorkNotes();
   }, [user.id]);
+
+  const demoGroups = useMemo(() => {
+    const groups = new Map<string, EngineerDemoLoan[]>();
+    demoLoans.forEach((loan) => {
+      const code = loan.ticketCode || loan.code;
+      groups.set(code, [...(groups.get(code) ?? []), loan]);
+    });
+    return [...groups.entries()].map(([ticketCode, loans]) => ({ ticketCode, loans }));
+  }, [demoLoans]);
+  const monthlyDemoCount = useMemo(() => {
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    return new Set(demoLoans.filter((loan) => {
+      const assigned = loan.engineer?.id === user.id || loan.assignments?.some((assignment) => assignment.engineer.id === user.id);
+      return assigned && loan.handedOverAt && new Date(loan.handedOverAt) >= monthStart;
+    }).map((loan) => loan.ticketCode || loan.code)).size;
+  }, [demoLoans, user.id]);
 
   const filteredTasks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -218,6 +252,35 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
       setError(err instanceof Error ? err.message : 'Không tải được việc được giao.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadDemoLoans() {
+    setLoadingDemos(true);
+    try {
+      setDemoLoans(await apiFetchAllPages<EngineerDemoLoan>('/demo-loans'));
+    } catch {
+      setDemoLoans([]);
+    } finally {
+      setLoadingDemos(false);
+    }
+  }
+
+  async function confirmDemoHandover(group: { ticketCode: string; loans: EngineerDemoLoan[] }) {
+    setConfirmingDemo(group.ticketCode);
+    setError('');
+    setSuccess('');
+    try {
+      await Promise.all(group.loans.filter((loan) => loan.status === 'PLANNED').map((loan) => apiFetch(`/demo-loans/${loan.id}/handover`, {
+        method: 'POST',
+        body: JSON.stringify({ occurredAt: new Date().toISOString() }),
+      })));
+      setSuccess(`Đã xác nhận bàn giao phiếu ${group.ticketCode}.`);
+      await loadDemoLoans();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không xác nhận được bàn giao máy demo.');
+    } finally {
+      setConfirmingDemo('');
     }
   }
 
@@ -552,6 +615,39 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           <FileText size={16} />
           Báo cáo tuần
         </Link>
+      </section>
+
+      <section className="grid gap-4 rounded-[24px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.07),0_12px_30px_rgba(24,24,27,0.05)]">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8f1d2c]">Phiếu demo được giao</span>
+            <h2 className="mt-1 text-xl font-semibold text-[#202124]">Lịch demo và bàn giao thiết bị</h2>
+          </div>
+          <div className="rounded-xl bg-[#f7f5f2] px-4 py-2 text-sm text-[#667085]">Tháng này <strong className="ml-1 text-[#202124]">{monthlyDemoCount}</strong> lượt demo</div>
+        </header>
+        {loadingDemos ? <p className="text-sm text-[#667085]">Đang tải phiếu demo…</p> : null}
+        {!loadingDemos && !demoGroups.length ? <p className="rounded-xl border border-dashed border-[#d8dce2] p-4 text-sm text-[#667085]">Chưa có phiếu demo được giao cho bạn.</p> : null}
+        <div className="grid gap-2">
+          {demoGroups.map((group) => {
+            const assigned = group.loans.some((loan) => loan.engineer?.id === user.id || loan.assignments?.some((assignment) => assignment.engineer.id === user.id));
+            if (!assigned) return null;
+            const waiting = group.loans.filter((loan) => loan.status === 'PLANNED');
+            const customer = group.loans.find((loan) => loan.customer)?.customer;
+            return (
+              <article className="grid gap-3 rounded-2xl bg-[#faf9f7] p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center" key={group.ticketCode}>
+                <div className="grid gap-1">
+                  <strong className="text-sm text-[#202124]">{group.ticketCode} · {customer?.hospitalName || customer?.name || 'Chưa gắn khách hàng'}</strong>
+                  <span className="text-sm text-[#667085]">{group.loans.map((loan) => loan.machine?.machineCode || loan.machine?.modelName || loan.machine?.name || loan.machine?.serialNumber || 'Thiết bị').join(' · ')}</span>
+                  <span className="text-xs text-[#667085]">{group.loans.length} thiết bị · {waiting.length ? 'Chờ xác nhận bàn giao' : 'Đã bàn giao'}</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link className="secondary-button compact" to="/service-tickets?type=demo">Mở phiếu</Link>
+                  {waiting.length ? <button className="primary-button compact" disabled={confirmingDemo === group.ticketCode} onClick={() => void confirmDemoHandover(group)} type="button">{confirmingDemo === group.ticketCode ? <Loader2 className="spin-icon" size={15} /> : null}Xác nhận bàn giao</button> : null}
+                </div>
+              </article>
+            );
+          })}
+        </div>
       </section>
 
       <EngineerWorkspacePanel

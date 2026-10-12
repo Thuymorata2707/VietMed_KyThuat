@@ -53,9 +53,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               <h1 className="max-w-[420px] text-[42px] font-extrabold leading-[1.04] text-[#1f1f1f] max-sm:text-[32px]">
                 Đăng nhập hệ thống kỹ thuật
               </h1>
-              <p className="max-w-[430px] text-[15px] leading-7 text-[#666666]">
-                Quản lý thiết bị, lịch việc và phiếu dịch vụ.
-              </p>
             </div>
 
             <form className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-[#ffffff] p-4 shadow-[0_8px_24px_rgba(24,24,27,0.05)]" onSubmit={handleSubmit}>
@@ -121,9 +118,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               <h2 className="mt-5 max-w-[560px] text-[46px] font-extrabold leading-[1.03] text-[#1f1f1f] max-[980px]:text-[36px] max-sm:text-[30px]">
                 Theo dõi thiết bị và công việc kỹ thuật.
               </h2>
-              <p className="mt-4 max-w-[520px] text-[15px] font-semibold leading-7 text-[#666666]">
-                Hồ sơ máy, phiếu dịch vụ và lịch bảo trì.
-              </p>
             </div>
 
             <div className="grid max-w-[620px] grid-cols-3 gap-3 max-[620px]:grid-cols-1">

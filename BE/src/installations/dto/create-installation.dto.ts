@@ -17,6 +17,10 @@ import { UpdateMachineAccessoryItemDto } from '../../machines/dto/update-machine
 
 export class InstallationDeviceItemDto {
   @IsOptional()
+  @IsBoolean()
+  isInstalled?: boolean;
+
+  @IsOptional()
   @IsString()
   sourceMachineId?: string;
 

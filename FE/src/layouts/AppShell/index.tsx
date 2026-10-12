@@ -652,7 +652,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <AdminUsersPage formMode="create" />
+                <AdminUsersPage formMode="create" user={user} />
               </RequireRole>
             }
           />
@@ -664,7 +664,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <AdminUsersPage formMode="edit" />
+                <AdminUsersPage formMode="edit" user={user} />
               </RequireRole>
             }
           />
@@ -676,7 +676,7 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 currentRole={role}
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
-                <AdminUsersPage />
+                <AdminUsersPage user={user} />
               </RequireRole>
             }
           />

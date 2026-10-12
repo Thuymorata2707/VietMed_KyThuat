@@ -8,9 +8,18 @@ import {
   IsNotEmpty,
   IsOptional,
   IsUrl,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CustomerContactDto } from './customer-contact.dto';
 
 export class CreateCustomerDto {
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CustomerContactDto)
+  contacts?: CustomerContactDto[];
+
   @IsOptional()
   @IsString()
   customerCode?: string;

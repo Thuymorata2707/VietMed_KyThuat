@@ -14,7 +14,10 @@ export type CustomerSummary = {
   status?: string | null;
   phone?: string | null;
   contactPerson?: string | null;
+  contactPosition?: string | null;
   contactPhone?: string | null;
+  contactEmail?: string | null;
+  contacts?: CustomerContactSummary[];
   province?: string | null;
   district?: string | null;
   locality?: string | null;
@@ -30,6 +33,15 @@ export type CustomerSummary = {
     machines?: number;
     machineInstallations?: number;
   };
+};
+
+export type CustomerContactSummary = {
+  id: string;
+  name: string;
+  position?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  isPrimary: boolean;
 };
 
 export type MachineHistory = {
@@ -138,6 +150,15 @@ export type CustomerMachine = {
   productCategory?: string | null;
   status?: string | null;
   inventoryStatus?: string | null;
+  demoLoans?: Array<{
+    id: string;
+    code: string;
+    ticketCode?: string | null;
+    status: 'PLANNED' | 'HANDED_OVER' | 'OVERDUE';
+    plannedHandoverAt?: string | null;
+    expectedReturnAt?: string | null;
+    handedOverAt?: string | null;
+  }>;
   installDate?: string | null;
   warrantyEndDate?: string | null;
   primaryEngineer?: UserSummary | null;

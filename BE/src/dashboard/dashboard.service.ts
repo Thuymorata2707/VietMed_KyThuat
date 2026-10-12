@@ -119,7 +119,14 @@ export class DashboardService {
       AND: [
         repairAccessWhere(user),
         { reportedAt: { gte: period.start, lt: period.end } },
-        engineerId ? { engineerId } : {},
+        engineerId
+          ? {
+              OR: [
+                { engineerId },
+                { assignments: { some: { engineerId } } },
+              ],
+            }
+          : {},
         hasIndustryScope
           ? {
               machine: {
@@ -133,7 +140,14 @@ export class DashboardService {
       AND: [
         maintenanceAccessWhere(user),
         { scheduledDate: { gte: period.start, lt: period.end } },
-        engineerId ? { engineerId } : {},
+        engineerId
+          ? {
+              OR: [
+                { engineerId },
+                { assignments: { some: { engineerId } } },
+              ],
+            }
+          : {},
         hasIndustryScope
           ? {
               machine: {
@@ -147,7 +161,14 @@ export class DashboardService {
       AND: [
         installationAccessWhere(user),
         { installedAt: { gte: period.start, lt: period.end } },
-        engineerId ? { installedById: engineerId } : {},
+        engineerId
+          ? {
+              OR: [
+                { installedById: engineerId },
+                { assignments: { some: { engineerId } } },
+              ],
+            }
+          : {},
         hasIndustryScope
           ? {
               OR: [

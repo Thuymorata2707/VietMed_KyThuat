@@ -2,12 +2,14 @@ import { CalendarCheck, ChevronLeft, ChevronRight, Download, Loader2, Plus, Save
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ApiUser, Paginated, apiFetch } from '../../api';
+import { ApiUser, Paginated, apiFetch, getApiBaseUrl, getToken } from '../../api';
 import { RoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { InfoHint } from '../../components/InfoHint';
+import { canAccessApplicationSupport } from '../../config/navigation';
 import { queryKeys } from '../../lib/queryKeys';
 import { exportReportXlsx } from '../../utils/xlsxExport';
 
@@ -36,6 +38,11 @@ type WeeklyReport = {
   weekStart: string;
   status: WeeklyReportStatus;
   note?: string | null;
+  learnings?: string | null;
+  accomplishments?: string | null;
+  timeSummary?: string | null;
+  blockers?: string | null;
+  nextWeekPlan?: string | null;
   reviewNote?: string | null;
   submittedAt?: string | null;
   reviewedAt?: string | null;
@@ -104,6 +111,7 @@ const dailyWorkTypeLabels: Record<DailyWorkType, string> = {
 
 export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps) {
   const isAdmin = currentRole === 'admin';
+  const canLoadApplicationSupport = currentRole !== 'engineer' || canAccessApplicationSupport(user, currentRole);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialWeekStart = searchParams.get('weekStart') || toDateInput(startOfWeek(new Date()));
@@ -113,6 +121,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const [report, setReport] = useState<WeeklyReport | null>(null);
   const [rows, setRows] = useState<WeeklyReportRow[]>(() => defaultRows(weekStart));
   const [note, setNote] = useState('');
+  const [learnings, setLearnings] = useState('');
+  const [accomplishments, setAccomplishments] = useState('');
+  const [timeSummary, setTimeSummary] = useState('');
+  const [blockers, setBlockers] = useState('');
+  const [nextWeekPlan, setNextWeekPlan] = useState('');
   const [reviewNoteDraft, setReviewNoteDraft] = useState('');
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
@@ -152,7 +165,6 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const dailyWorkRowsQuery = useQuery({
     enabled: !isAdmin || Boolean(selectedEngineerId),
     queryKey: queryKeys.weeklyReports.dailyRows(reportParams),
-    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const result = await apiFetch<DailyWorkRowsResponse | null>(`/weekly-reports/daily-work-rows?${reportParams}`);
@@ -163,7 +175,6 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   const ticketRowsQuery = useQuery({
     enabled: !isAdmin || Boolean(selectedEngineerId),
     queryKey: queryKeys.weeklyReports.ticketRows(reportParams),
-    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const result = await apiFetch<TicketRowsResponse | null>(`/weekly-reports/ticket-rows?${reportParams}`);
@@ -172,9 +183,8 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   });
 
   const applicationSupportRowsQuery = useQuery({
-    enabled: !isAdmin || Boolean(selectedEngineerId),
+    enabled: canLoadApplicationSupport && (!isAdmin || Boolean(selectedEngineerId)),
     queryKey: queryKeys.weeklyReports.applicationSupportRows(reportParams),
-    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const result = await apiFetch<ApplicationSupportRowsResponse | null>(`/application-support/weekly-report-rows?${reportParams}`);
@@ -187,6 +197,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
     const nextReport = reportQuery.data ?? null;
     setReport(nextReport);
     setNote(nextReport?.note ?? '');
+    setLearnings(nextReport?.learnings ?? '');
+    setAccomplishments(nextReport?.accomplishments ?? '');
+    setTimeSummary(nextReport?.timeSummary ?? '');
+    setBlockers(nextReport?.blockers ?? '');
+    setNextWeekPlan(nextReport?.nextWeekPlan ?? '');
     setReviewNoteDraft(nextReport?.reviewNote ?? '');
     setRows(buildWeekRows(weekStart, nextReport?.rows ?? []));
   }, [reportQuery.data, reportQuery.isSuccess, weekStart]);
@@ -207,8 +222,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   }, [isAdmin, selectedEngineerId, setSearchParams, weekStart]);
 
   const reportStatus = report?.status ?? 'DRAFT';
-  const canSubmit = !isAdmin && Boolean(report?.id) && rows.some(rowHasReportData);
+  const hasWeeklySummary = Boolean(
+    note.trim() || learnings.trim() || accomplishments.trim() || timeSummary.trim() || blockers.trim() || nextWeekPlan.trim(),
+  );
   const canEdit = !isAdmin && (reportStatus === 'DRAFT' || reportStatus === 'NEEDS_REVISION');
+  const canSubmit = canEdit && !loading && (hasWeeklySummary || rows.some(rowHasReportData));
   const canReview = isAdmin && report?.status === 'SUBMITTED';
 
   const saveReportMutation = useMutation({
@@ -217,6 +235,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
         weekStart,
         userId: isAdmin ? selectedEngineerId : undefined,
         note: note.trim() || null,
+        learnings: learnings.trim() || null,
+        accomplishments: accomplishments.trim() || null,
+        timeSummary: timeSummary.trim() || null,
+        blockers: blockers.trim() || null,
+        nextWeekPlan: nextWeekPlan.trim() || null,
         rows: rows.map((row, index) => ({ ...row, sortOrder: index })),
       };
       return report?.id
@@ -233,6 +256,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       setReport(saved);
       setRows(buildWeekRows(weekStart, saved.rows));
       setNote(saved.note ?? '');
+      setLearnings(saved.learnings ?? '');
+      setAccomplishments(saved.accomplishments ?? '');
+      setTimeSummary(saved.timeSummary ?? '');
+      setBlockers(saved.blockers ?? '');
+      setNextWeekPlan(saved.nextWeekPlan ?? '');
       setSuccess('Đã lưu nháp báo cáo tuần.');
       await queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'report'] });
     },
@@ -332,12 +360,12 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
   }
 
   async function submitReport() {
-    if (!report?.id) return;
     setFormError('');
     setSuccess('');
 
     try {
-      await submitReportMutation.mutateAsync(report.id);
+      const saved = await saveReportMutation.mutateAsync();
+      await submitReportMutation.mutateAsync(saved.id);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Không gửi được báo cáo tuần.');
     }
@@ -364,15 +392,47 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
 
   function exportCsv() {
     exportReportXlsx({
-      columns: ['Ngày', 'Khách hàng', 'Máy', 'Nội dung', 'Kết quả', 'Tồn đọng', 'Đề xuất'],
+      columns: ['Nhóm', 'Ngày', 'Khách hàng', 'Máy', 'Nội dung', 'Kết quả', 'Tồn đọng', 'Đề xuất'],
       filename: `bao-cao-tuan-${weekStart}.xlsx`,
-      rows: rows
-        .filter((row) => [row.customer, row.machine, row.content, row.result, row.pending, row.proposal].some((value) => value.trim()))
-        .map((row) => [formatDate(row.workDate), row.customer, row.machine, row.content, row.result, row.pending, row.proposal]),
+      rows: [
+        ['Tổng kết tuần', '', '', '', 'Tóm tắt', note, '', ''],
+        ['Tổng kết tuần', '', '', '', 'Kết quả đã làm', accomplishments, '', ''],
+        ['Tổng kết tuần', '', '', '', 'Tiến độ & thời gian', timeSummary, '', ''],
+        ['Tổng kết tuần', '', '', '', 'Kiến thức đã học', learnings, '', ''],
+        ['Tổng kết tuần', '', '', '', 'Khó khăn / hỗ trợ', blockers, '', ''],
+        ['Tổng kết tuần', '', '', '', 'Kế hoạch tuần tới', nextWeekPlan, '', ''],
+        ...rows
+          .filter((row) => [row.customer, row.machine, row.content, row.result, row.pending, row.proposal].some((value) => value.trim()))
+          .map((row) => ['Nhật ký', formatDate(row.workDate), row.customer, row.machine, row.content, row.result, row.pending, row.proposal]),
+      ],
       sheetName: 'Bao cao tuan',
       subtitle: `${formatDate(weekStart)} - ${formatDate(weekEnd)}`,
       title: 'BÁO CÁO TUẦN',
     });
+  }
+
+  async function exportWord() {
+    if (!report?.id) {
+      setFormError('Hãy lưu bản nháp trước khi xuất Word.');
+      return;
+    }
+    setFormError('');
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/weekly-reports/${report.id}/docx`, {
+        credentials: 'include',
+        headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : undefined,
+      });
+      if (!response.ok) throw new Error('Không xuất được file Word.');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `bao-cao-tuan-${weekStart}.docx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Không xuất được file Word.');
+    }
   }
 
   const selectedEngineer = engineers.find((engineer) => engineer.id === selectedEngineerId);
@@ -384,7 +444,6 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
       <PageTitle
         eyebrow="Kỹ sư"
         title="Báo cáo tuần"
-        description="Tổng hợp tuần."
       />
 
       {error ? <Notice message={error} /> : null}
@@ -397,9 +456,9 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             <h2 className="mt-1 text-xl text-[#1f1f1f]">
               {formatDate(weekStart)} - {formatDate(weekEnd)}
             </h2>
-            <p className="mt-1 text-sm text-[#666666]">
+            <span className="mt-1 inline-flex w-fit items-center rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold text-[#475467]">
               {isAdmin ? selectedEngineer?.fullName || selectedEngineer?.email || 'Chọn kỹ sư' : user.fullName || user.email}
-            </p>
+            </span>
           </div>
           <div className="flex min-w-0 flex-wrap gap-2">
             <button className="secondary-button" onClick={() => setWeekStart(toDateInput(addDays(new Date(`${weekStart}T00:00:00`), -7)))} type="button">
@@ -438,6 +497,10 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             <span className="inline-flex min-h-10 items-center rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-sm font-medium text-[#333333]">
               {statusLabels[reportStatus]}
             </span>
+            <button className="secondary-button" onClick={exportWord} type="button">
+              <Download size={16} />
+              Xuất Word
+            </button>
             <button className="secondary-button" onClick={exportCsv} type="button">
               <Download size={16} />
               Xuất Excel
@@ -516,6 +579,61 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
         </section>
       ) : null}
 
+      <section className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#faf9f7] px-5 py-4">
+          <div>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#991b2b]">BÁO CÁO DẠNG TÀI LIỆU</span>
+            <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-[#252c30]">Nội dung báo cáo</h2>
+          </div>
+          <span className="rounded-md border border-[#e5e5e5] bg-white px-2.5 py-1.5 text-xs font-medium text-[#666666]">
+            {isAdmin ? selectedEngineer?.fullName || selectedEngineer?.email || 'Kỹ sư' : user.fullName || user.email}
+          </span>
+        </div>
+        <div className="grid gap-4 bg-[#f7f6f4] p-4 md:p-6">
+          <WeeklyReflectionField
+            index="01" label="Tóm tắt tuần" prompt="Điểm nổi bật và kết quả chung" value={note}
+            disabled={!canEdit || isAdmin} placeholder="Tóm tắt kết quả tuần…" onChange={setNote}
+          />
+          <WeeklyReflectionField
+            index="02"
+            label="Công việc đã thực hiện và kết quả"
+            prompt="Nêu công việc, kết quả và tác động. Mỗi ý một dòng."
+            value={accomplishments}
+            disabled={!canEdit || isAdmin}
+            placeholder="Công việc, kết quả, số liệu…"
+            onChange={setAccomplishments}
+          />
+          <WeeklyReflectionField
+            index="03"
+            label="Tiến độ và thời gian hoàn thành"
+            prompt="Thời gian thực tế, đúng hạn hoặc lý do chậm"
+            value={timeSummary}
+            disabled={!canEdit || isAdmin}
+            placeholder="So sánh thời gian dự kiến với thực tế; ghi rõ việc chậm tiến độ..."
+            onChange={setTimeSummary}
+          />
+          <WeeklyReflectionField
+            index="04"
+            label="Kiến thức và kinh nghiệm đã học"
+            prompt="Kỹ thuật, quy trình hoặc bài học có thể áp dụng"
+            value={learnings}
+            disabled={!canEdit || isAdmin}
+            placeholder="Mô tả điều đã học, cách áp dụng và điều cần ghi nhớ..."
+            onChange={setLearnings}
+          />
+          <WeeklyReflectionField
+            index="05" label="Khó khăn và nội dung cần hỗ trợ" prompt="Vướng mắc, nguyên nhân và hỗ trợ cần thiết" value={blockers}
+            disabled={!canEdit || isAdmin}
+            placeholder="Nêu rõ vấn đề, ảnh hưởng và đề xuất hỗ trợ..." onChange={setBlockers}
+          />
+          <WeeklyReflectionField
+            index="06" label="Kế hoạch tuần tiếp theo" prompt="Ưu tiên, đầu việc và mục tiêu dự kiến" value={nextWeekPlan}
+            disabled={!canEdit || isAdmin}
+            placeholder="Liệt kê các việc ưu tiên và kết quả mong đợi..." onChange={setNextWeekPlan}
+          />
+        </div>
+      </section>
+
       <section className="grid gap-4 rounded-lg border border-[#e5e5e5] bg-[#ffffff] p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -534,9 +652,11 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 font-medium text-[#333333]">
               {loadingTicketRows ? 'Đang tải phiếu...' : `${ticketRows?.counts.total ?? 0} phiếu hoàn thành`}
             </span>
-            <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 font-medium text-[#333333]">
-              {loadingApplicationSupportRows ? 'Đang tải ứng dụng xét nghiệm...' : `${applicationSupportRows?.counts.total ?? 0} ca ứng dụng xét nghiệm`}
-            </span>
+            {canLoadApplicationSupport ? (
+              <span className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 font-medium text-[#333333]">
+                {loadingApplicationSupportRows ? 'Đang tải ứng dụng xét nghiệm...' : `${applicationSupportRows?.counts.total ?? 0} ca ứng dụng xét nghiệm`}
+              </span>
+            ) : null}
             <span className="rounded-lg border border-[#b9e8ca] bg-[#eefaf3] px-3 py-2 font-medium text-[#177245]">
               Đã phê duyệt: {dailyWorkRows?.counts.byStatus.APPROVED ?? 0}
             </span>
@@ -552,19 +672,22 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
             <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
               Bảo trì: {ticketRows?.counts.maintenances ?? 0}
             </span>
-            <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
-              Đã xử lý xét nghiệm: {applicationSupportRows?.counts.resolved ?? 0}
-            </span>
-            <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
-              Theo dõi xét nghiệm: {applicationSupportRows?.counts.followUp ?? 0}
-            </span>
+            {canLoadApplicationSupport ? (
+              <>
+                <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
+                  Đã xử lý xét nghiệm: {applicationSupportRows?.counts.resolved ?? 0}
+                </span>
+                <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]">
+                  Theo dõi xét nghiệm: {applicationSupportRows?.counts.followUp ?? 0}
+                </span>
+              </>
+            ) : null}
             {Object.entries(dailyWorkRows?.counts.byType ?? {}).slice(0, 4).map(([type, count]) => (
               <span className="rounded-lg border border-[#eeeeee] bg-white px-3 py-2 text-[#666666]" key={type}>
                 {dailyWorkTypeLabels[type as DailyWorkType] || type}: {count}
               </span>
             ))}
           </div>
-          <p className="mt-3 max-w-[760px] text-sm leading-6 text-[#666666]">Rà tồn đọng trước khi gửi.</p>
         </div>
         {!isAdmin ? (
           <div className="grid gap-2">
@@ -576,10 +699,12 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
               <Sparkles size={16} />
               Lấy từ phiếu hoàn thành
             </button>
-            <button className="secondary-button justify-center" disabled={saving || !canEdit || !applicationSupportRows?.rows.length} onClick={importApplicationSupportRows} type="button">
-              <Sparkles size={16} />
-              Lấy ứng dụng xét nghiệm
-            </button>
+            {canLoadApplicationSupport ? (
+              <button className="secondary-button justify-center" disabled={saving || !canEdit || !applicationSupportRows?.rows.length} onClick={importApplicationSupportRows} type="button">
+                <Sparkles size={16} />
+                Lấy ứng dụng xét nghiệm
+              </button>
+            ) : null}
           </div>
         ) : null}
       </section>
@@ -650,20 +775,46 @@ export function WeeklyReportsPage({ currentRole, user }: WeeklyReportsPageProps)
         <div className="flex min-w-0 flex-wrap justify-between gap-3">
           <button className="secondary-button" disabled={!canEdit} onClick={addRow} type="button">
             <Plus size={16} />
-            Add row
+            Thêm dòng
           </button>
-          <label className="grid min-w-[min(520px,100%)] gap-2 text-sm font-medium text-[#333333]">
-            Ghi chú chung
-            <textarea
-              className="min-h-20 rounded-lg border border-[#d6d6d6] px-3 py-2.5 text-[#1f1f1f] outline-none focus:border-[#18181b]"
-              disabled={!canEdit}
-              onChange={(event) => setNote(event.target.value)}
-              value={note}
-            />
-          </label>
         </div>
       ) : null}
     </PageFrame>
+  );
+}
+
+function WeeklyReflectionField({
+  index,
+  label,
+  prompt,
+  value,
+  disabled,
+  placeholder,
+  onChange,
+}: {
+  index: string;
+  label: string;
+  prompt: string;
+  value: string;
+  disabled: boolean;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="grid content-start gap-3 bg-white p-4 md:p-5">
+      <span className="flex items-center gap-2.5">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#f8ecee] text-[11px] font-semibold tabular-nums text-[#991b2b]">{index}</span>
+        <span className="text-sm font-semibold text-[#252c30]">{label}</span>
+        <InfoHint content={prompt} label={label} />
+      </span>
+      <textarea
+        className="min-h-56 w-full resize-y rounded-xl border border-[#e5e5e5] bg-[#fdfcfb] px-4 py-4 text-sm leading-7 text-[#252c30] outline-none transition placeholder:text-[#a0a0a0] focus:border-[#a94b57] focus:bg-white focus:ring-2 focus:ring-[#991b2b]/10 disabled:bg-[#fafafa] disabled:text-[#666666]"
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        value={value}
+      />
+    </label>
   );
 }
 

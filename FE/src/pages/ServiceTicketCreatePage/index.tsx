@@ -30,7 +30,17 @@ type CustomerOption = {
   name: string;
   phone?: string | null;
   contactPerson?: string | null;
+  contactPosition?: string | null;
   contactPhone?: string | null;
+  contactEmail?: string | null;
+  contacts?: Array<{
+    id: string;
+    name: string;
+    position?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    isPrimary: boolean;
+  }>;
   province?: string | null;
   provinceRef?: ProvinceOption | null;
   address?: string | null;
@@ -90,6 +100,7 @@ type TicketForm = {
   contactPhone: string;
   customerFeedback: string;
   customerId: string;
+  customerContactId: string;
   description: string;
   deviceName: string;
   engineerId: string;
@@ -134,6 +145,9 @@ type TicketForm = {
 type InstallationDeviceItem = {
   itemName: string;
   model: string;
+  manufacturer?: string;
+  productCategory?: string;
+  isInstalled?: boolean;
   serialNumber: string;
   manufactureDate: string;
   quantity: number;
@@ -200,6 +214,7 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   const [machineOptions, setMachineOptions] = useState<Array<PickerOption<MachineOption>>>([]);
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
   const [showQuickMachine, setShowQuickMachine] = useState(false);
+  const [showPlannedInstallationMachine, setShowPlannedInstallationMachine] = useState(false);
   const [ticketPreviewCode, setTicketPreviewCode] = useState('');
   const [quickMachinePreviewCode, setQuickMachinePreviewCode] = useState('');
   const [formError, setFormError] = useState('');
@@ -243,12 +258,8 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
         return result.data.filter((machine) => canEngineerUseMachine(user, machine));
       }
 
-      const results = await Promise.all(
-        ['IN_STOCK', 'RESERVED', 'RETURNED'].map((inventoryStatus) =>
-          apiFetch<Paginated<MachineOption>>(`/machines?limit=20&inventoryStatus=${inventoryStatus}`),
-        ),
-      );
-      return mergeMachines(results.flatMap((result) => result.data)).filter((machine) => canEngineerUseMachine(user, machine));
+      const result = await apiFetch<Paginated<MachineOption>>('/machines?limit=20&inventoryStatus=IN_STOCK');
+      return result.data.filter((machine) => canEngineerUseMachine(user, machine));
     },
   });
 
@@ -604,17 +615,36 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
   }
 
   function applyCustomer(customer?: CustomerOption, fallbackCustomerId = customer?.id ?? '') {
+    const primaryContact = customer?.contacts?.find((contact) => contact.isPrimary) || customer?.contacts?.[0];
     updateForm({
       customerId: customer?.id || fallbackCustomerId,
+      customerContactId: primaryContact?.id || '',
       usingDepartment: customer?.name || form.usingDepartment,
-      representative: customer?.contactPerson || form.representative,
+      representative: primaryContact?.name || customer?.contactPerson || form.representative,
+      representativePosition: primaryContact?.position || customer?.contactPosition || form.representativePosition,
       address: customer?.fullAddress || customer?.address || form.address,
       receiverInstallAddress: customer?.fullAddress || customer?.address || form.receiverInstallAddress,
-      receiverRepresentative: customer?.contactPerson || form.receiverRepresentative,
-      receiverPhone: customer?.contactPhone || customer?.phone || form.receiverPhone,
-      contactPhone: customer?.contactPhone || customer?.phone || form.contactPhone,
+      receiverRepresentative: primaryContact?.name || customer?.contactPerson || form.receiverRepresentative,
+      receiverPosition: primaryContact?.position || customer?.contactPosition || form.receiverPosition,
+      receiverPhone: primaryContact?.phone || customer?.contactPhone || customer?.phone || form.receiverPhone,
+      contactPhone: primaryContact?.phone || customer?.contactPhone || customer?.phone || form.contactPhone,
     });
     setQuickMachineForm((current) => ({ ...current, customerId: customer?.id || fallbackCustomerId || current.customerId }));
+  }
+
+  function applyCustomerContact(contactId: string) {
+    const customer = customerOptions.find((option) => option.value === form.customerId)?.row || customers.find((item) => item.id === form.customerId);
+    const contact = customer?.contacts?.find((item) => item.id === contactId);
+    if (!contact) return;
+    updateForm({
+      customerContactId: contact.id,
+      representative: contact.name,
+      representativePosition: contact.position || '',
+      receiverRepresentative: contact.name,
+      receiverPosition: contact.position || '',
+      contactPhone: contact.phone || '',
+      receiverPhone: contact.phone || '',
+    });
   }
 
   function rememberCustomerOption(customer?: CustomerOption) {
@@ -695,11 +725,6 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
       setFormError('Vui lòng chọn khách hàng ở bước 2 trước khi tạo phiếu lắp đặt.');
       return;
     }
-    if (role === 'admin' && kind === 'installation' && !form.machineId) {
-        setFormError('Quản trị viên cần chọn máy trong kho ở bước 2 trước khi phân công phiếu lắp đặt.');
-      return;
-    }
-
     if (role === 'engineer') {
       if (!form.customerId) {
         setFormError('Vui lòng chọn khách hàng cho phiếu.');
@@ -829,13 +854,28 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                     Chưa có khách hàng
                     {showQuickCustomer ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                   </button>
-                  {kind !== 'installation' ? (
+                  {kind === 'installation' ? (
+                    <button
+                      className="secondary-button"
+                      onClick={() => {
+                        if (!showPlannedInstallationMachine && form.machineId) {
+                          updateForm({ machineId: '', deviceName: '', modelName: '', machineModelId: '', serialNumber: '' });
+                        }
+                        setShowPlannedInstallationMachine(!showPlannedInstallationMachine);
+                      }}
+                      type="button"
+                    >
+                      <Plus size={16} />
+                      Chưa có máy trong kho
+                      {showPlannedInstallationMachine ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                    </button>
+                  ) : (
                     <button className="secondary-button" onClick={() => setShowQuickMachine((value) => !value)} type="button">
                       <Plus size={16} />
                       Chưa có máy
                       {showQuickMachine ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                     </button>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
@@ -861,6 +901,19 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                   value={form.customerId}
                 />
 
+                {(() => {
+                  const selectedCustomer = customerOptions.find((option) => option.value === form.customerId)?.row || customers.find((item) => item.id === form.customerId);
+                  const contacts = selectedCustomer?.contacts ?? [];
+                  return contacts.length ? (
+                    <label className={labelClass}>
+                      Người liên hệ cho phiếu
+                      <select className={fieldClass} onChange={(event) => applyCustomerContact(event.target.value)} value={form.customerContactId}>
+                        {contacts.map((contact) => <option key={contact.id} value={contact.id}>{contact.name}{contact.position ? ` · ${contact.position}` : ''}{contact.isPrimary ? ' (Chính)' : ''}</option>)}
+                      </select>
+                    </label>
+                  ) : null;
+                })()}
+
                 <AsyncEntityPicker<MachineOption>
                   className={labelClass}
                   disabled={loading}
@@ -872,10 +925,11 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                   })}
                   initialOptions={machineOptions.filter((option) => machinePickerRowFilter(kind, form.customerId, user, option.row))}
                   inputClassName={fieldClass}
-                  label={kind === 'installation' ? 'Máy đã có hồ sơ' : 'Thiết bị có sẵn'}
+                  label={kind === 'installation' ? 'Máy có sẵn trong kho' : 'Thiết bị có sẵn'}
                   onChange={(value, machine) => {
                     rememberMachineOption(machine);
                     applyMachine(machine, value);
+                    if (machine) setShowPlannedInstallationMachine(false);
                   }}
                   placeholder="Tìm máy"
                   rowFilter={(machine) => machinePickerRowFilter(kind, form.customerId, user, machine)}
@@ -890,6 +944,81 @@ export function ServiceTicketCreatePage({ fixedKind, user }: { fixedKind?: Ticke
                   </div>
                 ) : null}
               </div>
+
+              {kind === 'installation' && showPlannedInstallationMachine ? (
+                <div className="mt-5 grid gap-4 rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <strong className="text-sm text-[#172033]">Máy dự kiến lắp</strong>
+                  </div>
+                  <ModelDeviceSelect form={form} models={visibleMachineModels} updateForm={updateForm} />
+                  <label className={labelClass}>
+                    Tên thiết bị dự kiến
+                    <input className={fieldClass} onChange={(event) => updateForm({ deviceName: event.target.value })} placeholder="Tự điền theo model, có thể sửa" value={form.deviceName} />
+                  </label>
+                  <label className={labelClass}>
+                    S/N (nếu đã biết)
+                    <input className={fieldClass} onChange={(event) => updateForm({ serialNumber: event.target.value })} value={form.serialNumber} />
+                  </label>
+                </div>
+              ) : null}
+
+              {role === 'admin' && kind === 'installation' ? (
+                <section className="mt-5 rounded-2xl border border-[#e4e4e7] bg-white p-4">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-[#172033]">Máy dự kiến lắp thêm</h3>
+                      {form.installedDeviceItems.length ? <span className="text-xs text-[#64748b]">{form.installedDeviceItems.length} máy</span> : null}
+                    </div>
+                    <button className="secondary-button compact" onClick={addInstallationDeviceItem} type="button">
+                      <Plus size={15} /> Thêm máy
+                    </button>
+                  </div>
+                  {form.installedDeviceItems.map((item, index) => (
+                    <div className="mb-3 grid gap-3 rounded-xl border border-[#e4e4e7] bg-[#fafafa] p-3 last:mb-0 md:grid-cols-2" key={index}>
+                      <div className="flex items-center justify-between gap-2 md:col-span-2">
+                        <strong className="text-sm">Máy {index + 1}</strong>
+                        <button className="text-xs font-semibold text-[#9a1b2e]" onClick={() => removeInstallationDeviceItem(index)} type="button">Xóa</button>
+                      </div>
+                      <AsyncEntityPicker<MachineOption>
+                        className="md:col-span-2"
+                        endpoint={machinePickerEndpoint('installation', '')}
+                        formatOption={(machine) => ({ label: machineLabel(machine), row: machine, value: machine.id })}
+                        initialOptions={machineOptions.filter((option) => option.value !== form.machineId && !form.installedDeviceItems.some((other, otherIndex) => otherIndex !== index && other.sourceMachineId === option.value) && machinePickerRowFilter('installation', '', user, option.row))}
+                        inputClassName={fieldClass}
+                        label="Máy có sẵn (không bắt buộc)"
+                        onChange={(value, machine) => updateInstallationDeviceItem(index, machine ? {
+                          sourceMachineId: machine.id,
+                          itemName: machine.name || machine.modelName || item.itemName,
+                          model: machine.modelName || machine.machineModel?.name || item.model,
+                          manufacturer: machine.machineModel?.manufacturer || item.manufacturer,
+                          serialNumber: machine.serialNumber || item.serialNumber,
+                          quantity: 1,
+                        } : { sourceMachineId: value })}
+                        placeholder="Tìm máy trong kho"
+                        rowFilter={(machine) => machine.id !== form.machineId && !form.installedDeviceItems.some((other, otherIndex) => otherIndex !== index && other.sourceMachineId === machine.id) && machinePickerRowFilter('installation', '', user, machine)}
+                        value={item.sourceMachineId || ''}
+                      />
+                      <label className={labelClass}>
+                        Model
+                        <select className={fieldClass} onChange={(event) => {
+                          const model = visibleMachineModels.find((option) => option.id === event.target.value);
+                          updateInstallationDeviceItem(index, {
+                            model: model?.name || model?.displayName || model?.code || '',
+                            itemName: machineProductName(model) || model?.displayName || model?.name || item.itemName,
+                            manufacturer: model?.manufacturer || '',
+                            productCategory: model?.productCategory || 'OTHER',
+                          });
+                        }} value={modelIdByName(visibleMachineModels, item.model)}>
+                          <option value="">Chọn model</option>
+                          {visibleMachineModels.map((model) => <option key={model.id} value={model.id}>{model.code || model.displayName || model.name}</option>)}
+                        </select>
+                      </label>
+                      <label className={labelClass}>Tên thiết bị<input className={fieldClass} onChange={(event) => updateInstallationDeviceItem(index, { itemName: event.target.value })} value={item.itemName} /></label>
+                      <label className={labelClass}>S/N nếu đã biết<input autoComplete="off" className={fieldClass} onChange={(event) => updateInstallationDeviceItem(index, { serialNumber: event.target.value })} value={item.serialNumber} /></label>
+                    </div>
+                  ))}
+                </section>
+              ) : null}
 
               {showQuickCustomer ? (
                 <QuickCustomerPanel
@@ -1615,7 +1744,7 @@ function QuickMachinePanel({
         </>
       ) : (
         <div className="md:col-span-2 rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-4 py-5 text-sm font-semibold text-[#64748b]">
-          Chọn model để nhập máy.
+          <span className="rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold text-[#475467]">Chưa chọn model</span>
         </div>
       )}
     </div>
@@ -1729,6 +1858,7 @@ function emptyTicketForm(user: ApiUser, kind: TicketKind): TicketForm {
     contactPhone: '',
     customerFeedback: '',
     customerId: '',
+    customerContactId: '',
     description: '',
     deviceName: '',
     engineerId: selfAssignedEngineer[0] || '',
@@ -1788,6 +1918,7 @@ function emptyInstallationDeviceItem(): InstallationDeviceItem {
     serialNumber: '',
     manufactureDate: '',
     quantity: 1,
+    isInstalled: false,
     sourceMachineId: '',
     warrantyPeriod: '',
     engineerIds: [],
@@ -1935,6 +2066,9 @@ function normalizeInstallationDeviceItems(items: InstallationDeviceItem[]) {
     .map((item) => ({
       itemName: item.itemName.trim(),
       model: item.model.trim() || undefined,
+      manufacturer: item.manufacturer?.trim() || undefined,
+      productCategory: item.productCategory || undefined,
+      ...(item.isInstalled !== undefined ? { isInstalled: item.isInstalled } : {}),
       serialNumber: item.serialNumber.trim() || undefined,
       manufactureDate: item.manufactureDate || undefined,
       quantity: Number(item.quantity) || 1,
@@ -2042,15 +2176,6 @@ function mergePickerOptions<Row>(options: Array<PickerOption<Row>>) {
 
 function machineLabel(machine: MachineOption) {
   return [machine.machineCode, machine.serialNumber, machine.modelName || machine.name, machine.customer?.name].filter(Boolean).join(' - ');
-}
-
-function mergeMachines(machines: MachineOption[]) {
-  const seen = new Set<string>();
-  return machines.filter((machine) => {
-    if (!machine.id || seen.has(machine.id)) return false;
-    seen.add(machine.id);
-    return true;
-  });
 }
 
 function modelLabel(model: MachineModelOption) {

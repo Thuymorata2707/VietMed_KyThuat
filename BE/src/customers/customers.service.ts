@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CustomerStatus, CustomerType, Prisma } from '@prisma/client';
+import { CustomerStatus, CustomerType, DemoLoanStatus, Prisma } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { customerAccessWhere } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
@@ -35,6 +35,13 @@ export class CustomersService {
       ...(dto.primaryEngineerId ? [dto.primaryEngineerId] : []),
     ]);
     await this.ensureEngineersExist(engineerIds);
+    const contacts = this.normalizeContacts(dto.contacts, {
+      name: dto.contactPerson,
+      position: dto.contactPosition,
+      phone: dto.contactPhone,
+      email: dto.contactEmail,
+    });
+    const primaryContact = contacts.find((contact) => contact.isPrimary);
 
     return this.prisma.$transaction(async (tx) => {
       const customerCode =
@@ -51,10 +58,11 @@ export class CustomersService {
           email: this.normalizeOptionalEmail(dto.email),
           website: dto.website?.trim() || null,
           phone: dto.phone?.trim() || null,
-          contactPerson: dto.contactPerson?.trim() || null,
-          contactPosition: dto.contactPosition?.trim() || null,
-          contactPhone: dto.contactPhone?.trim() || null,
-          contactEmail: this.normalizeOptionalEmail(dto.contactEmail),
+          contactPerson: primaryContact?.name ?? dto.contactPerson?.trim() ?? null,
+          contactPosition: primaryContact?.position ?? dto.contactPosition?.trim() ?? null,
+          contactPhone: primaryContact?.phone ?? dto.contactPhone?.trim() ?? null,
+          contactEmail: primaryContact?.email ?? this.normalizeOptionalEmail(dto.contactEmail),
+          contacts: contacts.length ? { create: contacts } : undefined,
           province: province?.name || dto.province?.trim() || null,
           provinceId: province?.id || null,
           district: dto.district?.trim() || null,
@@ -132,6 +140,23 @@ export class CustomersService {
             createdAt: 'desc',
           },
           include: {
+            demoLoans: {
+              where: {
+                status: {
+                  in: [DemoLoanStatus.PLANNED, DemoLoanStatus.HANDED_OVER, DemoLoanStatus.OVERDUE],
+                },
+              },
+              orderBy: { plannedHandoverAt: 'desc' },
+              select: {
+                id: true,
+                code: true,
+                ticketCode: true,
+                status: true,
+                plannedHandoverAt: true,
+                expectedReturnAt: true,
+                handedOverAt: true,
+              },
+            },
             primaryEngineer: { select: this.userSummarySelect() },
             installedBy: { select: this.userSummarySelect() },
             repairs: {
@@ -341,6 +366,10 @@ export class CustomersService {
         ])
       : undefined;
     if (engineerIds) await this.ensureEngineersExist(engineerIds);
+    const contacts = dto.contacts === undefined
+      ? undefined
+      : this.normalizeContacts(dto.contacts);
+    const primaryContact = contacts?.find((contact) => contact.isPrimary);
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.customer.update({
@@ -371,22 +400,21 @@ export class CustomersService {
             dto.website === undefined ? undefined : dto.website?.trim() || null,
           phone:
             dto.phone === undefined ? undefined : dto.phone?.trim() || null,
-          contactPerson:
-            dto.contactPerson === undefined
-              ? undefined
-              : dto.contactPerson?.trim() || null,
-          contactPosition:
-            dto.contactPosition === undefined
-              ? undefined
-              : dto.contactPosition?.trim() || null,
-          contactPhone:
-            dto.contactPhone === undefined
-              ? undefined
-              : dto.contactPhone?.trim() || null,
-          contactEmail:
-            dto.contactEmail === undefined
-              ? undefined
-              : this.normalizeOptionalEmail(dto.contactEmail),
+          contactPerson: contacts !== undefined
+            ? primaryContact?.name ?? null
+            : dto.contactPerson === undefined ? undefined : dto.contactPerson?.trim() || null,
+          contactPosition: contacts !== undefined
+            ? primaryContact?.position ?? null
+            : dto.contactPosition === undefined ? undefined : dto.contactPosition?.trim() || null,
+          contactPhone: contacts !== undefined
+            ? primaryContact?.phone ?? null
+            : dto.contactPhone === undefined ? undefined : dto.contactPhone?.trim() || null,
+          contactEmail: contacts !== undefined
+            ? primaryContact?.email ?? null
+            : dto.contactEmail === undefined ? undefined : this.normalizeOptionalEmail(dto.contactEmail),
+          contacts: contacts === undefined
+            ? undefined
+            : { deleteMany: {}, create: contacts },
           province:
             province === undefined
               ? dto.province === undefined ? undefined : dto.province?.trim() || null
@@ -746,6 +774,9 @@ export class CustomersService {
 
   private customerListInclude() {
     return {
+      contacts: {
+        orderBy: [{ isPrimary: 'desc' as const }, { name: 'asc' as const }],
+      },
       region: true,
       provinceRef: { include: { branch: true } },
       primaryEngineer: {
@@ -762,6 +793,32 @@ export class CustomersService {
         },
       },
     } satisfies Prisma.CustomerInclude;
+  }
+
+  private normalizeContacts(
+    contacts: CreateCustomerDto['contacts'],
+    fallback?: {
+      name?: string | null;
+      position?: string | null;
+      phone?: string | null;
+      email?: string | null;
+    },
+  ) {
+    const source = contacts ?? (fallback && Object.values(fallback).some((value) => value?.trim())
+      ? [{ ...fallback, name: fallback.name?.trim() || 'Liên hệ chính', isPrimary: true }]
+      : []);
+    const normalized = source
+      .map((contact) => ({
+        name: contact.name.trim(),
+        position: contact.position?.trim() || null,
+        phone: contact.phone?.trim() || null,
+        email: this.normalizeOptionalEmail(contact.email),
+        isPrimary: Boolean(contact.isPrimary),
+      }))
+      .filter((contact) => contact.name);
+    if (!normalized.length) return normalized;
+    const primaryIndex = Math.max(0, normalized.findIndex((contact) => contact.isPrimary));
+    return normalized.map((contact, index) => ({ ...contact, isPrimary: index === primaryIndex }));
   }
 
   private async ensureProvinceExists(provinceId?: string | null) {

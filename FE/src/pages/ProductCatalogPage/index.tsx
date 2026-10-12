@@ -64,6 +64,7 @@ type MachineComponent = {
   code: string;
   name: string;
   accessories?: ComponentAccessory[];
+  ComponentAccessory?: ComponentAccessory[];
 };
 
 type ComponentAccessory = {
@@ -273,7 +274,6 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Danh mục thiết bị"
           title="Danh sách sản phẩm"
-          description="Model & tồn kho."
         />
         <div className="flex flex-wrap justify-end gap-2 max-sm:w-full max-sm:justify-start">
           {canAddProduct ? (
@@ -302,9 +302,6 @@ export function ProductCatalogPage({ user }: { user: ApiUser }) {
               <h2 className="mt-4 max-w-3xl text-[clamp(26px,3.2vw,42px)] font-semibold leading-[1.04] tracking-[-0.035em] text-[#1f1f1f]">
                 Danh mục sản phẩm theo ngành hàng.
               </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#667985]">
-                Model, máy, tồn kho.
-              </p>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               <Link to="/technical-machines" className="block cursor-pointer rounded-[18px] transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(24,24,27,0.08)]">
@@ -482,7 +479,6 @@ export function ProductModelDetailPage({ user }: { user: ApiUser }) {
         <PageTitle
           eyebrow="Danh mục thiết bị"
           title={detail ? modelShortLabel(detail) : 'Chi tiết model'}
-          description="Máy & phụ kiện."
         />
         <div className="flex flex-wrap justify-end gap-2">
           {detail && canAddProduct ? (
@@ -737,9 +733,6 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
           <div className="max-w-3xl">
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2563eb]">Danh mục thiết bị</span>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#172033] md:text-4xl">Nhập máy vào kho</h1>
-            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-[#64748b]">
-              Model, serial, phụ kiện.
-            </p>
           </div>
           <button className="secondary-button bg-white/80" onClick={() => navigate('/product-catalog')} type="button">
             <ArrowLeft size={17} />
@@ -835,6 +828,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
                   defaultAccessoriesText={form.accessoriesText}
                   defaultMachineName={selectedModel ? machineDefaultName(selectedModel) : ''}
                   machinePreviewCode={machinePreviewCode}
+                  templates={flattenTemplateAccessories(selectedModel ?? undefined)}
                   onChange={(value) => updateField('machineRows', value)}
                   value={form.machineRows}
                 />
@@ -929,6 +923,7 @@ function ProductMachineRowsEditor({
   defaultAccessoriesText,
   defaultMachineName,
   machinePreviewCode,
+  templates,
   value,
   onChange,
 }: {
@@ -936,6 +931,7 @@ function ProductMachineRowsEditor({
   defaultAccessoriesText: string;
   defaultMachineName: string;
   machinePreviewCode: string;
+  templates: ComponentAccessory[];
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -1027,6 +1023,7 @@ function ProductMachineRowsEditor({
                 compact
                 mode={accessoryMode}
                 onChange={(nextAccessories) => updateRow(index, { accessoriesText: nextAccessories })}
+                templates={templates}
                 value={row.accessoriesText || defaultAccessoriesText}
               />
             </div>
@@ -1655,7 +1652,7 @@ function MachineDetailPanel({ detail, loading }: { detail: MachineDetail | null;
   if (!detail) {
     return (
       <section className="rounded-lg border border-[#e5e5e5] bg-white p-6 text-sm text-[#666666]">
-        Chọn một serial máy để xem chi tiết máy và phụ kiện đi kèm.
+        <span className="rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold text-[#475467]">Chưa chọn máy</span>
       </section>
     );
   }
@@ -2078,9 +2075,9 @@ function previewMachineCodeAt(baseCode: string, index: number) {
   return `${prefix}${String(nextNumber).padStart(numberText.length, '0')}`;
 }
 
-function flattenTemplateAccessories(model: MachineModel) {
-  return (model.components ?? []).flatMap((component) =>
-    (component.accessories ?? []).map((accessory) => ({
+function flattenTemplateAccessories(model?: MachineModel) {
+  return (model?.components ?? []).flatMap((component) =>
+    (component.accessories ?? component.ComponentAccessory ?? []).map((accessory) => ({
       ...accessory,
       componentName: component.name,
     })),

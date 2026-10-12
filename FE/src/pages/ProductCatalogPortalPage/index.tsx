@@ -1,4 +1,4 @@
-import { ArrowLeft, Boxes, ImageOff, Loader2, PackagePlus, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeft, ImageOff, Loader2, PackagePlus, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
@@ -8,6 +8,7 @@ import { getRoleName } from '../../auth/roles';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
+import { InfoHint } from '../../components/InfoHint';
 import { EquipmentAreaNav } from '../../components/EquipmentAreaNav';
 import { Button } from '../../components/ui/button';
 import { queryKeys } from '../../lib/queryKeys';
@@ -27,6 +28,7 @@ type BusinessLine = {
   code: string;
   name: string;
   imageUrl?: string | null;
+  manufacturer?: string | null;
   productCategory?: string | null;
   countryOfOrigin?: string | null;
   productIndustry?: ProductIndustry | null;
@@ -99,13 +101,14 @@ const productCategoryOptions = [
 
 export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const catalogQuery = useCatalogOverview();
   const role = getRoleName(user);
   const userExpertise = getUserExpertiseGroups(user);
   const canAddProduct = role === 'admin' || role === 'engineer';
   const [query, setQuery] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'empty'>('all');
-  const [selectedIndustryId, setSelectedIndustryId] = useState('');
+  const [selectedIndustryId, setSelectedIndustryId] = useState(() => searchParams.get('industry') ?? '');
   const industries = catalogQuery.data?.industries ?? [];
   const models = catalogQuery.data?.models ?? [];
   const stockByModel = catalogQuery.data?.stockByModel ?? {};
@@ -138,7 +141,18 @@ export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
   return (
     <PageFrame>
       <EquipmentAreaNav active="catalog" />
-      <CatalogPortalHero canAddProduct={canAddProduct} loading={loading} onRefresh={() => void catalogQuery.refetch()} />
+      <CatalogPortalHero
+        canAddModel={role === 'admin'}
+        canAddProduct={canAddProduct}
+        loading={loading}
+        onAddModel={() => {
+          if (selectedIndustry) {
+            navigate(`/product-catalog/industries/${selectedIndustry.id}?addModel=1&returnToCatalog=1`);
+          }
+        }}
+        onRefresh={() => void catalogQuery.refetch()}
+        selectedIndustryAvailable={Boolean(selectedIndustry)}
+      />
       {error ? <Notice message={error} /> : null}
 
       {loading ? <CatalogLoading label="Đang tải ngành hàng" /> : null}
@@ -172,6 +186,7 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [modelForm, setModelForm] = useState<ModelFormState>(emptyModelForm);
+  const [modelIndustryId, setModelIndustryId] = useState(industryId);
   const [modelFormError, setModelFormError] = useState('');
   const [modelModalOpen, setModelModalOpen] = useState(false);
   const catalogQuery = useCatalogOverview();
@@ -186,7 +201,23 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
   const loading = catalogQuery.isLoading || catalogQuery.isFetching;
   const error = catalogQuery.error instanceof Error ? catalogQuery.error.message : '';
   const industry = industries.find((item) => item.id === industryId) ?? null;
-  const industryBusinessLines = useMemo(() => businessLines.filter((line) => line.productIndustry?.id === industryId), [businessLines, industryId]);
+  const modelIndustry = industries.find((item) => item.id === modelIndustryId) ?? null;
+  const modelIndustryBusinessLines = useMemo(() => businessLines.filter((line) => line.productIndustry?.id === modelIndustryId), [businessLines, modelIndustryId]);
+  const selectedBusinessLine = modelIndustryBusinessLines.find((line) => line.id === modelForm.businessLineId) ?? null;
+
+  useEffect(() => setModelIndustryId(industryId), [industryId]);
+
+  useEffect(() => {
+    if (loading || searchParams.get('addModel') !== '1') return;
+
+    if (canAddModel) {
+      openModelForm();
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('addModel');
+    setSearchParams(nextParams, { replace: true });
+  }, [canAddModel, loading, searchParams, setSearchParams]);
 
   const visibleModels = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -237,6 +268,11 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
       setModelForm(emptyModelForm);
       setModelFormError('');
       await queryClient.invalidateQueries({ queryKey: queryKeys.productCatalog.overview });
+      if (searchParams.get('returnToCatalog') === '1') {
+        navigate(`/product-catalog?industry=${encodeURIComponent(modelIndustryId)}`);
+      } else if (modelIndustryId !== industryId) {
+        navigate(`/product-catalog/industries/${modelIndustryId}`);
+      }
     },
     onError: (mutationError) => {
       setModelFormError(mutationError instanceof Error ? mutationError.message : 'Không thể tạo model mới.');
@@ -244,31 +280,40 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
   });
 
   function openModelForm() {
-    const firstLine = industryBusinessLines[0] ?? null;
-    setModelForm({
-      ...emptyModelForm,
-      businessLineId: firstLine?.id ?? '',
-      countryOfOrigin: firstLine?.countryOfOrigin ?? '',
-      productCategory: firstLine?.productCategory ?? '',
-      productLine: firstLine?.name ?? '',
-    });
+    // Do not silently select the first brand/group when an industry has many.
+    setModelIndustryId(industryId);
+    setModelForm(emptyModelForm);
     setModelFormError('');
     setModelModalOpen(true);
   }
 
+  function closeModelForm() {
+    setModelModalOpen(false);
+    if (searchParams.get('returnToCatalog') === '1') {
+      navigate(`/product-catalog?industry=${encodeURIComponent(modelIndustryId || industryId)}`);
+    }
+  }
+
   function updateModelForm(field: keyof ModelFormState, value: string) {
     if (field === 'businessLineId') {
-      const line = industryBusinessLines.find((item) => item.id === value) ?? null;
+      const line = modelIndustryBusinessLines.find((item) => item.id === value) ?? null;
       setModelForm((current) => ({
         ...current,
         businessLineId: value,
-        countryOfOrigin: current.countryOfOrigin || line?.countryOfOrigin || '',
-        productCategory: current.productCategory || line?.productCategory || '',
-        productLine: line?.name || current.productLine,
+        manufacturer: line?.manufacturer ?? '',
+        countryOfOrigin: line?.countryOfOrigin ?? '',
+        productCategory: line?.productCategory ?? '',
+        productLine: '',
       }));
       return;
     }
     setModelForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateModelIndustry(value: string) {
+    setModelIndustryId(value);
+    setModelForm((current) => ({ ...current, businessLineId: '', manufacturer: '', countryOfOrigin: '', productCategory: '', productLine: '' }));
+    setModelFormError('');
   }
 
   function submitModelForm(event: FormEvent<HTMLFormElement>) {
@@ -277,7 +322,7 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
     const name = modelForm.name.trim();
 
     if (!modelForm.businessLineId) {
-      setModelFormError('Vui lòng chọn dòng sản phẩm cho model.');
+      setModelFormError('Vui lòng chọn ngành hàng và nhóm sản phẩm.');
       return;
     }
     if (!code || !name) {
@@ -317,16 +362,16 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
               Quay lại ngành hàng
             </button>
             <PageTitle
-              description={`${visibleModels.length} model · ${industryStock.total} máy · ${industryStock.inStock} còn kho`}
               eyebrow="Model máy"
               title={industry?.name || 'Ngành hàng'}
             />
+            <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Tổng quan ngành hàng">
+              <span className="rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold tabular-nums text-[#475467]">{visibleModels.length} model</span>
+              <span className="rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold tabular-nums text-[#475467]">{industryStock.total} máy</span>
+              <span className="rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold tabular-nums text-[#475467]">{industryStock.inStock} trong kho</span>
+            </div>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            <Link className="secondary-button bg-white" to={`/technical-machines${industryId ? `?productIndustryId=${industryId}` : ''}`}>
-              <Boxes size={17} />
-              Danh sách máy quản lý
-            </Link>
             {canAddModel ? (
               <button className="secondary-button bg-white" onClick={openModelForm} type="button">
                 <Plus size={17} />
@@ -373,13 +418,18 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
 
       {modelModalOpen ? (
         <AddModelModal
-          businessLines={industryBusinessLines}
+          businessLines={modelIndustryBusinessLines}
           error={modelFormError}
           form={modelForm}
+          industries={industries}
+          industryId={modelIndustryId}
           loading={createModelMutation.isPending}
           onChange={updateModelForm}
-          onClose={() => setModelModalOpen(false)}
+          onClose={closeModelForm}
+          onIndustryChange={updateModelIndustry}
           onSubmit={submitModelForm}
+          selectedIndustryName={modelIndustry?.name ?? 'Chọn ngành hàng'}
+          selectedBusinessLine={selectedBusinessLine}
         />
       ) : null}
     </PageFrame>
@@ -408,13 +458,19 @@ function useCatalogOverview() {
 }
 
 function CatalogPortalHero({
+  canAddModel,
   canAddProduct,
   loading,
+  onAddModel,
   onRefresh,
+  selectedIndustryAvailable,
 }: {
+  canAddModel: boolean;
   canAddProduct: boolean;
   loading: boolean;
+  onAddModel: () => void;
   onRefresh: () => void;
+  selectedIndustryAvailable: boolean;
 }) {
   return (
     <section className="relative overflow-hidden rounded-[26px] border border-[#e4e4e7] bg-white shadow-[0_12px_30px_rgba(24,24,27,0.045)]">
@@ -425,6 +481,12 @@ function CatalogPortalHero({
           <h1 className="mt-1 text-2xl font-bold tracking-[-0.035em] text-[#18181b] sm:text-[30px]">Danh mục thiết bị</h1>
         </div>
         <div className="flex flex-wrap gap-2 md:justify-end">
+          {canAddModel ? (
+            <button className="secondary-button bg-white" disabled={loading || !selectedIndustryAvailable} onClick={onAddModel} type="button">
+              <Plus size={17} />
+              Thêm model
+            </button>
+          ) : null}
           {canAddProduct ? (
             <Link className="primary-button" to="/business-lines/add-product">
               <Plus size={17} />
@@ -730,18 +792,28 @@ function AddModelModal({
   businessLines,
   error,
   form,
+  industries,
+  industryId,
   loading,
   onChange,
   onClose,
+  onIndustryChange,
   onSubmit,
+  selectedIndustryName,
+  selectedBusinessLine,
 }: {
   businessLines: BusinessLine[];
   error: string;
   form: ModelFormState;
+  industries: ProductIndustry[];
+  industryId: string;
   loading: boolean;
   onChange: (field: keyof ModelFormState, value: string) => void;
   onClose: () => void;
+  onIndustryChange: (industryId: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  selectedIndustryName: string;
+  selectedBusinessLine: BusinessLine | null;
 }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#18181b]/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
@@ -749,29 +821,42 @@ function AddModelModal({
         <div className="flex items-start justify-between gap-4 border-b border-[#eeeeee] pb-4">
           <div>
             <span className="text-xs font-black uppercase tracking-[0.14em] text-[#667985]">Danh mục model</span>
-            <h2 className="mt-1 text-2xl font-black tracking-[-0.03em] text-[#1f1f1f]">Thêm model theo ngành hàng</h2>
+            <h2 className="mt-1 text-2xl font-black tracking-[-0.03em] text-[#1f1f1f]">Thêm model thiết bị</h2>
           </div>
           <button className="secondary-button compact bg-white" onClick={onClose} type="button" aria-label="Đóng">
             <X size={16} />
           </button>
         </div>
 
-        {businessLines.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-[#e4e4e7] bg-[#fafafa] p-5 text-sm font-semibold text-[#667985]">
-            Chưa có nhóm sản phẩm.
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <ModelFormField label="Ngành hàng">
+            <select className="form-input" onChange={(event) => onIndustryChange(event.target.value)} value={industryId}>
+              <option value="">Chọn ngành hàng</option>
+              {industries.map((industry) => <option key={industry.id} value={industry.id}>{industry.name}</option>)}
+            </select>
+          </ModelFormField>
+
+          {businessLines.length === 0 ? (
+          <div className="mt-4 flex items-center gap-2 rounded-2xl border border-dashed border-[#e4e4e7] bg-[#fafafa] p-5">
+            <span className="rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold text-[#475467]">
+              {industryId ? 'Chưa có nhóm sản phẩm' : 'Chưa chọn ngành hàng'}
+            </span>
+            {industryId ? <InfoHint content={`Ngành hàng ${selectedIndustryName} chưa có nhóm. Tạo nhóm tại Ngành hàng → Nhóm sản phẩm.`} label="Thiếu nhóm sản phẩm" /> : null}
           </div>
         ) : (
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <ModelFormField label="Dòng sản phẩm">
+            <ModelFormField label="Nhóm sản phẩm / thương hiệu">
               <select className="form-input" onChange={(event) => onChange('businessLineId', event.target.value)} value={form.businessLineId}>
+                <option value="">Chọn nhóm thuộc {selectedIndustryName}</option>
                 {businessLines.map((line) => (
                   <option key={line.id} value={line.id}>
-                    {line.name}
+                    {[line.name, line.manufacturer, productCategoryLabel(line.productCategory)].filter(Boolean).join(' · ')}
                   </option>
                 ))}
               </select>
             </ModelFormField>
-            <ModelFormField label="Model">
+          )}
+
+          <ModelFormField label="Model">
               <input className="form-input uppercase" onChange={(event) => onChange('code', event.target.value)} placeholder="VD: X-CUBE 50" value={form.code} />
             </ModelFormField>
             <ModelFormField label="Tên sản phẩm">
@@ -780,31 +865,24 @@ function AddModelModal({
             <ModelFormField label="Tên hiển thị">
               <input className="form-input" onChange={(event) => onChange('displayName', event.target.value)} placeholder="Không bắt buộc" value={form.displayName} />
             </ModelFormField>
-            <ModelFormField label="Hãng sản xuất">
-              <input className="form-input" onChange={(event) => onChange('manufacturer', event.target.value)} placeholder="Mindray, Sonoscape..." value={form.manufacturer} />
+            <ModelFormField label="Dòng máy / series (tuỳ chọn)">
+              <input className="form-input" onChange={(event) => onChange('productLine', event.target.value)} placeholder="VD: X-CUBE, BC, HD, Lumipulse, WTS" value={form.productLine} />
             </ModelFormField>
-            <ModelFormField label="Xuất xứ">
-              <input className="form-input" onChange={(event) => onChange('countryOfOrigin', event.target.value)} placeholder="China, Korea, Japan..." value={form.countryOfOrigin} />
-            </ModelFormField>
-            <ModelFormField label="Sản phẩm">
-              <select className="form-input" onChange={(event) => onChange('productCategory', event.target.value)} value={form.productCategory}>
-                <option value="">Chưa chọn</option>
-                {productCategoryOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </ModelFormField>
-            <ModelFormField label="Dòng/nhóm">
-              <input className="form-input" onChange={(event) => onChange('productLine', event.target.value)} placeholder="VD: Máy siêu âm" value={form.productLine} />
-            </ModelFormField>
+            <div className="grid gap-2 rounded-2xl border border-[#e4e4e7] bg-[#fafafa] p-4 text-sm md:col-span-2">
+              <strong className="text-[#333333]">Thông tin kế thừa từ nhóm sản phẩm</strong>
+              {selectedBusinessLine ? (
+                <div className="flex flex-wrap gap-x-5 gap-y-1 text-[#667085]">
+                  <span>Hãng: <strong className="text-[#333333]">{selectedBusinessLine.manufacturer || 'Chưa khai báo'}</strong></span>
+                  <span>Phân loại: <strong className="text-[#333333]">{productCategoryLabel(selectedBusinessLine.productCategory)}</strong></span>
+                  <span>Xuất xứ: <strong className="text-[#333333]">{selectedBusinessLine.countryOfOrigin || 'Chưa khai báo'}</strong></span>
+                </div>
+              ) : null}
+            </div>
             <label className="grid gap-2 text-sm font-bold text-[#333333] md:col-span-2">
               Ghi chú
               <textarea className="min-h-24 rounded-2xl border border-[#d8dee8] bg-white px-4 py-3 text-sm font-semibold text-[#1f1f1f] outline-none focus:border-[#18181b] focus:shadow-[0_0_0_4px_rgba(24,24,27,0.10)]" onChange={(event) => onChange('note', event.target.value)} placeholder="Quy cách đóng gói, kích thước..." value={form.note} />
             </label>
-          </div>
-        )}
+        </div>
 
         {error ? <Notice message={error} /> : null}
 
@@ -812,7 +890,7 @@ function AddModelModal({
           <button className="secondary-button" onClick={onClose} type="button">
             Hủy
           </button>
-          <button className="primary-button" disabled={loading || businessLines.length === 0} type="submit">
+          <button className="primary-button" disabled={loading || !industryId || businessLines.length === 0 || !form.businessLineId} type="submit">
             {loading ? <Loader2 className="spin-icon" size={16} /> : <Plus size={16} />}
             Lưu model
           </button>

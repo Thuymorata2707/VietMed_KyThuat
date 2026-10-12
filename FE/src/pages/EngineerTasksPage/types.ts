@@ -186,6 +186,7 @@ export type InstallationDeviceItem = {
   manufacturer?: string;
   productCategory?: string;
   isPrimary?: boolean;
+  isInstalled?: boolean;
   serialNumber: string;
   manufactureDate: string;
   quantity: number;

@@ -1,0 +1,7 @@
+ALTER TABLE `WeeklyReport`
+  MODIFY COLUMN `note` LONGTEXT NULL,
+  ADD COLUMN `learnings` LONGTEXT NULL,
+  ADD COLUMN `accomplishments` LONGTEXT NULL,
+  ADD COLUMN `timeSummary` LONGTEXT NULL,
+  ADD COLUMN `blockers` LONGTEXT NULL,
+  ADD COLUMN `nextWeekPlan` LONGTEXT NULL;

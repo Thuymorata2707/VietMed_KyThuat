@@ -223,7 +223,7 @@ export function ReportsPage() {
 
         <section className="grid gap-3 rounded-[24px] bg-[#fafafa] p-3 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)]">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div><strong className="text-sm text-[#202124]">Khoảng thời gian và phạm vi</strong><p className="mt-1 text-xs text-[#667085]">Lọc số liệu phòng kỹ thuật theo kỳ hoặc theo một nhóm đối tượng.</p></div>
+            <div><strong className="text-sm text-[#202124]">Khoảng thời gian và phạm vi</strong></div>
             <button className="secondary-button compact" onClick={resetFilters} type="button">
               Xóa lọc
             </button>

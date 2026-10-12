@@ -1,5 +1,6 @@
 import { ArrowLeft, Loader2, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiUser, Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { getRoleName } from '../../auth/roles';
@@ -21,14 +22,13 @@ import {
   workFieldClass,
   workLabelClass,
   workPanelClass,
-  workSectionDescriptionClass,
   workSectionHeaderClass,
   workSectionTitleClass,
   workSidePanelClass,
   workStepBadgeClass,
   workTextareaClass,
 } from '../../styles/workFormClasses';
-import { deleteRequestReason, deleteWorkTicket, isDeletedResponse, isDeleteRequest, reviewDeleteWorkTicket } from '../../utils/workDeleteRequests';
+import { deleteRequestReason, deleteWorkTicket, invalidateWorkTicketQueries, isDeletedResponse, isDeleteRequest, reviewDeleteWorkTicket } from '../../utils/workDeleteRequests';
 import { buildUsedParts, fetchModelAccessories, normalizeUsedPartsPayload } from '../../utils/workParts';
 import { attachmentOptionsByKind } from '../EngineerTasksPage/constants';
 import type { MaintenanceTask } from '../EngineerTasksPage/types';
@@ -91,6 +91,7 @@ type MachineModelOption = {
 export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
   const { id = '' } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/my-tasks';
   const isAdmin = getRoleName(user) === 'admin';
@@ -280,6 +281,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
 
       if (response.deleted) {
         setShowDeleteConfirm(false);
+        await invalidateWorkTicketQueries(queryClient);
         navigate(returnTo);
         return;
       }
@@ -307,6 +309,7 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
       const response = await reviewDeleteWorkTicket<MaintenanceTask>(`/maintenance/${id}/review`, approved, reviewNote);
 
       if (isDeletedResponse(response)) {
+        await invalidateWorkTicketQueries(queryClient);
         navigate(returnTo);
         return;
       }
@@ -325,8 +328,8 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle
           eyebrow="Bảo trì"
+          meta={detail?.code ? `${detail.code} · ${statusLabel(detail.status || '')}` : undefined}
           title="Cập nhật phiếu bảo trì"
-          description={detail?.code ? `Mã phiếu ${detail.code} · ${statusLabel(detail.status || '')}` : 'Lịch bảo trì và kết quả kiểm tra'}
         />
         <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
           <ArrowLeft size={17} />
@@ -449,7 +452,6 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 <div>
                   <span className={eyebrowClass}>Khách hàng</span>
                   <h2 className={sectionTitleClass}>Thông tin tại điểm bảo trì</h2>
-                  <p className={sectionDescriptionClass}>Liên hệ & địa chỉ.</p>
                 </div>
               </div>
               <CustomerSiteFields
@@ -508,11 +510,13 @@ export function MaintenanceUpdatePage({ user }: { user: ApiUser }) {
                 <button className="secondary-button" onClick={() => navigate(returnTo)} type="button">
                   Hủy
                 </button>
-                {isAdmin ? (
+                {isAdmin && detail?.status === 'PENDING' ? (
                   <button className="secondary-button justify-center text-[#b5121b]" disabled={saving} onClick={() => setShowDeleteConfirm(true)} type="button">
                     <Trash2 size={17} />
                     Xóa phiếu
                   </button>
+                ) : isAdmin && detail ? (
+                  <span className="inline-flex items-center rounded-md border border-[#e5e7eb] bg-white px-2 py-1 text-xs font-semibold text-[#667085]">Chỉ xóa phiếu chờ xử lý</span>
                 ) : null}
                 <button className="primary-button" disabled={saving} type="submit">
                   {saving ? <Loader2 className="spin-icon" size={17} /> : <Save size={17} />}
@@ -637,10 +641,9 @@ function StandardChecklistPanel({ items, onApply, title }: { items: string[]; on
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <strong className="text-sm text-[#1f1f1f]">{title}</strong>
-          <p className="mt-1 text-xs leading-5 text-[#666666]">Checklist mẫu.</p>
         </div>
         <button className="secondary-button compact" onClick={onApply} type="button">
-          Add to checklist
+          Thêm vào checklist
         </button>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -671,7 +674,6 @@ const sectionHeaderClass = workSectionHeaderClass;
 const stepBadgeClass = workStepBadgeClass;
 const eyebrowClass = workEyebrowClass;
 const sectionTitleClass = workSectionTitleClass;
-const sectionDescriptionClass = workSectionDescriptionClass;
 const labelClass = workLabelClass;
 const fieldClass = workFieldClass;
 const textareaClass = workTextareaClass;

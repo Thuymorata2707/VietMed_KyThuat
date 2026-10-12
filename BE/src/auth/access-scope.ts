@@ -248,6 +248,7 @@ export function demoLoanAccessWhere(
       OR: [
         { customer: { regionId: user.regionId } },
         { engineer: { regionId: user.regionId } },
+        { assignments: { some: { engineer: { regionId: user.regionId } } } },
         { machine: { customer: { regionId: user.regionId } } },
       ],
     };
@@ -257,8 +258,7 @@ export function demoLoanAccessWhere(
     return {
       OR: [
         { engineerId: user.id },
-        { customer: { primaryEngineerId: user.id } },
-        { customer: { engineers: { some: { id: user.id } } } },
+        { assignments: { some: { engineerId: user.id } } },
       ],
     };
   }

@@ -84,6 +84,7 @@ type CustomerOption = {
 type DemoLoanRow = {
   id: string;
   code: string;
+  ticketCode?: string | null;
   status: 'PLANNED' | 'HANDED_OVER' | 'OVERDUE' | 'RETURNED' | 'CANCELLED';
   machineUse?: 'DEMO_UNIT' | 'NEW_STOCK' | 'DEMO_USED' | 'UNKNOWN';
   preparationStatus?: 'NOT_REQUIRED' | 'REQUIRED' | 'COMPLETED';
@@ -94,6 +95,8 @@ type DemoLoanRow = {
   handedOverAt?: string | null;
   expectedReturnAt: string;
   returnedAt?: string | null;
+  handedOverBy?: EngineerOption | null;
+  returnedBy?: EngineerOption | null;
   handoverAddress?: string | null;
   receiverName?: string | null;
   receiverPosition?: string | null;
@@ -106,17 +109,22 @@ type DemoLoanRow = {
   returnNote?: string | null;
   purpose?: string | null;
   engineer?: EngineerOption | null;
+  assignments?: Array<{ isLead: boolean; engineer: EngineerOption }>;
   customer?: CustomerOption | null;
   machine?: MachineSummary | null;
 };
 
 type DemoReturnDraft = {
+  items: DemoReturnMachineDraft[];
+  occurredAt: string;
+};
+
+type DemoReturnMachineDraft = {
   accessoriesText: string;
   condition: string;
   loan: DemoLoanRow;
   note: string;
   needsRepair: boolean;
-  occurredAt: string;
 };
 
 type DeviceServiceStatus = 'RECEIVED' | 'RETURNED' | 'CANCELLED';
@@ -410,8 +418,9 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
   const defaultRange = useMemo(() => currentMonthRange(), []);
   const [reportFrom, setReportFrom] = useState(defaultRange.from);
   const [reportTo, setReportTo] = useState(defaultRange.to);
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const overviewQuery = useTicketPortalOverview();
-  const reportQuery = useTechnicalWorkRegister(reportFrom, reportTo, role !== 'engineer');
+  const reportQuery = useTechnicalWorkRegister(reportFrom, reportTo, role !== 'engineer' && isReportOpen);
   const overviewCounts = overviewQuery.data ?? { demo: 0, installations: 0, maintenance: 0, repairs: 0, 'device-service': 0 };
   const loading = overviewQuery.isLoading || overviewQuery.isFetching;
   const error =
@@ -424,17 +433,28 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
         <TicketPortalHero loading={loading} onRefresh={() => void overviewQuery.refetch()} />
         {error ? <Notice message={error} /> : null}
         <TicketPortalFlowBoard counts={overviewCounts} loading={loading} onSelect={setSelectedKind} />
-        {role !== 'engineer' ? (
+        {role !== 'engineer' ? (isReportOpen ? (
           <TechnicalWorkRegister
             from={reportFrom}
             loading={reportQuery.isLoading || reportQuery.isFetching}
+            onClose={() => setIsReportOpen(false)}
             onFromChange={setReportFrom}
             onRefresh={() => void reportQuery.refetch()}
             onToChange={setReportTo}
             report={reportQuery.data}
             to={reportTo}
           />
-        ) : null}
+        ) : (
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e7e1db] bg-white p-4 shadow-[0_8px_24px_rgba(45,35,26,0.045)] sm:p-5">
+            <div>
+              <h2 className="text-lg font-semibold tracking-[-0.02em] text-[#252c30]">Công việc trong kỳ</h2>
+            </div>
+            <button className="secondary-button" onClick={() => setIsReportOpen(true)} type="button">
+              <BarChart3 size={16} />
+              Mở báo cáo tháng
+            </button>
+          </section>
+        )) : null}
       </PageFrame>
     );
   }
@@ -442,7 +462,7 @@ export function ServiceTicketsPage({ user }: { user: ApiUser }) {
   if (selectedKind === 'demo') {
     return (
       <PageFrame>
-        <DemoLoansBoard initialDetailId={searchParams.get('detail') ?? ''} initialSearch={searchParams.get('search') ?? ''} onBack={() => setSelectedKind('')} user={user} />
+        <DemoLoansBoard onBack={() => setSelectedKind('')} user={user} />
       </PageFrame>
     );
   }
@@ -480,23 +500,7 @@ export function InstallationsPage({ user }: { user: ApiUser }) {
 function useTicketPortalOverview() {
   return useQuery({
     queryKey: queryKeys.serviceTickets.board('portal', 'overview'),
-    queryFn: async () => {
-      const [repairs, maintenances, installations, demos, deviceServices] = await Promise.all([
-        apiFetch<Paginated<ServiceRow>>('/repairs?limit=1'),
-        apiFetch<Paginated<ServiceRow>>('/maintenance?limit=1'),
-        apiFetch<Paginated<InstallationRow>>('/installations?limit=1'),
-        apiFetch<Paginated<DemoLoanRow>>('/demo-loans?limit=1'),
-        apiFetch<Paginated<DeviceServiceRow>>('/device-service-tickets?limit=1'),
-      ]);
-
-      return {
-        installations: listCount(installations),
-        maintenance: listCount(maintenances),
-        demo: listCount(demos),
-        repairs: listCount(repairs),
-        'device-service': listCount(deviceServices),
-      } satisfies Record<TicketScope, number>;
-    },
+    queryFn: () => apiFetch<Record<TicketScope, number>>('/reports/service-ticket-overview'),
   });
 }
 
@@ -570,6 +574,7 @@ function TicketPortalListButton({
 function TechnicalWorkRegister({
   from,
   loading,
+  onClose,
   onFromChange,
   onRefresh,
   onToChange,
@@ -578,6 +583,7 @@ function TechnicalWorkRegister({
 }: {
   from: string;
   loading: boolean;
+  onClose: () => void;
   onFromChange: (value: string) => void;
   onRefresh: () => void;
   onToChange: (value: string) => void;
@@ -586,15 +592,20 @@ function TechnicalWorkRegister({
 }) {
   const navigate = useNavigate();
   const rows = report?.rows ?? [];
+  const [kindFilter, setKindFilter] = useState<WorkKind | ''>('');
+  const filteredRows = useMemo(
+    () => kindFilter ? rows.filter((row) => row.kind === kindFilter) : rows,
+    [kindFilter, rows],
+  );
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pagedRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pagedRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   useEffect(() => {
     setPage(1);
-  }, [from, rows.length, to]);
+  }, [from, kindFilter, rows.length, to]);
 
   useEffect(() => {
     setPage((current) => Math.min(current, totalPages));
@@ -605,23 +616,41 @@ function TechnicalWorkRegister({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold tracking-[-0.025em] text-[#252c30]">Công việc trong kỳ</h2>
-          <span className="mt-1 block text-sm text-[#737b80]">{loading ? 'Đang tải' : `${rows.length} phiếu`}</span>
+          <span className="mt-1 block text-sm text-[#737b80]">{loading ? 'Đang tải' : `${filteredRows.length} phiếu`}</span>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button className="secondary-button" onClick={onClose} type="button">
+            Thu gọn
+          </button>
           <button className="secondary-button" disabled={loading} onClick={onRefresh} type="button">
             {loading ? <Loader2 className="spin-icon" size={16} /> : <RefreshCw size={16} />}
             Làm mới
           </button>
-          <button className="primary-button" disabled={!rows.length} onClick={() => exportTechnicalWorkExcel(rows, from, to)} type="button">
+          <button className="primary-button" disabled={!filteredRows.length} onClick={() => exportTechnicalWorkExcel(filteredRows, from, to)} type="button">
             <Download size={16} />
             Xuất Excel
           </button>
         </div>
       </div>
 
-      <div className="grid gap-3 rounded-xl bg-[#f7f5f2] p-3 sm:grid-cols-2 sm:items-end sm:p-4">
+      <div className="grid gap-3 rounded-xl bg-[#f7f5f2] p-3 sm:grid-cols-2 sm:items-end sm:p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]">
         <DateInput className="operation-filter-field" label="Từ ngày" onChange={onFromChange} value={from} />
         <DateInput className="operation-filter-field" label="Đến ngày" onChange={onToChange} value={to} />
+        <label className="grid gap-1.5 text-xs font-semibold text-[#4d565b]">
+          <span>Loại phiếu</span>
+          <select
+            className="form-input h-10 bg-white text-sm"
+            onChange={(event) => setKindFilter(event.target.value as WorkKind | '')}
+            value={kindFilter}
+          >
+            <option value="">Tất cả loại phiếu</option>
+            <option value="repair">Sửa chữa</option>
+            <option value="installation">Lắp đặt</option>
+            <option value="maintenance">Bảo trì</option>
+            <option value="demo">Demo / dùng thử</option>
+            <option value="applicationSupport">Hỗ trợ ứng dụng</option>
+          </select>
+        </label>
       </div>
 
       <div className="grid gap-2 min-[1600px]:hidden">
@@ -644,7 +673,7 @@ function TechnicalWorkRegister({
             <span className="flex items-center justify-end gap-1 text-xs font-semibold text-[#861b27]">Mở phiếu <ArrowRight size={14} className="transition group-hover:translate-x-0.5" /></span>
           </Link>
         ))}
-        {!loading && rows.length === 0 ? <p className="rounded-xl bg-[#f7f5f2] px-4 py-8 text-center text-sm text-[#667085]">Không có phiếu trong khoảng thời gian này.</p> : null}
+        {!loading && filteredRows.length === 0 ? <p className="rounded-xl bg-[#f7f5f2] px-4 py-8 text-center text-sm text-[#667085]">Không có phiếu phù hợp với bộ lọc.</p> : null}
       </div>
 
       <div className="hidden overflow-hidden rounded-xl border border-[#e8e3de] min-[1600px]:block">
@@ -702,10 +731,10 @@ function TechnicalWorkRegister({
                   <td className="border-b border-[#f1f2f4] px-4 py-3"><span className="flex items-center justify-between gap-2">{displayLabel(row.status)}<ArrowRight aria-hidden="true" className="shrink-0 text-[#861b27]" size={15} /></span></td>
                 </tr>
               ))}
-              {!loading && rows.length === 0 ? (
+              {!loading && filteredRows.length === 0 ? (
                 <tr>
                   <td className="px-4 py-8 text-center text-sm font-semibold text-[#667085]" colSpan={8}>
-                    Không có phiếu trong khoảng thời gian này.
+                    Không có phiếu phù hợp với bộ lọc.
                   </td>
                 </tr>
               ) : null}
@@ -716,7 +745,7 @@ function TechnicalWorkRegister({
         disabled={loading}
         page={currentPage}
         pageSize={pageSize}
-        total={rows.length}
+        total={filteredRows.length}
         totalPages={totalPages}
         onPageChange={setPage}
       />
@@ -731,6 +760,7 @@ function RegisterTablePager({
   total,
   totalPages,
   onPageChange,
+  description,
 }: {
   disabled: boolean;
   page: number;
@@ -738,13 +768,14 @@ function RegisterTablePager({
   total: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  description?: string;
 }) {
   const first = total ? (page - 1) * pageSize + 1 : 0;
   const last = Math.min(total, page * pageSize);
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eef0f3] bg-[#fafafa] px-4 py-3 text-sm font-medium text-[#667085]">
-      <span>{total ? `${first}-${last}/${total} phiếu` : '0 phiếu'}</span>
+      <span>{description ?? (total ? `${first}-${last}/${total} phiếu` : '0 phiếu')}</span>
       <div className="flex items-center gap-2">
         <button className="secondary-button compact" disabled={disabled || page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))} type="button">
           Trước
@@ -762,12 +793,12 @@ function ticketPortalIconClass(_value: TicketScope) {
   return 'bg-[#f7e9e9] text-[#861b27]';
 }
 
-function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user }: { initialDetailId?: string; initialSearch?: string; onBack: () => void; user: ApiUser }) {
+function DemoLoansBoard({ onBack, user }: { onBack: () => void; user: ApiUser }) {
   const role = getRoleName(user);
   const canManage = role === 'admin' || role === 'manager';
   const canCreateDemo = canManage || role === 'engineer';
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState(initialSearch);
+  const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [status, setStatus] = useState('');
   const [preparationStatus, setPreparationStatus] = useState('');
@@ -777,7 +808,7 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
   const [success, setSuccess] = useState('');
   const [returnDraft, setReturnDraft] = useState<DemoReturnDraft | null>(null);
   const [selectedLoan, setSelectedLoan] = useState<DemoLoanRow | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<DemoLoanRow | null>(null);
+  const [selectedLoanMachines, setSelectedLoanMachines] = useState<DemoLoanRow[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
@@ -792,25 +823,28 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
   }, [dateFrom, dateTo, debouncedSearch, page, preparationStatus, status]);
 
   const loansQuery = useQuery({
-    queryKey: ['demo-loans', listParams],
+    queryKey: ['demo-loans', user.id, listParams],
     queryFn: () => apiFetch<Paginated<DemoLoanRow>>(`/demo-loans?${listParams}`),
   });
 
   const loans = loansQuery.data?.data ?? [];
+  const loanGroups = useMemo(() => {
+    const groups = new Map<string, DemoLoanRow[]>();
+    for (const loan of loans) {
+      const key = loan.ticketCode || loan.code;
+      groups.set(key, [...(groups.get(key) ?? []), loan]);
+    }
+    return [...groups.entries()].map(([ticketCode, groupLoans]) => ({ ticketCode, loans: groupLoans }));
+  }, [loans]);
   const loanMeta = loansQuery.data?.meta;
   const summary = demoLoanSummary(loans);
 
-  useEffect(() => {
-    if (!initialDetailId || !loans.length) return;
-    setSelectedLoan(loans.find((loan) => loan.id === initialDetailId) ?? null);
-  }, [initialDetailId, loans]);
-
   const actionMutation = useMutation({
-    mutationFn: ({ action, id, payload }: { action: 'handover' | 'return' | 'prepare' | 'cancel'; id: string; payload?: Record<string, unknown> }) =>
-      apiFetch<DemoLoanRow>(`/demo-loans/${id}/${action}`, {
+    mutationFn: ({ action, id, ids, entries, payload }: { action: 'handover' | 'return' | 'prepare' | 'cancel'; id?: string; ids?: string[]; entries?: Array<{ id: string; payload?: Record<string, unknown> }>; payload?: Record<string, unknown> }) =>
+      Promise.all((entries ?? (ids ?? (id ? [id] : [])).map((loanId) => ({ id: loanId, payload }))).map(({ id: loanId, payload: itemPayload }) => apiFetch<DemoLoanRow>(`/demo-loans/${loanId}/${action}`, {
         method: 'POST',
-        body: action === 'cancel' ? undefined : JSON.stringify(payload ?? (action === 'handover' ? { occurredAt: new Date().toISOString() } : {})),
-      }),
+        body: action === 'cancel' ? undefined : JSON.stringify(itemPayload ?? (action === 'handover' ? { occurredAt: new Date().toISOString() } : {})),
+      }))),
     onSuccess: () => {
       setSuccess('Đã cập nhật trạng thái phiếu demo.');
       setReturnDraft(null);
@@ -820,27 +854,17 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
     onError: (err) => setFormError(err instanceof Error ? err.message : 'Không cập nhật được phiếu demo.'),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (loan: DemoLoanRow) => apiFetch(`/demo-loans/${loan.id}`, { method: 'DELETE' }),
-    onSuccess: async () => {
-      setSelectedLoan(null);
-      setDeleteTarget(null);
-      setSuccess('Đã xóa phiếu demo.');
-      await queryClient.invalidateQueries({ queryKey: ['demo-loans'] });
-      await queryClient.invalidateQueries({ queryKey: ['service-tickets'] });
-    },
-    onError: (err) => setFormError(err instanceof Error ? err.message : 'Không xóa được phiếu demo.'),
-  });
-
-  function openReturnDraft(loan: DemoLoanRow) {
+  function openReturnDraft(loans: DemoLoanRow[]) {
     setFormError('');
     setSuccess('');
     setReturnDraft({
-      accessoriesText: (loan.handoverAccessories ?? []).join('\n'),
-      condition: 'Máy nhận đủ và hoạt động bình thường.',
-      loan,
-      note: '',
-      needsRepair: false,
+      items: loans.map((item) => ({
+        accessoriesText: (item.handoverAccessories ?? []).join('\n'),
+        condition: 'Máy nhận đủ và hoạt động bình thường.',
+        loan: item,
+        note: '',
+        needsRepair: false,
+      })),
       occurredAt: toDateInput(new Date()),
     });
   }
@@ -852,17 +876,16 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
     if (!returnDraft) return;
     actionMutation.mutate({
       action: 'return',
-      id: returnDraft.loan.id,
-      payload: {
-        accessories: returnDraft.accessoriesText
-          .split('\n')
-          .map((item) => item.trim())
-          .filter(Boolean),
-        condition: returnDraft.condition,
-        requiresRepair: returnDraft.needsRepair,
-        note: returnDraft.note,
-        occurredAt: returnDraft.occurredAt,
-      },
+      entries: returnDraft.items.map((item) => ({
+        id: item.loan.id,
+        payload: {
+          accessories: item.accessoriesText.split('\n').map((accessory) => accessory.trim()).filter(Boolean),
+          condition: item.condition,
+          requiresRepair: item.needsRepair,
+          note: item.note,
+          occurredAt: returnDraft.occurredAt,
+        },
+      })),
     });
   }
 
@@ -870,7 +893,7 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
     <div className="grid gap-4">
       <div className="grid gap-4 min-[980px]:grid-cols-[minmax(0,1fr)_auto] min-[980px]:items-end">
         <div className="grid gap-3">
-          <button className="secondary-button mt-5" onClick={onBack} type="button">
+          <button className="secondary-button mt-5 w-fit justify-self-start" onClick={onBack} type="button">
             <ArrowLeft size={16} />
             Quay lại loại phiếu
           </button>
@@ -894,10 +917,10 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
       </div>
 
       <section className="grid gap-3 sm:grid-cols-4">
-        <DemoMetric label="Đang demo · trang này" tone="warn" value={summary.active} />
-        <DemoMetric label="Quá hạn · trang này" tone="danger" value={summary.overdue} />
-        <DemoMetric label="Sắp thu hồi · trang này" tone="warn" value={summary.dueSoon} />
-        <DemoMetric label="Cần xử lý sau thu hồi · trang này" tone="warn" value={summary.preparationRequired} />
+        <DemoMetric label="Đang demo" tone="warn" value={summary.active} />
+        <DemoMetric label="Quá hạn" tone="danger" value={summary.overdue} />
+        <DemoMetric label="Sắp thu hồi" tone="warn" value={summary.dueSoon} />
+        <DemoMetric label="Cần xử lý sau thu hồi" tone="warn" value={summary.preparationRequired} />
       </section>
 
       {formError ? <Notice message={formError} /> : null}
@@ -934,14 +957,14 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
         </div>
 
         {loansQuery.isLoading ? (
-          <div className="grid min-h-[220px] place-items-center text-sm font-semibold text-[#667085]">
+          <div className="grid min-h-[160px] place-items-center text-sm font-semibold text-[#667085]">
             <Loader2 className="spin-icon" size={20} />
             Đang tải phiếu demo
           </div>
         ) : null}
 
         {!loansQuery.isLoading && loans.length === 0 ? (
-          <div className="grid min-h-[220px] place-items-center gap-2 text-center text-sm text-[#667085]">
+          <div className="grid min-h-[160px] place-items-center gap-2 text-center text-sm text-[#667085]">
             <Archive size={28} />
             <strong className="text-[#202124]">Chưa có phiếu demo phù hợp</strong>
           </div>
@@ -949,53 +972,40 @@ function DemoLoansBoard({ initialDetailId = '', initialSearch = '', onBack, user
 
         {!loansQuery.isLoading ? (
           <div className="grid gap-2">
-            {loans.map((loan) => (
+            {loanGroups.map((group) => {
+              const loan = group.loans[0];
+              const assignedToCurrentUser = group.loans.some((item) => item.engineer?.id === user.id || item.assignments?.some((assignment) => assignment.engineer.id === user.id));
+              return (
               <DemoLoanCard
-                actionLoading={actionMutation.isPending || deleteMutation.isPending}
+                actionLoading={actionMutation.isPending}
                 canCancel={canManage}
-                canUpdate={canManage || loan.engineer?.id === user.id}
-                isAdmin={role === 'admin'}
-                key={loan.id}
+                canUpdate={canManage || assignedToCurrentUser}
+                canReturn={canManage || (role === 'engineer' && assignedToCurrentUser)}
+                key={group.ticketCode}
                 loan={loan}
-                onDelete={() => setDeleteTarget(loan)}
-                onView={() => setSelectedLoan(loan)}
-                onHandOver={() => actionMutation.mutate({ action: 'handover', id: loan.id })}
-                onReturn={() => openReturnDraft(loan)}
+                machines={group.loans}
+                onView={() => { setSelectedLoan(loan); setSelectedLoanMachines(group.loans); }}
+                onReturn={() => openReturnDraft(group.loans)}
                 onPrepare={() => actionMutation.mutate({ action: 'prepare', id: loan.id })}
-                onCancelPlanned={() => actionMutation.mutate({ action: 'cancel', id: loan.id })}
+                onCancelPlanned={() => actionMutation.mutate({ action: 'cancel', ids: group.loans.map((item) => item.id) })}
               />
-            ))}
+            );})}
           </div>
         ) : null}
-        {loanMeta ? <RegisterTablePager disabled={loansQuery.isFetching} page={loanMeta.page} pageSize={loanMeta.limit} total={loanMeta.total} totalPages={Math.max(1, loanMeta.totalPages)} onPageChange={setPage} /> : null}
+        {loanMeta ? <RegisterTablePager description={`${loanGroups.length} phiếu · ${loans.length} máy trong trang này`} disabled={loansQuery.isFetching} page={loanMeta.page} pageSize={loanMeta.limit} total={loanMeta.total} totalPages={Math.max(1, loanMeta.totalPages)} onPageChange={setPage} /> : null}
       </section>
 
       {returnDraft ? (
         <DemoReturnModal
           draft={returnDraft}
           loading={actionMutation.isPending}
-          onChange={(patch) => setReturnDraft((current) => (current ? { ...current, ...patch } : current))}
+          onDateChange={(occurredAt) => setReturnDraft((current) => (current ? { ...current, occurredAt } : current))}
+          onMachineChange={(loanId, patch) => setReturnDraft((current) => (current ? { ...current, items: current.items.map((item) => item.loan.id === loanId ? { ...item, ...patch } : item) } : current))}
           onClose={() => setReturnDraft(null)}
           onSubmit={submitReturnDraft}
         />
       ) : null}
-      {selectedLoan ? <DemoLoanDetailModal loan={selectedLoan} onClose={() => setSelectedLoan(null)} /> : null}
-      {deleteTarget ? (
-        <DeleteTicketDialog
-          details={[
-            { label: 'Mã phiếu', value: deleteTarget.code },
-            { label: 'Khách hàng', value: deleteTarget.customer?.name },
-            { label: 'Thiết bị', value: demoMachineLabel(deleteTarget.machine) },
-            { label: 'Kỹ sư', value: deleteTarget.engineer ? technicalUserName(deleteTarget.engineer) : 'Chưa phân công' },
-            { label: 'Trạng thái', value: demoStatusLabel(deleteTarget.status) },
-          ]}
-          loading={deleteMutation.isPending}
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={() => deleteMutation.mutate(deleteTarget)}
-          title="Xác nhận xóa phiếu demo"
-          warning="Máy giữ chỗ sẽ về kho. Phiếu và lịch sử liên quan sẽ bị xóa."
-        />
-      ) : null}
+      {selectedLoan ? <DemoLoanDetailModal loan={selectedLoan} machines={selectedLoanMachines} onClose={() => { setSelectedLoan(null); setSelectedLoanMachines([]); }} /> : null}
     </div>
   );
 }
@@ -1013,11 +1023,10 @@ function DemoMetric({ label, tone, value }: { label: string; tone: 'good' | 'war
 function DemoLoanCard({
   actionLoading,
   canCancel,
+  canReturn,
   canUpdate,
-  isAdmin,
   loan,
-  onDelete,
-  onHandOver,
+  machines,
   onCancelPlanned,
   onPrepare,
   onReturn,
@@ -1025,11 +1034,10 @@ function DemoLoanCard({
 }: {
   actionLoading: boolean;
   canCancel: boolean;
+  canReturn: boolean;
   canUpdate: boolean;
-  isAdmin: boolean;
   loan: DemoLoanRow;
-  onDelete: () => void;
-  onHandOver: () => void;
+  machines: DemoLoanRow[];
   onCancelPlanned: () => void;
   onPrepare: () => void;
   onReturn: () => void;
@@ -1040,11 +1048,18 @@ function DemoLoanCard({
       <div className="grid min-w-0 gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={statusTone(loan.status)}>{demoStatusLabel(loan.status)}</Badge>
-          <span className="text-xs font-semibold text-[#667085]">{loan.code}</span>
+          <span className="text-xs font-semibold text-[#667085]">{loan.ticketCode || loan.code}</span>
           {demoIsDueSoon(loan) ? <Badge tone="warn">Sắp đến hạn</Badge> : null}
         </div>
-        <h3 className="truncate text-lg font-semibold text-[#202124]">{demoMachineLabel(loan.machine)}</h3>
-        {loan.machine?.demoCategory ? <Badge tone="neutral">{demoMachineCategoryLabel(loan.machine.demoCategory)}</Badge> : null}
+        <div className="grid gap-1">
+          {machines.map((item) => (
+            <div className="flex min-w-0 flex-wrap items-center gap-2" key={item.id}>
+              <h3 className="min-w-0 truncate text-lg font-semibold text-[#202124]">{demoMachineLabel(item.machine)}</h3>
+              {item.machine?.demoCategory ? <Badge tone="neutral">{demoMachineCategoryLabel(item.machine.demoCategory)}</Badge> : null}
+            </div>
+          ))}
+          {machines.length > 1 ? <span className="text-xs font-semibold text-[#667085]">{machines.length} thiết bị trong phiếu</span> : null}
+        </div>
         {loan.preparationStatus === 'REQUIRED' ? <Badge tone={loan.returnRequiresRepair ? 'danger' : 'warn'}>{loan.returnRequiresRepair ? 'Chờ sửa chữa' : 'Chờ vệ sinh/đóng gói'}</Badge> : null}
         <div className="flex flex-wrap gap-2 text-sm font-medium text-[#667085]">
           <span>{loan.customer ? demoCustomerLabel(loan.customer) : 'Chưa có khách'}</span>
@@ -1055,27 +1070,22 @@ function DemoLoanCard({
       <div className="grid gap-2 text-sm text-[#667085]">
         <span>Bàn giao: <strong className="text-[#202124]">{formatDate(loan.handedOverAt || loan.plannedHandoverAt)}</strong></span>
         <span>Hạn thu hồi: <strong className="text-[#202124]">{formatDate(loan.expectedReturnAt)}</strong></span>
-        <span>Kỹ sư: <strong className="text-[#202124]">{loan.engineer ? technicalUserName(loan.engineer) : 'Chưa phân'}</strong></span>
+        <span>Giao cho: <strong className="text-[#202124]">{[...new Map(machines.flatMap((item) => item.assignments ?? []).map((assignment) => [assignment.engineer.id, technicalUserName(assignment.engineer)])).values()].join(', ') || 'Chưa phân'}</strong></span>
+        {loan.handedOverBy ? <span>Xác nhận bàn giao: <strong className="text-[#202124]">{technicalUserName(loan.handedOverBy)}</strong></span> : null}
+        {loan.returnedBy ? <span>Thu hồi bởi: <strong className="text-[#202124]">{technicalUserName(loan.returnedBy)}</strong></span> : null}
       </div>
       <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
         <button className="secondary-button rounded-2xl" onClick={onView} type="button">Chi tiết</button>
-        {isAdmin ? <button className="secondary-button danger rounded-2xl" disabled={actionLoading} onClick={onDelete} type="button"><Trash2 size={15} /> Xóa</button> : null}
-        {canUpdate && loan.status === 'PLANNED' ? (
-          <button className="primary-button rounded-2xl" disabled={actionLoading} onClick={onHandOver} type="button">
-            {actionLoading ? <Loader2 className="spin-icon" size={15} /> : null}
-            Đã bàn giao
-          </button>
-        ) : null}
         {canCancel && loan.status === 'PLANNED' ? (
           <button className="secondary-button danger rounded-2xl" disabled={actionLoading} onClick={onCancelPlanned} type="button">
             {actionLoading ? <Loader2 className="spin-icon" size={15} /> : <X size={15} />}
             Hủy lịch
           </button>
         ) : null}
-        {canUpdate && ['HANDED_OVER', 'OVERDUE'].includes(loan.status) ? (
+        {canReturn && ['HANDED_OVER', 'OVERDUE'].includes(loan.status) ? (
           <button className="secondary-button rounded-2xl" disabled={actionLoading} onClick={onReturn} type="button">
             {actionLoading ? <Loader2 className="spin-icon" size={15} /> : null}
-            Đã thu hồi
+            Ghi nhận thu hồi
           </button>
         ) : null}
         {canUpdate && loan.status === 'RETURNED' && loan.preparationStatus === 'REQUIRED' ? (
@@ -1089,32 +1099,37 @@ function DemoLoanCard({
   );
 }
 
-function DemoLoanDetailModal({ loan, onClose }: { loan: DemoLoanRow; onClose: () => void }) {
+function DemoLoanDetailModal({ loan, machines, onClose }: { loan: DemoLoanRow; machines: DemoLoanRow[]; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
       <section aria-labelledby="demo-ticket-detail-title" aria-modal="true" className="grid max-h-[90vh] w-full max-w-3xl gap-5 overflow-y-auto rounded-2xl border border-[#e7e2dc] bg-white p-5 shadow-[0_24px_72px_rgba(24,24,27,0.2)] sm:p-6" onClick={(event) => event.stopPropagation()} role="dialog">
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[#eee9e4] pb-4">
           <div>
             <span className="text-sm font-medium text-[#737b80]">Phiếu demo · {demoStatusLabel(loan.status)}</span>
-            <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-[#252c30]" id="demo-ticket-detail-title">{loan.code}</h2>
+            <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-[#252c30]" id="demo-ticket-detail-title">{loan.ticketCode || loan.code}</h2>
           </div>
           <button aria-label="Đóng chi tiết" className="secondary-button compact" onClick={onClose} type="button">Đóng</button>
         </header>
         <div className="grid gap-5 md:grid-cols-2">
           <section className="grid content-start gap-3">
             <h3 className="font-semibold text-[#252c30]">Thiết bị và khách hàng</h3>
-            <RegisterDetailRow label="Thiết bị" value={demoMachineLabel(loan.machine)} />
+            <div className="grid gap-2 rounded-2xl bg-[#f8fafc] p-3">
+              <span className="text-sm text-[#737b80]">Thiết bị trong phiếu ({machines.length})</span>
+              {machines.map((item) => <strong className="text-sm font-medium text-[#252c30]" key={item.id}>{demoMachineLabel(item.machine)}</strong>)}
+            </div>
             <RegisterDetailRow label="Khách hàng" value={loan.customer ? demoCustomerLabel(loan.customer) : 'Chưa có khách hàng'} />
             <RegisterDetailRow label="Địa chỉ bàn giao" value={loan.handoverAddress || loan.customer?.fullAddress || loan.customer?.address} />
-            <RegisterDetailRow label="Kỹ sư phụ trách" value={loan.engineer ? technicalUserName(loan.engineer) : 'Chưa phân công'} />
+            <RegisterDetailRow label="Giao việc cho" value={[...new Map(machines.flatMap((item) => item.assignments ?? []).map((assignment) => [assignment.engineer.id, technicalUserName(assignment.engineer)])).values()].join(', ')} />
             <RegisterDetailRow label="Mục đích" value={loan.purpose} />
           </section>
           <section className="grid content-start gap-3">
             <h3 className="font-semibold text-[#252c30]">Bàn giao và thu hồi</h3>
             <RegisterDetailRow label="Dự kiến bàn giao" value={formatTicketDate(loan.plannedHandoverAt)} />
             <RegisterDetailRow label="Ngày bàn giao" value={formatTicketDate(loan.handedOverAt)} />
+            <RegisterDetailRow label="Kỹ sư xác nhận bàn giao" value={loan.handedOverBy ? technicalUserName(loan.handedOverBy) : null} />
             <RegisterDetailRow label="Hạn thu hồi" value={formatTicketDate(loan.expectedReturnAt)} />
             <RegisterDetailRow label="Ngày thu hồi" value={formatTicketDate(loan.returnedAt)} />
+            <RegisterDetailRow label="Kỹ sư thu hồi" value={loan.returnedBy ? technicalUserName(loan.returnedBy) : null} />
             <RegisterDetailRow label="Loại máy" value={loan.machine?.demoCategory ? demoMachineCategoryLabel(loan.machine.demoCategory) : demoMachineUseLabel(loan.machineUse)} />
             <RegisterDetailRow label="Sau thu hồi" value={demoPreparationLabel(loan.preparationStatus, loan.returnRequiresRepair)} />
             <RegisterDetailRow label="Sửa chữa" value={loan.returnRequiresRepair ? 'Có' : 'Không'} />
@@ -1146,16 +1161,19 @@ function formatTicketDate(value?: string | null) {
 function DemoReturnModal({
   draft,
   loading,
-  onChange,
+  onDateChange,
+  onMachineChange,
   onClose,
   onSubmit,
 }: {
   draft: DemoReturnDraft;
   loading: boolean;
-  onChange: (patch: Partial<DemoReturnDraft>) => void;
+  onDateChange: (occurredAt: string) => void;
+  onMachineChange: (loanId: string, patch: Partial<Omit<DemoReturnMachineDraft, 'loan'>>) => void;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const ticketCode = draft.items[0]?.loan.ticketCode || draft.items[0]?.loan.code || '';
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#182033]/45 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
       <form
@@ -1166,49 +1184,42 @@ function DemoReturnModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <span className="text-sm font-semibold text-[#3e8375]">Phiếu nhận thiết bị</span>
-            <h2 className="mt-1 text-2xl font-semibold text-[#202124]">Thu hồi {draft.loan.code}</h2>
-            <p className="mt-1 text-sm font-medium text-[#667085]">{demoMachineLabel(draft.loan.machine)}</p>
+            <h2 className="mt-1 text-2xl font-semibold text-[#202124]">Thu hồi phiếu {ticketCode}</h2>
           </div>
           <button className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#e4e4e7] bg-white text-[#667085] hover:bg-[#f4f4f5]" onClick={onClose} type="button" aria-label="Đóng">
             <X size={18} />
           </button>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <DateInput label="Ngày thu hồi" onChange={(value) => onChange({ occurredAt: value })} required value={draft.occurredAt} />
-          <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
-            Tình trạng máy
-            <select className="h-12 rounded-2xl border border-[#cbd5e1] bg-white px-3" onChange={(event) => onChange({ needsRepair: event.target.value === 'repair' })} value={draft.needsRepair ? 'repair' : 'normal'}>
-              <option value="normal">Bình thường</option>
-              <option value="repair">Cần kiểm tra/sửa chữa</option>
-            </select>
-          </label>
-          <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
-            Tình trạng khi nhận lại
-            <textarea
-              className="min-h-[104px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-semibold leading-6 text-[#172033] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-              onChange={(event) => onChange({ condition: event.target.value })}
-              required
-              value={draft.condition}
-            />
-          </label>
-          <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155] md:col-span-2">
-            Phụ kiện nhận lại
-            <textarea
-              className="min-h-[96px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-semibold leading-6 text-[#172033] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-              onChange={(event) => onChange({ accessoriesText: event.target.value })}
-              placeholder="Mỗi phụ kiện một dòng"
-              value={draft.accessoriesText}
-            />
-          </label>
-          <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155] md:col-span-2">
-            Ghi chú thu hồi
-            <textarea
-              className="min-h-[96px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-semibold leading-6 text-[#172033] outline-none focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
-              onChange={(event) => onChange({ note: event.target.value })}
-              value={draft.note}
-            />
-          </label>
+        <DateInput label="Ngày thu hồi" onChange={onDateChange} required value={draft.occurredAt} />
+        <div className="grid gap-3">
+          {draft.items.map((item, index) => (
+            <section className="grid gap-3 rounded-2xl border border-[#e8e4df] bg-[#faf9f7] p-4" key={item.loan.id}>
+              <header>
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#667085]">Thiết bị {index + 1}</span>
+                <h3 className="mt-1 font-semibold text-[#202124]">{demoMachineLabel(item.loan.machine)}</h3>
+              </header>
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+                Kết quả kiểm tra
+                <select className="h-12 rounded-2xl border border-[#cbd5e1] bg-white px-3" onChange={(event) => onMachineChange(item.loan.id, { needsRepair: event.target.value === 'repair' })} value={item.needsRepair ? 'repair' : 'normal'}>
+                  <option value="normal">Đạt kiểm tra, không cần sửa chữa</option>
+                  <option value="repair">Cần kiểm tra hoặc sửa chữa</option>
+                </select>
+              </label>
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+                Tình trạng thiết bị khi thu hồi
+                <textarea className="min-h-[80px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-medium leading-6 text-[#172033]" onChange={(event) => onMachineChange(item.loan.id, { condition: event.target.value })} required value={item.condition} />
+              </label>
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+                Phụ kiện thu hồi
+                <textarea className="min-h-[64px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-medium leading-6 text-[#172033]" onChange={(event) => onMachineChange(item.loan.id, { accessoriesText: event.target.value })} placeholder="Mỗi phụ kiện một dòng" value={item.accessoriesText} />
+              </label>
+              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
+                Ghi chú thiết bị
+                <textarea className="min-h-[64px] rounded-2xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm font-medium leading-6 text-[#172033]" onChange={(event) => onMachineChange(item.loan.id, { note: event.target.value })} value={item.note} />
+              </label>
+            </section>
+          ))}
         </div>
 
         <div className="flex flex-wrap justify-end gap-2">
@@ -1226,11 +1237,12 @@ function DemoReturnModal({
 }
 
 function demoLoanSummary(loans: DemoLoanRow[]) {
+  const countTickets = (matching: DemoLoanRow[]) => new Set(matching.map((loan) => loan.ticketCode || loan.code)).size;
   return {
-    active: loans.filter((loan) => loan.status === 'HANDED_OVER').length,
-    overdue: loans.filter((loan) => loan.status === 'OVERDUE').length,
-    dueSoon: loans.filter(demoIsDueSoon).length,
-    preparationRequired: loans.filter((loan) => loan.preparationStatus === 'REQUIRED').length,
+    active: countTickets(loans.filter((loan) => loan.status === 'HANDED_OVER')),
+    overdue: countTickets(loans.filter((loan) => loan.status === 'OVERDUE')),
+    dueSoon: countTickets(loans.filter(demoIsDueSoon)),
+    preparationRequired: countTickets(loans.filter((loan) => loan.preparationStatus === 'REQUIRED')),
   };
 }
 
@@ -1423,8 +1435,8 @@ function DeviceServiceBoard({ onBack, user }: { onBack: () => void; user: ApiUse
       </div>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <DemoMetric label="Đang ở phòng kỹ thuật · trang này" tone="warn" value={activeCount} />
-        <DemoMetric label="Đã trả thiết bị · trang này" tone="good" value={returnedCount} />
+        <DemoMetric label="Đang ở phòng kỹ thuật" tone="warn" value={activeCount} />
+        <DemoMetric label="Đã trả thiết bị" tone="good" value={returnedCount} />
         <DemoMetric label="Tổng phiếu" tone="good" value={ticketMeta?.total ?? 0} />
       </section>
 
@@ -2234,7 +2246,7 @@ function technicalWorkHref(row: TechnicalReportRow) {
   if (row.kind === 'maintenance') return `/maintenance/${row.id}/update?returnTo=${returnTo}`;
   if (row.kind === 'repair') return `/repairs/${row.id}/update?returnTo=${returnTo}`;
   if (row.kind === 'demo') {
-    return `/service-tickets?type=demo&search=${encodeURIComponent(row.code)}&detail=${encodeURIComponent(row.id)}`;
+    return '/service-tickets?type=demo';
   }
   const supportParams = new URLSearchParams({ search: row.title || row.code, case: row.id });
   return `/application-support?${supportParams.toString()}`;
@@ -2422,7 +2434,7 @@ function DeviceServiceCard({ isAdmin, loading, onDelete, onReturn, onView, ticke
       </div>
       <div className="flex flex-wrap gap-2 min-[980px]:justify-end">
         <button className="secondary-button rounded-2xl" onClick={onView} type="button">Chi tiết</button>
-        {isAdmin ? <button className="secondary-button danger rounded-2xl" disabled={loading} onClick={onDelete} type="button"><Trash2 size={15} /> Xóa</button> : null}
+        {isAdmin && ticket.status === 'RECEIVED' ? <button className="secondary-button danger rounded-2xl" disabled={loading} onClick={onDelete} type="button"><Trash2 size={15} /> Xóa</button> : null}
         {ticket.status === 'RECEIVED' ? (
           <button className="primary-button rounded-2xl" disabled={loading} onClick={onReturn} type="button">
             {loading ? <Loader2 className="spin-icon" size={15} /> : null}

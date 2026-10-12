@@ -35,7 +35,7 @@ export type NavGroup = {
 export const navItems: NavItem[] = [
   { path: '/', label: 'Tổng quan', icon: <Gauge size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/customers', label: 'Khách hàng', icon: <Building2 size={18} />, roles: ['admin', 'manager', 'engineer'] },
-  { path: '/service-tickets', label: 'Trung tâm phiếu kỹ thuật', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
+  { path: '/service-tickets', label: 'Phiếu kỹ thuật', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
   { path: '/application-support', label: 'Hỗ trợ app xét nghiệm', icon: <Headphones size={18} />, roles: ['engineer'] },
   { path: '/daily-work', label: 'Lịch & báo cáo', icon: <CalendarDays size={18} />, matchPaths: ['/daily-work', '/daily-reports', '/weekly-reports'], roles: ['admin', 'engineer'] },
   { path: '/knowledge-base', label: 'Chia sẻ kinh nghiệm', icon: <BookOpenCheck size={18} />, roles: ['admin', 'manager', 'engineer'] },
@@ -58,7 +58,7 @@ export const navGroups: NavGroup[] = [
       { path: '/', label: 'Tổng quan', icon: <Gauge size={18} />, roles: ['admin', 'manager', 'engineer'] },
       { path: '/my-tasks', label: 'Điều phối & duyệt', icon: <SquareCheckBig size={18} />, roles: ['admin'] },
       { path: '/my-tasks', label: 'Việc của tôi', icon: <SquareCheckBig size={18} />, roles: ['engineer'] },
-      { path: '/service-tickets', label: 'Trung tâm phiếu kỹ thuật', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
+      { path: '/service-tickets', label: 'Phiếu kỹ thuật', icon: <Wrench size={18} />, roles: ['admin', 'manager', 'engineer'] },
       { path: '/daily-work', label: 'Lịch & báo cáo', icon: <CalendarDays size={18} />, matchPaths: ['/daily-work', '/daily-reports', '/weekly-reports'], roles: ['admin', 'engineer'] },
       { path: '/application-support', label: 'Hỗ trợ app xét nghiệm', icon: <Headphones size={18} />, roles: ['engineer'] },
     ],

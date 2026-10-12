@@ -14,6 +14,7 @@ import { isAdmin, isEngineer, userAccessWhere } from '../auth/access-scope';
 import { RequestUser } from '../common/request-user.type';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
 import { ReviewWeeklyReportDto } from './dto/review-weekly-report.dto';
 import { SaveWeeklyReportDto } from './dto/save-weekly-report.dto';
 import { WeeklyReportRowDto } from './dto/weekly-report-row.dto';
@@ -98,7 +99,10 @@ export class WeeklyReportsService {
       }),
       this.prisma.machineInstallation.findMany({
         where: {
-          installedById: targetUserId,
+          OR: [
+            { installedById: targetUserId },
+            { assignments: { some: { engineerId: targetUserId } } },
+          ],
           status: 'INSTALLED',
           installedAt: { gte: startDate, lte: endDate },
         },
@@ -112,10 +116,14 @@ export class WeeklyReportsService {
       }),
       this.prisma.repair.findMany({
         where: {
-          engineerId: targetUserId,
+          OR: [
+            { engineerId: targetUserId },
+            { assignments: { some: { engineerId: targetUserId } } },
+          ],
           completedAt: { gte: startDate, lte: endDate },
         },
         include: {
+          customer: true,
           machine: {
             include: {
               customer: true,
@@ -127,7 +135,10 @@ export class WeeklyReportsService {
       }),
       this.prisma.maintenance.findMany({
         where: {
-          engineerId: targetUserId,
+          OR: [
+            { engineerId: targetUserId },
+            { assignments: { some: { engineerId: targetUserId } } },
+          ],
           completedAt: { gte: startDate, lte: endDate },
         },
         include: {
@@ -216,7 +227,7 @@ export class WeeklyReportsService {
         code: item.code,
         date: item.completedAt ?? item.reportedAt,
         status: item.status,
-        customer: this.customerSummary(item.machine?.customer, {
+        customer: this.customerSummary(item.customer ?? item.machine?.customer, {
           name: item.representative || item.usingDepartment,
           phone: item.contactPhone,
           address: item.address,
@@ -467,7 +478,10 @@ export class WeeklyReportsService {
     const [installations, repairs, maintenances] = await Promise.all([
       this.prisma.machineInstallation.findMany({
         where: {
-          installedById: targetUserId,
+          OR: [
+            { installedById: targetUserId },
+            { assignments: { some: { engineerId: targetUserId } } },
+          ],
           status: 'INSTALLED',
           installedAt: { gte: parsedWeekStart, lte: weekEnd },
         },
@@ -481,7 +495,10 @@ export class WeeklyReportsService {
       }),
       this.prisma.repair.findMany({
         where: {
-          engineerId: targetUserId,
+          OR: [
+            { engineerId: targetUserId },
+            { assignments: { some: { engineerId: targetUserId } } },
+          ],
           status: 'COMPLETED',
           completedAt: { gte: parsedWeekStart, lte: weekEnd },
         },
@@ -498,7 +515,10 @@ export class WeeklyReportsService {
       }),
       this.prisma.maintenance.findMany({
         where: {
-          engineerId: targetUserId,
+          OR: [
+            { engineerId: targetUserId },
+            { assignments: { some: { engineerId: targetUserId } } },
+          ],
           status: 'COMPLETED',
           completedAt: { gte: parsedWeekStart, lte: weekEnd },
         },
@@ -654,10 +674,20 @@ export class WeeklyReportsService {
           userId: targetUserId,
           weekStart,
           note: this.cleanOptional(dto.note),
+          learnings: this.cleanOptional(dto.learnings),
+          accomplishments: this.cleanOptional(dto.accomplishments),
+          timeSummary: this.cleanOptional(dto.timeSummary),
+          blockers: this.cleanOptional(dto.blockers),
+          nextWeekPlan: this.cleanOptional(dto.nextWeekPlan),
           status: WeeklyReportStatus.DRAFT,
         },
         update: {
           note: this.cleanOptional(dto.note),
+          learnings: this.cleanOptional(dto.learnings),
+          accomplishments: this.cleanOptional(dto.accomplishments),
+          timeSummary: this.cleanOptional(dto.timeSummary),
+          blockers: this.cleanOptional(dto.blockers),
+          nextWeekPlan: this.cleanOptional(dto.nextWeekPlan),
           status: WeeklyReportStatus.DRAFT,
           submittedAt: null,
           reviewedAt: null,
@@ -705,8 +735,16 @@ export class WeeklyReportsService {
   async submit(id: string, user: RequestUser) {
     const report = await this.findAccessibleReport(id, user);
 
-    if (report.rows.length === 0) {
-      throw new BadRequestException('Weekly report must have at least one row');
+    if (
+      report.rows.length === 0 &&
+      !report.learnings?.trim() &&
+      !report.accomplishments?.trim() &&
+      !report.timeSummary?.trim() &&
+      !report.blockers?.trim() &&
+      !report.nextWeekPlan?.trim() &&
+      !report.note?.trim()
+    ) {
+      throw new BadRequestException('Weekly report must contain a summary or work row');
     }
 
     const updated = await this.prisma.weeklyReport.update({
@@ -733,6 +771,49 @@ export class WeeklyReportsService {
       .catch(() => null);
 
     return updated;
+  }
+
+  async generateDocx(id: string, user: RequestUser) {
+    const report = await this.findAccessibleReport(id, user);
+    const weekStart = this.formatDate(report.weekStart);
+    const weekEnd = this.formatDate(new Date(report.weekStart.getTime() + 5 * 86400000));
+    const section = (title: string, body?: string | null) => [
+      new Paragraph({ text: title, heading: HeadingLevel.HEADING_1, spacing: { before: 320, after: 120 } }),
+      ...(body?.trim()
+        ? body.split(/\r?\n/).map((line) => new Paragraph({ text: line || ' ', spacing: { after: 100 } }))
+        : [new Paragraph({ children: [new TextRun({ text: 'Chưa cập nhật', italics: true, color: '888888' })] })]),
+    ];
+    const document = new Document({
+      creator: 'VietMed Kỹ Thuật',
+      title: `Báo cáo tuần ${weekStart} - ${weekEnd}`,
+      sections: [{
+        properties: { page: { margin: { top: 900, right: 900, bottom: 900, left: 900 } } },
+        children: [
+          new Paragraph({ text: 'BÁO CÁO CÔNG VIỆC TUẦN', heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER, spacing: { after: 160 } }),
+          new Paragraph({ text: `Thời gian: ${weekStart} - ${weekEnd}`, alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
+          new Paragraph({ text: `Kỹ sư: ${report.user.fullName || report.user.email}`, alignment: AlignmentType.CENTER, spacing: { after: 240 } }),
+          ...section('1. Tóm tắt tuần', report.note),
+          ...section('2. Công việc đã thực hiện và kết quả', report.accomplishments),
+          ...section('3. Tiến độ và thời gian hoàn thành', report.timeSummary),
+          ...section('4. Kiến thức và kinh nghiệm đã học', report.learnings),
+          ...section('5. Khó khăn và nội dung cần hỗ trợ', report.blockers),
+          ...section('6. Kế hoạch tuần tiếp theo', report.nextWeekPlan),
+          new Paragraph({ text: '7. Nhật ký công việc', heading: HeadingLevel.HEADING_1, spacing: { before: 320, after: 120 } }),
+          ...(report.rows.some((row) => [row.customer, row.machine, row.content, row.result, row.pending, row.proposal].some((value) => value?.trim()))
+            ? report.rows.filter((row) => [row.customer, row.machine, row.content, row.result, row.pending, row.proposal].some((value) => value?.trim())).flatMap((row, index) => [
+                new Paragraph({ text: `${index + 1}. ${this.formatDate(row.workDate)}${row.customer ? ` · ${row.customer}` : ''}${row.machine ? ` · ${row.machine}` : ''}`, heading: HeadingLevel.HEADING_2, spacing: { before: 180, after: 80 } }),
+                ...[
+                  ['Nội dung', row.content], ['Kết quả', row.result], ['Tồn đọng', row.pending], ['Đề xuất', row.proposal],
+                ].filter(([, value]) => Boolean(value?.trim())).map(([label, value]) => new Paragraph({ children: [new TextRun({ text: `${label}: `, bold: true }), new TextRun(value || '')], spacing: { after: 80 } })),
+              ])
+            : [new Paragraph({ children: [new TextRun({ text: 'Chưa có nhật ký công việc.', italics: true, color: '888888' })] })]),
+        ],
+      }],
+    });
+    return {
+      filename: `bao-cao-tuan-${report.weekStart.toISOString().slice(0, 10)}.docx`,
+      buffer: await Packer.toBuffer(document),
+    };
   }
 
   async review(id: string, dto: ReviewWeeklyReportDto, user: RequestUser) {

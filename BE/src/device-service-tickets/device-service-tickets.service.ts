@@ -88,6 +88,11 @@ export class DeviceServiceTicketsService {
         'Only administrators can delete device service tickets',
       );
     const ticket = await this.findOne(id, user);
+    if (ticket.status !== DeviceServiceTicketStatus.RECEIVED) {
+      throw new BadRequestException(
+        'Only received device service tickets waiting for processing can be deleted',
+      );
+    }
     await this.prisma.$transaction(async (tx) => {
       await tx.deviceServiceTicket.delete({ where: { id } });
       if (ticket.machineId && ticket.machine) {

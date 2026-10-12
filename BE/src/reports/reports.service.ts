@@ -140,6 +140,29 @@ type MutableGroup = {
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getServiceTicketOverview(user: RequestUser) {
+    const [repairs, maintenances, installations, demos, deviceServices] =
+      await Promise.all([
+        this.prisma.repair.count({ where: repairAccessWhere(user) }),
+        this.prisma.maintenance.count({ where: maintenanceAccessWhere(user) }),
+        this.prisma.machineInstallation.count({
+          where: installationAccessWhere(user),
+        }),
+        this.prisma.demoLoan.count({ where: demoLoanAccessWhere(user) }),
+        this.prisma.deviceServiceTicket.count({
+          where: deviceServiceTicketAccessWhere(user),
+        }),
+      ]);
+
+    return {
+      repairs,
+      maintenance: maintenances,
+      installations,
+      demo: demos,
+      'device-service': deviceServices,
+    };
+  }
+
   async getTechnicalReport(
     user: RequestUser,
     query: Record<string, string | undefined> = {},
@@ -164,7 +187,14 @@ export class ReportsService {
           AND: [
             installationAccessWhere(user),
             { installedAt: { gte: period.start, lt: period.end } },
-            engineerId ? { installedById: engineerId } : {},
+            engineerId
+              ? {
+                  OR: [
+                    { installedById: engineerId },
+                    { assignments: { some: { engineerId } } },
+                  ],
+                }
+              : {},
           ],
         },
         orderBy: { installedAt: 'desc' },
@@ -175,7 +205,14 @@ export class ReportsService {
           AND: [
             repairAccessWhere(user),
             { reportedAt: { gte: period.start, lt: period.end } },
-            engineerId ? { engineerId } : {},
+            engineerId
+              ? {
+                  OR: [
+                    { engineerId },
+                    { assignments: { some: { engineerId } } },
+                  ],
+                }
+              : {},
           ],
         },
         orderBy: { reportedAt: 'desc' },
@@ -197,7 +234,14 @@ export class ReportsService {
           AND: [
             maintenanceAccessWhere(user),
             { scheduledDate: { gte: period.start, lt: period.end } },
-            engineerId ? { engineerId } : {},
+            engineerId
+              ? {
+                  OR: [
+                    { engineerId },
+                    { assignments: { some: { engineerId } } },
+                  ],
+                }
+              : {},
           ],
         },
         orderBy: { scheduledDate: 'desc' },
@@ -379,7 +423,14 @@ export class ReportsService {
       AND: [
         installationAccessWhere(user),
         { installedAt: { gte: period.start, lt: period.end } },
-        engineerId ? { installedById: engineerId } : {},
+        engineerId
+          ? {
+              OR: [
+                { installedById: engineerId },
+                { assignments: { some: { engineerId } } },
+              ],
+            }
+          : {},
         customerId ? { customerId } : {},
         province
           ? {
@@ -574,7 +625,12 @@ export class ReportsService {
           where: {
             AND: [
               installationAccessWhere(user),
-              { installedById: engineerId },
+              {
+                OR: [
+                  { installedById: engineerId },
+                  { assignments: { some: { engineerId } } },
+                ],
+              },
               { installedAt: { gte: period.start, lt: period.end } },
             ],
           },
@@ -585,7 +641,12 @@ export class ReportsService {
           where: {
             AND: [
               repairAccessWhere(user),
-              { engineerId },
+              {
+                OR: [
+                  { engineerId },
+                  { assignments: { some: { engineerId } } },
+                ],
+              },
               { reportedAt: { gte: period.start, lt: period.end } },
             ],
           },
@@ -596,7 +657,12 @@ export class ReportsService {
           where: {
             AND: [
               maintenanceAccessWhere(user),
-              { engineerId },
+              {
+                OR: [
+                  { engineerId },
+                  { assignments: { some: { engineerId } } },
+                ],
+              },
               { scheduledDate: { gte: period.start, lt: period.end } },
             ],
           },

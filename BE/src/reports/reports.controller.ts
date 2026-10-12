@@ -10,6 +10,15 @@ import { ReportsService } from './reports.service';
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
+  @Get('service-ticket-overview')
+  getServiceTicketOverview(@CurrentUser() user: RequestUser) {
+    assertPermission(user, PERMISSIONS.INSTALLATION_READ);
+    assertPermission(user, PERMISSIONS.REPAIR_READ);
+    assertPermission(user, PERMISSIONS.MAINTENANCE_READ);
+    assertPermission(user, PERMISSIONS.DEMO_LOAN_READ);
+    return this.reportsService.getServiceTicketOverview(user);
+  }
+
   @Get('technical')
   getTechnicalReport(
     @CurrentUser() user: RequestUser,

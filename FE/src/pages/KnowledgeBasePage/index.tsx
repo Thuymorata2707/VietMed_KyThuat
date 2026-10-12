@@ -300,7 +300,6 @@ export function KnowledgeBasePage({ user }: { user: ApiUser }) {
               Kinh nghiệm kỹ thuật
             </span>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-[#1f1f1f] md:text-4xl">Sổ tay chia sẻ giữa các kỹ sư</h1>
-            <p className="mt-3 max-w-2xl text-[15px] leading-7 text-[#555555]">Lỗi, quy trình, bàn giao.</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <KnowledgeMetric label="Chủ đề" value={categoryOptions.length} />

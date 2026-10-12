@@ -6,8 +6,10 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -65,6 +67,21 @@ export class WeeklyReportsController {
     @Query('userId') userId?: string,
   ) {
     return this.weeklyReportsService.findByWeek({ user, weekStart, userId });
+  }
+
+  @Get(':id/docx')
+  async exportDocx(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+    @Res() response: Response,
+  ) {
+    const file = await this.weeklyReportsService.generateDocx(id, user);
+    response.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    response.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    response.send(file.buffer);
   }
 
   @Post()

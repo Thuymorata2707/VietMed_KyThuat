@@ -1,4 +1,5 @@
 import { apiFetch } from '../api';
+import type { QueryClient } from '@tanstack/react-query';
 
 const DELETE_REQUEST_PREFIX = '[DELETE_REQUEST]';
 
@@ -21,6 +22,19 @@ export function deleteRequestReason(item?: WorkDeleteTarget | null) {
 
 export function isDeletedResponse(response: unknown): response is { deleted: boolean } {
   return Boolean(response && typeof response === 'object' && 'deleted' in response && (response as { deleted?: boolean }).deleted);
+}
+
+export async function invalidateWorkTicketQueries(queryClient: QueryClient) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['service-tickets'] }),
+    queryClient.invalidateQueries({ queryKey: ['reports'] }),
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+    queryClient.invalidateQueries({ queryKey: ['technical-statistics'] }),
+    queryClient.invalidateQueries({ queryKey: ['engineer-performance'] }),
+    queryClient.invalidateQueries({ queryKey: ['weekly-reports'] }),
+    queryClient.invalidateQueries({ queryKey: ['work-assignments'] }),
+    queryClient.invalidateQueries({ queryKey: ['resources'] }),
+  ]);
 }
 
 export async function deleteWorkTicket(endpoint: string, reason?: string) {

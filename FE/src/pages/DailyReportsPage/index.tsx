@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck, Loader2, Save, Sparkles, Stethoscope } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck, Loader2, Save, Send, Sparkles } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiUser, Paginated, apiFetch } from '../../api';
@@ -133,7 +133,9 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
   const report = reportQuery.data?.report ?? null;
   const suggested = reportQuery.data?.suggested ?? null;
   const reportStatus = report?.status ?? 'DRAFT';
-  const canEdit = !isAdmin;
+  const canEdit = !isAdmin && (reportStatus === 'DRAFT' || reportStatus === 'NEEDS_REVISION');
+  const hasReportContent = Boolean(summary.trim() || pending.trim() || proposal.trim());
+  const canSubmit = canEdit && !reportQuery.isFetching && hasReportContent;
 
   useEffect(() => {
     if (!reportQuery.isSuccess) return;
@@ -161,8 +163,20 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
     },
   });
 
-  const saving = saveMutation.isPending;
-  const mutationError = saveMutation.error;
+  const submitMutation = useMutation({
+    mutationFn: (reportId: string) => apiFetch<DailyReport>(`/daily-reports/${reportId}/submit`, { method: 'POST' }),
+    onSuccess: async (submitted) => {
+      setSuccess('Đã chốt báo cáo ngày.');
+      await queryClient.invalidateQueries({ queryKey: ['daily-reports', 'report'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-reports', 'report'] });
+      setSummary(submitted.summary ?? '');
+      setPending(submitted.pending ?? '');
+      setProposal(submitted.proposal ?? '');
+    },
+  });
+
+  const saving = saveMutation.isPending || submitMutation.isPending;
+  const mutationError = saveMutation.error ?? submitMutation.error;
   const error =
     formError ||
     (engineersQuery.error instanceof Error ? engineersQuery.error.message : '') ||
@@ -193,9 +207,20 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
     }
   }
 
+  async function submitReport() {
+    setFormError('');
+    setSuccess('');
+    try {
+      const saved = await saveMutation.mutateAsync();
+      await submitMutation.mutateAsync(saved.id);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Không chốt được báo cáo ngày.');
+    }
+  }
+
   return (
     <PageFrame>
-      <PageTitle eyebrow="Kỹ sư thiết bị y tế" title="Báo cáo ngày" description="Nháp cuối ngày." />
+      <PageTitle eyebrow="Kỹ sư thiết bị y tế" meta="Nháp" title="Báo cáo ngày" />
 
       {error ? <Notice message={error} /> : null}
       {success ? <div className="success-notice">{success}</div> : null}
@@ -205,7 +230,7 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
           <div>
             <span className="text-xs font-medium text-[#18181b]">Ngày báo cáo</span>
             <h2 className="mt-1 text-xl text-[#1f1f1f]">{formatDate(reportDate)}</h2>
-            <p className="mt-1 text-sm text-[#666666]">{isAdmin ? selectedEngineerName(engineers, selectedEngineerId) : user.fullName || user.email}</p>
+            <span className="mt-1 inline-flex w-fit items-center rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold text-[#475467]">{isAdmin ? selectedEngineerName(engineers, selectedEngineerId) : user.fullName || user.email}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="secondary-button" onClick={() => setReportDate(toDateInput(addDays(new Date(`${reportDate}T00:00:00`), -1)))} type="button">
@@ -251,6 +276,10 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
                   {saving ? <Loader2 className="spin-icon" size={16} /> : <Save size={16} />}
                   Lưu nháp & cập nhật tuần
                 </button>
+                <button className="primary-button" disabled={saving || !canSubmit} onClick={submitReport} type="button">
+                  {saving ? <Loader2 className="spin-icon" size={16} /> : <Send size={16} />}
+                  Chốt báo cáo
+                </button>
               </>
             ) : null}
           </div>
@@ -268,27 +297,12 @@ export function DailyReportsPage({ currentRole, user }: DailyReportsPageProps) {
               <h2 className="text-lg font-semibold text-[#1f1f1f]">Lịch, phiếu và hồ sơ thiết bị trong ngày</h2>
             </div>
           </div>
-          <p className="mt-3 text-sm leading-6 text-[#666666]">Lưu nháp và cập nhật tuần.</p>
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <DailyMetric label="Lịch" value={suggested?.counts.dailyNotes ?? 0} />
           <DailyMetric label="Sửa chữa" value={suggested?.counts.repairs ?? 0} />
           <DailyMetric label="Bảo trì" value={suggested?.counts.maintenances ?? 0} />
           <DailyMetric label="Lắp đặt" value={suggested?.counts.installations ?? 0} />
-        </div>
-      </section>
-
-      <section className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eefaf3] text-[#177245]">
-            <Stethoscope size={18} />
-          </span>
-          <div>
-            <h2 className="text-lg font-semibold text-[#1f1f1f]">Checklist nên có trong báo cáo ngày</h2>
-            <p className="mt-1 text-sm leading-6 text-[#666666]">
-              Lịch, máy, xử lý, vật tư, ảnh, tồn đọng.
-            </p>
-          </div>
         </div>
       </section>
 

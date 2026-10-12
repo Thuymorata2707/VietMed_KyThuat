@@ -20,6 +20,26 @@ export class SaveWeeklyReportDto {
   @IsString()
   note?: string | null;
 
+  @IsOptional()
+  @IsString()
+  learnings?: string | null;
+
+  @IsOptional()
+  @IsString()
+  accomplishments?: string | null;
+
+  @IsOptional()
+  @IsString()
+  timeSummary?: string | null;
+
+  @IsOptional()
+  @IsString()
+  blockers?: string | null;
+
+  @IsOptional()
+  @IsString()
+  nextWeekPlan?: string | null;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => WeeklyReportRowDto)

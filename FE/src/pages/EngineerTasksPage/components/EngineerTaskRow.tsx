@@ -58,7 +58,7 @@ export function EngineerTaskRow({ onOpen, task }: EngineerTaskRowProps) {
       </div>
 
       <div className="engineer-task-row__status">
-        <span className={`task-badge ${statusTone(task.status)}`}>{statusLabel(task.status)}</span>
+        <span className={`task-badge ${statusTone(task.status)}`}>{task.kind === 'installation' ? installationProgressLabel(task) : statusLabel(task.status)}</span>
         <span className={`engineer-next-step ${attention.tone}`}>{attention.label}</span>
       </div>
 
@@ -88,4 +88,22 @@ export function EngineerTaskRow({ onOpen, task }: EngineerTaskRowProps) {
       </div>
     </article>
   );
+}
+
+function installationProgressLabel(task: Extract<EngineerTask, { kind: 'installation' }>) {
+  const items = task.installedDeviceItems || [];
+  const primaryItem = items.find((item) => item.isPrimary);
+  const hasPrimary = Boolean(task.machine || task.plannedMachineModelId || task.plannedModelName || primaryItem);
+  const extraItems = items.filter((item) => !item.isPrimary && item.itemName?.trim());
+  const extraCount = extraItems.reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0);
+  const total = (hasPrimary ? 1 : 0) + extraCount;
+  if (!total) return 'Chờ khảo sát';
+  const installed = task.status === 'INSTALLED'
+    ? total
+    : (hasPrimary && primaryItem?.isInstalled ? 1 : 0) + extraItems
+        .filter((item) => item.isInstalled)
+        .reduce((sum, item) => sum + Math.max(1, Number(item.quantity) || 1), 0);
+  if (task.status === 'INSTALLED') return `Đã lắp ${installed}/${total}`;
+  if (installed === 0) return `Chờ triển khai · 0/${total}`;
+  return `Đang lắp ${installed}/${total}`;
 }

@@ -191,6 +191,20 @@ type DashboardMachine = {
     endDate: string;
     note?: string | null;
   }>;
+  demoLoans?: Array<{
+    id: string;
+    code: string;
+    status: string;
+    machineUse?: string | null;
+    plannedHandoverAt: string;
+    handedOverAt?: string | null;
+    expectedReturnAt: string;
+    returnedAt?: string | null;
+    preparedAt?: string | null;
+    preparationStatus?: string | null;
+    customer?: { name?: string | null; hospitalName?: string | null } | null;
+    engineer?: DashboardEngineer | null;
+  }>;
 };
 
 type MachineUsedPart = {
@@ -219,7 +233,7 @@ type MachinePartHistoryItem = {
 
 type MachineLifecycleEvent = {
   id: string;
-  kind: 'installation' | 'warranty' | 'repair' | 'maintenance' | 'inventory' | 'app';
+  kind: 'installation' | 'warranty' | 'repair' | 'maintenance' | 'inventory' | 'app' | 'demo';
   title: string;
   status?: string | null;
   date?: string | null;
@@ -251,6 +265,7 @@ type EditMachineForm = {
   productCategory: string;
   status: string;
   inventoryStatus: string;
+  demoCategory: string;
   customerId: string;
   manufacturingDate: string;
   warehouseImportDate: string;
@@ -305,6 +320,7 @@ type MachineModelDetail = {
     code: string;
     name: string;
     accessories?: TemplateAccessory[];
+    ComponentAccessory?: TemplateAccessory[];
   }>;
 };
 
@@ -608,9 +624,10 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
 
   function addProbeAccessory(code: string) {
     if (!code) return;
+    const template = templateAccessories.find((accessory) => accessory.code === code || accessory.name === code);
     setEditForm((current) => ({
       ...current,
-      accessories: [...current.accessories, { ...emptyEditAccessoryForm(), code, name: code }],
+      accessories: [...current.accessories, { ...emptyEditAccessoryForm(), componentAccessoryId: template?.id ?? null, code, name: template?.name || code }],
     }));
   }
 
@@ -723,6 +740,7 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           productCategory: editForm.productCategory,
           status: editForm.status,
           inventoryStatus: editForm.inventoryStatus,
+          demoCategory: editForm.demoCategory || null,
           customerId: editForm.customerId || null,
           manufacturingDate: editForm.manufacturingDate || null,
           warehouseImportDate: editForm.warehouseImportDate || null,
@@ -852,12 +870,12 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle
             eyebrow="Hồ sơ máy"
-            title={isMachineEditRoute ? 'Edit máy' : 'Thông tin máy'}
-            description={recordMachine ? [recordMachine.machineCode, recordMachine.serialNumber, recordMachine.modelName].filter(Boolean).join(' - ') : 'Đang tải hồ sơ máy.'}
+            meta={recordMachine ? [recordMachine.machineCode, recordMachine.serialNumber, recordMachine.modelName].filter(Boolean).join(' · ') : undefined}
+            title={isMachineEditRoute ? 'Chỉnh sửa máy' : 'Thông tin máy'}
           />
-          <Link className="secondary-button" to="/technical-machines">
-            <ArrowLeft size={17} />
-            Back
+            <Link className="secondary-button" to={isMachineEditRoute ? `/technical-machines/${machineId}` : '/technical-machines'}>
+              <ArrowLeft size={17} />
+            Quay lại
           </Link>
         </div>
 
@@ -912,7 +930,6 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
         <PageTitle
           eyebrow="Phòng kỹ thuật"
           title="Danh sách máy quản lý"
-          description="Theo dõi trạng thái, bảo hành và lần lắp đặt, sửa chữa hoặc bảo trì gần nhất của từng máy."
         />
           <button className="secondary-button" onClick={() => navigate('/')} type="button">
             <ArrowLeft size={17} />
@@ -1034,8 +1051,10 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             </button>
           </div>
           {selectedProductIndustryId ? (
-            <div className="rounded-2xl border border-[#e4e4e7] bg-[#fafafa] px-3 py-2 text-sm font-semibold text-[#333333]">
-              Đang lọc ngành hàng: {selectedProductIndustry?.name || 'Đang tải'}.
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-md border border-[#dbe5ef] bg-white px-2 py-1 text-xs font-semibold text-[#475467]">
+                Ngành hàng: {selectedProductIndustry?.name || 'Đang tải'}
+              </span>
             </div>
           ) : null}
         </div>
@@ -1044,13 +1063,18 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
             <div>
               <h2 className="text-base font-semibold text-[#1f1f1f]">Danh sách máy</h2>
-              <p className="mt-1 text-sm text-[#666666]">
-                {selectedBusinessLine?.name ?? 'Tất cả ngành hàng'} - {technicalMachines?.filteredTotal ?? 0} kết quả · Hoạt động gần nhất được ưu tiên trong trang
-              </p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold text-[#475467]">
+                  {selectedBusinessLine?.name ?? 'Tất cả ngành hàng'}
+                </span>
+                <span className="inline-flex items-center rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold tabular-nums text-[#475467]">
+                  {technicalMachines?.filteredTotal ?? 0} kết quả
+                </span>
+              </div>
             </div>
             <span className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[#dbe5ef] bg-white px-2.5 text-sm font-medium text-[#18181b]">
               {loading ? <Loader2 className="spin-icon" size={17} /> : <PackageSearch size={17} />}
-              {loading ? '-' : `Tổng trong phạm vi: ${technicalMachines?.total ?? 0}`}
+                {loading ? '-' : `Tổng: ${technicalMachines?.total ?? 0} máy`}
             </span>
           </div>
 
@@ -1100,8 +1124,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
             </button>
             <span className="order-first w-full text-center text-sm font-semibold text-[#666666] sm:order-none sm:w-auto">
               {technicalMachines?.filteredTotal
-                ? `Hiển thị ${(technicalMachines.page - 1) * technicalMachines.limit + 1}–${Math.min(technicalMachines.page * technicalMachines.limit, technicalMachines.filteredTotal)} trên ${technicalMachines.filteredTotal} máy · Trang ${technicalMachines.page}/${technicalMachines.totalPages}`
-                : '0 kết quả · 0 trang'}
+                ? `${(technicalMachines.page - 1) * technicalMachines.limit + 1}–${Math.min(technicalMachines.page * technicalMachines.limit, technicalMachines.filteredTotal)}/${technicalMachines.filteredTotal} máy · ${technicalMachines.page}/${technicalMachines.totalPages} trang`
+                : '0 máy'}
             </span>
             <button
               className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-2.5 text-sm font-medium text-[#333333] disabled:cursor-not-allowed disabled:opacity-45"
@@ -1186,6 +1210,15 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                   ))}
                 </select>
               </label>
+              <label className={editLabelClass}>
+                Phân loại demo
+                <select className={editFieldClass} onChange={(event) => updateEditForm({ demoCategory: event.target.value })} value={editForm.demoCategory}>
+                  <option value="">Máy thông thường</option>
+                  <option value="DEMO_UNIT">Máy demo chuyên dụng</option>
+                  <option value="DEMO_STOCK">Máy mới có thể đem demo</option>
+                  <option value="DEMO_USED">Máy đã qua demo</option>
+                </select>
+              </label>
               <DateInput className={editLabelClass} label="Ngày sản xuất" onChange={(value) => updateEditForm({ manufacturingDate: value })} value={editForm.manufacturingDate} />
               <DateInput className={editLabelClass} label="Ngày nhập kho" onChange={(value) => updateEditForm({ warehouseImportDate: value })} value={editForm.warehouseImportDate} />
               <label className={`${editLabelClass} md:col-span-2`}>
@@ -1246,12 +1279,21 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
                         {isEditingUltrasound ? (
                           <select
                             className={editFieldClass}
-                            onChange={(event) => updateAccessoryForm(accessory.clientId, { code: event.target.value, name: event.target.value })}
+                            onChange={(event) => {
+                              const template = templateAccessories.find((item) => item.code === event.target.value || item.name === event.target.value);
+                              updateAccessoryForm(accessory.clientId, {
+                                componentAccessoryId: template?.id ?? null,
+                                code: event.target.value,
+                                name: template?.name || event.target.value,
+                              });
+                            }}
                             required
                             value={accessory.code || accessory.name}
                           >
                             <option value="">Chọn đầu dò</option>
-                            {ultrasoundProbeOptions.map((option) => (
+                            {(templateAccessories.some((item) => ultrasoundProbeOptions.some((option) => option.value === item.code))
+                              ? templateAccessories.filter((item) => ultrasoundProbeOptions.some((option) => option.value === item.code)).map((item) => ({ label: item.code, value: item.code }))
+                              : ultrasoundProbeOptions).map((option) => (
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                           </select>
@@ -1311,7 +1353,6 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               <div>
                 <span className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#2563eb]">Nhập lô máy</span>
                 <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#18181b]">Tạo nhiều hồ sơ máy cùng lúc</h2>
-                <p className="mt-1 text-sm text-[#64748b]">Serial hoặc Serial | Mã | Tên.</p>
               </div>
               <button className="icon-button" onClick={() => setBulkOpen(false)} title="Đóng" type="button">
                 <X size={16} />
@@ -1405,7 +1446,7 @@ function MachineDetailPanel({
   if (!machine) {
     return (
       <aside className="rounded-lg border border-[#e5e5e5] bg-white p-6">
-        <EmptyState text="Chọn S/N để xem thông tin máy." />
+        <EmptyState text="Chưa chọn S/N." />
       </aside>
     );
   }
@@ -1502,6 +1543,9 @@ function MachineDetailPanel({
               <InfoItem label="Tên máy" value={machine.name || machine.modelName} />
               <InfoItem label="Hãng" value={machine.manufacturer} />
               <InfoItem label="Loại thiết bị" value={displayProductCategory(machine.productCategory)} />
+              <InfoItem label="Phân loại demo" value={machine.demoCategory ? demoCategoryLabel(machine.demoCategory) : 'Máy thông thường'} />
+              {machine.demoPreparationStatus && machine.demoPreparationStatus !== 'NOT_REQUIRED' ? <InfoItem label="Xử lý sau demo" value={displayLabel(machine.demoPreparationStatus)} /> : null}
+              <InfoItem label="Số phiếu demo" value={String(machine.demoLoans?.length ?? 0)} />
               <InfoItem label="Ngày lắp" value={formatDashboardDate(machine.installDate)} />
               <InfoItem label="Hết bảo hành" value={formatDashboardDate(warrantyEndDate)} />
               <InfoItem label="Kỹ sư phụ trách" value={machine.primaryEngineer?.fullName || machine.installedBy?.fullName} />
@@ -1814,7 +1858,6 @@ function MachineLifecycleTimeline({ events }: { events: MachineLifecycleEvent[] 
         <div>
           <span className="text-[12px] font-semibold text-[#666666]">Vòng đời thiết bị</span>
           <h2 className="mt-1 text-2xl font-medium leading-tight text-[#1f1f1f]">Timeline hồ sơ máy</h2>
-          <p className="mt-1 text-sm leading-6 text-[#666666]">Lịch sử thiết bị.</p>
         </div>
         <span className="inline-flex min-h-9 items-center rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-sm font-semibold text-[#18181b]">
           {events.length} sự kiện
@@ -1909,7 +1952,7 @@ function MachineListActionPanel({ canEdit, machine }: { canEdit: boolean; machin
           </div>
         </div>
       ) : (
-        <EmptyState text="Chọn một S/N trong danh sách để mở hồ sơ máy." />
+        <EmptyState text="Chưa chọn S/N." />
       )}
     </aside>
   );
@@ -2038,7 +2081,7 @@ function MachineTableRow({ canEdit, machine, modelLabel }: { canEdit: boolean; m
       </td>
       <td className="machine-table-detail">
         <strong>{machine.latestActivity ? formatDashboardDate(machine.latestActivity.date) : 'Chưa có hoạt động'}</strong>
-        <span>{machine.latestActivity ? displayLabel(machine.latestActivity.type) : 'Chưa lắp / sửa chữa / bảo trì'}</span>
+        {machine.latestActivity ? <span>{displayLabel(machine.latestActivity.type)}</span> : null}
       </td>
       <td className="machine-table-engineer">{engineerName || '-'}</td>
       <td>
@@ -2222,6 +2265,18 @@ function buildMachineLifecycleEvents(machine: DashboardMachine): MachineLifecycl
     });
   });
 
+  (machine.demoLoans ?? []).forEach((loan) => {
+    events.push({
+      id: loan.id,
+      kind: 'demo',
+      title: `${loan.code} - Phiếu demo tại ${loan.customer?.name || loan.customer?.hospitalName || 'khách hàng'}`,
+      status: loan.status,
+      date: loan.preparedAt || loan.returnedAt || loan.handedOverAt || loan.plannedHandoverAt,
+      description: [loan.engineer?.fullName || loan.engineer?.email, loan.preparationStatus ? `Chuẩn bị sau demo: ${displayLabel(loan.preparationStatus)}` : ''].filter(Boolean).join(' · '),
+      meta: `Hạn thu hồi ${formatDashboardDate(loan.expectedReturnAt)}`,
+    });
+  });
+
   (machine.warrantyCards ?? []).forEach((card) => {
     events.push({
       id: card.id,
@@ -2282,7 +2337,19 @@ function buildMachineLifecycleEvents(machine: DashboardMachine): MachineLifecycl
     });
   });
 
-  return events.sort((left, right) => lifecycleDateValue(right.date) - lifecycleDateValue(left.date));
+  return events.sort((left, right) => {
+    const dateOrder = lifecycleDateValue(right.date) - lifecycleDateValue(left.date);
+    if (dateOrder !== 0) return dateOrder;
+
+    const leftIsCurrentState = left.status === machine.inventoryStatus;
+    const rightIsCurrentState = right.status === machine.inventoryStatus;
+    if (leftIsCurrentState !== rightIsCurrentState) return rightIsCurrentState ? 1 : -1;
+
+    if (left.kind === 'inventory' && right.kind === 'inventory') {
+      return (right.meta || '').localeCompare(left.meta || '', 'en', { numeric: true });
+    }
+    return 0;
+  });
 }
 
 function buildMachinePartHistory(machine: DashboardMachine): MachinePartHistoryItem[] {
@@ -2401,6 +2468,7 @@ function lifecycleKindLabel(kind: MachineLifecycleEvent['kind']) {
     maintenance: 'Bảo trì',
     inventory: 'Kho',
     app: 'App',
+    demo: 'Demo',
   };
   return labels[kind];
 }
@@ -2413,6 +2481,7 @@ function lifecycleKindShortLabel(kind: MachineLifecycleEvent['kind']) {
     maintenance: 'BT',
     inventory: 'K',
     app: 'APP',
+    demo: 'DM',
   };
   return labels[kind];
 }
@@ -2425,6 +2494,7 @@ function lifecycleKindClass(kind: MachineLifecycleEvent['kind']) {
     maintenance: 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]',
     inventory: 'border-[#e5e5e5] bg-[#f4f7fb] text-[#333333]',
     app: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
+    demo: 'border-[#e9d5ff] bg-[#faf5ff] text-[#6b21a8]',
   };
   return classes[kind];
 }
@@ -2522,7 +2592,9 @@ function MachineEditForm({
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <section className="grid gap-3 rounded-2xl border border-[#e5e7eb] bg-[#fafafa] p-4 sm:p-5">
+        <div><h3 className="text-base font-semibold text-[#202124]">Nhận diện thiết bị</h3></div>
+        <div className="grid gap-3 md:grid-cols-2">
         <label className={editLabelClass}>
           Mã máy
           <input className={editFieldClass} disabled placeholder="Đang sinh mã..." value={editForm.machineCode || previewCode || 'Đang sinh mã...'} />
@@ -2568,12 +2640,27 @@ function MachineEditForm({
             ))}
           </select>
         </label>
+        </div>
+      </section>
+
+      <section className="grid gap-3 rounded-2xl border border-[#e5e7eb] bg-[#fafafa] p-4 sm:p-5">
+        <div><h3 className="text-base font-semibold text-[#202124]">Tình trạng thiết bị</h3></div>
+        <div className="grid gap-3 md:grid-cols-2">
         <label className={editLabelClass}>
           Trạng thái máy
           <select className={editFieldClass} onChange={(event) => onUpdateForm({ status: event.target.value })} value={editForm.status}>
             {['ACTIVE', 'MAINTENANCE', 'REPAIRING', 'INACTIVE'].map((value) => (
               <option key={value} value={value}>{displayLabel(value)}</option>
             ))}
+          </select>
+        </label>
+        <label className={editLabelClass}>
+          Phân loại demo
+          <select className={editFieldClass} onChange={(event) => onUpdateForm({ demoCategory: event.target.value })} value={editForm.demoCategory}>
+            <option value="">Máy thông thường</option>
+            <option value="DEMO_UNIT">Máy demo chuyên dụng</option>
+            <option value="DEMO_STOCK">Máy mới có thể đem demo</option>
+            <option value="DEMO_USED">Máy đã qua demo</option>
           </select>
         </label>
         <label className={editLabelClass}>
@@ -2591,9 +2678,12 @@ function MachineEditForm({
             ))}
           </select>
         </label>
-        <DateInput className={editLabelClass} label="Ngày sản xuất" onChange={(value) => onUpdateForm({ manufacturingDate: value })} value={editForm.manufacturingDate} />
-        <DateInput className={editLabelClass} label="Ngày nhập kho" onChange={(value) => onUpdateForm({ warehouseImportDate: value })} value={editForm.warehouseImportDate} />
-        <label className={`${editLabelClass} md:col-span-2`}>
+        </div>
+      </section>
+
+      <section className="grid gap-3 rounded-2xl border border-[#e5e7eb] bg-[#fafafa] p-4 sm:p-5">
+        <div><h3 className="text-base font-semibold text-[#202124]">Khách hàng quản lý</h3></div>
+        <label className={editLabelClass}>
           Khách hàng
           <select className={editFieldClass} onChange={(event) => onUpdateForm({ customerId: event.target.value })} value={editForm.customerId}>
             <option value="">Chưa gắn khách hàng</option>
@@ -2602,12 +2692,20 @@ function MachineEditForm({
             ))}
           </select>
         </label>
+      </section>
+
+      <section className="grid gap-3 rounded-2xl border border-[#e5e7eb] bg-[#fafafa] p-4 sm:p-5">
+        <div><h3 className="text-base font-semibold text-[#202124]">Mốc thời gian và bảo hành</h3></div>
+        <div className="grid gap-3 md:grid-cols-2">
+        <DateInput className={editLabelClass} label="Ngày sản xuất" onChange={(value) => onUpdateForm({ manufacturingDate: value })} value={editForm.manufacturingDate} />
+        <DateInput className={editLabelClass} label="Ngày nhập kho" onChange={(value) => onUpdateForm({ warehouseImportDate: value })} value={editForm.warehouseImportDate} />
         <DateInput className={editLabelClass} label="Ngày lắp" onChange={(value) => onUpdateForm({ installDate: value })} value={editForm.installDate} />
         <DateInput className={editLabelClass} label="Bắt đầu bảo hành" onChange={(value) => onUpdateForm({ warrantyStartDate: value })} value={editForm.warrantyStartDate} />
         <DateInput className={editLabelClass} label="Hết bảo hành" onChange={(value) => onUpdateForm({ warrantyEndDate: value })} value={editForm.warrantyEndDate} />
-      </div>
+        </div>
+      </section>
 
-      <section className="grid gap-4 border-t border-[#eeeeee] pt-5">
+      <section className="grid gap-4 rounded-2xl border border-[#e5e7eb] bg-white p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="text-[12px] font-medium text-[#666666]">Đầu dò / Phụ kiện</span>
@@ -2653,12 +2751,21 @@ function MachineEditForm({
                   {isEditingUltrasound ? (
                     <select
                       className={editFieldClass}
-                      onChange={(event) => onUpdateAccessory(accessory.clientId, { code: event.target.value, name: event.target.value })}
+                      onChange={(event) => {
+                        const template = templateAccessories.find((item) => item.code === event.target.value || item.name === event.target.value);
+                        onUpdateAccessory(accessory.clientId, {
+                          componentAccessoryId: template?.id ?? null,
+                          code: event.target.value,
+                          name: template?.name || event.target.value,
+                        });
+                      }}
                       required
                       value={accessory.code || accessory.name}
                     >
                       <option value="">Chọn đầu dò</option>
-                      {ultrasoundProbeOptions.map((option) => (
+                      {(templateAccessories.some((item) => ultrasoundProbeOptions.some((option) => option.value === item.code))
+                        ? templateAccessories.filter((item) => ultrasoundProbeOptions.some((option) => option.value === item.code)).map((item) => ({ label: item.code, value: item.code }))
+                        : ultrasoundProbeOptions).map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
@@ -2888,6 +2995,7 @@ function emptyEditMachineForm(): EditMachineForm {
     productCategory: 'OTHER',
     status: 'ACTIVE',
     inventoryStatus: 'IN_STOCK',
+    demoCategory: '',
     customerId: '',
     manufacturingDate: '',
     warehouseImportDate: '',
@@ -2909,6 +3017,7 @@ function buildEditMachineForm(machine: DashboardMachine): EditMachineForm {
     productCategory: machine.productCategory || 'OTHER',
     status: machine.status || 'ACTIVE',
     inventoryStatus: machine.inventoryStatus || 'IN_STOCK',
+    demoCategory: machine.demoCategory || '',
     customerId: machine.customer?.id || '',
     manufacturingDate: toDateInput(machine.manufacturingDate),
     warehouseImportDate: toDateInput(machine.warehouseImportDate),
@@ -2972,7 +3081,7 @@ function emptyEditAccessoryForm(): EditMachineAccessoryForm {
 
 function flattenTemplateAccessories(model: MachineModelDetail) {
   return (model.components ?? []).flatMap((component) =>
-    (component.accessories ?? []).map((accessory) => ({
+    (component.accessories ?? component.ComponentAccessory ?? []).map((accessory) => ({
       ...accessory,
       componentName: component.name,
     })),

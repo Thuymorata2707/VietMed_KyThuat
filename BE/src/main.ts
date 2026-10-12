@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 import { createRateLimitMiddleware } from './common/middleware/rate-limit.middleware';
 import { createCsrfProtectionMiddleware } from './common/middleware/csrf-protection.middleware';
 import { createRequestTimingMiddleware } from './common/middleware/request-timing.middleware';
+import { createRequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { AppConfigService } from './config/app-config.service';
 
 async function bootstrap() {
@@ -30,6 +31,7 @@ async function bootstrap() {
       'X-RateLimit-Limit',
       'X-RateLimit-Remaining',
       'X-RateLimit-Reset',
+      'X-Request-ID',
     ],
     methods: ['GET', 'HEAD', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     origin: config.corsOrigins,
@@ -37,6 +39,7 @@ async function bootstrap() {
   });
   app.use(createCsrfProtectionMiddleware(config));
   app.use(createRateLimitMiddleware(config));
+  app.use(createRequestContextMiddleware());
   app.use(createRequestTimingMiddleware());
 
   app.useGlobalPipes(

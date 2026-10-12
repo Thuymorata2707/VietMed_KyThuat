@@ -2,7 +2,7 @@ import { ArrowLeft, Edit3, History, ImageOff, Loader2, Power, PowerOff, RefreshC
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Paginated, apiFetch } from '../../api';
+import { ApiUser, Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { DateInput } from '../../components/DateInput';
 import { PageFrame } from '../../components/PageFrame';
@@ -122,7 +122,7 @@ const expertiseGroupOptions: Array<{ label: string; value: ExpertiseGroup }> = [
   { label: 'Xét nghiệm', value: 'LAB_TESTING' },
 ];
 
-export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
+export function AdminUsersPage({ formMode, user }: { formMode?: 'create' | 'edit'; user: ApiUser }) {
   const navigate = useNavigate();
   const { userId = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -140,10 +140,12 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
   const activeSection = normalizePeopleSection(searchParams.get('tab'));
 
   const usersQuery = useQuery({
-    queryKey: queryKeys.adminUsers.bootstrap,
+    queryKey: [...queryKeys.adminUsers.bootstrap, formMode === 'create' ? 'form-create' : 'list', userId],
     queryFn: async (): Promise<AdminUsersBootstrap> => {
       const [usersResult, rolesResult, regionsResult] = await Promise.all([
-        apiFetch<Paginated<AdminUser> | AdminUser[]>('/users?limit=100'),
+        formMode === 'create'
+          ? Promise.resolve([] as AdminUser[])
+          : apiFetch<Paginated<AdminUser> | AdminUser[]>('/users?limit=100'),
         apiFetch<Role[]>('/roles'),
         apiFetch<Region[]>('/regions'),
       ]);
@@ -159,6 +161,11 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
   const users = usersQuery.data?.users ?? [];
   const roles = usersQuery.data?.roles ?? [];
   const regions = usersQuery.data?.regions ?? [];
+  const accountRegionId = user.region?.id ?? user.regionId ?? '';
+  const manageableRegions = useMemo(
+    () => regions.filter((region) => region.id === accountRegionId),
+    [accountRegionId, regions],
+  );
 
   const auditLogsQuery = useQuery({
     enabled: !isFormPage && activeSection === 'audit',
@@ -173,23 +180,23 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
       const nextEditingUser = users.find((item) => item.id === userId) ?? null;
       setEditingUser(nextEditingUser);
       if (nextEditingUser) {
-        setForm(formFromUser(nextEditingUser, roles, regions));
+        setForm(formFromUser(nextEditingUser, roles, manageableRegions));
         setFormError('');
       } else {
         setFormError('Không tìm thấy nhân sự cần chỉnh sửa.');
       }
     } else if (formMode === 'create') {
       setEditingUser(null);
-      setForm(buildEmptyForm(roles, regions));
+      setForm(buildEmptyForm(roles, manageableRegions));
       setFormError('');
     } else {
       setForm((current) => ({
         ...current,
         roleId: current.roleId || roles[0]?.id || '',
-        regionId: current.regionId || regions[0]?.id || '',
+        regionId: current.regionId || manageableRegions[0]?.id || '',
       }));
     }
-  }, [formMode, regions, roles, userId, users, usersQuery.data]);
+  }, [formMode, manageableRegions, roles, userId, users, usersQuery.data]);
 
   const saveUserMutation = useMutation({
     mutationFn: async ({ currentEditingUser, currentForm }: { currentEditingUser: AdminUser | null; currentForm: UserFormState }) => {
@@ -328,7 +335,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
 
   function closeForm() {
     setEditingUser(null);
-    setForm(buildEmptyForm(roles, regions));
+    setForm(buildEmptyForm(roles, manageableRegions));
     navigate('/users');
   }
 
@@ -391,7 +398,6 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
           <PageTitle
             eyebrow="Quản trị hệ thống"
             title={formMode === 'edit' ? 'Sửa nhân sự' : 'Thêm nhân sự'}
-            description="Tài khoản & quyền."
           />
           <button className="secondary-button" onClick={closeForm} type="button">
             <ArrowLeft size={17} />
@@ -400,6 +406,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
         </div>
 
         {error ? <Notice message={error} /> : null}
+        {!accountRegionId ? <Notice message="Tài khoản chưa được gán khu vực quản lý. Hãy liên hệ quản trị hệ thống trước khi tạo hoặc sửa nhân sự." /> : null}
         {success ? <div className="success-notice">{success}</div> : null}
 
         <section className="crud-form-page">
@@ -422,7 +429,7 @@ export function AdminUsersPage({ formMode }: { formMode?: 'create' | 'edit' }) {
               onCancel={closeForm}
               onChange={setForm}
               onSubmit={handleSubmit}
-              regions={regions}
+              regions={manageableRegions}
               roles={roles}
               saving={saving}
               shouldShowEngineerProfile={shouldShowEngineerProfile}
@@ -748,7 +755,7 @@ function UserForm({
 
         <label>
           Khu vực
-          <select onChange={(event) => onChange((current) => ({ ...current, regionId: event.target.value }))} required value={form.regionId}>
+          <select disabled={regions.length <= 1} onChange={(event) => onChange((current) => ({ ...current, regionId: event.target.value }))} required value={form.regionId}>
             {regions.map((region) => (
               <option key={region.id} value={region.id}>
                 {region.name} ({region.code})
@@ -874,6 +881,10 @@ function buildEmptyForm(roles: Role[], regions: Region[]): UserFormState {
 
 function formFromUser(user: AdminUser, roles: Role[], regions: Region[]): UserFormState {
   const profile = user.engineerProfile;
+  const allowedRegionId =
+    regions.find((region) => region.id === user.region?.id)?.id ??
+    regions[0]?.id ??
+    '';
 
   return {
     email: user.email,
@@ -895,7 +906,7 @@ function formFromUser(user: AdminUser, roles: Role[], regions: Region[]): UserFo
       : profile?.expertiseGroup ? [profile.expertiseGroup] : [],
     isTechnicalStaff: Boolean(profile) || isEngineerRole(user.role?.name),
     roleId: user.role?.id ?? roles[0]?.id ?? '',
-    regionId: user.region?.id ?? regions[0]?.id ?? '',
+    regionId: allowedRegionId,
     status: user.status,
   };
 }
