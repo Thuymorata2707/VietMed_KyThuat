@@ -658,12 +658,13 @@ function TechnicalWorkRegister({
         {!loading && pagedRows.map((row) => (
           <Link className="group grid gap-2 rounded-xl border border-[#e8e3de] p-3 transition hover:border-[#bd8a8e] hover:bg-[#fffdfc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#861b27] sm:p-4" key={`${row.kind}-${row.id}`} to={technicalWorkHref(row)}>
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="grid gap-1"><span className="text-xs text-[#737b80]">{formatDate(row.date)}</span><strong className="text-sm text-[#252c30]">{row.code} · {workKindLabel(row.kind)}</strong></div>
-              <span className="rounded-md bg-[#f7f5f2] px-2 py-1 text-xs font-semibold text-[#4d565b]">{displayLabel(row.status)}</span>
+              <div className="grid gap-1.5"><span className="text-xs font-medium tabular-nums text-[#737b80]">{formatDate(row.date)}</span><div className="flex flex-wrap items-center gap-2"><strong className="font-mono text-sm font-bold text-[#252c30]">{row.code}</strong><Badge tone={workKindTone(row.kind)}>{workKindLabel(row.kind)}</Badge></div></div>
+              <Badge tone={statusTone(row.status)}>{displayLabel(row.status)}</Badge>
             </div>
             <div className="border-t border-[#f0ece8] pt-2">
-              <strong className="block truncate text-sm text-[#252c30]">{row.machineCode || row.model || 'Chưa gắn thiết bị'}</strong>
-              <span className="block truncate text-xs text-[#737b80]">{[row.model, row.serialNumber ? `S/N ${row.serialNumber}` : ''].filter(Boolean).join(' · ') || 'Không có thông tin model/serial'}</span>
+              <strong className="block truncate whitespace-nowrap text-sm font-semibold text-[#252c30]">{hasReportValue(row.serialNumber) ? `S/N ${row.serialNumber}` : 'Chưa có S/N'}</strong>
+              <span className="block truncate text-[13px] text-[#667085]">{hasReportValue(row.model) ? row.model : 'Chưa có model'}</span>
+              {hasReportValue(row.machineCode) ? <span className="mt-0.5 block truncate text-xs font-medium text-[#98a2b3]">Mã máy: {row.machineCode}</span> : null}
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <span className="min-w-0 truncate text-[#4d565b]">{row.customer || 'Chưa có khách hàng'}</span>
@@ -676,18 +677,18 @@ function TechnicalWorkRegister({
         {!loading && filteredRows.length === 0 ? <p className="rounded-xl bg-[#f7f5f2] px-4 py-8 text-center text-sm text-[#667085]">Không có phiếu phù hợp với bộ lọc.</p> : null}
       </div>
 
-      <div className="hidden overflow-hidden rounded-xl border border-[#e8e3de] min-[1600px]:block">
+      <div className="hidden overflow-hidden rounded-2xl border border-[#e3dfda] bg-white shadow-[0_8px_24px_rgba(24,24,27,0.04)] min-[1600px]:block">
           <table className="w-full min-w-full table-fixed text-left text-sm">
             <colgroup>
-              <col className="w-[9%]" /><col className="w-[11%]" /><col className="w-[11%]" /><col className="w-[22%]" />
-              <col className="w-[10%]" /><col className="w-[16%]" /><col className="w-[12%]" /><col className="w-[9%]" />
+              <col className="w-[8%]" /><col className="w-[9%]" /><col className="w-[12%]" /><col className="w-[25%]" />
+              <col className="w-[11%]" /><col className="w-[14%]" /><col className="w-[12%]" /><col className="w-[9%]" />
             </colgroup>
-            <thead className="bg-[#fafafa] text-xs uppercase text-[#667085]">
+            <thead className="bg-[#f5f6f8] text-[11px] uppercase tracking-wide text-[#667085]">
               <tr>
                 <th className="border-b border-[#eef0f3] px-3 py-3">Ngày</th>
                 <th className="border-b border-[#eef0f3] px-3 py-3">Loại</th>
                 <th className="border-b border-[#eef0f3] px-3 py-3">Mã phiếu</th>
-                <th className="border-b border-[#eef0f3] px-3 py-3">Máy / Model / S/N</th>
+                <th className="border-b border-[#e6e8ec] px-4 py-3">S/N / Model / Mã máy</th>
                 <th className="border-b border-[#eef0f3] px-3 py-3">Địa điểm</th>
                 <th className="border-b border-[#eef0f3] px-3 py-3">Khách hàng</th>
                 <th className="border-b border-[#eef0f3] px-3 py-3">Kỹ sư</th>
@@ -705,7 +706,7 @@ function TechnicalWorkRegister({
               {!loading && pagedRows.map((row) => (
                 <tr
                   aria-label={`Mở phiếu ${row.code}, ${workKindLabel(row.kind)}`}
-                  className="cursor-pointer outline-none transition hover:bg-[#fff8f7] focus-within:bg-[#fff8f7] focus-visible:bg-[#fff8f7]"
+                  className="cursor-pointer outline-none transition odd:bg-white even:bg-[#fcfcfd] hover:bg-[#fff7f5] focus-within:bg-[#fff7f5] focus-visible:bg-[#fff7f5]"
                   key={`${row.kind}-${row.id}`}
                   onClick={() => navigate(technicalWorkHref(row))}
                   role="link"
@@ -718,17 +719,18 @@ function TechnicalWorkRegister({
                   tabIndex={0}
                   title={`Mở phiếu ${row.code}`}
                 >
-                  <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{formatDate(row.date)}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{workKindLabel(row.kind)}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3 font-semibold text-[#202124]">{row.code}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3">
-                    <strong className="block text-[#202124]">{row.machineCode || '-'}</strong>
-                    <span className="text-xs font-medium text-[#667085]">{[row.model, row.serialNumber ? `S/N ${row.serialNumber}` : ''].filter(Boolean).join(' - ') || '-'}</span>
+                  <td className="whitespace-nowrap border-b border-[#eef0f3] px-4 py-3 text-xs font-medium tabular-nums text-[#667085]">{formatDate(row.date)}</td>
+                  <td className="whitespace-nowrap border-b border-[#eef0f3] px-3 py-3"><Badge className="whitespace-nowrap" tone={workKindTone(row.kind)}>{workKindLabel(row.kind)}</Badge></td>
+                  <td className="whitespace-nowrap border-b border-[#eef0f3] px-3 py-3"><span className="inline-flex rounded-md bg-[#f5f5f4] px-2 py-1 font-mono text-xs font-bold text-[#30343b]">{row.code}</span></td>
+                  <td className="border-b border-[#eef0f3] px-4 py-3">
+                    <strong className="block truncate whitespace-nowrap text-sm font-semibold tabular-nums text-[#202124]">{hasReportValue(row.serialNumber) ? `S/N ${row.serialNumber}` : 'Chưa có S/N'}</strong>
+                    <span className="block truncate text-[13px] font-medium text-[#667085]">{hasReportValue(row.model) ? row.model : 'Chưa có model'}</span>
+                    {hasReportValue(row.machineCode) ? <span className="mt-0.5 block truncate text-xs font-medium text-[#98a2b3]">Mã máy: {row.machineCode}</span> : null}
                   </td>
                   <td className="border-b border-[#f1f2f4] px-4 py-3 text-[#667085]">{row.province || '-'}</td>
                   <td className="border-b border-[#f1f2f4] px-4 py-3">{row.customer || '-'}</td>
                   <td className="border-b border-[#f1f2f4] px-4 py-3">{row.engineer || '-'}</td>
-                  <td className="border-b border-[#f1f2f4] px-4 py-3"><span className="flex items-center justify-between gap-2">{displayLabel(row.status)}<ArrowRight aria-hidden="true" className="shrink-0 text-[#861b27]" size={15} /></span></td>
+                  <td className="whitespace-nowrap border-b border-[#eef0f3] px-4 py-3"><Badge className="whitespace-nowrap" tone={statusTone(row.status)}>{displayLabel(row.status)}</Badge></td>
                 </tr>
               ))}
               {!loading && filteredRows.length === 0 ? (
@@ -2295,14 +2297,14 @@ function kindLabel(kind: BoardItem['kind']) {
   return 'Sửa chữa';
 }
 
-function Badge({ children, tone }: { children: ReactNode; tone: 'good' | 'warn' | 'danger' | 'neutral' }) {
+function Badge({ children, tone, className = '' }: { children: ReactNode; tone: 'good' | 'warn' | 'danger' | 'neutral'; className?: string }) {
   const classes = {
     good: 'border-[#b9e8ca] bg-[#eefaf3] text-[#177245]',
     warn: 'border-[#efd8a8] bg-[#fff8ed] text-[#9b5a17]',
     danger: 'border-[#fecdd3] bg-[#fff1f3] text-[#b5121b]',
     neutral: 'border-[#e5e5e5] bg-[#f4f7fb] text-[#333333]',
   };
-  return <span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${classes[tone]}`}>{children}</span>;
+  return <span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${classes[tone]} ${className}`}>{children}</span>;
 }
 
 function statusTone(status: string): 'good' | 'warn' | 'danger' | 'neutral' {
@@ -2731,6 +2733,17 @@ function workKindLabel(kind: WorkKind) {
   if (kind === 'maintenance') return 'Bảo trì';
   if (kind === 'demo') return 'Demo';
   return 'Ứng dụng xét nghiệm';
+}
+
+function hasReportValue(value: string | null | undefined) {
+  return Boolean(value?.trim() && value.trim() !== '-');
+}
+
+function workKindTone(kind: WorkKind): 'good' | 'warn' | 'danger' | 'neutral' {
+  if (kind === 'installation') return 'good';
+  if (kind === 'repair') return 'danger';
+  if (kind === 'maintenance') return 'warn';
+  return 'neutral';
 }
 
 function exportTechnicalWorkExcel(rows: TechnicalReportRow[], from: string, to: string) {

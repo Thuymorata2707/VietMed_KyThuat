@@ -30,4 +30,8 @@ export class ListCustomersQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   primaryEngineerId?: string;
+
+  @IsOptional()
+  @IsString()
+  dealerId?: string;
 }

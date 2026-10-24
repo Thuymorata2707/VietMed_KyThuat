@@ -37,6 +37,7 @@ import { WeeklyReportsModule } from './weekly-reports/weekly-reports.module';
 import { HttpCacheInterceptor } from './common/interceptors/http-cache.interceptor';
 import { WorkOperationsModule } from './work-operations/work-operations.module';
 import { TerritoriesModule } from './territories/territories.module';
+import { DataImportsModule } from './data-imports/data-imports.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { TerritoriesModule } from './territories/territories.module';
     RolesModule,
     RegionsModule,
     TerritoriesModule,
+    DataImportsModule,
     CustomersModule,
     DailyWorkNotesModule,
     DailyReportsModule,

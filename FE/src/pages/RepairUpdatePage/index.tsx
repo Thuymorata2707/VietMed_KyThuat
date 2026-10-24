@@ -575,6 +575,7 @@ export function RepairUpdatePage({ user }: { user: ApiUser }) {
               loading={attachmentsPanel.loadingAttachments}
               onDescriptionChange={attachmentsPanel.setAttachmentDescription}
               onDownload={attachmentsPanel.downloadAttachment}
+              onDelete={attachmentsPanel.deleteAttachment}
               onFilesChange={attachmentsPanel.setAttachmentFiles}
               onTitleChange={attachmentsPanel.setAttachmentTitle}
               onTypeChange={attachmentsPanel.setAttachmentType}

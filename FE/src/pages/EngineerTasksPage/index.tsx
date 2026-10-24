@@ -519,10 +519,24 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
 
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank', 'noopener,noreferrer');
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      if (!attachment.mimeType.startsWith('image/')) {
+        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+        return null;
+      }
+      return blobUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không mở được tài liệu.');
+      return null;
+    }
+  }
+
+  async function deleteAttachment(attachment: TaskAttachment) {
+    try {
+      await apiFetch(`/attachments/${attachment.id}`, { method: 'DELETE' });
+      setAttachments((current) => current.filter((item) => item.id !== attachment.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không xóa được tệp đính kèm.');
     }
   }
 
@@ -697,11 +711,12 @@ export function EngineerTasksPage({ user }: { user: ApiUser }) {
           onAppendAccessoryMaterial={appendAccessoryMaterial}
           onAttachmentDescriptionChange={setAttachmentDescription}
           onAttachmentDownload={downloadAttachment}
+          onAttachmentDelete={(attachment) => void deleteAttachment(attachment)}
           onAttachmentFilesChange={setAttachmentFiles}
           onAttachmentTitleChange={setAttachmentTitle}
           onAttachmentTypeChange={setAttachmentType}
           onAttachmentUpload={() => void handleAttachmentUpload()}
-          onAttachmentView={(attachment) => void viewAttachment(attachment)}
+          onAttachmentView={viewAttachment}
           onChecklistLineChange={toggleChecklistLine}
           onClose={() => setSelectedTask(null)}
           onCreateKnowledge={() => void createKnowledgeFromTask()}

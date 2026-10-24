@@ -370,7 +370,8 @@ export function AdminWorkAssignmentPage() {
     try {
       await reviewMutation.mutateAsync({ item, reviewNote, status });
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Không cập nhật kiểm duyệt được.');
+      const message = err instanceof Error ? err.message : 'Lỗi không xác định.';
+      setFormError(`Không duyệt được phiếu ${item.code}: ${message}`);
     }
   }
 

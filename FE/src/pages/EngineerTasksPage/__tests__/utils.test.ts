@@ -285,7 +285,7 @@ describe('isUpcomingTask', () => {
 describe('taskAttention', () => {
   it('NEEDS_REVISION returns danger label', () => {
     const t = task({ status: 'COMPLETED', reviewStatus: 'NEEDS_REVISION' });
-    expect(taskAttention(t)).toEqual({ label: 'Bổ sung theo phản hồi admin', tone: 'danger' });
+    expect(taskAttention(t)).toEqual({ label: 'Cần bổ sung theo ý kiến phê duyệt', tone: 'danger' });
   });
 
   it('overdue returns danger label', () => {
@@ -299,7 +299,7 @@ describe('taskAttention', () => {
 
   it('PENDING review returns good label', () => {
     const t = task({ status: 'COMPLETED', reviewStatus: 'PENDING' });
-    expect(taskAttention(t)).toEqual({ label: 'Đã gửi, chờ admin duyệt', tone: 'good' });
+    expect(taskAttention(t)).toEqual({ label: 'Đã trình phê duyệt', tone: 'good' });
   });
 
   it('terminal without review returns neutral label', () => {

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardCheck, Edit3, Eye, Loader2, PackageSearch, Plus, RotateCcw, Save, Search, ShieldCheck, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ArrowDownAZ, ArrowLeft, ArrowUpAZ, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardCheck, Edit3, Eye, Loader2, PackageSearch, Plus, RotateCcw, Save, Search, ShieldCheck, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiFetch, apiFetchAllPages } from '../../api';
@@ -383,7 +383,9 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
   const [installState, setInstallState] = useState(() => initialParams.get('installState') || 'ALL');
   const [attention, setAttention] = useState('ALL');
   const [page, setPage] = useState(1);
+  const [pageJump, setPageJump] = useState('1');
   const [limit, setLimit] = useState(25);
+  const [modelSortDirection, setModelSortDirection] = useState<'asc' | 'desc' | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -407,12 +409,16 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     })) ?? [],
     [technicalMachines],
   );
+  const machineModelLabelById = useMemo(
+    () => new Map(machineModels.map((model) => [model.id, model.code || model.displayName || model.name || ''])),
+    [machineModels],
+  );
 
   useEffect(() => {
-    if (currentRole !== 'admin' && currentRole !== 'engineer') return;
-    void loadCustomers();
-    void loadMachineModels();
-  }, [currentRole]);
+    if ((currentRole !== 'admin' && currentRole !== 'engineer') || (!isMachineEditRoute && !bulkOpen)) return;
+    if (!customers.length) void loadCustomers();
+    if (!machineModels.length) void loadMachineModels();
+  }, [bulkOpen, currentRole, customers.length, isMachineEditRoute, machineModels.length]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -427,6 +433,8 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     if (machineId) return;
     void loadTechnicalMachines();
   }, [machineId, search, selectedBusinessLineKey, selectedProductIndustryId, installState, attention, page, limit]);
+
+  useEffect(() => setPageJump(String(page)), [page]);
 
   useEffect(() => {
     if (!machineId) return;
@@ -492,6 +500,16 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
     } finally {
       setLoading(false);
     }
+  }
+
+  function commitMachinePageJump() {
+    const totalPages = Math.max(1, technicalMachines?.totalPages ?? 1);
+    const requestedPage = Number(pageJump);
+    if (!Number.isFinite(requestedPage)) {
+      setPageJump(String(page));
+      return;
+    }
+    setPage(Math.min(totalPages, Math.max(1, Math.trunc(requestedPage))));
   }
 
   async function loadCustomers() {
@@ -1083,7 +1101,18 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               <thead>
                 <tr>
                   <th>Máy</th>
-                  <th>Model</th>
+                  <th aria-sort={modelSortDirection === 'asc' ? 'ascending' : modelSortDirection === 'desc' ? 'descending' : 'none'}>
+                    <button
+                      aria-label={`Sắp xếp model ${modelSortDirection === 'asc' ? 'Z đến A' : 'A đến Z'}`}
+                      className="inline-flex items-center gap-1.5 font-semibold hover:text-[#2563eb]"
+                      onClick={() => setModelSortDirection((current) => current === 'asc' ? 'desc' : 'asc')}
+                      title="Bấm để sắp xếp model A–Z hoặc Z–A"
+                      type="button"
+                    >
+                      Model
+                      {modelSortDirection === 'desc' ? <ArrowDownAZ aria-hidden="true" size={15} /> : <ArrowUpAZ aria-hidden="true" size={15} />}
+                    </button>
+                  </th>
                   <th>Khách hàng</th>
                   <th>Trạng thái</th>
                   <th>Bảo hành</th>
@@ -1094,7 +1123,16 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               </thead>
               <tbody>
                 {[...(technicalMachines?.machines ?? [])]
-                  .sort((a, b) => new Date(b.latestActivity?.date ?? 0).getTime() - new Date(a.latestActivity?.date ?? 0).getTime())
+                  .sort((a, b) => {
+                    const modelLabel = (machine: DashboardMachine) => {
+                      return machine.machineModel?.code || machine.machineModel?.displayName || machine.machineModel?.name || machineModelLabelById.get(machine.machineModelId || '') || machine.modelName;
+                    };
+                    if (modelSortDirection) {
+                      const order = modelLabel(a).localeCompare(modelLabel(b), 'vi', { numeric: true, sensitivity: 'base' });
+                      return modelSortDirection === 'asc' ? order : -order;
+                    }
+                    return new Date(b.latestActivity?.date ?? 0).getTime() - new Date(a.latestActivity?.date ?? 0).getTime();
+                  })
                   .map((machine) => {
                     const linkedModel = machineModels.find((model) => model.id === machine.machineModelId);
                     const modelLabel = machine.machineModel?.code || machine.machineModel?.displayName || machine.machineModel?.name || linkedModel?.code || linkedModel?.displayName || linkedModel?.name || machine.modelName;
@@ -1123,9 +1161,23 @@ export function TechnicalMachinesPage({ currentRole }: { currentRole: RoleName }
               Trước
             </button>
             <span className="order-first w-full text-center text-sm font-semibold text-[#666666] sm:order-none sm:w-auto">
-              {technicalMachines?.filteredTotal
-                ? `${(technicalMachines.page - 1) * technicalMachines.limit + 1}–${Math.min(technicalMachines.page * technicalMachines.limit, technicalMachines.filteredTotal)}/${technicalMachines.filteredTotal} máy · ${technicalMachines.page}/${technicalMachines.totalPages} trang`
-                : '0 máy'}
+              {technicalMachines?.filteredTotal ? (
+                <>
+                  {`${(technicalMachines.page - 1) * technicalMachines.limit + 1}–${Math.min(technicalMachines.page * technicalMachines.limit, technicalMachines.filteredTotal)}/${technicalMachines.filteredTotal} máy · Trang `}
+                  <input
+                    aria-label="Đi tới trang danh sách máy"
+                    className="mx-1 w-14 rounded-md border border-[#d1d5db] bg-white px-1.5 py-1 text-center text-sm text-[#202124]"
+                    max={Math.max(1, technicalMachines.totalPages)}
+                    min={1}
+                    onBlur={commitMachinePageJump}
+                    onChange={(event) => setPageJump(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === 'Enter') commitMachinePageJump(); }}
+                    type="number"
+                    value={pageJump}
+                  />
+                  {`/ ${technicalMachines.totalPages} trang`}
+                </>
+              ) : '0 máy'}
             </span>
             <button
               className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-2.5 text-sm font-medium text-[#333333] disabled:cursor-not-allowed disabled:opacity-45"

@@ -35,10 +35,9 @@ export type AdminCrudConfig = ResourceConfig & {
   fields: CrudField[];
 };
 
-const customerTypes = enumOptions(['HOSPITAL', 'CLINIC', 'LAB', 'DISTRIBUTOR', 'UNIVERSITY', 'COMPANY', 'OTHER']);
+const customerTypes = enumOptions(['HOSPITAL', 'CLINIC', 'LAB', 'DISTRIBUTOR', 'UNIVERSITY', 'COMPANY', 'OTHER'], { DISTRIBUTOR: 'Đại lý' });
 
 const customerStatuses = enumOptions(['ACTIVE', 'INACTIVE', 'POTENTIAL', 'BLACKLISTED']);
-
 const activeInactiveStatuses = enumOptions(['ACTIVE', 'INACTIVE']);
 
 const productCategories = enumOptions([
@@ -136,6 +135,8 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
     columns: [
       { key: 'name', label: 'Khách hàng' },
       { key: 'customerCode', label: 'Mã' },
+      { key: 'salesChannel', label: 'Kênh bán' },
+      { key: 'dealer.name', label: 'Đại lý bán' },
       { key: 'provinceRef.name', label: 'Tỉnh/TP', fallbackKeys: ['province'] },
       { key: 'provinceRef.branch.name', label: 'Chi nhánh' },
       { key: 'phone', label: 'SĐT', fallbackKeys: ['contactPhone'] },
@@ -147,6 +148,21 @@ export const adminCrudConfigs: Record<string, AdminCrudConfig> = {
       { name: 'name', label: 'Tên khách hàng', required: true },
       { name: 'customerCode', label: 'Mã khách hàng', placeholder: 'Để trống để tự sinh, ví dụ BV-HN-001' },
       { name: 'customerType', label: 'Loại khách hàng', type: 'select', options: customerTypes },
+      {
+        name: 'dealerId',
+        label: 'Đại lý bán',
+        placeholder: 'Để trống nếu bán trực tiếp',
+        type: 'select',
+        nullable: true,
+        valuePath: 'dealer.id',
+        optionSource: {
+          endpoint: '/customers?customerType=DISTRIBUTOR&limit=100',
+          labelPath: 'name',
+          labelPaths: ['customerCode', 'name', 'province', 'phone'],
+          searchable: true,
+          valuePath: 'id',
+        },
+      },
       { name: 'status', label: 'Trạng thái', type: 'select', options: customerStatuses },
       { name: 'engineerIds', label: 'Kỹ sư cùng quản lý', type: 'multiSelect', wide: true, optionSource: engineerOptionSource },
       { name: 'phone', label: 'Điện thoại' },

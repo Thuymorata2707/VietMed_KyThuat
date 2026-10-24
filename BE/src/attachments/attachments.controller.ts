@@ -144,7 +144,7 @@ export class AttachmentsController {
     return res.sendFile(attachment.path);
   }
 
-  @Roles('admin')
+  @Roles('admin', 'engineer')
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     return this.attachmentsService.remove(id, user);

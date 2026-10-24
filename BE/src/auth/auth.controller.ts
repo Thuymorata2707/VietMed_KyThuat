@@ -37,6 +37,12 @@ export class AuthController {
     return { user: result.user };
   }
 
+  @Post('mobile-login')
+  async mobileLogin(@Body() dto: LoginDto, @Req() request: Request) {
+    const result = await this.authService.login(dto, this.getClientIp(request));
+    return { user: result.user, access_token: result.accessToken };
+  }
+
   @Post('logout')
   logout(@Res({ passthrough: true }) response: Response) {
     this.clearAuthCookie(response);

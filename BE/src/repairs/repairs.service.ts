@@ -165,6 +165,18 @@ export class RepairsService {
           include: this.defaultInclude(),
         });
 
+        if (dto.usedParts !== undefined) {
+          await replaceWorkUsedParts({
+            actor,
+            customerId: repair.customerId,
+            machineId: repair.machineId,
+            owner: { field: 'repairId', id: repair.id, kind: 'REPAIR' },
+            parts: dto.usedParts,
+            prisma: this.prisma,
+            tx,
+          });
+        }
+
         await tx.repairAssignment.createMany({
           data: engineerIds.map((assignedEngineerId, index) => ({
             repairId: repair.id,

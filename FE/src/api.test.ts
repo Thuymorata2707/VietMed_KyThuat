@@ -38,7 +38,7 @@ describe('apiFetch rate-limit messages', () => {
 
     await expect(apiFetch('/machines')).rejects.toMatchObject({
       statusCode: 429,
-      message: 'Bạn thao tác quá nhanh. Vui lòng chờ một lúc rồi thử lại.',
+      message: 'Thao tác quá thường xuyên. Vui lòng chờ trước khi thử lại.',
     });
   });
 

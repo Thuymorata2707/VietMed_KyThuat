@@ -24,6 +24,7 @@ export function machineAccessWhere(
   if (isAdmin(user) || isManager(user)) {
     return {
       OR: [
+        { importReviewRegionId: user.regionId },
         { customer: { regionId: user.regionId } },
         { customerId: null },
         { installedBy: { regionId: user.regionId } },
@@ -66,6 +67,7 @@ export function customerAccessWhere(
   if (isAdmin(user) || isManager(user)) {
     return {
       OR: [
+        { importReviewRegionId: user.regionId },
         { regionId: user.regionId },
         // Older quick-created customers may predate region assignment. Keep
         // them visible to the branch already working on their tickets/assets.

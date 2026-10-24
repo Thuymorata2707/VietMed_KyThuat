@@ -124,20 +124,6 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     setSelectedEngineerId((current) => current || engineers[0]?.id || '');
   }, [engineers, isAdmin]);
 
-  const notesParams = useMemo(() => {
-    const from = toDateInput(startOfMonth(viewDate));
-    const to = toDateInput(endOfMonth(viewDate));
-    const params = new URLSearchParams({ from, to });
-    if (isAdmin && selectedEngineerId) params.set('userId', selectedEngineerId);
-    return params.toString();
-  }, [isAdmin, selectedEngineerId, viewDate]);
-
-  const notesQuery = useQuery({
-    enabled: !isAdmin || Boolean(selectedEngineerId),
-    queryKey: queryKeys.dailyWork.notes(notesParams),
-    queryFn: () => apiFetch<DailyWorkNote[]>(`/daily-work-notes?${notesParams}`),
-  });
-
   const yearNotesParams = useMemo(() => {
     const year = viewDate.getFullYear();
     const params = new URLSearchParams({ from: `${year}-01-01`, to: `${year}-12-31` });
@@ -151,9 +137,12 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
     queryFn: () => apiFetch<DailyWorkNote[]>(`/daily-work-notes?${yearNotesParams}`),
   });
 
-  const notes = notesQuery.data ?? [];
   const yearNotes = yearNotesQuery.data ?? [];
-  const loading = notesQuery.isLoading || notesQuery.isFetching || yearNotesQuery.isFetching || engineersQuery.isFetching;
+  const notes = useMemo(() => {
+    const month = toDateInput(startOfMonth(viewDate)).slice(0, 7);
+    return yearNotes.filter((note) => toDateInput(note.workDate).startsWith(month));
+  }, [viewDate, yearNotes]);
+  const loading = yearNotesQuery.isFetching || engineersQuery.isFetching;
 
   const saveNoteMutation = useMutation({
     mutationFn: async ({ noteId, payload }: { noteId?: string; payload: DailyWorkPayload }) => {
@@ -244,7 +233,6 @@ export function DailyWorkCalendarPage({ currentRole, user }: DailyWorkCalendarPa
   const error =
     formError ||
     (engineersQuery.error instanceof Error ? engineersQuery.error.message : '') ||
-    (notesQuery.error instanceof Error ? notesQuery.error.message : '') ||
     (yearNotesQuery.error instanceof Error ? yearNotesQuery.error.message : '') ||
     (mutationError instanceof Error ? mutationError.message : '');
 

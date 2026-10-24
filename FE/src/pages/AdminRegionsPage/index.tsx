@@ -1,12 +1,13 @@
-import { Building2, ChevronRight, Loader2, MapPinned, RefreshCw, X } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { Building2, ChevronRight, Loader2, MapPinned, RefreshCw, Search, X } from 'lucide-react';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Paginated, apiFetch, apiFetchAllPages } from '../../api';
+import { Paginated, apiFetch } from '../../api';
 import { Notice } from '../../components/Notice';
 import { PageFrame } from '../../components/PageFrame';
 import { PageTitle } from '../../components/PageTitle';
 import { queryKeys } from '../../lib/queryKeys';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
 
 type Branch = {
   id: string;
@@ -35,6 +36,10 @@ export function AdminRegionsPage() {
   const queryClient = useQueryClient();
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerPage, setCustomerPage] = useState(1);
+  const [customerPageInput, setCustomerPageInput] = useState('1');
+  const debouncedCustomerSearch = useDebouncedValue(customerSearch.trim(), 250);
 
   const branchesQuery = useQuery({
     queryKey: ['territories', 'branches'],
@@ -54,15 +59,41 @@ export function AdminRegionsPage() {
     [provinces, selectedBranchId],
   );
   const unassignedProvinces = provinces.filter((province) => !province.branchId);
-
+  const provinceCustomerCountQueries = useQueries({
+    queries: branchProvinces.map((province) => ({
+      queryKey: ['territories', 'customer-count', province.id],
+      queryFn: () => {
+        const params = new URLSearchParams({ page: '1', limit: '1', provinceId: province.id, province: province.name });
+        return apiFetch<Paginated<Customer>>(`/customers?${params.toString()}`);
+      },
+    })),
+  });
+  const provinceCustomerCounts = new Map(branchProvinces.map((province, index) => [
+    province.id,
+    provinceCustomerCountQueries[index]?.data?.meta.total,
+  ]));
   const customersQuery = useQuery({
     enabled: Boolean(selectedProvince),
-    queryKey: queryKeys.regions.customers(selectedProvinceId),
+    queryKey: [...queryKeys.regions.customers(selectedProvinceId), debouncedCustomerSearch, customerPage],
     queryFn: () => {
-      const params = new URLSearchParams({ limit: '100', provinceId: selectedProvince!.id, province: selectedProvince!.name });
-      return apiFetchAllPages<Customer>(`/customers?${params.toString()}`);
+      const params = new URLSearchParams({ page: String(customerPage), limit: '10', provinceId: selectedProvince!.id, province: selectedProvince!.name });
+      if (debouncedCustomerSearch) params.set('search', debouncedCustomerSearch);
+      return apiFetch<Paginated<Customer>>(`/customers?${params.toString()}`);
     },
   });
+
+  useEffect(() => setCustomerPage(1), [selectedProvinceId, debouncedCustomerSearch]);
+  useEffect(() => setCustomerPageInput(String(customerPage)), [customerPage]);
+
+  function commitCustomerPage() {
+    const totalPages = Math.max(1, customersQuery.data?.meta.totalPages ?? 1);
+    const requestedPage = Number(customerPageInput);
+    if (!Number.isFinite(requestedPage)) {
+      setCustomerPageInput(String(customerPage));
+      return;
+    }
+    setCustomerPage(Math.min(totalPages, Math.max(1, Math.trunc(requestedPage))));
+  }
 
   const assignProvinceMutation = useMutation({
     mutationFn: ({ provinceId, branchId }: { provinceId: string; branchId: string | null }) =>
@@ -163,10 +194,15 @@ export function AdminRegionsPage() {
                   <div className="flex items-center gap-2" key={province.id}>
                     <button
                       className={`flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left text-sm transition ${selectedProvinceId === province.id ? 'border-[#344054] bg-[#f8fafc] font-semibold text-[#202124]' : 'border-[#eaecf0] hover:bg-[#fafafa]'}`}
-                      onClick={() => setSelectedProvinceId(province.id)}
+                  onClick={() => {
+                    setSelectedProvinceId(province.id);
+                    setCustomerSearch('');
+                    setCustomerPage(1);
+                  }}
                       type="button"
                     >
                       <span className="flex min-w-0 items-center gap-2"><MapPinned className="shrink-0 text-[#667085]" size={16} /><span className="truncate">{province.name}</span></span>
+                      <span className="shrink-0 rounded-full bg-[#eef2f6] px-2 py-0.5 text-xs font-semibold text-[#475467]">{provinceCustomerCountQueries[branchProvinces.findIndex((item) => item.id === province.id)]?.isError ? '—' : provinceCustomerCounts.get(province.id) ?? '…'} khách</span>
                     </button>
                     <button
                       aria-label={`Bỏ phân công ${province.name} khỏi ${selectedBranch.name}`}
@@ -182,12 +218,25 @@ export function AdminRegionsPage() {
               <div className="grid content-start gap-2 rounded-xl bg-[#f8f9fa] p-3 sm:p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h3 className="text-sm font-semibold text-[#344054]">Khách hàng{selectedProvince ? ` · ${selectedProvince.name}` : ''}</h3>
-                  {selectedProvince ? <span className="text-xs text-[#667085]">{customersQuery.data?.length ?? 0} khách hàng</span> : null}
+                  {selectedProvince ? <span className="text-xs text-[#667085]">{customersQuery.data?.meta.total ?? 0} khách hàng</span> : null}
                 </div>
+                {selectedProvince ? (
+                  <label className="flex min-h-10 items-center gap-2 rounded-lg border border-[#d0d5dd] bg-white px-3 text-[#667085] focus-within:border-[#344054] focus-within:ring-2 focus-within:ring-[#344054]/10">
+                    <Search aria-hidden="true" size={16} />
+                    <input
+                      aria-label="Tìm khách hàng trong tỉnh/thành"
+                      className="min-w-0 flex-1 bg-transparent text-sm text-[#202124] outline-none placeholder:text-[#98a2b3]"
+                      onChange={(event) => setCustomerSearch(event.target.value)}
+                      placeholder="Tìm tên, mã hoặc số điện thoại"
+                      type="search"
+                      value={customerSearch}
+                    />
+                  </label>
+                ) : null}
                 {!selectedProvince ? <p className="py-8 text-center"><span className="rounded-md bg-[#eef2f6] px-2 py-1 text-xs font-semibold text-[#475467]">Chưa chọn khu vực</span></p> : null}
                 {selectedProvince && customersQuery.isFetching ? <p className="py-8 text-center text-sm text-[#667085]">Đang tải khách hàng…</p> : null}
-                {selectedProvince && !customersQuery.isFetching && !customersQuery.data?.length ? <p className="py-8 text-center text-sm text-[#667085]">Chưa có khách hàng thuộc tỉnh/thành này.</p> : null}
-                {selectedProvince && !customersQuery.isFetching ? customersQuery.data?.map((customer) => (
+                {selectedProvince && !customersQuery.isFetching && !customersQuery.data?.meta.total ? <p className="py-8 text-center text-sm text-[#667085]">{debouncedCustomerSearch ? 'Không tìm thấy khách hàng phù hợp.' : 'Chưa có khách hàng thuộc tỉnh/thành này.'}</p> : null}
+                {selectedProvince && !customersQuery.isFetching ? customersQuery.data?.data.map((customer) => (
                   <Link className="flex items-center justify-between gap-3 rounded-xl border border-[#eaecf0] bg-white p-3 transition hover:border-[#cbd5e1] hover:bg-[#fcfcfd] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#344054]" key={customer.id} to={`/customers/${customer.id}`}>
                     <div className="flex min-w-0 items-center gap-2.5">
                       <Building2 className="shrink-0 text-[#667085]" size={17} />
@@ -199,6 +248,19 @@ export function AdminRegionsPage() {
                     <span className="flex shrink-0 items-center gap-2 text-xs text-[#667085]">{customer._count?.machines ?? 0} máy <ChevronRight size={16} /></span>
                   </Link>
                 )) : null}
+                {selectedProvince && (customersQuery.data?.meta.totalPages ?? 0) > 1 ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-xs text-[#667085]">
+                    <span>{customersQuery.data?.meta.total} khách hàng · Trang {customerPage}/{customersQuery.data?.meta.totalPages}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button className="rounded-lg border border-[#d0d5dd] bg-white px-2.5 py-1.5 disabled:opacity-45" disabled={customersQuery.isFetching || customerPage <= 1} onClick={() => setCustomerPage((page) => Math.max(1, page - 1))} type="button">Trước</button>
+                      <label className="flex items-center gap-1.5">
+                        Đi tới
+                        <input aria-label="Đi tới trang khách hàng trong tỉnh" className="w-14 rounded-lg border border-[#d0d5dd] bg-white px-2 py-1.5 text-center text-sm text-[#202124]" max={customersQuery.data?.meta.totalPages ?? 1} min={1} onBlur={commitCustomerPage} onChange={(event) => setCustomerPageInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') commitCustomerPage(); }} type="number" value={customerPageInput} />
+                      </label>
+                      <button className="rounded-lg border border-[#d0d5dd] bg-white px-2.5 py-1.5 disabled:opacity-45" disabled={customersQuery.isFetching || customerPage >= (customersQuery.data?.meta.totalPages ?? 1)} onClick={() => setCustomerPage((page) => page + 1)} type="button">Sau</button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </section>

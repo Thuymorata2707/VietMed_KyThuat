@@ -55,7 +55,7 @@ export function DateInput({ className = '', disabled, label, onChange, required,
     <span className={`relative grid min-w-0 gap-2 text-sm font-semibold text-[#334155] ${className}`} ref={wrapperRef}>
       {label ? <span>{label}</span> : null}
       <button
-        className="group flex h-12 min-w-0 items-center gap-2 rounded-2xl border border-[#cbd5e1] bg-white px-3 text-left text-[#172033] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition hover:border-[#93c5fd] focus:border-[#2563eb] focus:outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)] disabled:cursor-not-allowed disabled:bg-[#f8fafc] disabled:text-[#94a3b8]"
+        className="group flex h-11 min-w-0 items-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-3 text-left text-[#172033] transition hover:border-[#93c5fd] focus:border-[#2563eb] focus:outline-none focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] disabled:cursor-not-allowed disabled:bg-[#f1f5f9] disabled:text-[#94a3b8]"
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
         type="button"

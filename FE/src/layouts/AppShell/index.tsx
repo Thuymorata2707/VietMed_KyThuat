@@ -19,6 +19,7 @@ const AccountSettingsPage = lazy(() => import('../../pages/AccountSettingsPage')
 const AdminCrudFormPage = lazy(() => import('../../pages/AdminCrudPage').then((module) => ({ default: module.AdminCrudFormPage })));
 const AdminCrudPage = lazy(() => import('../../pages/AdminCrudPage').then((module) => ({ default: module.AdminCrudPage })));
 const AdminRegionsPage = lazy(() => import('../../pages/AdminRegionsPage').then((module) => ({ default: module.AdminRegionsPage })));
+const DataImportPage = lazy(() => import('../../pages/DataImportPage').then((module) => ({ default: module.DataImportPage })));
 const AdminRolesPage = lazy(() => import('../../pages/AdminRolesPage').then((module) => ({ default: module.AdminRolesPage })));
 const AdminUsersPage = lazy(() => import('../../pages/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })));
 const AdminWorkAssignmentPage = lazy(() => import('../../pages/AdminWorkAssignmentPage').then((module) => ({ default: module.AdminWorkAssignmentPage })));
@@ -165,6 +166,8 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
       ? 'Nhân sự'
     : location.pathname.startsWith('/reports')
       ? 'Báo cáo'
+    : location.pathname.startsWith('/data-import')
+      ? 'Nhập dữ liệu'
     : activeNavItem?.label || 'Tổng quan';
   const unreadCount = unreadCountQuery.data?.count ?? 0;
 
@@ -701,6 +704,18 @@ export function AppShell({ user, onLogout, onUserUpdated }: AppShellProps) {
                 renderDenied={(message) => <AccessDeniedPage message={message} />}
               >
                 <AdminRegionsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/data-import"
+            element={
+              <RequireRole
+                allowedRoles={['admin']}
+                currentRole={role}
+                renderDenied={(message) => <AccessDeniedPage message={message} />}
+              >
+                <DataImportPage />
               </RequireRole>
             }
           />

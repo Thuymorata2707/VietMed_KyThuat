@@ -106,10 +106,24 @@ export function useWorkAttachments({
       });
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      if (!attachment.mimeType.startsWith('image/')) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        return null;
+      }
+      return url;
     } catch {
       onError('Không mở được tệp đính kèm.');
+      return null;
+    }
+  }
+
+  async function deleteAttachment(attachment: TaskAttachment) {
+    try {
+      await apiFetch(`/attachments/${attachment.id}`, { method: 'DELETE' });
+      setAttachments((current) => current.filter((item) => item.id !== attachment.id));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Không xóa được tệp đính kèm.');
     }
   }
 
@@ -120,6 +134,7 @@ export function useWorkAttachments({
     attachmentType,
     attachments,
     downloadAttachment,
+    deleteAttachment,
     loadAttachments,
     loadingAttachments,
     setAttachmentDescription,

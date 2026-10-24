@@ -1,5 +1,5 @@
 import { ArrowLeft, Edit3, ImageOff, Loader2, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react';
-import { FormEvent, KeyboardEvent, MouseEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { FormEvent, KeyboardEvent, MouseEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Paginated, apiFetch, apiFetchAllPages } from '../../api';
 import { AdminCrudConfig, CrudField } from '../../config/adminCrud';
@@ -48,6 +48,9 @@ const initialBusinessLineCategoryOptions = [
 ];
 const quickFilterKeys = [
   'status',
+  'salesChannel',
+  'customerType',
+  'dealer.name',
   'inventoryStatus',
   'dataStatus',
   'createdSource',
@@ -72,6 +75,9 @@ export function AdminCrudPage({
   const isCustomerCrud = isCustomersEndpoint(config.endpoint);
   const [rows, setRows] = useState<TableRow[]>([]);
   const [options, setOptions] = useState<OptionMap>({});
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const optionsRequestRef = useRef<Promise<OptionMap> | null>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [filters, setFilters] = useState<FilterState>({});
@@ -82,6 +88,7 @@ export function AdminCrudPage({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pagination, setPagination] = useState<PaginationState | null>(null);
   const [page, setPage] = useState(1);
+  const [pageJump, setPageJump] = useState('1');
   const [pageSize, setPageSize] = useState(isCustomerCrud ? 50 : 20);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -122,6 +129,8 @@ export function AdminCrudPage({
     setPage((current) => Math.min(current, Math.max(1, pagination.totalPages)));
   }, [pagination]);
 
+  useEffect(() => setPageJump(String(page)), [page]);
+
   useEffect(() => {
     if (!isModalOpen || editingRow) return;
     const fields = visibleFields(config.fields, false, form, options, config.endpoint, null).filter((field) => field.previewCode);
@@ -153,13 +162,9 @@ export function AdminCrudPage({
     setError('');
 
     try {
-      const [rowsResult, optionsResult] = await Promise.all([
-        loadRows(config.endpoint, page, pageSize, debouncedQuery, extraQueryParams),
-        loadOptions(readOnly ? [] : config.fields),
-      ]);
+      const rowsResult = await loadRows(config.endpoint, page, pageSize, debouncedQuery, extraQueryParams);
       setRows(rowsResult.rows);
       setPagination(rowsResult.pagination);
-      setOptions(optionsResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : `Không tải được ${config.entityLabel}`);
     } finally {
@@ -167,7 +172,34 @@ export function AdminCrudPage({
     }
   }
 
-  function startCreate() {
+  async function ensureOptionsLoaded() {
+    if (optionsLoaded) return;
+    if (optionsRequestRef.current) {
+      await optionsRequestRef.current;
+      return;
+    }
+    setOptionsLoading(true);
+    const request = loadOptions(readOnly ? [] : config.fields);
+    optionsRequestRef.current = request;
+    try {
+      const nextOptions = await request;
+      setOptions(nextOptions);
+      setOptionsLoaded(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không tải được danh mục biểu mẫu.');
+      throw err;
+    } finally {
+      setOptionsLoading(false);
+      optionsRequestRef.current = null;
+    }
+  }
+
+  async function startCreate() {
+    try {
+      await ensureOptionsLoaded();
+    } catch {
+      return;
+    }
     setEditingRow(null);
     setForm(buildInitialForm(visibleFields(config.fields, false), null, options, config.endpoint));
     setSuccess('');
@@ -185,7 +217,22 @@ export function AdminCrudPage({
     setPage(1);
   }
 
-  function startEdit(row: TableRow) {
+  function commitPageJump() {
+    const totalPages = Math.max(1, pagination?.totalPages ?? 1);
+    const requestedPage = Number(pageJump);
+    if (!Number.isFinite(requestedPage)) {
+      setPageJump(String(page));
+      return;
+    }
+    setPage(Math.min(totalPages, Math.max(1, Math.trunc(requestedPage))));
+  }
+
+  async function startEdit(row: TableRow) {
+    try {
+      await ensureOptionsLoaded();
+    } catch {
+      return;
+    }
     setSelectedRow(null);
     setEditingRow(row);
     setForm(buildInitialForm(visibleFields(config.fields, true), row, options, config.endpoint));
@@ -266,6 +313,13 @@ export function AdminCrudPage({
     setForm((current) => {
       const next = { ...current, [field.name]: value };
 
+      if (field.name === 'customerType' && value === 'DISTRIBUTOR') {
+        next.dealerId = '';
+      }
+      if (field.name === 'dealerId') {
+        next.salesChannel = value ? 'DEALER' : 'DIRECT';
+      }
+
       if (field.name === 'machineId' && optionRow) {
         const customerId = readPath(optionRow, 'customer.id');
         const serialNumber = readPath(optionRow, 'serialNumber');
@@ -330,7 +384,12 @@ export function AdminCrudPage({
               ))}
             </div>
           ) : null}
-          {canCreate ? (
+          {canCreate ? isCustomerCrud ? (
+            <Link className="primary-button compact" to="/customers/new">
+              <Plus size={17} />
+              Thêm khách hàng
+            </Link>
+          ) : (
             serviceCreateHref(config.endpoint) ? (
               <Link className="primary-button compact" to={serviceCreateHref(config.endpoint)!}>
                 <Plus size={17} />
@@ -342,9 +401,9 @@ export function AdminCrudPage({
                 Thêm mới
               </Link>
             ) : (
-              <button className="primary-button compact" onClick={startCreate} type="button">
+              <button className="primary-button compact" disabled={optionsLoading} onClick={() => void startCreate()} type="button">
                 <Plus size={17} />
-                Thêm mới
+                {optionsLoading ? 'Đang tải danh mục' : 'Thêm mới'}
               </button>
             )
           ) : null}
@@ -505,6 +564,23 @@ export function AdminCrudPage({
           </div>
 
           <div className="pagination-controls">
+            {isCustomerCrud && pagination ? (
+              <label>
+                Đi tới trang
+                <input
+                  aria-label="Đi tới trang khách hàng"
+                  className="w-16"
+                  max={Math.max(1, pagination.totalPages)}
+                  min={1}
+                  onBlur={commitPageJump}
+                  onChange={(event) => setPageJump(event.target.value)}
+                  onKeyDown={(event) => { if (event.key === 'Enter') commitPageJump(); }}
+                  type="number"
+                  value={pageJump}
+                />
+                / {Math.max(1, pagination.totalPages)}
+              </label>
+            ) : null}
             <label>
               Hiển thị
               <select onChange={(event) => handlePageSizeChange(event.target.value)} value={pageSize}>
@@ -710,8 +786,10 @@ export function AdminCrudFormPage({ config }: { config: AdminCrudConfig }) {
     setSuccess('');
 
     try {
-      const nextOptions = await loadOptions(config.fields);
-      const nextRow = isEditing ? await apiFetch<TableRow>(`${config.endpoint}/${id}`) : null;
+      const [nextOptions, nextRow] = await Promise.all([
+        loadOptions(config.fields),
+        isEditing ? apiFetch<TableRow>(`${config.endpoint}/${id}`) : Promise.resolve(null),
+      ]);
       setOptions(nextOptions);
       setRow(nextRow);
       setForm(buildInitialForm(visibleFields(config.fields, isEditing), nextRow, nextOptions, config.endpoint));
@@ -1146,7 +1224,7 @@ function SearchableSelect({
               setSearch('');
               setIsOpen(true);
             }}
-            placeholder={`Tìm ${field.label.toLowerCase()}...`}
+            placeholder={field.placeholder || `Tìm ${field.label.toLowerCase()}...`}
             value={inputValue}
           />
           {value && !field.required ? (
@@ -1211,6 +1289,8 @@ function CustomerQuickViewModal({
   const name = formatDisplayValue(readPath(row, 'name'));
   const code = formatDisplayValue(readPath(row, 'customerCode'));
   const type = displayLabel(String(readPath(row, 'customerType') ?? ''));
+  const salesChannel = String(readPath(row, 'salesChannel') ?? '');
+  const dealerName = formatDisplayValue(readPath(row, 'dealer.name'));
   const address = [readPath(row, 'address'), readPath(row, 'locality'), readPath(row, 'ward'), readPath(row, 'district'), readPath(row, 'provinceRef.name') || readPath(row, 'province')]
     .filter(Boolean)
     .map((value) => String(value))
@@ -1247,6 +1327,12 @@ function CustomerQuickViewModal({
           </section>
 
           <section className="customer-quick-side">
+            <CustomerQuickField
+              label={type === 'Đại lý' ? 'Khách hàng cuối' : 'Đại lý bán'}
+              value={type === 'Đại lý'
+                ? `${Number(readPath(row, '_count.dealerCustomers') ?? 0)} khách hàng`
+                : salesChannel === 'DIRECT' ? 'Bán trực tiếp' : salesChannel === 'DEALER' ? dealerName : 'Chưa xác định'}
+            />
             <CustomerQuickField label="Kỹ sư cùng quản lý" value={engineers.length ? engineers.join(', ') : 'Chưa gán kỹ sư'} />
             <CustomerQuickField label="Số máy" value={`${machineCount} máy`} />
             <div className="customer-quick-status">
@@ -1262,7 +1348,9 @@ function CustomerQuickViewModal({
           </button>
           {id ? (
             <Link className="primary-button" to={`/customers/${id}`}>
-              Hồ sơ đầy đủ
+              {type === 'Đại lý'
+                ? `Xem ${Number(readPath(row, '_count.dealerCustomers') ?? 0)} khách cuối`
+                : 'Hồ sơ đầy đủ'}
             </Link>
           ) : null}
           {canUpdate ? (
@@ -1311,6 +1399,8 @@ function CustomerTableRow({
   const name = formatDisplayValue(readPath(row, 'name'));
   const code = formatDisplayValue(readPath(row, 'customerCode'));
   const type = displayLabel(String(readPath(row, 'customerType') ?? ''));
+  const salesChannel = String(readPath(row, 'salesChannel') ?? '');
+  const dealerName = formatDisplayValue(readPath(row, 'dealer.name'));
   const address = [readPath(row, 'address'), readPath(row, 'locality'), readPath(row, 'ward'), readPath(row, 'district'), readPath(row, 'provinceRef.name') || readPath(row, 'province')]
     .filter(Boolean)
     .map((value) => String(value))
@@ -1346,6 +1436,13 @@ function CustomerTableRow({
             {type || 'Chưa phân loại'}
             {code !== '-' ? <span className="customer-inline-code" title={code}>{code}</span> : null}
           </span>
+          {type === 'Đại lý' ? (
+            <small className="customer-channel-line">Đại lý phân phối · {Number(readPath(row, '_count.dealerCustomers') ?? 0)} khách hàng</small>
+          ) : (
+            <small className="customer-channel-line">
+              {salesChannel === 'DIRECT' ? 'Bán trực tiếp' : salesChannel === 'DEALER' ? `Qua ${dealerName !== '-' ? dealerName : 'đại lý'}` : 'Chưa xác định kênh'}
+            </small>
+          )}
           {address ? <small title={address}>{address}</small> : null}
         </div>
       </td>
@@ -1361,7 +1458,16 @@ function CustomerTableRow({
           <small title={phone}>{phone}</small>
         </div>
       </td>
-      <td>{engineers.length ? engineers.join(', ') : <span className="muted-text">Chưa gán</span>}</td>
+      <td className="customer-engineers-cell">
+        {engineers.length ? (
+          <div className="customer-engineer-summary" title={engineers.join(', ')} aria-label={`Kỹ sư cùng quản lý: ${engineers.join(', ')}`}>
+            <span className="customer-engineer-summary__name">{engineers[0]}</span>
+            {engineers.length > 1 ? <span className="customer-engineer-summary__count">+{engineers.length - 1}</span> : null}
+          </div>
+        ) : (
+          <span className="muted-text">Chưa gán</span>
+        )}
+      </td>
       <td>
         <span className="customer-machine-count">{machineCount} máy</span>
       </td>
@@ -1413,7 +1519,7 @@ function GroupedCustomerFields({
   const groups = [
     {
       title: 'Khách hàng',
-      fields: ['name', 'customerCode', 'customerType', 'status', 'regionId', 'engineerIds'],
+      fields: ['name', 'customerCode', 'customerType', 'dealerId', 'status', 'regionId', 'engineerIds'],
     },
     {
       title: 'Liên hệ',
@@ -1965,12 +2071,13 @@ function buildPayload(fields: CrudField[], form: FormState) {
     const value = form[field.name]?.trim() ?? '';
     if (field.type === 'customerContacts') {
       payload[field.name] = parseCustomerContacts(value)
-        .filter((contact) => contact.name)
+        .filter((contact) => contact.name.trim())
         .map((contact) => ({
           ...contact,
-          position: contact.position || undefined,
-          phone: contact.phone || undefined,
-          email: contact.email || undefined,
+          name: contact.name.trim(),
+          position: contact.position.trim() || undefined,
+          phone: contact.phone.trim() || undefined,
+          email: contact.email.trim() || undefined,
         }));
       return;
     }
@@ -2008,15 +2115,15 @@ function parseCustomerContacts(value: string): CustomerContactDraft[] {
     const contacts = parsed
       .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
       .map((item) => ({
-        name: String(item.name ?? '').trim(),
-        position: String(item.position ?? '').trim(),
-        phone: String(item.phone ?? '').trim(),
-        email: String(item.email ?? '').trim(),
+        name: String(item.name ?? ''),
+        position: String(item.position ?? ''),
+        phone: String(item.phone ?? ''),
+        email: String(item.email ?? ''),
         isPrimary: Boolean(item.isPrimary),
       }));
     if (!contacts.length) return [];
-    const namedPrimary = contacts.findIndex((item) => item.name && item.isPrimary);
-    const firstNamed = contacts.findIndex((item) => item.name);
+    const namedPrimary = contacts.findIndex((item) => item.name.trim() && item.isPrimary);
+    const firstNamed = contacts.findIndex((item) => item.name.trim());
     const primaryIndex = namedPrimary >= 0 ? namedPrimary : Math.max(firstNamed, 0);
     return contacts.map((item, index) => ({ ...item, isPrimary: index === primaryIndex }));
   } catch {
@@ -2356,6 +2463,10 @@ function visibleFields(
     if (field.detailOnly) return false;
     if (isEditing && field.createOnly) return false;
     if (!isEditing && field.updateOnly) return false;
+    if (endpoint === '/customers' && field.name === 'dealerId') {
+      const customerType = String(form?.customerType ?? readPath(row ?? {}, 'customerType') ?? '');
+      if (!customerType || customerType === 'DISTRIBUTOR') return false;
+    }
     return true;
   });
 }

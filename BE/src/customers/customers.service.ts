@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CustomerStatus, CustomerType, DemoLoanStatus, Prisma } from '@prisma/client';
+import { CustomerSalesChannel, CustomerStatus, CustomerType, DemoLoanStatus, Prisma } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { customerAccessWhere } from '../auth/access-scope';
 import { assertPermission, PERMISSIONS } from '../auth/permissions';
@@ -27,6 +27,23 @@ export class CustomersService {
   async create(dto: CreateCustomerDto, actor?: RequestUser) {
     assertPermission(actor, PERMISSIONS.CUSTOMER_CREATE);
     this.validateCreateCustomer(dto);
+    const customerType = dto.customerType ?? CustomerType.HOSPITAL;
+    const dealerId = dto.dealerId?.trim() || null;
+    if (customerType === CustomerType.DISTRIBUTOR && (dealerId || dto.salesChannel)) {
+      throw new BadRequestException('A distributor cannot be assigned to another distributor');
+    }
+    const salesChannel = customerType === CustomerType.DISTRIBUTOR
+      ? null
+      : dealerId
+        ? CustomerSalesChannel.DEALER
+        : dto.salesChannel ?? CustomerSalesChannel.DIRECT;
+    if (salesChannel === CustomerSalesChannel.DEALER && !dealerId) {
+      throw new BadRequestException('Select the distributor that sold to this customer');
+    }
+    if (salesChannel === CustomerSalesChannel.DIRECT && dealerId) {
+      throw new BadRequestException('Direct customers cannot be assigned to a distributor');
+    }
+    if (dealerId) await this.ensureDealerExists(dealerId);
     if (dto.regionId) await this.ensureRegionExists(dto.regionId);
     await this.ensureCustomerCodeIsAvailable(dto.customerCode);
     const province = await this.ensureProvinceExists(dto.provinceId);
@@ -54,6 +71,8 @@ export class CustomersService {
           hospitalName: dto.hospitalName?.trim() || null,
           customerType: dto.customerType ?? CustomerType.HOSPITAL,
           status: dto.status ?? CustomerStatus.ACTIVE,
+          salesChannel,
+          dealerId,
           taxCode: dto.taxCode?.trim() || null,
           email: this.normalizeOptionalEmail(dto.email),
           website: dto.website?.trim() || null,
@@ -135,6 +154,21 @@ export class CustomersService {
       where: this.withAccessScope({ id }, user),
       include: {
         ...this.customerListInclude(),
+        dealerCustomers: {
+          where: customerAccessWhere(user),
+          orderBy: [{ name: 'asc' }],
+          take: 100,
+          select: {
+            id: true,
+            name: true,
+            customerCode: true,
+            customerType: true,
+            status: true,
+            province: true,
+            phone: true,
+            _count: { select: { machines: true } },
+          },
+        },
         machines: {
           orderBy: {
             createdAt: 'desc',
@@ -357,6 +391,28 @@ export class CustomersService {
       ? undefined
       : await this.ensureProvinceExists(dto.provinceId);
 
+    const nextCustomerType = dto.customerType ?? current.customerType;
+    const nextSalesChannel = nextCustomerType === CustomerType.DISTRIBUTOR
+      ? null
+      : dto.salesChannel ?? (dto.dealerId !== undefined
+        ? (dto.dealerId?.trim() ? CustomerSalesChannel.DEALER : CustomerSalesChannel.DIRECT)
+        : current.salesChannel);
+    const nextDealerId = nextCustomerType === CustomerType.DISTRIBUTOR || nextSalesChannel === CustomerSalesChannel.DIRECT
+      ? null
+      : dto.dealerId === undefined
+        ? current.dealer?.id ?? null
+        : dto.dealerId?.trim() || null;
+    if (nextCustomerType === CustomerType.DISTRIBUTOR && (dto.dealerId?.trim() || dto.salesChannel)) {
+      throw new BadRequestException('A distributor cannot be assigned to another distributor');
+    }
+    if (nextSalesChannel === CustomerSalesChannel.DEALER && !nextDealerId) {
+      throw new BadRequestException('Select the distributor that sold to this customer');
+    }
+    if (nextSalesChannel === CustomerSalesChannel.DIRECT && nextDealerId) {
+      throw new BadRequestException('Direct customers cannot be assigned to a distributor');
+    }
+    if (nextDealerId) await this.ensureDealerExists(nextDealerId, id);
+
     const shouldReplaceEngineers =
       dto.engineerIds !== undefined || dto.primaryEngineerId !== undefined;
     const engineerIds = shouldReplaceEngineers
@@ -390,6 +446,13 @@ export class CustomersService {
               : dto.hospitalName?.trim() || null,
           customerType: dto.customerType,
           status: dto.status,
+          salesChannel: dto.salesChannel !== undefined || nextCustomerType === CustomerType.DISTRIBUTOR || dto.dealerId !== undefined
+            ? nextSalesChannel
+            : undefined,
+          dealerId: dto.dealerId !== undefined || nextCustomerType === CustomerType.DISTRIBUTOR
+            || dto.salesChannel === CustomerSalesChannel.DIRECT
+            ? nextDealerId
+            : undefined,
           taxCode:
             dto.taxCode === undefined ? undefined : dto.taxCode?.trim() || null,
           email:
@@ -462,6 +525,8 @@ export class CustomersService {
             'shortName',
             'hospitalName',
             'customerType',
+            'salesChannel',
+            'dealerId',
             'status',
             'taxCode',
             'email',
@@ -576,6 +641,19 @@ export class CustomersService {
 
     if (!region) {
       throw new BadRequestException('Region does not exist');
+    }
+  }
+
+  private async ensureDealerExists(dealerId: string, customerId?: string) {
+    if (dealerId === customerId) {
+      throw new BadRequestException('A customer cannot be its own distributor');
+    }
+    const dealer = await this.prisma.customer.findUnique({
+      where: { id: dealerId },
+      select: { id: true, customerType: true },
+    });
+    if (!dealer || dealer.customerType !== CustomerType.DISTRIBUTOR) {
+      throw new BadRequestException('The selected distributor does not exist');
     }
   }
 
@@ -721,6 +799,7 @@ export class CustomersService {
           { taxCode: { contains: search } },
           { contactPerson: { contains: search } },
           { fullAddress: { contains: search } },
+          { dealer: { is: { name: { contains: search } } } },
         ],
       });
     }
@@ -728,6 +807,7 @@ export class CustomersService {
     return {
       status: query.status,
       customerType: query.customerType,
+      dealerId: query.dealerId,
       regionId: query.regionId,
       provinceId: query.provinceId,
       AND: filters.length ? filters : undefined,
@@ -774,6 +854,9 @@ export class CustomersService {
 
   private customerListInclude() {
     return {
+      dealer: {
+        select: { id: true, name: true, customerCode: true },
+      },
       contacts: {
         orderBy: [{ isPrimary: 'desc' as const }, { name: 'asc' as const }],
       },
@@ -790,6 +873,7 @@ export class CustomersService {
         select: {
           machines: true,
           machineInstallations: true,
+          dealerCustomers: true,
         },
       },
     } satisfies Prisma.CustomerInclude;

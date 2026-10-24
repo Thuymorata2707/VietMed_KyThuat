@@ -84,14 +84,14 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
           </div>
           <div>
             <span className="mb-2 inline-flex rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-semibold text-[#18181b]">Account settings</span>
-            <h1 className="mb-2.5 text-[clamp(28px,4vw,46px)] font-semibold leading-none tracking-[-0.03em] text-[#171717]">{form.fullName || user.email}</h1>
+            <h1 className="mb-2.5 text-[clamp(24px,3vw,34px)] font-semibold leading-tight tracking-[-0.02em] text-[#171717]">{form.fullName || user.email}</h1>
           </div>
         </div>
 
         <div className="relative grid min-w-60 self-center rounded-2xl border border-white bg-white/82 p-4 shadow-[0_14px_34px_rgba(24,24,27,0.10)]">
           <span className="text-sm font-semibold text-[#777777]">{roleLabel(role)}</span>
-          <strong className="text-lg text-[#1f1f1f]">{user.region?.name || 'Chưa gán khu vực'}</strong>
-          <small className="text-[#666666]">{user.email}</small>
+          <strong className="text-base font-semibold text-[#1f1f1f]">{user.region?.name || 'Chưa gán khu vực'}</strong>
+          <span className="text-sm text-[#666666]">{user.email}</span>
         </div>
       </section>
 
@@ -105,26 +105,26 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
               <ShieldCheck size={18} />
             </span>
             <div>
-              <strong className="block text-[#1f1f1f]">Quyền truy cập</strong>
+              <strong className="block text-base font-semibold text-[#1f1f1f]">Quyền truy cập</strong>
             </div>
           </div>
 
           <dl className="m-0 grid border-t border-[#eeeeee] pt-2">
             <div className="flex justify-between gap-3 border-b border-[#eeeeee] py-[11px]">
-              <dt className="font-semibold text-[#666666]">Vai trò</dt>
-              <dd className="m-0 text-right font-medium text-[#1f1f1f]">{roleLabel(role)}</dd>
+              <dt className="text-sm font-semibold text-[#666666]">Vai trò</dt>
+              <dd className="m-0 text-right text-sm font-medium text-[#1f1f1f]">{roleLabel(role)}</dd>
             </div>
             <div className="flex justify-between gap-3 border-b border-[#eeeeee] py-[11px]">
-              <dt className="font-semibold text-[#666666]">Khu vực</dt>
-              <dd className="m-0 text-right font-medium text-[#1f1f1f]">{user.region?.name || 'Chưa gán'}</dd>
+              <dt className="text-sm font-semibold text-[#666666]">Khu vực</dt>
+              <dd className="m-0 text-right text-sm font-medium text-[#1f1f1f]">{user.region?.name || 'Chưa gán'}</dd>
             </div>
             <div className="flex justify-between gap-3 border-b border-[#eeeeee] py-[11px]">
-              <dt className="font-semibold text-[#666666]">Trạng thái</dt>
-              <dd className="m-0 text-right font-medium text-[#1f1f1f]">{user.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm khóa'}</dd>
+              <dt className="text-sm font-semibold text-[#666666]">Trạng thái</dt>
+              <dd className="m-0 text-right text-sm font-medium text-[#1f1f1f]">{user.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm khóa'}</dd>
             </div>
           </dl>
 
-          <label className="grid gap-2 font-medium text-[#333333] [&_svg]:text-[#18181b]">
+          <label className="grid gap-2 text-sm font-medium text-[#333333] [&_svg]:text-[#18181b]">
             <Camera size={17} />
             URL ảnh đại diện
             <input
@@ -142,11 +142,11 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
             <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3 border-b border-[#eeeeee] pb-3">
               <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#fafafa] p-[9px] text-[#18181b]" size={18} />
               <div>
-                <h2 className="text-[#1f1f1f]">Thông tin cá nhân</h2>
+                <h2 className="text-lg font-semibold text-[#1f1f1f]">Thông tin cá nhân</h2>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-4 max-[760px]:grid-cols-1 [&_input]:min-h-[44px] [&_input]:w-full [&_input]:rounded-xl [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:bg-white [&_input]:px-3.5 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#18181b] [&_input:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#333333]">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-4 max-[760px]:grid-cols-1 [&_input]:min-h-[44px] [&_input]:w-full [&_input]:rounded-xl [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:bg-white [&_input]:px-3.5 [&_input]:text-sm [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#18181b] [&_input:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-sm [&_label]:font-medium [&_label]:text-[#333333]">
               <label>
                 Họ và tên
                 <input
@@ -199,11 +199,11 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
               <div className="grid grid-cols-[38px_minmax(0,1fr)] items-start gap-3 border-b border-[#eeeeee] pb-3">
                 <UserRound className="h-[38px] w-[38px] rounded-[10px] border border-[#eeeeee] bg-[#fafafa] p-[9px] text-[#18181b]" size={18} />
                 <div>
-                  <h2 className="text-[#1f1f1f]">Hồ sơ kỹ sư</h2>
+                <h2 className="text-lg font-semibold text-[#1f1f1f]">Hồ sơ kỹ sư</h2>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 items-start gap-x-4 gap-y-4 max-[760px]:grid-cols-1 [&_input]:min-h-[44px] [&_input]:w-full [&_input]:rounded-xl [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:bg-white [&_input]:px-3.5 [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#18181b] [&_input:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-[#333333] [&_select]:min-h-[44px] [&_select]:w-full [&_select]:rounded-xl [&_select]:border [&_select]:border-[#d6d6d6] [&_select]:bg-white [&_select]:px-3.5 [&_select]:text-[#1f1f1f] [&_select]:outline-none [&_select:focus]:border-[#18181b] [&_select:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_textarea]:min-h-28 [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-xl [&_textarea]:border [&_textarea]:border-[#d6d6d6] [&_textarea]:bg-white [&_textarea]:px-3.5 [&_textarea]:py-3 [&_textarea]:text-[#1f1f1f] [&_textarea]:outline-none [&_textarea:focus]:border-[#18181b] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_fieldset]:min-w-0 [&_fieldset]:rounded-xl [&_fieldset]:border-[#d6d6d6] [&_fieldset]:px-4 [&_fieldset]:py-3">
+              <div className="grid grid-cols-2 items-start gap-x-4 gap-y-4 max-[760px]:grid-cols-1 [&_input]:min-h-[44px] [&_input]:w-full [&_input]:rounded-xl [&_input]:border [&_input]:border-[#d6d6d6] [&_input]:bg-white [&_input]:px-3.5 [&_input]:text-sm [&_input]:text-[#1f1f1f] [&_input]:outline-none [&_input:focus]:border-[#18181b] [&_input:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-sm [&_label]:font-medium [&_label]:text-[#333333] [&_select]:min-h-[44px] [&_select]:w-full [&_select]:rounded-xl [&_select]:border [&_select]:border-[#d6d6d6] [&_select]:bg-white [&_select]:px-3.5 [&_select]:text-sm [&_select]:text-[#1f1f1f] [&_select]:outline-none [&_select:focus]:border-[#18181b] [&_select:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_textarea]:min-h-28 [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-xl [&_textarea]:border [&_textarea]:border-[#d6d6d6] [&_textarea]:bg-white [&_textarea]:px-3.5 [&_textarea]:py-3 [&_textarea]:text-sm [&_textarea]:text-[#1f1f1f] [&_textarea]:outline-none [&_textarea:focus]:border-[#18181b] [&_textarea:focus]:shadow-[0_0_0_3px_rgba(24,24,27,0.12)] [&_fieldset]:min-w-0 [&_fieldset]:rounded-xl [&_fieldset]:border-[#d6d6d6] [&_fieldset]:px-4 [&_fieldset]:py-3">
                 <label>
                   Mã nhân sự
                   <input onChange={(event) => updateField('employeeCode', event.target.value)} value={form.employeeCode} />
@@ -270,7 +270,7 @@ export function AccountSettingsPage({ user, onUserUpdated }: AccountSettingsPage
         </section>
 
         <div className="col-span-full flex items-center justify-between gap-4 rounded-2xl border border-[#e5e5e5] bg-white px-5 py-4 shadow-[0_1px_2px_rgba(24,24,27,0.04)] max-[760px]:grid max-[760px]:items-stretch">
-          <span className="text-[#666666]">Cập nhật ngay trên tài khoản hiện tại.</span>
+          <span className="text-sm text-[#666666]">Cập nhật ngay trên tài khoản hiện tại.</span>
           <button className="primary-button" disabled={saving} type="submit">
             {saving ? <Loader2 className="spin-icon" size={18} /> : <Save size={18} />}
             {saving ? 'Đang lưu' : 'Lưu thay đổi'}

@@ -9,6 +9,7 @@ export type PickerOption<Row> = SelectOption & {
 type AsyncEntityPickerProps<Row extends { id: string }> = {
   className?: string;
   disabled?: boolean;
+  emptyMessage?: string;
   endpoint: string;
   formatOption: (row: Row) => PickerOption<Row>;
   inputClassName?: string;
@@ -24,6 +25,7 @@ type AsyncEntityPickerProps<Row extends { id: string }> = {
 export function AsyncEntityPicker<Row extends { id: string }>({
   className,
   disabled,
+  emptyMessage = 'Không tìm thấy dữ liệu phù hợp.',
   endpoint,
   formatOption,
   inputClassName,
@@ -130,7 +132,7 @@ export function AsyncEntityPicker<Row extends { id: string }>({
         {open ? (
           <div className="absolute left-0 right-0 top-[calc(100%+0.45rem)] z-50 grid max-h-72 overflow-y-auto rounded-2xl border border-[#ded8d8] bg-white p-1.5 shadow-[0_18px_44px_rgba(15,23,42,0.16)]">
             {loading ? <div className="p-3 text-sm font-semibold text-[#667085]">Đang tìm...</div> : null}
-            {!loading && options.length === 0 ? <div className="p-3 text-sm font-semibold text-[#667085]">Không tìm thấy dữ liệu phù hợp.</div> : null}
+            {!loading && options.length === 0 ? <div className="p-3 text-sm font-semibold text-[#667085]">{emptyMessage}</div> : null}
             {!loading
               ? options.map((option) => (
                   <button

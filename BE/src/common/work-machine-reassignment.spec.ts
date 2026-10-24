@@ -59,7 +59,10 @@ describe('work ticket machine reassignment', () => {
       machine: nextMachine,
     };
     const tx = {
-      repair: { update: jest.fn().mockResolvedValue(updated) },
+      repair: {
+        update: jest.fn().mockResolvedValue(updated),
+        findUnique: jest.fn().mockResolvedValue(updated),
+      },
       machine: { update: jest.fn().mockResolvedValue(undefined) },
     };
     const prisma = {

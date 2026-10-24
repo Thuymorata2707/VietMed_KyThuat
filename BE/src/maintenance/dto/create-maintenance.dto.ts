@@ -6,8 +6,9 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
+import { UsedPartsContainerDto } from '../../common/dto/used-part.dto';
 
-export class CreateMaintenanceDto {
+export class CreateMaintenanceDto extends UsedPartsContainerDto {
   @IsString()
   @IsOptional()
   title?: string;

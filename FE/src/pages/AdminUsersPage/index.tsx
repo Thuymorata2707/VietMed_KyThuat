@@ -140,6 +140,7 @@ export function AdminUsersPage({ formMode, user }: { formMode?: 'create' | 'edit
   const activeSection = normalizePeopleSection(searchParams.get('tab'));
 
   const usersQuery = useQuery({
+    enabled: isFormPage || activeSection !== 'audit',
     queryKey: [...queryKeys.adminUsers.bootstrap, formMode === 'create' ? 'form-create' : 'list', userId],
     queryFn: async (): Promise<AdminUsersBootstrap> => {
       const [usersResult, rolesResult, regionsResult] = await Promise.all([

@@ -77,6 +77,7 @@ type WorkReportRow = {
   machineId: string | null;
   machineModelId: string | null;
   model: string;
+  modelVariants?: Array<{ id: string | null; label: string }>;
   machineCode: string;
   serialNumber: string;
   note: string | null;
@@ -288,14 +289,20 @@ export class ReportsService {
         this.matchesCustomer(row, customerId) &&
         this.matchesModel(row, machineModelId) &&
         this.matchesProvince(row, province),
-    );
+    ).map((row) => {
+      if (!machineModelId || row.kind !== 'installation') return row;
+      const decoded = decodeURIComponent(machineModelId);
+      const matchingModel = row.modelVariants?.find((model) => model.id === decoded || model.label === decoded);
+      return matchingModel ? { ...row, machineModelId: matchingModel.id, model: matchingModel.label } : row;
+    });
 
+    const expandedModelRows = this.expandModelRows(allRows);
     const options = {
       customers: this.buildDistinctOptions(allRows, (row) => ({
         id: row.customerId || row.customer,
         label: row.customer,
       })),
-      models: this.buildDistinctOptions(allRows, (row) => ({
+      models: this.buildDistinctOptions(expandedModelRows, (row) => ({
         id: row.machineModelId || row.model,
         label: row.model,
       })),
@@ -357,7 +364,7 @@ export class ReportsService {
       ),
       byMachine: this.buildTechnicalMachineGroups(rows),
       byModel: this.groupTechnicalRows(
-        rows,
+        this.expandModelRows(rows),
         (row) => row.machineModelId || row.model || 'unknown-model',
         (row) => row.model || 'Chưa có model',
       ),
@@ -378,7 +385,24 @@ export class ReportsService {
   private matchesModel(row: WorkReportRow, modelKey?: string) {
     if (!modelKey) return true;
     const decoded = decodeURIComponent(modelKey);
-    return row.machineModelId === decoded || row.model === decoded;
+    return row.machineModelId === decoded || row.model === decoded ||
+      Boolean(row.modelVariants?.some((model) => model.id === decoded || model.label === decoded));
+  }
+
+  private expandModelRows(rows: WorkReportRow[]): WorkReportRow[] {
+    return rows.flatMap((row) => {
+      if (row.kind !== 'installation' || !row.modelVariants?.length) return [row];
+      const uniqueModels = new Map<string, { id: string | null; label: string }>();
+      for (const model of row.modelVariants) {
+        const key = model.label.trim().toLocaleLowerCase('vi');
+        if (!key) continue;
+        const existing = uniqueModels.get(key);
+        uniqueModels.set(key, existing ? { id: existing.id || model.id, label: existing.label } : model);
+      }
+      return uniqueModels.size
+        ? [...uniqueModels.values()].map((model) => ({ ...row, machineModelId: model.id, model: model.label }))
+        : [row];
+    });
   }
 
   private matchesProvince(row: WorkReportRow, province?: string) {
@@ -1114,6 +1138,7 @@ export class ReportsService {
         },
       },
       plannedMachineModelId: true,
+      installedDeviceItems: true,
       plannedModelName: true,
       plannedMachineModel: {
         select: { id: true, name: true, displayName: true, code: true },
@@ -1373,6 +1398,22 @@ export class ReportsService {
       machineModelId:
         item.plannedMachineModelId || item.machine?.machineModelId || null,
       model: this.modelName(item),
+      modelVariants: [
+        {
+          id: item.plannedMachineModelId || item.machine?.machineModelId || null,
+          label: this.modelName(item),
+        },
+        ...(Array.isArray(item.installedDeviceItems)
+          ? item.installedDeviceItems.flatMap((value) => {
+              if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+              const device = value as { model?: unknown; itemName?: unknown };
+              const label = typeof device.model === 'string' && device.model.trim()
+                ? device.model.trim()
+                : typeof device.itemName === 'string' ? device.itemName.trim() : '';
+              return label ? [{ id: null, label }] : [];
+            })
+          : []),
+      ],
       machineCode: item.machine?.machineCode || '-',
       serialNumber: item.machine?.serialNumber || '-',
       note: item.note,

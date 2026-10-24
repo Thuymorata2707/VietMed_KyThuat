@@ -11,6 +11,18 @@ export type CustomerSummary = {
   name: string;
   hospitalName?: string | null;
   customerType?: string | null;
+  salesChannel?: 'DIRECT' | 'DEALER' | null;
+  dealer?: { id: string; name: string; customerCode?: string | null } | null;
+  dealerCustomers?: Array<{
+    id: string;
+    name: string;
+    customerCode?: string | null;
+    customerType?: string | null;
+    status?: string | null;
+    province?: string | null;
+    phone?: string | null;
+    _count?: { machines?: number };
+  }>;
   status?: string | null;
   phone?: string | null;
   contactPerson?: string | null;
@@ -32,6 +44,7 @@ export type CustomerSummary = {
   _count?: {
     machines?: number;
     machineInstallations?: number;
+    dealerCustomers?: number;
   };
 };
 

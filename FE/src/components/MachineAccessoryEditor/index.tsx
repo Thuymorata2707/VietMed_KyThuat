@@ -82,15 +82,15 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
   }
 
   return (
-    <div className={`${compact ? 'machine-accessory-editor compact' : 'machine-accessory-editor'} grid gap-3 rounded-2xl border border-[#dbe5ef] bg-[#fafafa] p-4`}>
+    <div className={`${compact ? 'machine-accessory-editor compact' : 'machine-accessory-editor'} grid gap-3 ${compact ? '' : 'rounded-2xl border border-[#dbe5ef] bg-[#fafafa] p-4'}`}>
       <div className="machine-accessory-header flex flex-wrap items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#333333]">
-          <ScanLine size={17} className="text-[#18181b]" />
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#475467]">
+          <ScanLine size={16} className="text-[#667085]" />
           {isEndoscopy ? 'Phụ kiện nội soi đi kèm' : isProbe ? 'Đầu dò đi kèm' : 'Phụ kiện đi kèm'}
         </span>
         <button className="secondary-button compact" onClick={addItem} type="button">
           <Plus size={16} />
-          Thêm
+          {isProbe ? 'Thêm đầu dò' : 'Thêm'}
         </button>
       </div>
 
@@ -128,11 +128,18 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
       ) : null}
 
       <div className="machine-accessory-list grid w-full gap-3">
+        {isProbe && items.length ? (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-1 text-xs font-semibold text-[#667085]">
+            <div className="grid min-w-0 grid-cols-2 gap-3"><span>Đầu dò</span><span>S/N</span></div><span className="sr-only">Thao tác</span>
+          </div>
+        ) : null}
         {items.map((item, index) => {
           const accessoryName = item.name || item.code || '';
           const hasModelField = isEndoscopy && endoscopyAccessoriesWithModel.has(accessoryName);
           const hasQuantityField = !isProbe && !isCoreEndoscopyAccessory(accessoryName);
-          const fieldsClass = hasModelField
+          const fieldsClass = isProbe
+            ? 'grid w-full min-w-0 grid-cols-2 gap-3'
+            : hasModelField
             ? hasQuantityField
               ? 'grid w-full min-w-0 gap-3 md:grid-cols-4'
               : 'grid w-full min-w-0 gap-3 md:grid-cols-3'
@@ -141,10 +148,10 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
               : 'grid w-full min-w-0 gap-3 md:grid-cols-2';
 
           return (
-            <div className="machine-accessory-row grid w-full min-w-0 gap-3 rounded-2xl border border-[#eeeeee] bg-white p-3" key={`${item.id ?? 'new'}-${index}`}>
+              <div className={`machine-accessory-row grid w-full min-w-0 gap-3 ${isProbe ? 'grid-cols-[minmax(0,1fr)_auto] items-center border-b border-[#eef2f6] pb-3 last:border-0 last:pb-0' : compact ? 'border-b border-[#eef2f6] pb-3 last:border-0 last:pb-0' : 'rounded-2xl border border-[#eeeeee] bg-white p-3'}`} key={`${item.id ?? 'new'}-${index}`}>
               <div className={fieldsClass}>
                 <label className={labelClass}>
-                  {isEndoscopy ? 'Tên phụ kiện' : isProbe ? 'Ký hiệu đầu dò' : 'Tên phụ kiện'}
+                  {isProbe ? <span className="sr-only">Đầu dò</span> : isEndoscopy ? 'Tên phụ kiện' : 'Tên phụ kiện'}
                   {isProbe ? (
                     <select className={fieldClass} onChange={(event) => {
                       const option = probeOptions.find((candidate) => candidate.value === event.target.value);
@@ -172,7 +179,7 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
                   </label>
                 ) : null}
                 <label className={labelClass}>
-                  Serial
+                  {isProbe ? <span className="sr-only">S/N</span> : 'Serial'}
                   <input className={fieldClass} onChange={(event) => updateItem(index, { serialNumber: event.target.value })} value={item.serialNumber || ''} />
                 </label>
                 {hasQuantityField ? (
@@ -191,7 +198,7 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
                   </label>
                 </details>
               ) : null}
-              <button className="icon-button danger justify-self-start" onClick={() => removeItem(index)} title="Xóa phụ kiện" type="button">
+              <button className="icon-button danger justify-self-start" onClick={() => removeItem(index)} title={isProbe ? 'Xóa đầu dò' : 'Xóa phụ kiện'} type="button">
                 <Trash2 size={16} />
               </button>
             </div>
@@ -200,7 +207,7 @@ export function MachineAccessoryEditor({ value, onChange, compact, mode = 'probe
       </div>
 
       {!items.length ? (
-        <div className="machine-accessory-empty rounded-xl border border-dashed border-[#d6d6d6] bg-white px-4 py-4 text-sm leading-6 text-[#666666]">
+        <div className="machine-accessory-empty py-1 text-sm text-[#667085]">
           Chưa có phụ kiện.
         </div>
       ) : null}

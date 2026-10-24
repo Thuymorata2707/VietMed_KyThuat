@@ -35,10 +35,10 @@ export function ModelInfoFields({ className = '', model }: ModelInfoFieldsProps)
   return (
     <div className={`grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4 ${className}`}>
       {items.map((item) => (
-        <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[#78716c]" key={item.label}>
+        <label className="grid min-w-0 gap-1.5 text-xs font-medium text-[#475467]" key={item.label}>
           {item.label}
           <input
-            className="h-11 min-w-0 rounded-xl border border-[#e4dfdb] bg-[#faf9f7] px-3 text-sm font-semibold text-[#292524] outline-none"
+            className="h-11 min-w-0 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm font-medium text-[#475467] outline-none"
             readOnly
             value={item.value || '-'}
           />

@@ -1,0 +1,51 @@
+import { Text, TextInput } from '@/components/text';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { deviceApi } from '@/api/device.api';
+import { FieldColors } from '@/constants/field-theme';
+import { Eyebrow, FieldIcon } from '@/components/field-ui';
+import { useResource } from '@/hooks/use-resource';
+import { useAuth } from '@/contexts/auth-context';
+
+const inventoryLabels: Record<string, string> = { IN_STOCK: 'Trong kho', INSTALLED: 'Đã lắp', RESERVED: 'Đã giữ', SOLD: 'Đã bán', RETURNED: 'Đã thu hồi', ACCESSORY_SPLIT: 'Tách phụ kiện' };
+const statusLabels: Record<string, string> = { ACTIVE: 'Hoạt động', MAINTENANCE: 'Bảo trì', REPAIRING: 'Đang sửa', INACTIVE: 'Ngừng hoạt động' };
+const statusOptions = Object.entries(statusLabels);
+
+export default function MachinesScreen() {
+  const router = useRouter(); const { user } = useAuth();
+  const [query, setQuery] = useState(''); const [tab, setTab] = useState<'machines' | 'models'>('machines');
+  const { data: machines, loading, error, refresh } = useResource(deviceApi.machines);
+  const { data: models, loading: modelsLoading } = useResource(deviceApi.models);
+  const hasFocused = useRef(false);
+  useFocusEffect(useCallback(() => { if (hasFocused.current) void refresh(); hasFocused.current = true; }, [refresh]));
+  const canCreate = /admin|manager|engineer|quản trị|quản lý|kỹ sư/i.test(user?.role?.name || '');
+  const canEdit = /admin|engineer|quản trị|kỹ sư/i.test(user?.role?.name || '');
+  const rows = useMemo(() => (machines || []).filter((machine) => `${machine.machineCode || ''} ${machine.serialNumber || ''} ${machine.name || ''} ${machine.machineModel?.name || machine.modelName || ''}`.toLocaleLowerCase('vi').includes(query.trim().toLocaleLowerCase('vi'))), [machines, query]);
+  const modelRows = useMemo(() => (models || []).filter((model) => `${model.code || ''} ${model.name} ${model.manufacturer || ''}`.toLocaleLowerCase('vi').includes(query.trim().toLocaleLowerCase('vi'))), [models, query]);
+
+  function changeStatus(id: string) {
+    Alert.alert('Cập nhật trạng thái', 'Chọn trạng thái vận hành của máy', [...statusOptions.map(([value, label]) => ({ text: label, onPress: () => { void deviceApi.setStatus(id, value).then(refresh).catch((e) => Alert.alert('Không cập nhật được', e?.response?.data?.message || 'Vui lòng thử lại.')); } })), { text: 'Hủy', style: 'cancel' }]);
+  }
+  function deleteMachine(id: string, label: string) {
+    Alert.alert('Xóa hồ sơ máy?', `Xóa ${label}. BE sẽ từ chối nếu máy đã có lịch sử nghiệp vụ hoặc phụ kiện liên kết.`, [{ text: 'Hủy', style: 'cancel' }, { text: 'Xóa máy', style: 'destructive', onPress: () => { void deviceApi.remove(id).then(refresh).catch((e) => Alert.alert('Không xóa được', e?.response?.data?.message || 'Máy có thể đang được liên kết với dữ liệu khác.')); } }]);
+  }
+
+  return <SafeAreaView style={styles.safe} edges={['top']}><ScrollView contentContainerStyle={styles.content}>
+    <View style={styles.top}><View><Eyebrow>THIẾT BỊ & DANH MỤC</Eyebrow><Text style={styles.title}>Thiết bị</Text></View>{canCreate && tab === 'machines' ? <Pressable onPress={() => router.push('/machine-form')} style={styles.add}><Text style={styles.addText}>＋ Thêm máy</Text></Pressable> : null}</View>
+    <View style={styles.tabs}><Pressable onPress={() => setTab('machines')} style={[styles.tab, tab === 'machines' && styles.activeTab]}><Text style={[styles.tabText, tab === 'machines' && styles.activeTabText]}>Máy ({machines?.length ?? '…'})</Text></Pressable><Pressable onPress={() => setTab('models')} style={[styles.tab, tab === 'models' && styles.activeTab]}><Text style={[styles.tabText, tab === 'models' && styles.activeTabText]}>Model ({models?.length ?? '…'})</Text></Pressable></View>
+    <View style={styles.search}><FieldIcon name="search" size={18} color={FieldColors.muted} /><TextInput value={query} onChangeText={setQuery} placeholder={tab === 'machines' ? 'Tìm mã máy, model, serial...' : 'Tìm tên hoặc mã model...'} placeholderTextColor={FieldColors.muted} style={styles.searchInput} /></View>
+    <View style={styles.head}><Text style={styles.section}>{tab === 'machines' ? 'Danh sách máy' : 'Danh mục model'}</Text><Pressable onPress={() => void refresh()}><Text style={styles.refresh}>Làm mới</Text></Pressable></View>
+    {tab === 'machines' && loading || tab === 'models' && modelsLoading ? <ActivityIndicator color={FieldColors.brand} style={{ marginTop: 30 }} /> : null}
+    {error && tab === 'machines' ? <Text style={styles.error}>{error}</Text> : null}
+    {tab === 'machines' ? rows.map((machine) => <View key={machine.id} style={styles.row}>
+      <View style={styles.rowMain}><View style={styles.icon}><FieldIcon name="machine" size={19} color={FieldColors.brand} /></View>
+        <View style={styles.rowBody}><Text style={styles.code}>{machine.machineCode || 'Chưa có mã máy'}</Text><Text style={styles.name}>{machine.machineModel?.name || machine.modelName || machine.name || 'Thiết bị'}</Text><Text style={styles.serial}>S/N: {machine.serialNumber || 'Chưa cập nhật'}{machine.customer?.name ? ` · ${machine.customer.name}` : ''}</Text><View style={styles.rowFoot}><Text style={styles.badge}>{inventoryLabels[machine.inventoryStatus || ''] || machine.inventoryStatus || 'Chưa phân loại'}</Text><Text style={styles.machineStatus}>{statusLabels[machine.status || ''] || machine.status || ''}</Text></View></View>
+      </View><View style={styles.actions}>{canEdit ? <Pressable accessibilityLabel="Sửa thông tin máy" onPress={() => router.push({ pathname: '/machine-form', params: { id: machine.id } })} style={styles.action}><Text style={styles.actionText}>Sửa</Text></Pressable> : null}<Pressable accessibilityLabel="Cập nhật trạng thái máy" onPress={() => changeStatus(machine.id)} style={styles.action}><Text style={styles.actionText}>Trạng thái</Text></Pressable>{canEdit ? <Pressable accessibilityLabel="Xóa hồ sơ máy" onPress={() => deleteMachine(machine.id, machine.machineCode || machine.serialNumber || 'máy này')} style={[styles.action, styles.deleteAction]}><Text style={styles.deleteText}>Xóa</Text></Pressable> : null}</View>
+    </View>) : modelRows.map((model) => <View key={model.id} style={styles.row}><View style={styles.rowMain}><View style={[styles.icon, styles.modelIcon]}><FieldIcon name="machine" size={18} color={FieldColors.blue} /></View><View style={styles.rowBody}><Text style={styles.code}>{model.code || 'MODEL'}</Text><Text style={styles.name}>{model.name}</Text><Text style={styles.serial}>{[model.manufacturer, model.countryOfOrigin, model.productCategory].filter(Boolean).join(' · ') || 'Danh mục model'}</Text></View></View></View>)}
+    {tab === 'machines' && !loading && !error && rows.length === 0 ? <Text style={styles.empty}>Không có máy phù hợp. Thêm máy mới để bắt đầu quản lý thiết bị.</Text> : null}
+    {tab === 'models' && !modelsLoading && modelRows.length === 0 ? <Text style={styles.empty}>Không có model phù hợp.</Text> : null}
+  </ScrollView></SafeAreaView>;
+}
+const styles = StyleSheet.create({ safe: { backgroundColor: FieldColors.canvas, flex: 1 }, content: { gap: 15, padding: 16, paddingBottom: 34 }, top: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, title: { color: FieldColors.ink, fontSize: 29, fontWeight: '700', letterSpacing: -0.6, marginTop: 4 }, add: { backgroundColor: FieldColors.brandDark, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 11 }, addText: { color: '#fff', fontSize: 14, fontWeight: '700' }, tabs: { backgroundColor: '#E9E8E5', borderRadius: 13, flexDirection: 'row', padding: 4 }, tab: { alignItems: 'center', borderRadius: 10, flex: 1, paddingVertical: 10 }, activeTab: { backgroundColor: FieldColors.surface }, tabText: { color: FieldColors.muted, fontSize: 11, fontWeight: '600' }, activeTabText: { color: FieldColors.brandDark, fontWeight: '700' }, search: { alignItems: 'center', backgroundColor: FieldColors.surface, borderRadius: 14, flexDirection: 'row', gap: 9, minHeight: 48, paddingHorizontal: 14 }, searchInput: { color: FieldColors.ink, flex: 1, fontSize: 13 }, head: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' }, section: { color: FieldColors.ink, fontSize: 16, fontWeight: '700' }, refresh: { color: FieldColors.brand, fontSize: 12, fontWeight: '600', padding: 7 }, row: { backgroundColor: FieldColors.surface, borderRadius: 17, gap: 11, padding: 14, shadowColor: '#24262A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.035, shadowRadius: 8, elevation: 1 }, rowMain: { alignItems: 'center', flexDirection: 'row', gap: 11 }, icon: { alignItems: 'center', backgroundColor: FieldColors.brandSoft, borderRadius: 14, height: 43, justifyContent: 'center', width: 43 }, modelIcon: { backgroundColor: FieldColors.blueSoft }, rowBody: { flex: 1, gap: 4 }, code: { color: FieldColors.muted, fontSize: 12, fontWeight: '600', letterSpacing: 0.3 }, name: { color: FieldColors.ink, fontSize: 14, fontWeight: '700' }, serial: { color: FieldColors.muted, fontSize: 12, lineHeight: 15 }, rowFoot: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 }, badge: { backgroundColor: FieldColors.brandSoft, borderRadius: 7, color: FieldColors.brandDark, fontSize: 9, fontWeight: '700', overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5 }, machineStatus: { color: FieldColors.muted, fontSize: 9 }, actions: { alignItems: 'center', borderTopColor: '#F0EFED', borderTopWidth: 1, flexDirection: 'row', gap: 8, justifyContent: 'flex-end', paddingTop: 9 }, action: { backgroundColor: '#F0EFED', borderRadius: 9, paddingHorizontal: 11, paddingVertical: 8 }, actionText: { color: FieldColors.brandDark, fontSize: 12, fontWeight: '600' }, deleteAction: { backgroundColor: FieldColors.redSoft }, deleteText: { color: FieldColors.red, fontSize: 10, fontWeight: '600' }, error: { color: FieldColors.red }, empty: { color: FieldColors.muted, lineHeight: 19, paddingVertical: 28, textAlign: 'center' } });

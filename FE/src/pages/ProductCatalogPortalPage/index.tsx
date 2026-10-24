@@ -1,4 +1,4 @@
-import { ArrowLeft, ImageOff, Loader2, PackagePlus, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeft, ImageOff, Loader2, PackagePlus, Pencil, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
@@ -101,19 +101,30 @@ const productCategoryOptions = [
 
 export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const catalogQuery = useCatalogOverview();
   const role = getRoleName(user);
   const userExpertise = getUserExpertiseGroups(user);
   const canAddProduct = role === 'admin' || role === 'engineer';
+  const canDeleteModel = role === 'admin';
+  const deleteModelMutation = useMutation({
+    mutationFn: (modelId: string) => apiFetch(`/machine-models/${modelId}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.productCatalog.overview }),
+  });
   const [query, setQuery] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<MachineModel | null>(null);
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'empty'>('all');
   const [selectedIndustryId, setSelectedIndustryId] = useState(() => searchParams.get('industry') ?? '');
   const industries = catalogQuery.data?.industries ?? [];
   const models = catalogQuery.data?.models ?? [];
   const stockByModel = catalogQuery.data?.stockByModel ?? {};
   const loading = catalogQuery.isLoading || catalogQuery.isFetching;
-  const error = catalogQuery.error instanceof Error ? catalogQuery.error.message : '';
+  const error = catalogQuery.error instanceof Error
+    ? catalogQuery.error.message
+    : deleteModelMutation.error instanceof Error
+      ? deleteModelMutation.error.message
+      : '';
 
   const visibleIndustries = useMemo(() => industries.filter((industry) => role !== 'engineer' || !userExpertise.length || userExpertise.includes(industry.expertiseGroup)), [industries, role, userExpertise]);
   const visibleModels = useMemo(() => models.filter((model) => {
@@ -130,14 +141,15 @@ export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
     return hasStock && (namedMatch || hasMatchingModels);
   });
   const selectedIndustry = matchingIndustries.find((item) => item.id === selectedIndustryId) ?? matchingIndustries[0] ?? null;
-  const filteredModels = useMemo(() => visibleModels.filter((model) => {
+  const selectedIndustryGroup = visibleIndustries.find((industry) => industry.id === selectedIndustry?.id)?.expertiseGroup;
+  const filteredModels = useMemo(() => sortModelsForIndustry(visibleModels.filter((model) => {
     if (model.businessLine?.productIndustry?.id !== selectedIndustry?.id) return false;
     const matchesQuery = !keyword || [model.code, model.name, model.displayName, model.manufacturer, model.productLine, model.businessLine?.name, model.businessLine?.productIndustry?.name]
       .filter(Boolean).some((value) => String(value).toLocaleLowerCase('vi').includes(keyword));
     const stock = stockByModel[model.id] ?? { inStock: 0, total: 0 };
     const matchesStock = stockFilter === 'all' || (stockFilter === 'in-stock' ? stock.inStock > 0 : stock.inStock === 0);
     return matchesQuery && matchesStock;
-  }), [keyword, selectedIndustry?.id, stockByModel, stockFilter, visibleModels]);
+  }), selectedIndustryGroup), [keyword, selectedIndustry?.id, selectedIndustryGroup, stockByModel, stockFilter, visibleModels]);
   return (
     <PageFrame>
       <EquipmentAreaNav active="catalog" />
@@ -167,12 +179,17 @@ export function ProductCatalogPortalPage({ user }: { user: ApiUser }) {
           stockByModel={stockByModel}
           stockFilter={stockFilter}
           canAddProduct={canAddProduct}
+          canDeleteModel={canDeleteModel}
           onIndustryChange={setSelectedIndustryId}
+          onDeleteModel={setPendingDelete}
+          deletingModel={deleteModelMutation.isPending ? deleteModelMutation.variables : undefined}
           onQueryChange={setQuery}
           onStockFilterChange={setStockFilter}
           onOpenModel={(modelId) => navigate(`/business-lines/models/${modelId}`)}
         />
       ) : null}
+
+      {pendingDelete ? <ConfirmDeleteModel model={pendingDelete} loading={deleteModelMutation.isPending} onCancel={() => setPendingDelete(null)} onConfirm={() => deleteModelMutation.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })} /> : null}
 
       {!loading && matchingIndustries.length === 0 ? <CatalogEmpty label="Chưa có thiết bị phù hợp với lựa chọn này." /> : null}
     </PageFrame>
@@ -189,17 +206,26 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
   const [modelIndustryId, setModelIndustryId] = useState(industryId);
   const [modelFormError, setModelFormError] = useState('');
   const [modelModalOpen, setModelModalOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<MachineModel | null>(null);
   const catalogQuery = useCatalogOverview();
   const role = getRoleName(user);
   const userExpertise = getUserExpertiseGroups(user);
   const canAddProduct = role === 'admin' || role === 'engineer';
   const canAddModel = role === 'admin';
+  const deleteModelMutation = useMutation({
+    mutationFn: (modelId: string) => apiFetch(`/machine-models/${modelId}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.productCatalog.overview }),
+  });
   const industries = catalogQuery.data?.industries ?? [];
   const businessLines = catalogQuery.data?.businessLines ?? [];
   const models = catalogQuery.data?.models ?? [];
   const stockByModel = catalogQuery.data?.stockByModel ?? {};
   const loading = catalogQuery.isLoading || catalogQuery.isFetching;
-  const error = catalogQuery.error instanceof Error ? catalogQuery.error.message : '';
+  const error = catalogQuery.error instanceof Error
+    ? catalogQuery.error.message
+    : deleteModelMutation.error instanceof Error
+      ? deleteModelMutation.error.message
+      : '';
   const industry = industries.find((item) => item.id === industryId) ?? null;
   const modelIndustry = industries.find((item) => item.id === modelIndustryId) ?? null;
   const modelIndustryBusinessLines = useMemo(() => businessLines.filter((line) => line.productIndustry?.id === modelIndustryId), [businessLines, modelIndustryId]);
@@ -222,7 +248,7 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
   const visibleModels = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return models.filter((model) => {
+    return sortModelsForIndustry(models.filter((model) => {
       const industry = model.businessLine?.productIndustry;
       const matchesIndustry = industry?.id === industryId;
       const matchesExpertise = role !== 'engineer' || !userExpertise.length || Boolean(industry?.expertiseGroup && userExpertise.includes(industry.expertiseGroup));
@@ -233,8 +259,8 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
           .some((value) => String(value).toLowerCase().includes(normalizedQuery));
 
       return matchesIndustry && matchesExpertise && matchesQuery;
-    });
-  }, [industryId, models, query, role, userExpertise]);
+    }), industry?.expertiseGroup);
+  }, [industry?.expertiseGroup, industryId, models, query, role, userExpertise]);
 
   const industryStock = useMemo(
     () =>
@@ -409,8 +435,11 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
       {!loading && visibleModels.length ? (
         <CatalogModelTable
           canAddProduct={canAddProduct}
+          canDeleteModel={canAddModel}
           catalogSearch={catalogSearch}
+          deletingModel={deleteModelMutation.isPending ? deleteModelMutation.variables : undefined}
           models={visibleModels}
+          onDeleteModel={setPendingDelete}
           onOpenModel={openModelDetail}
           stockByModel={stockByModel}
         />
@@ -432,6 +461,7 @@ export function ProductIndustryModelsPage({ user }: { user: ApiUser }) {
           selectedBusinessLine={selectedBusinessLine}
         />
       ) : null}
+      {pendingDelete ? <ConfirmDeleteModel model={pendingDelete} loading={deleteModelMutation.isPending} onCancel={() => setPendingDelete(null)} onConfirm={() => deleteModelMutation.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) })} /> : null}
     </PageFrame>
   );
 }
@@ -505,8 +535,10 @@ function CatalogPortalHero({
 
 function CatalogBrowser({
   canAddProduct,
+  canDeleteModel,
   industries,
   models,
+  onDeleteModel,
   onIndustryChange,
   onOpenModel,
   onQueryChange,
@@ -516,10 +548,14 @@ function CatalogBrowser({
   selectedIndustryId,
   stockByModel,
   stockFilter,
+  deletingModel,
 }: {
   canAddProduct: boolean;
+  canDeleteModel: boolean;
   industries: Array<{ id: string; name: string; expertise: string; modelCount: number; stock: ModelStock }>;
   models: MachineModel[];
+  onDeleteModel: (model: MachineModel) => void;
+  deletingModel?: string;
   onIndustryChange: (id: string) => void;
   onOpenModel: (id: string) => void;
   onQueryChange: (value: string) => void;
@@ -577,7 +613,7 @@ function CatalogBrowser({
               <div><span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#7a8580]">{selectedIndustry.expertise}</span><h2 className="mt-1 text-xl font-semibold tracking-[-0.025em] text-[#202124]">{selectedIndustry.name}</h2></div>
               <div className="text-sm text-[#667085]">{models.length} model · {selectedIndustry.stock.inStock} máy còn kho</div>
             </div>
-            {models.length ? <CatalogModelTable canAddProduct={canAddProduct} catalogSearch={`${selectedIndustryId}:${query}:${stockFilter}`} models={models} onOpenModel={onOpenModel} stockByModel={stockByModel} /> : <p className="rounded-xl bg-[#f8faf9] px-4 py-8 text-center text-sm text-[#667085]">Không có model phù hợp trong ngành hàng này.</p>}
+            {models.length ? <CatalogModelTable canAddProduct={canAddProduct} canDeleteModel={canDeleteModel} catalogSearch={`${selectedIndustryId}:${query}:${stockFilter}`} deletingModel={deletingModel} models={models} onDeleteModel={onDeleteModel} onOpenModel={onOpenModel} stockByModel={stockByModel} /> : <p className="rounded-xl bg-[#f8faf9] px-4 py-8 text-center text-sm text-[#667085]">Không có model phù hợp trong ngành hàng này.</p>}
           </> : <p className="py-16 text-center text-sm text-[#667085]">Không có ngành hàng phù hợp.</p>}
         </div>
       </div>
@@ -587,14 +623,20 @@ function CatalogBrowser({
 
 function CatalogModelTable({
   canAddProduct,
+  canDeleteModel,
   catalogSearch,
+  deletingModel,
   models,
+  onDeleteModel,
   onOpenModel,
   stockByModel,
 }: {
   canAddProduct: boolean;
+  canDeleteModel: boolean;
   catalogSearch: string;
+  deletingModel?: string;
   models: MachineModel[];
+  onDeleteModel: (model: MachineModel) => void;
   onOpenModel: (modelId: string) => void;
   stockByModel: Record<string, ModelStock>;
 }) {
@@ -629,30 +671,24 @@ function CatalogModelTable({
           return <article className="grid gap-3 rounded-xl border border-[#e7e9ec] bg-white p-3 transition hover:bg-[#fafafa]" key={model.id}>
             <button className="flex min-w-0 items-center gap-3 text-left" onClick={() => onOpenModel(model.id)} type="button">
               <ModelImage model={model} />
-              <span className="min-w-0"><strong className="block truncate text-sm text-[#202124]">{modelShortLabel(model)}</strong><span className="mt-1 block truncate text-sm text-[#475467]">{modelProductName(model)}</span></span>
+              <span className="min-w-0"><strong className="block truncate text-sm font-semibold text-[#202124]">{modelShortLabel(model)}</strong><span className="mt-0.5 block truncate text-xs text-[#667085]">{modelProductName(model)}</span></span>
             </button>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[#eef0f2] pt-2 text-xs text-[#667085]">
-              <span className="max-w-full truncate font-medium text-[#344054]">{model.businessLine?.name || 'Chưa có dòng'}</span>
+              <span className="max-w-full font-medium text-[#344054]">{productLineDisplayLabel(model)}</span>
               <span>{model.manufacturer || 'Chưa có hãng'}</span>
               <span>{modelOrigin(model) || 'Chưa rõ xuất xứ'}</span>
               <span className="rounded-full bg-[#eefaf3] px-2 py-1 font-semibold text-[#177245]">{stock.inStock}/{stock.total} kho</span>
             </div>
-            {canAddProduct ? <Link aria-label={`Thêm máy ${modelShortLabel(model)}`} className="primary-button compact justify-center" onClick={(event) => event.stopPropagation()} to={`/business-lines/add-product?modelId=${model.id}`}><PackagePlus size={15} />Thêm máy</Link> : null}
+            <div className="flex gap-2">
+              {canAddProduct ? <Link aria-label={`Thêm máy ${modelShortLabel(model)}`} className="primary-button compact flex-1 justify-center" onClick={(event) => event.stopPropagation()} to={`/business-lines/add-product?modelId=${model.id}`}><PackagePlus size={15} />Thêm máy</Link> : null}
+              {canDeleteModel ? <button aria-label={`Xóa model ${modelShortLabel(model)}`} className="danger-button compact" disabled={deletingModel === model.id} onClick={(event) => { event.stopPropagation(); onDeleteModel(model); }} title="Xóa model" type="button">{deletingModel === model.id ? <Loader2 className="spin-icon" size={15} /> : <Trash2 size={15} />}</button> : null}
+            </div>
           </article>;
         })}
       </div>
       <div className="hidden w-full overflow-hidden min-[1400px]:block">
-        <table className="w-full min-w-full table-fixed border-collapse text-left">
-          <colgroup>
-            <col className="w-[13%]" />
-            <col className="w-[30%]" />
-            <col className="w-[15%]" />
-            <col className="w-[12%]" />
-            <col className="w-[9%]" />
-            <col className="w-[8%]" />
-            <col className="w-[13%]" />
-          </colgroup>
-          <thead className="bg-white text-xs font-black uppercase tracking-[0.08em] text-[#667985]">
+        <table className="w-full border-collapse text-left">
+          <thead className="bg-[#f8faf9] text-[11px] font-semibold uppercase tracking-[0.06em] text-[#667085]">
             <tr className="border-b border-[#e4e4e7]">
               <th className="px-4 py-3">Model</th>
               <th className="px-4 py-3">Tên sản phẩm</th>
@@ -667,9 +703,12 @@ function CatalogModelTable({
             {pagedModels.map((model) => (
               <CatalogModelRow
                 canAddProduct={canAddProduct}
+                canDeleteModel={canDeleteModel}
                 catalogSearch={catalogSearch}
+                deleting={deletingModel === model.id}
                 key={model.id}
                 model={model}
+                onDelete={() => onDeleteModel(model)}
                 onOpen={onOpenModel}
                 stock={stockByModel[model.id]}
               />
@@ -728,13 +767,19 @@ function TablePager({
 
 function CatalogModelRow({
   canAddProduct,
+  canDeleteModel,
+  deleting,
   model,
+  onDelete,
   onOpen,
   stock,
 }: {
   canAddProduct: boolean;
+  canDeleteModel: boolean;
+  deleting: boolean;
   catalogSearch: string;
   model: MachineModel;
+  onDelete: () => void;
   onOpen: (modelId: string) => void;
   stock?: ModelStock;
 }) {
@@ -753,34 +798,50 @@ function CatalogModelRow({
       }}
       tabIndex={0}
     >
-      <td className="px-4 py-4">
+      <td className="whitespace-nowrap px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <ModelImage model={model} />
-          <strong className="min-w-0 truncate text-base font-black text-[#1f1f1f]">{modelShortLabel(model)}</strong>
+          <div className="min-w-0">
+            <span className="block text-sm font-semibold text-[#202124]">{modelShortLabel(model)}</span>
+            <span className="mt-0.5 block max-w-[190px] truncate text-xs text-[#667085]" title={model.businessLine?.name || model.name}>{model.businessLine?.name || model.name}</span>
+          </div>
         </div>
       </td>
-      <td className="px-4 py-4">
-        <span className="block max-w-[360px] truncate text-sm font-semibold text-[#333333]">{modelProductName(model)}</span>
-        <span className="mt-1 block max-w-[360px] truncate text-xs font-medium text-[#667985]">{modelDetailLabel(model)}</span>
+      <td className="px-3 py-3">
+        <span className="block text-sm font-medium text-[#344054]">{modelProductName(model)}</span>
+        {model.displayName && model.displayName !== modelProductName(model) ? <span className="mt-0.5 block max-w-[250px] truncate text-xs text-[#667085]">{model.displayName}</span> : null}
       </td>
-      <td className="px-4 py-4 text-sm">
-        <span className="block truncate font-semibold text-[#333333]" title={model.businessLine?.name || 'Chưa có dòng'}>{model.businessLine?.name || 'Chưa có dòng'}</span>
-        <span className="mt-1 block truncate text-xs font-medium text-[#667985]" title={productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}>{productCategoryLabel(model.productCategory ?? model.businessLine?.productCategory)}</span>
+      <td className="px-3 py-3 text-sm">
+        <span className="block font-medium text-[#344054]">{productLineDisplayLabel(model)}</span>
+        {model.productLine ? <span className="mt-0.5 block text-xs text-[#667085]">{model.productLine}</span> : null}
       </td>
-      <td className="px-4 py-4 text-sm font-semibold text-[#333333]"><span className="block truncate" title={model.manufacturer || 'Chưa có hãng'}>{model.manufacturer || 'Chưa có hãng'}</span></td>
-      <td className="px-4 py-4 text-sm font-semibold text-[#333333]"><span className="block truncate" title={modelOrigin(model) || '-'}>{modelOrigin(model) || '-'}</span></td>
-      <td className="px-4 py-4">
+      <td className="px-3 py-3 text-sm text-[#344054]"><span className="block truncate" title={model.manufacturer || 'Chưa có hãng'}>{model.manufacturer || 'Chưa có hãng'}</span></td>
+      <td className="px-3 py-3 text-sm text-[#344054]"><span className="block truncate" title={modelOrigin(model) || '-'}>{modelOrigin(model) || '-'}</span></td>
+      <td className="px-3 py-3">
         <div className="flex flex-wrap gap-2 text-xs font-bold">
           <span className="rounded-full border border-[#b9e8ca] bg-[#eefaf3] px-2.5 py-1 text-[#177245]">{inStock}/{total} kho</span>
         </div>
       </td>
-      <td className="px-4 py-4">
+      <td className="px-3 py-3">
         <div className="flex justify-end gap-2">
+          {canDeleteModel ? <button aria-label={`Sửa model ${modelShortLabel(model)}`} className="secondary-button compact !min-w-0 !px-2" onClick={(event) => { event.stopPropagation(); onOpen(model.id); }} title="Mở chi tiết model" type="button"><Pencil size={15} /></button> : null}
           {canAddProduct ? (
             <Link aria-label={`Thêm máy ${modelShortLabel(model)}`} className="primary-button compact !min-w-0 !px-2" onClick={(event) => event.stopPropagation()} title="Thêm máy" to={`/business-lines/add-product?modelId=${model.id}`}>
               <PackagePlus size={15} />
               <span className="sr-only">Thêm máy</span>
             </Link>
+          ) : null}
+          {canDeleteModel ? (
+            <button
+              aria-label={`Xóa model ${modelShortLabel(model)}`}
+              className="danger-button compact !min-w-0 !px-2"
+              disabled={deleting}
+              onClick={(event) => { event.stopPropagation(); onDelete(); }}
+              title={deleting ? 'Đang xóa model' : 'Xóa model'}
+              type="button"
+            >
+              {deleting ? <Loader2 className="spin-icon" size={15} /> : <Trash2 size={15} />}
+            </button>
           ) : null}
         </div>
       </td>
@@ -909,6 +970,20 @@ function ModelFormField({ children, label }: { children: ReactNode; label: strin
   );
 }
 
+function ConfirmDeleteModel({ model, loading, onCancel, onConfirm }: { model: MachineModel; loading: boolean; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-[#101828]/45 p-4 backdrop-blur-[2px]" onMouseDown={(event) => { if (event.target === event.currentTarget && !loading) onCancel(); }}>
+      <section aria-labelledby="delete-model-title" aria-modal="true" className="w-full max-w-md rounded-2xl border border-[#e4e7ec] bg-white p-5 shadow-[0_24px_70px_rgba(16,24,40,0.24)]" role="dialog">
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#fef3f2] text-[#b42318]"><Trash2 size={19} /></span>
+          <div><h2 className="text-base font-semibold text-[#101828]" id="delete-model-title">Xóa model này?</h2><p className="mt-1 text-sm leading-6 text-[#475467]">Bạn đang xóa <strong className="font-semibold text-[#344054]">{modelProductName(model)}</strong>. Chỉ xóa được model chưa có máy, phụ kiện hoặc lịch sử liên quan.</p></div>
+        </div>
+        <div className="mt-6 flex justify-end gap-2"><button className="secondary-button" disabled={loading} onClick={onCancel} type="button">Giữ lại</button><button className="danger-button" disabled={loading} onClick={onConfirm} type="button">{loading ? <Loader2 className="spin-icon" size={16} /> : <Trash2 size={16} />}Xóa model</button></div>
+      </section>
+    </div>
+  );
+}
+
 function CatalogLoading({ label }: { label: string }) {
   return (
     <div className="rounded-[28px] border border-dashed border-[#e4e4e7] bg-[#fafafa] p-8 text-center text-sm font-semibold text-[#666666]">
@@ -1014,14 +1089,39 @@ function modelShortLabel(model: MachineModel) {
   return model.code || model.displayName || model.name;
 }
 
-function modelDetailLabel(model: MachineModel) {
-  return [model.name, model.productLine, modelOrigin(model), model.businessLine?.name].filter(Boolean).join(' - ') || 'Chưa có mô tả model';
+function modelProductName(model: MachineModel) {
+  const category = productLineDisplayLabel(model);
+  const modelCode = model.code?.trim();
+  if (category !== 'Chưa có dòng sản phẩm' && modelCode) return `${category} ${modelCode}`;
+  return model.name?.trim() || model.displayName?.trim() || modelCode || 'Chưa có tên model';
 }
 
-function modelProductName(model: MachineModel) {
-  const baseName = model.name || model.displayName || model.code;
-  const modelName = modelShortLabel(model);
-  return baseName?.toLowerCase().includes(modelName.toLowerCase()) ? baseName : `${baseName} ${modelName}`.trim();
+function productLineDisplayLabel(model: MachineModel) {
+  const category = model.productCategory ?? model.businessLine?.productCategory;
+  const labels: Record<string, string> = {
+    ULTRASOUND: 'Máy siêu âm',
+    LAB_TESTING: 'Máy xét nghiệm',
+    BIOCHEMISTRY: 'Máy sinh hóa',
+    IMMUNOLOGY: 'Máy miễn dịch',
+    HEMATOLOGY: 'Máy huyết học',
+    X_RAY: 'Máy X-quang',
+    ENDOSCOPY: 'Máy nội soi',
+  };
+  const categoryLabel = category && labels[category];
+  if (categoryLabel) return categoryLabel;
+  const businessLineName = model.businessLine?.name?.trim();
+  if (!businessLineName) return 'Chưa có dòng sản phẩm';
+  return businessLineName.toLocaleLowerCase('vi').startsWith('máy ')
+    ? businessLineName
+    : `Máy ${businessLineName}`;
+}
+
+function sortModelsForIndustry(models: MachineModel[], expertiseGroup?: ExpertiseGroup) {
+  const direction = expertiseGroup === 'IMAGING' ? -1 : 1;
+  return [...models].sort((first, second) =>
+    direction * modelProductName(first).localeCompare(modelProductName(second), 'vi', { sensitivity: 'base', numeric: true }) ||
+    direction * first.code.localeCompare(second.code, 'vi', { sensitivity: 'base', numeric: true }),
+  );
 }
 
 function modelOrigin(model: MachineModel) {

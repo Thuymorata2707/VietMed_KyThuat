@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,6 +11,8 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import {
   customerAccessWhere,
   installationAccessWhere,
+  demoLoanAccessWhere,
+  deviceServiceTicketAccessWhere,
   inventoryMovementAccessWhere,
   isAdmin,
   machineAccessWhere,
@@ -34,6 +37,8 @@ const ALLOWED_ENTITY_TYPES = [
   'EngineerProfile',
   'MachineInventoryMovement',
   'MachineInstallation',
+  'DeviceServiceTicket',
+  'DemoLoan',
   'WarrantyCard',
   'BusinessLine',
   'User',
@@ -215,8 +220,19 @@ export class AttachmentsService {
   }
 
   async remove(id: string, actor: RequestUser) {
-    assertPermission(actor, PERMISSIONS.ATTACHMENT_DELETE);
     const attachment = await this.findOne(id, actor);
+    if (!isAdmin(actor)) {
+      if (
+        !['Repair', 'Maintenance', 'MachineInstallation', 'DeviceServiceTicket', 'DemoLoan'].includes(attachment.entityType) ||
+        attachment.uploadedById !== actor.id
+      ) {
+        throw new ForbiddenException(
+          'Engineers can only delete work photos they uploaded',
+        );
+      }
+    } else {
+      assertPermission(actor, PERMISSIONS.ATTACHMENT_DELETE);
+    }
 
     const deleted = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.attachment.update({
@@ -331,6 +347,14 @@ export class AttachmentsService {
       case 'MachineInstallation':
         return this.prisma.machineInstallation.findFirst({
           where: { AND: [{ id: entityId }, installationAccessWhere(user)] },
+        });
+      case 'DeviceServiceTicket':
+        return this.prisma.deviceServiceTicket.findFirst({
+          where: { AND: [{ id: entityId }, deviceServiceTicketAccessWhere(user)] },
+        });
+      case 'DemoLoan':
+        return this.prisma.demoLoan.findFirst({
+          where: { AND: [{ id: entityId }, demoLoanAccessWhere(user)] },
         });
       case 'WarrantyCard':
         return this.prisma.warrantyCard.findFirst({

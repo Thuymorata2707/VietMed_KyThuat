@@ -778,7 +778,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
               <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#334155]">
                 Sản phẩm
                 <select
-                  className="h-12 min-w-0 rounded-2xl border border-[#cbd5e1] bg-white px-4 text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                  className="h-11 min-w-0 rounded-xl border border-[#cbd5e1] bg-white px-3 text-sm text-[#172033] outline-none transition focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] disabled:cursor-not-allowed disabled:bg-[#f1f5f9]"
                   disabled={loading}
                   onChange={(event) => selectProduct(event.target.value)}
                   required
@@ -849,7 +849,7 @@ export function ProductAddPage({ user }: { user: ApiUser }) {
 
         <aside className="grid min-w-0 gap-4 self-start min-[1180px]:sticky min-[1180px]:top-4">
           <div className="rounded-[22px] border border-[#dbe6f3] bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.07)]">
-            <div className="grid min-h-44 place-items-center rounded-[20px] bg-[#f8fbff] p-4 text-center">
+        <div className="grid min-h-44 place-items-center rounded-[20px] bg-[#f8fafc] p-4 text-center">
               <ModelImage large model={selectedModel ?? undefined} />
             </div>
             <div className="mt-5">
@@ -966,10 +966,10 @@ function ProductMachineRowsEditor({
   }
 
   return (
-    <div className="grid gap-3 rounded-[18px] border border-[#dbe6f3] bg-[#f8fbff] p-3">
+              <div className="grid gap-3 rounded-[18px] border border-[#e2e8f0] bg-[#f8fafc] p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Nhập từng máy</span>
-        <button className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-3 text-sm font-semibold text-[#172033] shadow-[0_8px_18px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-[#93c5fd] hover:text-[#1d4ed8]" onClick={addRow} type="button">
+        <button className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm font-medium text-[#334155] transition hover:border-[#94a3b8] hover:bg-[#f8fafc]" onClick={addRow} type="button">
           <Plus size={15} />
           Thêm máy
         </button>
@@ -979,28 +979,28 @@ function ProductMachineRowsEditor({
         {editableRows.map((row, index) => (
           <div className="grid gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-3 shadow-[0_8px_20px_rgba(15,23,42,0.035)]" key={index}>
             <div className="grid gap-3 min-[1180px]:grid-cols-[minmax(160px,1fr)_minmax(140px,0.72fr)_minmax(160px,1fr)_auto]">
-              <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+              <label className="grid gap-2 text-sm font-medium text-[#475467]">
                 Serial
                 <input
-                  className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                  className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-sm text-[#172033] outline-none transition placeholder:text-[#98a2b3] focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]"
                   onChange={(event) => updateRow(index, { serialNumber: event.target.value })}
                   placeholder="AF3-2605-00012"
                   value={row.serialNumber}
                 />
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+              <label className="grid gap-2 text-sm font-medium text-[#475467]">
                 Mã máy
                 <input
-                  className="h-11 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] px-3 text-[#64748b] outline-none transition placeholder:text-[#94a3b8]"
+                  className="h-11 rounded-xl border border-[#e2e8f0] bg-[#f1f5f9] px-3 text-sm text-[#64748b] outline-none placeholder:text-[#98a2b3]"
                   disabled
                   placeholder="Đang sinh mã..."
                   value={row.machineCode || previewMachineCodeAt(machinePreviewCode, index) || 'Đang sinh mã...'}
                 />
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-[#334155]">
+              <label className="grid gap-2 text-sm font-medium text-[#475467]">
                 Tên máy / ghi chú
                 <input
-                  className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] outline-none transition placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+                  className="h-11 rounded-xl border border-[#cbd5e1] bg-white px-3 text-sm text-[#172033] outline-none transition placeholder:text-[#98a2b3] focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]"
                   onChange={(event) => updateRow(index, { name: event.target.value })}
                   placeholder="Có thể bỏ trống"
                   value={row.name}
@@ -1017,8 +1017,8 @@ function ProductMachineRowsEditor({
               </button>
             </div>
 
-            <div className="rounded-2xl border border-[#e2e8f0] bg-[#fbfdff] p-3">
-              <span className="mb-3 block text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Phụ kiện của máy này</span>
+            <div className="border-t border-[#eef2f6] pt-3">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">Phụ kiện của máy này</span>
               <MachineAccessoryEditor
                 compact
                 mode={accessoryMode}
@@ -1034,7 +1034,7 @@ function ProductMachineRowsEditor({
       <details className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white px-3 py-2">
         <summary className="cursor-pointer text-sm font-semibold text-[#475569]">Nhập danh sách từ văn bản</summary>
         <textarea
-          className="mt-3 min-h-28 w-full rounded-xl border border-[#cbd5e1] bg-[#fbfdff] px-3 py-2 font-mono text-sm leading-6 text-[#172033] outline-none transition placeholder:font-sans placeholder:text-[#94a3b8] focus:border-[#2563eb] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+          className="mt-3 min-h-28 w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2 font-mono text-sm leading-6 text-[#172033] outline-none transition placeholder:font-sans placeholder:text-[#98a2b3] focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]"
           onBlur={(event) => {
             pasteBulk(event.target.value);
             event.currentTarget.value = '';
@@ -1353,10 +1353,10 @@ function ModelSearchSelect({
 
   return (
     <div className="relative" onBlur={closeIfFocusLeaves} ref={wrapperRef}>
-      <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[#d6d6d6] bg-white px-3 text-[#1f1f1f] transition focus-within:border-[#18181b] focus-within:shadow-[0_0_0_3px_rgba(24,24,27,0.12)]">
-        <Search className="shrink-0 text-[#8a8a8a]" size={16} />
+      <div className="flex h-11 items-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-3 text-[#172033] transition focus-within:border-[#2563eb] focus-within:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]">
+          <Search className="shrink-0 text-[#667085]" size={16} />
         <input
-          className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium outline-none placeholder:text-[#8a8a8a]"
+          className="min-w-0 flex-1 border-0 bg-transparent text-sm text-[#172033] outline-none placeholder:text-[#98a2b3]"
           disabled={disabled}
           onChange={(event) => {
             setSearch(event.target.value);
@@ -1372,7 +1372,7 @@ function ModelSearchSelect({
         />
         {selectedModel ? (
           <button
-            className="shrink-0 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 py-1 text-xs font-semibold text-[#666666] hover:border-[#e4e4e7] hover:text-[#18181b]"
+            className="shrink-0 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-2 py-1 text-xs font-medium text-[#475467] hover:border-[#cbd5e1] hover:text-[#172033]"
             disabled={disabled}
             onClick={() => {
               onChange('');

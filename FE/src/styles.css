@@ -821,6 +821,21 @@ p {
   gap: 8px;
 }
 
+.pagination-controls input[type='number'] {
+  background: #ffffff;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  color: var(--color-text);
+  min-height: 36px;
+  outline: none;
+  padding: 0 8px;
+}
+
+.pagination-controls input[type='number']:focus {
+  border-color: #7c8798;
+  box-shadow: 0 0 0 2px rgb(52 64 84 / 10%);
+}
+
 .pagination-controls .secondary-button {
   min-height: 36px;
 }

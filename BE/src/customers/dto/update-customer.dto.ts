@@ -1,4 +1,4 @@
-import { CustomerStatus, CustomerType } from '@prisma/client';
+import { CustomerSalesChannel, CustomerStatus, CustomerType } from '@prisma/client';
 import {
   ArrayUnique,
   IsArray,
@@ -42,6 +42,14 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsEnum(CustomerStatus)
   status?: CustomerStatus;
+
+  @IsOptional()
+  @IsString()
+  dealerId?: string | null;
+
+  @IsOptional()
+  @IsEnum(CustomerSalesChannel)
+  salesChannel?: CustomerSalesChannel | null;
 
   @IsOptional()
   @IsString()

@@ -47,7 +47,7 @@ describe('DemoLoansService operational guards', () => {
     } as never);
 
     await expect(service.remove('loan-1', admin)).rejects.toThrow(
-      'A handed-over demo loan cannot be deleted',
+      'Only planned demo loans can be cancelled; return a handed-over machine instead',
     );
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });

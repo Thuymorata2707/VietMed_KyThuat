@@ -174,11 +174,52 @@ export function CustomerDetailView({
             <PanelTitle title="Thông tin khách hàng" />
             <div className="grid gap-3">
               <InfoTile icon={<ClipboardList size={17} />} label="Loại khách" value={categoryLabels[customer.customerType || ''] || customer.customerType || 'Chưa phân loại'} hint={displayStatus(customer.status)} />
+              {customer.customerType !== 'DISTRIBUTOR' ? (
+                <InfoTile
+                  icon={<PackageCheck size={17} />}
+                  label="Kênh bán"
+                  value={customer.salesChannel === 'DIRECT' ? 'Bán trực tiếp' : customer.salesChannel === 'DEALER' ? customer.dealer?.name || 'Qua đại lý' : 'Chưa xác định'}
+                  hint={customer.dealer?.customerCode || ''}
+                />
+              ) : null}
               <InfoTile icon={<Stethoscope size={17} />} label="Máy khách đang sử dụng" value={customerMachines[0] ? machineTitle(customerMachines[0]) : 'Chưa có máy của khách'} hint={customerMachines[0]?.serialNumber ? `S/N ${customerMachines[0].serialNumber}` : ''} />
               <InfoTile icon={<CalendarClock size={17} />} label="Lịch sử" value={`${timeline.length} phiếu`} hint="Lắp đặt, sửa chữa, bảo trì" />
             </div>
           </section>
         </div>
+      ) : null}
+
+      {customer.customerType === 'DISTRIBUTOR' ? (
+        <section className={panelClass}>
+          <PanelTitle
+            title="Khách hàng cuối của đại lý"
+            subtitle={`${customer._count?.dealerCustomers ?? customer.dealerCustomers?.length ?? 0} khách hàng`}
+          />
+          {customer.dealerCustomers?.length ? (
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {customer.dealerCustomers.map((downstreamCustomer) => (
+                <Link
+                  className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[#e5e5e5] bg-white p-3 transition hover:border-[#d6a0a8] hover:bg-[#fffafa]"
+                  key={downstreamCustomer.id}
+                  to={`/customers/${downstreamCustomer.id}`}
+                >
+                  <span className="min-w-0">
+                    <strong className="block truncate text-sm text-[#252c30]">{downstreamCustomer.name}</strong>
+                    <span className="mt-1 block truncate text-xs text-[#737373]">
+                      {[downstreamCustomer.customerCode, downstreamCustomer.province, downstreamCustomer.phone].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ'}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs font-bold text-[#666666]">{downstreamCustomer._count?.machines ?? 0} máy</span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="Chưa gắn khách hàng cuối với đại lý này" />
+          )}
+          {(customer._count?.dealerCustomers ?? 0) > (customer.dealerCustomers?.length ?? 0) ? (
+            <p className="mt-3 text-xs text-[#737373]">Đang hiển thị 100 khách hàng đầu tiên.</p>
+          ) : null}
+        </section>
       ) : null}
 
       {activeSection === 'machines' ? (

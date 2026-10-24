@@ -89,10 +89,10 @@
   table-layout: fixed;
 }
 
-.customer-crud-table .customer-column-name { width: 26%; }
-.customer-crud-table .customer-column-region { width: 17%; }
+.customer-crud-table .customer-column-name { width: 25%; }
+.customer-crud-table .customer-column-region { width: 16%; }
 .customer-crud-table .customer-column-contact { width: 13%; }
-.customer-crud-table .customer-column-engineers { width: 11%; }
+.customer-crud-table .customer-column-engineers { width: 13%; }
 .customer-crud-table .customer-column-machines { width: 7%; }
 .customer-crud-table .customer-column-status { width: 11%; }
 .customer-crud-table .customer-column-actions { width: 15%; }
@@ -147,6 +147,33 @@
   gap: 2px;
 }
 
+.customer-engineer-summary {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.customer-engineer-summary__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-engineer-summary__count {
+  background: #f1f2f4;
+  border: 1px solid #e2e4e8;
+  border-radius: 999px;
+  color: #50545b;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  padding: 1px 6px;
+}
+
 .customer-code-cell {
   color: #3f3f46;
   font-size: 12.5px;
@@ -187,6 +214,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.customer-channel-line {
+  color: #686868;
+  font-size: 11.5px;
+  line-height: 1.35;
 }
 
 .customer-card {

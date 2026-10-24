@@ -1194,65 +1194,24 @@ export class DashboardService {
 
     const [
       totalCustomers,
-      activeCustomers,
-      inactiveCustomers,
-      potentialCustomers,
-      blacklistedCustomers,
-      hospitalCustomers,
-      clinicCustomers,
-      labCustomers,
-      distributorCustomers,
-      universityCustomers,
-      companyCustomers,
-      otherCustomers,
-      totalBusinessLines,
-      activeBusinessLines,
-      inactiveBusinessLines,
+      customerStatuses,
+      customerTypes,
+      businessLineStatuses,
       totalInventoryMovements,
       totalMachines,
-      verifiedMachines,
+      machineStatuses,
+      machineInventoryStatuses,
+      machineProductCategories,
+      machineDataStatuses,
       unverifiedMachines,
-      pendingReviewMachines,
       engineerCreatedMachines,
       totalUsers,
-      totalRepairs,
-      activeMachines,
-      machinesInMaintenance,
-      machinesRepairing,
-      inactiveMachines,
-      machinesInStock,
-      machinesAccessorySplit,
-      machinesInstalledInventory,
-      machinesReserved,
-      machinesReturned,
-      machinesSold,
-      ultrasoundMachines,
-      labTestingMachines,
-      biochemistryMachines,
-      immunologyMachines,
-      hematologyMachines,
-      xRayMachines,
-      endoscopyMachines,
-      otherMachines,
-      pendingRepairs,
-      assignedRepairs,
-      inProgressRepairs,
-      waitingPartsRepairs,
-      completedRepairs,
-      cancelledRepairs,
-      totalMaintenances,
-      scheduledMaintenances,
-      assignedMaintenances,
-      inProgressMaintenances,
-      completedMaintenances,
+      repairStatuses,
+      repairsWithoutMachineStatuses,
+      maintenanceStatuses,
+      maintenancesWithoutMachineStatuses,
       overdueMaintenances,
-      cancelledMaintenances,
       upcomingMaintenances,
-      repairsWithoutMachine,
-      openRepairsWithoutMachine,
-      maintenancesWithoutMachine,
-      openMaintenancesWithoutMachine,
-      openMaintenances,
       openInstallations,
       openDemoLoans,
       openDeviceServiceTickets,
@@ -1261,60 +1220,44 @@ export class DashboardService {
       this.prisma.customer.count({
         where: this.customerWhere(customerScope),
       }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, { status: 'ACTIVE' }),
+      this.prisma.customer.groupBy({
+        by: ['status'],
+        where: this.customerWhere(customerScope),
+        _count: { _all: true },
       }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, { status: 'INACTIVE' }),
+      this.prisma.customer.groupBy({
+        by: ['customerType'],
+        where: this.customerWhere(customerScope),
+        _count: { _all: true },
       }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, { status: 'POTENTIAL' }),
-      }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, { status: 'BLACKLISTED' }),
-      }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, { customerType: 'HOSPITAL' }),
-      }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, { customerType: 'CLINIC' }),
-      }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, { customerType: 'LAB' }),
-      }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, {
-          customerType: 'DISTRIBUTOR',
-        }),
-      }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, {
-          customerType: 'UNIVERSITY',
-        }),
-      }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, { customerType: 'COMPANY' }),
-      }),
-      this.prisma.customer.count({
-        where: this.customerWhere(customerScope, { customerType: 'OTHER' }),
-      }),
-      this.prisma.businessLine.count({
+      this.prisma.businessLine.groupBy({
+        by: ['status'],
         where: this.businessLineWhere(businessLineScope),
-      }),
-      this.prisma.businessLine.count({
-        where: this.businessLineWhere(businessLineScope, { status: 'ACTIVE' }),
-      }),
-      this.prisma.businessLine.count({
-        where: this.businessLineWhere(businessLineScope, {
-          status: 'INACTIVE',
-        }),
+        _count: { _all: true },
       }),
       this.prisma.machineInventoryMovement.count({
         where: this.inventoryMovementWhere(inventoryMovementScope),
       }),
       this.prisma.machine.count({ where: this.machineWhere(machineScope) }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { dataStatus: 'VERIFIED' }),
+      this.prisma.machine.groupBy({
+        by: ['status'],
+        where: this.machineWhere(machineScope),
+        _count: { _all: true },
+      }),
+      this.prisma.machine.groupBy({
+        by: ['inventoryStatus'],
+        where: this.machineWhere(machineScope),
+        _count: { _all: true },
+      }),
+      this.prisma.machine.groupBy({
+        by: ['productCategory'],
+        where: this.machineWhere(machineScope),
+        _count: { _all: true },
+      }),
+      this.prisma.machine.groupBy({
+        by: ['dataStatus'],
+        where: this.machineWhere(machineScope),
+        _count: { _all: true },
       }),
       this.prisma.machine.count({
         where: this.machineWhere(machineScope, {
@@ -1322,119 +1265,28 @@ export class DashboardService {
         }),
       }),
       this.prisma.machine.count({
-        where: this.machineWhere(machineScope, {
-          dataStatus: 'PENDING_REVIEW',
-        }),
-      }),
-      this.prisma.machine.count({
         where: this.machineWhere(machineScope, { createdSource: 'ENGINEER' }),
       }),
       this.prisma.user.count({ where: this.userWhere(userScope) }),
-      this.prisma.repair.count({ where: this.repairWhere(repairScope) }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { status: 'ACTIVE' }),
+      this.prisma.repair.groupBy({
+        by: ['status'],
+        where: this.repairWhere(repairScope),
+        _count: { _all: true },
       }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { status: 'MAINTENANCE' }),
+      this.prisma.repair.groupBy({
+        by: ['status'],
+        where: this.repairWhere(repairScope, { machineId: null }),
+        _count: { _all: true },
       }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { status: 'REPAIRING' }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { status: 'INACTIVE' }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { inventoryStatus: 'IN_STOCK' }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, {
-          inventoryStatus: 'ACCESSORY_SPLIT',
-        }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, {
-          inventoryStatus: 'INSTALLED',
-        }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { inventoryStatus: 'RESERVED' }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { inventoryStatus: 'RETURNED' }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { inventoryStatus: 'SOLD' }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, {
-          productCategory: 'ULTRASOUND',
-        }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, {
-          productCategory: 'LAB_TESTING',
-        }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, {
-          productCategory: 'BIOCHEMISTRY',
-        }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, {
-          productCategory: 'IMMUNOLOGY',
-        }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, {
-          productCategory: 'HEMATOLOGY',
-        }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { productCategory: 'X_RAY' }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, {
-          productCategory: 'ENDOSCOPY',
-        }),
-      }),
-      this.prisma.machine.count({
-        where: this.machineWhere(machineScope, { productCategory: 'OTHER' }),
-      }),
-      this.prisma.repair.count({
-        where: this.repairWhere(repairScope, { status: 'PENDING' }),
-      }),
-      this.prisma.repair.count({
-        where: this.repairWhere(repairScope, { status: 'ASSIGNED' }),
-      }),
-      this.prisma.repair.count({
-        where: this.repairWhere(repairScope, { status: 'IN_PROGRESS' }),
-      }),
-      this.prisma.repair.count({
-        where: this.repairWhere(repairScope, { status: 'WAITING_PARTS' }),
-      }),
-      this.prisma.repair.count({
-        where: this.repairWhere(repairScope, { status: 'COMPLETED' }),
-      }),
-      this.prisma.repair.count({
-        where: this.repairWhere(repairScope, { status: 'CANCELLED' }),
-      }),
-      this.prisma.maintenance.count({
+      this.prisma.maintenance.groupBy({
+        by: ['status'],
         where: this.maintenanceWhere(maintenanceScope),
+        _count: { _all: true },
       }),
-      this.prisma.maintenance.count({
-        where: this.maintenanceWhere(maintenanceScope, { status: 'SCHEDULED' }),
-      }),
-      this.prisma.maintenance.count({
-        where: this.maintenanceWhere(maintenanceScope, { status: 'ASSIGNED' }),
-      }),
-      this.prisma.maintenance.count({
-        where: this.maintenanceWhere(maintenanceScope, {
-          status: 'IN_PROGRESS',
-        }),
-      }),
-      this.prisma.maintenance.count({
-        where: this.maintenanceWhere(maintenanceScope, { status: 'COMPLETED' }),
+      this.prisma.maintenance.groupBy({
+        by: ['status'],
+        where: this.maintenanceWhere(maintenanceScope, { machineId: null }),
+        _count: { _all: true },
       }),
       this.prisma.maintenance.count({
         where: this.maintenanceWhere(maintenanceScope, {
@@ -1448,44 +1300,12 @@ export class DashboardService {
         }),
       }),
       this.prisma.maintenance.count({
-        where: this.maintenanceWhere(maintenanceScope, { status: 'CANCELLED' }),
-      }),
-      this.prisma.maintenance.count({
         where: this.maintenanceWhere(maintenanceScope, {
-          status: {
-            in: ['SCHEDULED', 'ASSIGNED'],
-          },
+          status: { in: ['SCHEDULED', 'ASSIGNED'] },
           scheduledDate: {
             gte: todayStart,
             lte: addDateOnlyDays(todayStart, 30),
           },
-        }),
-      }),
-      this.prisma.repair.count({
-        where: this.repairWhere(repairScope, { machineId: null }),
-      }),
-      this.prisma.repair.count({
-        where: this.repairWhere(repairScope, {
-          machineId: null,
-          status: {
-            in: ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS'],
-          },
-        }),
-      }),
-      this.prisma.maintenance.count({
-        where: this.maintenanceWhere(maintenanceScope, { machineId: null }),
-      }),
-      this.prisma.maintenance.count({
-        where: this.maintenanceWhere(maintenanceScope, {
-          machineId: null,
-          status: {
-            in: ['SCHEDULED', 'ASSIGNED', 'IN_PROGRESS', 'OVERDUE'],
-          },
-        }),
-      }),
-      this.prisma.maintenance.count({
-        where: this.maintenanceWhere(maintenanceScope, {
-          status: { in: ['SCHEDULED', 'ASSIGNED', 'IN_PROGRESS', 'OVERDUE'] },
         }),
       }),
       this.prisma.machineInstallation.count({
@@ -1506,6 +1326,86 @@ export class DashboardService {
         }),
       }),
     ]);
+
+    const countMap = <T extends { _count: { _all: number } }>(
+      rows: T[],
+      field: keyof T,
+    ) => new Map(rows.map((row) => [String(row[field]), row._count._all]));
+    const count = (counts: Map<string, number>, key: string) => counts.get(key) ?? 0;
+    const sum = (counts: Map<string, number>, keys?: string[]) =>
+      [...counts.entries()]
+        .filter(([key]) => !keys || keys.includes(key))
+        .reduce((total, [, value]) => total + value, 0);
+
+    const customerStatusValues = countMap(customerStatuses, 'status');
+    const customerTypeValues = countMap(customerTypes, 'customerType');
+    const businessLineStatusValues = countMap(businessLineStatuses, 'status');
+    const machineStatusValues = countMap(machineStatuses, 'status');
+    const machineInventoryStatusValues = countMap(machineInventoryStatuses, 'inventoryStatus');
+    const machineProductCategoryValues = countMap(machineProductCategories, 'productCategory');
+    const machineDataStatusValues = countMap(machineDataStatuses, 'dataStatus');
+    const repairStatusValues = countMap(repairStatuses, 'status');
+    const repairsWithoutMachineStatusValues = countMap(repairsWithoutMachineStatuses, 'status');
+    const maintenanceStatusValues = countMap(maintenanceStatuses, 'status');
+    const maintenancesWithoutMachineStatusValues = countMap(maintenancesWithoutMachineStatuses, 'status');
+
+    const activeCustomers = count(customerStatusValues, 'ACTIVE');
+    const inactiveCustomers = count(customerStatusValues, 'INACTIVE');
+    const potentialCustomers = count(customerStatusValues, 'POTENTIAL');
+    const blacklistedCustomers = count(customerStatusValues, 'BLACKLISTED');
+    const hospitalCustomers = count(customerTypeValues, 'HOSPITAL');
+    const clinicCustomers = count(customerTypeValues, 'CLINIC');
+    const labCustomers = count(customerTypeValues, 'LAB');
+    const distributorCustomers = count(customerTypeValues, 'DISTRIBUTOR');
+    const universityCustomers = count(customerTypeValues, 'UNIVERSITY');
+    const companyCustomers = count(customerTypeValues, 'COMPANY');
+    const otherCustomers = count(customerTypeValues, 'OTHER');
+    const totalBusinessLines = sum(businessLineStatusValues);
+    const activeBusinessLines = count(businessLineStatusValues, 'ACTIVE');
+    const inactiveBusinessLines = count(businessLineStatusValues, 'INACTIVE');
+    const verifiedMachines = count(machineDataStatusValues, 'VERIFIED');
+    const pendingReviewMachines = count(machineDataStatusValues, 'PENDING_REVIEW');
+    const activeMachines = count(machineStatusValues, 'ACTIVE');
+    const machinesInMaintenance = count(machineStatusValues, 'MAINTENANCE');
+    const machinesRepairing = count(machineStatusValues, 'REPAIRING');
+    const inactiveMachines = count(machineStatusValues, 'INACTIVE');
+    const machinesInStock = count(machineInventoryStatusValues, 'IN_STOCK');
+    const machinesAccessorySplit = count(machineInventoryStatusValues, 'ACCESSORY_SPLIT');
+    const machinesInstalledInventory = count(machineInventoryStatusValues, 'INSTALLED');
+    const machinesReserved = count(machineInventoryStatusValues, 'RESERVED');
+    const machinesReturned = count(machineInventoryStatusValues, 'RETURNED');
+    const machinesSold = count(machineInventoryStatusValues, 'SOLD');
+    const ultrasoundMachines = count(machineProductCategoryValues, 'ULTRASOUND');
+    const labTestingMachines = count(machineProductCategoryValues, 'LAB_TESTING');
+    const biochemistryMachines = count(machineProductCategoryValues, 'BIOCHEMISTRY');
+    const immunologyMachines = count(machineProductCategoryValues, 'IMMUNOLOGY');
+    const hematologyMachines = count(machineProductCategoryValues, 'HEMATOLOGY');
+    const xRayMachines = count(machineProductCategoryValues, 'X_RAY');
+    const endoscopyMachines = count(machineProductCategoryValues, 'ENDOSCOPY');
+    const otherMachines = count(machineProductCategoryValues, 'OTHER');
+    const pendingRepairs = count(repairStatusValues, 'PENDING');
+    const assignedRepairs = count(repairStatusValues, 'ASSIGNED');
+    const inProgressRepairs = count(repairStatusValues, 'IN_PROGRESS');
+    const waitingPartsRepairs = count(repairStatusValues, 'WAITING_PARTS');
+    const completedRepairs = count(repairStatusValues, 'COMPLETED');
+    const cancelledRepairs = count(repairStatusValues, 'CANCELLED');
+    const totalRepairs = sum(repairStatusValues);
+    const repairsWithoutMachine = sum(repairsWithoutMachineStatusValues);
+    const openRepairStatuses = ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS'];
+    const openRepairsWithoutMachine = sum(repairsWithoutMachineStatusValues, openRepairStatuses);
+    const scheduledMaintenances = count(maintenanceStatusValues, 'SCHEDULED');
+    const assignedMaintenances = count(maintenanceStatusValues, 'ASSIGNED');
+    const inProgressMaintenances = count(maintenanceStatusValues, 'IN_PROGRESS');
+    const completedMaintenances = count(maintenanceStatusValues, 'COMPLETED');
+    const cancelledMaintenances = count(maintenanceStatusValues, 'CANCELLED');
+    const totalMaintenances = sum(maintenanceStatusValues);
+    const openMaintenanceStatuses = ['SCHEDULED', 'ASSIGNED', 'IN_PROGRESS', 'OVERDUE'];
+    const openMaintenances = sum(maintenanceStatusValues, openMaintenanceStatuses);
+    const maintenancesWithoutMachine = sum(maintenancesWithoutMachineStatusValues);
+    const openMaintenancesWithoutMachine = sum(
+      maintenancesWithoutMachineStatusValues,
+      openMaintenanceStatuses,
+    );
 
     const machineStatusCounts: Record<MachineStatusValue, number> = {
       ACTIVE: activeMachines,

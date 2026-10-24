@@ -59,11 +59,12 @@ type EngineerTaskDrawerProps = {
   onAppendAccessoryMaterial: (accessoryId: string) => void;
   onAttachmentDescriptionChange: (value: string) => void;
   onAttachmentDownload: (attachment: TaskAttachment) => void;
+  onAttachmentDelete: (attachment: TaskAttachment) => void;
   onAttachmentFilesChange: (files: File[]) => void;
   onAttachmentTitleChange: (value: string) => void;
   onAttachmentTypeChange: (type: AttachmentType) => void;
   onAttachmentUpload: () => void;
-  onAttachmentView: (attachment: TaskAttachment) => void;
+  onAttachmentView: (attachment: TaskAttachment) => Promise<string | null>;
   onChecklistLineChange: (line: string, checked: boolean) => void;
   onClose: () => void;
   onCreateKnowledge: () => void;
@@ -98,6 +99,7 @@ export function EngineerTaskDrawer({
   onAppendAccessoryMaterial,
   onAttachmentDescriptionChange,
   onAttachmentDownload,
+  onAttachmentDelete,
   onAttachmentFilesChange,
   onAttachmentTitleChange,
   onAttachmentTypeChange,
@@ -155,6 +157,7 @@ export function EngineerTaskDrawer({
           loadingAttachments={loadingAttachments}
           onDescriptionChange={onAttachmentDescriptionChange}
           onDownload={onAttachmentDownload}
+          onDelete={onAttachmentDelete}
           onFilesChange={onAttachmentFilesChange}
           onTitleChange={onAttachmentTitleChange}
           onTypeChange={onAttachmentTypeChange}

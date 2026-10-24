@@ -9,6 +9,7 @@ import {
   Gauge,
   MapPinned,
   FileBarChart2,
+  FileSpreadsheet,
   SquareCheckBig,
   TrendingUp,
   Users,
@@ -81,11 +82,11 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: 'Dữ liệu nền',
-    defaultCollapsed: true,
+    label: 'Quản trị',
     items: [
       { path: '/users', label: 'Nhân sự', icon: <Users size={18} />, matchPaths: ['/users', '/roles', '/audit-logs'], roles: ['admin'] },
       { path: '/regions', label: 'Khu vực', icon: <MapPinned size={18} />, roles: ['admin'] },
+      { path: '/data-import', label: 'Nhập dữ liệu', icon: <FileSpreadsheet size={18} />, roles: ['admin'] },
       { path: '/product-industries', label: 'Ngành hàng', icon: <BriefcaseBusiness size={18} />, roles: ['admin'] },
     ],
   },

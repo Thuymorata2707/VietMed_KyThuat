@@ -156,6 +156,18 @@ enum CustomerType {
   OTHER
 }
 
+enum CustomerSalesChannel {
+  DIRECT
+  DEALER
+}
+
+enum DataImportBatchStatus {
+  PREVIEW
+  IMPORTING
+  IMPORTED
+  FAILED
+}
+
 enum CustomerStatus {
   ACTIVE
   INACTIVE
@@ -337,6 +349,8 @@ model Region {
   users User[]
 
   customers Customer[]
+  importReviewCustomers Customer[] @relation("CustomerImportReviewRegion")
+  importReviewMachines  Machine[]  @relation("MachineImportReviewRegion")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -420,6 +434,7 @@ model User {
   sentNotifications           Notification[]              @relation("NotificationSender")
   managedBusinessLines        BusinessLine[]              @relation("BusinessLineManager")
   auditLogs                   AuditLog[]                  @relation("AuditLogActor")
+  createdDataImportBatches    DataImportBatch[]           @relation("DataImportBatchCreator")
   uploadedAttachments         Attachment[]                @relation("AttachmentUploadedBy")
   engineerProfile             EngineerProfile?
   dailyWorkNotes              DailyWorkNote[]             @relation("DailyWorkNoteUser")
@@ -642,6 +657,25 @@ model AuditLog {
   @@index([createdAt])
 }
 
+model DataImportBatch {
+  id              String                @id @default(cuid())
+  sourceFileName  String
+  fileHash        String
+  status          DataImportBatchStatus @default(PREVIEW)
+  previewData     String                @db.LongText
+  summary         Json
+  result          Json?
+  error           String?               @db.Text
+  createdById     String?
+  createdBy       User?                 @relation("DataImportBatchCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([status, createdAt])
+  @@index([fileHash])
+  @@index([createdById])
+}
+
 model EngineerProfile {
   id String @id @default(cuid())
 
@@ -676,6 +710,11 @@ model Customer {
   hospitalName String?
   customerType CustomerType   @default(HOSPITAL)
   status       CustomerStatus @default(ACTIVE)
+  salesChannel CustomerSalesChannel?
+
+  dealerId        String?
+  dealer          Customer?  @relation("CustomerDealer", fields: [dealerId], references: [id], onDelete: SetNull)
+  dealerCustomers Customer[] @relation("CustomerDealer")
 
   taxCode String?
   email   String?
@@ -701,6 +740,8 @@ model Customer {
 
   regionId String?
   region   Region? @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  importReviewRegionId String?
+  importReviewRegion   Region? @relation("CustomerImportReviewRegion", fields: [importReviewRegionId], references: [id], onDelete: SetNull)
 
   primaryEngineerId String?
   primaryEngineer   User?   @relation("CustomerPrimaryEngineer", fields: [primaryEngineerId], references: [id], onDelete: SetNull)
@@ -722,6 +763,8 @@ model Customer {
   updatedAt DateTime @updatedAt
 
   @@index([primaryEngineerId])
+  @@index([dealerId])
+  @@index([importReviewRegionId])
 }
 
 model CustomerContact {
@@ -949,9 +992,13 @@ model Machine {
 
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  importReviewRegionId String?
+  importReviewRegion   Region? @relation("MachineImportReviewRegion", fields: [importReviewRegionId], references: [id], onDelete: SetNull)
 
   installedById String?
   installedBy   User?   @relation("MachineInstalledBy", fields: [installedById], references: [id])
+  installedByNameSnapshot String?
+  checkedByNameSnapshot   String?
 
   primaryEngineerId   String?
   primaryEngineer     User?                       @relation("MachinePrimaryEngineer", fields: [primaryEngineerId], references: [id])
@@ -1225,6 +1272,9 @@ model MachineInstallation {
   warrantyNote      String?
 
   handoverInstallerName     String?
+  checkedByNameSnapshot     String?
+  legacySourceSheet         String?
+  legacySourceRow           Int?
   handoverInstallerPosition String?
   handoverVehicle           String?
   handoverDepartureDate     DateTime?

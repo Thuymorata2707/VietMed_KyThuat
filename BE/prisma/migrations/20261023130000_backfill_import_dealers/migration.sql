@@ -1,0 +1,11 @@
+UPDATE `Customer` AS customer
+JOIN `DataImportBatch` AS batch
+  ON customer.`createdAt` >= batch.`createdAt`
+  AND customer.`createdAt` <= batch.`updatedAt`
+JOIN `User` AS importer
+  ON importer.`id` = batch.`createdById`
+SET customer.`importReviewRegionId` = importer.`regionId`
+WHERE batch.`status` = 'IMPORTED'
+  AND customer.`customerType` = 'DISTRIBUTOR'
+  AND customer.`regionId` IS NULL
+  AND customer.`importReviewRegionId` IS NULL;

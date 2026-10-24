@@ -12,14 +12,22 @@ type LoginPageProps = {
   onLogin: (user: ApiUser) => void;
 };
 
+const REMEMBERED_IDENTIFIER_KEY = 'vietmed_remembered_login_identifier';
+
 export function LoginPage({ onLogin }: LoginPageProps) {
   const navigate = useNavigate();
-  const [identifier, setIdentifier] = useState('');
+  const [identifier, setIdentifier] = useState(() => localStorage.getItem(REMEMBERED_IDENTIFIER_KEY) ?? '');
+  const [rememberIdentifier, setRememberIdentifier] = useState(() => Boolean(localStorage.getItem(REMEMBERED_IDENTIFIER_KEY)));
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const loginMutation = useMutation({
     mutationFn: () => login(identifier, password),
     onSuccess: (signedInUser) => {
+      if (rememberIdentifier && identifier.trim()) {
+        localStorage.setItem(REMEMBERED_IDENTIFIER_KEY, identifier.trim());
+      } else {
+        localStorage.removeItem(REMEMBERED_IDENTIFIER_KEY);
+      }
       queryClient.setQueryData(queryKeys.auth.me, signedInUser);
       onLogin(signedInUser);
       navigate(homePathForRole(getRoleName(signedInUser)));
@@ -55,12 +63,13 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               </h1>
             </div>
 
-            <form className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-[#ffffff] p-4 shadow-[0_8px_24px_rgba(24,24,27,0.05)]" onSubmit={handleSubmit}>
+            <form autoComplete="on" className="grid gap-4 rounded-[24px] border border-[#e4e4e7] bg-[#ffffff] p-4 shadow-[0_8px_24px_rgba(24,24,27,0.05)]" onSubmit={handleSubmit}>
               <label className="grid gap-2 text-[13px] font-bold text-[#333333]">
                 Email hoặc tên đăng nhập
                 <input
                   className="min-h-[52px] rounded-2xl border border-[#ded8d8] bg-[#ffffff] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#98a3b4] hover:border-[#e4e4e7] focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]"
                   autoComplete="username"
+                  name="username"
                   onChange={(event) => setIdentifier(event.target.value)}
                   placeholder="nguyenvana hoặc name@vietmed.com.vn"
                   type="text"
@@ -72,12 +81,28 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 <input
                   className="min-h-[52px] rounded-2xl border border-[#ded8d8] bg-[#ffffff] px-4 text-sm font-semibold text-[#1f1f1f] outline-none transition placeholder:text-[#98a3b4] hover:border-[#e4e4e7] focus:border-[#18181b] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,24,27,0.12)]"
                   autoComplete="current-password"
+                  name="password"
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="Nhập mật khẩu"
                   type="password"
                   value={password}
                 />
               </label>
+              <div>
+                <label className="inline-flex w-fit cursor-pointer items-center gap-2 text-[13px] font-semibold text-[#333333]">
+                  <input
+                    checked={rememberIdentifier}
+                    className="h-4 w-4 accent-[#971b2b]"
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setRememberIdentifier(checked);
+                      if (!checked) localStorage.removeItem(REMEMBERED_IDENTIFIER_KEY);
+                    }}
+                    type="checkbox"
+                  />
+                  Ghi nhớ tài khoản trên thiết bị này
+                </label>
+              </div>
               {error ? (
                 <p className="rounded-2xl border border-[#fecdd3] bg-[#fff1f3] px-3.5 py-3 text-[14px] font-bold leading-5 text-[#b5121b]">
                   {error}
